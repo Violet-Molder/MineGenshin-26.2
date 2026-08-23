@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.client.gui.components.state_bind_com;
 
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.IDataProvider;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
@@ -91,7 +91,7 @@ public class SkillProgressBar extends ProgressBar {
     private void setCharacterBurst(PGCharacterData characterData) {
         this.character = characterData;
         if (characterData == null) return;
-        PGCharacter def = characterData.getDefinition();
+        PGCharacterDefine def = characterData.getDefinition();
         if (def != null) {
             String textureId = def.getTextureId();
             this.barContainer.style(s -> s.background(
@@ -105,7 +105,7 @@ public class SkillProgressBar extends ProgressBar {
     private void setCharacterSkill(PGCharacterData characterData) {
         this.character = characterData;
         if (characterData == null) return;
-        PGCharacter def = characterData.getDefinition();
+        PGCharacterDefine def = characterData.getDefinition();
         if (def != null) {
             String textureId = def.getTextureId();
             this.barContainer.style(s -> s.background(

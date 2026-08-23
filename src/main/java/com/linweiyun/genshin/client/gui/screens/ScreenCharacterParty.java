@@ -1,8 +1,8 @@
 package com.linweiyun.genshin.client.gui.screens;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUIClientAccess;
@@ -50,7 +50,7 @@ public class ScreenCharacterParty extends Screen {
       PGCharacterData partyChar = charactersAttachment.getPartyCharacter(i);
       System.out.println(charactersAttachment.getPartyCharacterUUIDs());
       if (partyChar != null) {
-        PGCharacter def = partyChar.getDefinition();
+        PGCharacterDefine def = partyChar.getDefinition();
         if (def != null) {
           String textureId = def.getTextureId();
           characterButtonImage

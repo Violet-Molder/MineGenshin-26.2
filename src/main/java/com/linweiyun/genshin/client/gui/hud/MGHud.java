@@ -7,8 +7,8 @@ import com.linweiyun.genshin.client.gui.components.state_bind_com.HPProgressBar;
 import com.linweiyun.genshin.client.gui.components.state_bind_com.SkillProgressBar;
 import com.linweiyun.genshin.client.gui.components.state_bind_com.StackBindUIElement;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
@@ -21,7 +21,6 @@ import dev.vfyjxf.taffy.style.TaffyDisplay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -139,7 +138,7 @@ public class MGHud {
                             () -> {
                                 PGCharacterData data = characterIcon.getValue();
                                 if (data == null) return Component.literal("");
-                                PGCharacter def = data.getDefinition();
+                                PGCharacterDefine def = data.getDefinition();
                                 return def != null ? def.getName() : Component.literal("");
                             }));
 

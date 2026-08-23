@@ -3,9 +3,9 @@ package com.linweiyun.genshin.core.network;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
-import com.linweiyun.genshin.registry.register.CharacterRegister;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.registry.register.CharacterRegister;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.linweiyun.genshin.core.skill.CharacterSkillHandler;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
@@ -116,13 +116,11 @@ public class NetworkManager {
               serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacterData currentChar = attachment.getCurrentCharacter();
       if (currentChar != null) {
-        PGCharacter def = currentChar.getDefinition();
+        PGCharacterDefine def = currentChar.getDefinition();
         if (def != null) {
           if (skill == 1) {
-            System.out.println("触发元素战技");
             CharacterSkillHandler.performElementalSkill(serverPlayer, currentChar, def);
           } else if (skill == 2) {
-            System.out.println("触发元素burst");
             CharacterSkillHandler.performElementalBurst(serverPlayer, currentChar, def);
           }
         }
@@ -154,14 +152,14 @@ public class NetworkManager {
       PlayerCharactersAttachment charactersAttachment =
               serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
 
-      List<PGCharacter> allCharacters = new ArrayList<>(CharacterRegister.getAllCharacters());
+      List<PGCharacterDefine> allCharacters = new ArrayList<>(CharacterRegister.getAllCharacters());
       if (allCharacters.isEmpty()) {
         serverPlayer.sendSystemMessage(
                 Component.translatable("message.pixel_genshin.wish.no_reward"));
         return;
       }
 
-      PGCharacter rolledCharacter = allCharacters.get(RANDOM.nextInt(allCharacters.size()));
+      PGCharacterDefine rolledCharacter = allCharacters.get(RANDOM.nextInt(allCharacters.size()));
       Component characterName = rolledCharacter.getName().copy().withStyle(ChatFormatting.GOLD);
 
       if (charactersAttachment.hasCharacter(rolledCharacter.getCharacterUUID())) {

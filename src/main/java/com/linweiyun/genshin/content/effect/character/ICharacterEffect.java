@@ -1,10 +1,14 @@
 package com.linweiyun.genshin.content.effect.character;
 
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.combat.damage.ModDamageSource;
+import com.mojang.logging.LogUtils;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import org.slf4j.Logger;
 
 public interface ICharacterEffect {
-
+    public static final Logger LOGGER = LogUtils.getLogger();
     /**
      * 效果首次添加时调用
      * @param holder 效果持有者（玩家）
@@ -52,7 +56,12 @@ public interface ICharacterEffect {
      * @return 返回true表示效果继续生效，返回false表示效果应被移除
      */
     default boolean onEffectTick(Player holder, PGCharacterData character, CharacterEffectInstance instance) {
-        return true;
+        if (!holder.level().isClientSide()) {
+
+            instance.setDuration(instance.getDuration() - 1);
+        }
+        LOGGER.info("tick: {}", instance.getDuration());
+        return instance.getDuration() > 0;
     }
 
     /**
@@ -62,7 +71,7 @@ public interface ICharacterEffect {
      * @param target 攻击目标
      * @param instance 效果实例
      */
-    default void onAttacked(Player holder, PGCharacterData character, Player target, CharacterEffectInstance instance) {}
+    default void onAttacked(Player holder, PGCharacterData character, LivingEntity target, CharacterEffectInstance instance, ModDamageSource damageSource) {}
 
     /**
      * 是否为即时效果（一次性生效，不需要持续）

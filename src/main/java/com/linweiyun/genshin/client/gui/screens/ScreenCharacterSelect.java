@@ -1,8 +1,8 @@
 package com.linweiyun.genshin.client.gui.screens;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUIClientAccess;
@@ -155,7 +155,7 @@ public class ScreenCharacterSelect extends Screen {
             removeCharacterButton.setDisplay(true);
             PGCharacterData partyChar = charactersAttachment.getPartyCharacter(index);
             if (partyChar != null) {
-                PGCharacter def = partyChar.getDefinition();
+                PGCharacterDefine def = partyChar.getDefinition();
                 if (def != null) {
                     currentCharacter
                             .setId("Pose-Stand-" + def.getName().getString())
@@ -176,7 +176,7 @@ public class ScreenCharacterSelect extends Screen {
             sheetUUIDs.sort(Comparator.comparingInt(uuid -> {
                 PGCharacterData c = charactersAttachment.getCharacterByUUID(uuid);
                 if (c == null) return 0;
-                PGCharacter def = c.getDefinition();
+                PGCharacterDefine def = c.getDefinition();
                 if (def == null) return 0;
                 return switch (sort) {
                     case STAR -> def.getStarRating();
@@ -187,7 +187,7 @@ public class ScreenCharacterSelect extends Screen {
             for (int uuid : sheetUUIDs) {
                 PGCharacterData ownedChar = charactersAttachment.getCharacterByUUID(uuid);
                 if (ownedChar == null) continue;
-                PGCharacter def = ownedChar.getDefinition();
+                PGCharacterDefine def = ownedChar.getDefinition();
                 if (def == null) continue;
 
                 String textureId = def.getTextureId();

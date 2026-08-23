@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public class PGCharacter {
+public class PGCharacterDefine {
     private final int characterUUID;
     private final int starRating;
     private final Component name;
@@ -23,11 +23,12 @@ public class PGCharacter {
     private final float burstMaxCooldownTick;
     private final float maxObtainingEnergy;
     private final String textureId;
-
     private final Map<Identifier, Supplier<List<? extends Integer>>> statGrowthMap;
 
+    private PGCharacterData data;
 
-    public PGCharacter(
+
+    public PGCharacterDefine(
             int characterUUID, int starRating, Component name,
             ElementalsGIM elemental, CharacterAscendAttribute ascendAttribute,
             float skillMaxCooldownTick, float burstMaxCooldownTick,
@@ -49,7 +50,7 @@ public class PGCharacter {
     }
 
     public int getStatAtLevel(AttributeType type, int levelIndex) {
-        Supplier<List<? extends Integer>> supplier = statGrowthMap.get(type.getId());
+        Supplier<List<? extends Integer>> supplier = statGrowthMap.get(type.id());
         if (supplier == null) return 0;
         List<? extends Integer> list = supplier.get();
         if (levelIndex < 0 || levelIndex >= list.size()) return 0;
@@ -57,10 +58,10 @@ public class PGCharacter {
     }
 
     public double getBaseStat(AttributeType type) {
-        Supplier<List<? extends Integer>> supplier = statGrowthMap.get(type.getId());
-        if (supplier == null) return type.getDefaultValue();
+        Supplier<List<? extends Integer>> supplier = statGrowthMap.get(type.id());
+        if (supplier == null) return type.defaultValue();
         List<? extends Integer> list = supplier.get();
-        if (list.isEmpty()) return type.getDefaultValue();
+        if (list.isEmpty()) return type.defaultValue();
         return list.get(0);
     }
 

@@ -10,9 +10,6 @@ import net.neoforged.neoforge.common.util.Lazy;
 import org.lwjgl.glfw.GLFW;
 
 public class KeyMappingRegistry {
-
-
-
   public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID,"category"));
   public static final Lazy<KeyMapping> G_KEY = Lazy.of(() ->
           new KeyMapping(

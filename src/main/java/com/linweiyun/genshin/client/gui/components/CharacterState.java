@@ -4,8 +4,8 @@ import com.linweiyun.genshin.client.gui.components.state_bind_com.BooleanDisplay
 import com.linweiyun.genshin.client.gui.components.state_bind_com.StackBindUIElement;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.IDataProvider;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
@@ -169,13 +169,13 @@ public class CharacterState extends UIElement {
     characterName1.bindDataSource(SupplierDataSource.of(() -> {
       PGCharacterData c = character.get();
       if (c == null) return Component.literal("");
-      PGCharacter def = c.getDefinition();
+      PGCharacterDefine def = c.getDefinition();
       return def != null ? def.getName() : Component.literal("");
     }));
     characterName2.bindDataSource(SupplierDataSource.of(() -> {
       PGCharacterData c = character.get();
       if (c == null) return Component.literal("");
-      PGCharacter def = c.getDefinition();
+      PGCharacterDefine def = c.getDefinition();
       return def != null ? def.getName() : Component.literal("");
     }));
     characterIcon.bindDataSource(SupplierDataSource.of(character::get));

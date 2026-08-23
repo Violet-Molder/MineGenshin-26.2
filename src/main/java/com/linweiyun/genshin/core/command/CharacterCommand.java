@@ -3,9 +3,9 @@ package com.linweiyun.genshin.core.command;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
-import com.linweiyun.genshin.registry.register.CharacterRegister;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.registry.register.CharacterRegister;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -49,7 +49,7 @@ public class CharacterCommand {
         ServerPlayer target = EntityArgument.getPlayer(context, "target");
         int uuid = IntegerArgumentType.getInteger(context, "uuid");
 
-        PGCharacter definition = CharacterRegister.getByUUID(uuid);
+        PGCharacterDefine definition = CharacterRegister.getByUUID(uuid);
         if (definition == null) {
             context.getSource().sendFailure(Component.literal("未找到UUID为 " + uuid + " 的角色"));
             return 0;
@@ -83,7 +83,7 @@ public class CharacterCommand {
             return 0;
         }
 
-        PGCharacter definition = CharacterRegister.getByUUID(uuid);
+        PGCharacterDefine definition = CharacterRegister.getByUUID(uuid);
         String characterName = definition != null ? definition.getName().getString() : String.valueOf(uuid);
 
         attachment.removeCharacterToPlayer(target, uuid);

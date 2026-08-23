@@ -1,12 +1,14 @@
 package com.linweiyun.genshin.content.effect.character;
 
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.player.Player;
+import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 
 public class CharacterEffectHelper {
-
+    public static final Logger LOGGER = LogUtils.getLogger();
     /**
      * 获取角色身上的效果容器
      * @param character 角色数据
@@ -39,7 +41,6 @@ public class CharacterEffectHelper {
             container.addEffect(instance);                                   // 添加到容器
             newEffect.onEffectAdded(holder, character, instance);            // 调用添加回调
         }
-
         character.syncEffectsToTag();                                        // 同步效果数据到NBT标签
     }
 
@@ -56,6 +57,7 @@ public class CharacterEffectHelper {
         if (instance != null) {
             effect.onEffectRemoved(holder, character, instance);             // 调用移除回调
             container.removeEffect(effect);                                  // 从容器移除
+            LOGGER.info("移除");
         }
 
         character.syncEffectsToTag();                                        // 同步效果数据到NBT标签

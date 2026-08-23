@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.data.generators;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.core.combat.damage.ModDamageTypes;
+import com.linweiyun.genshin.registry.DamageTypeRegistry;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
@@ -25,7 +25,7 @@ public class DamageTypeDataProviderGIM extends DatapackBuiltinEntriesProvider {
                 new RegistrySetBuilder()
                         .add(Registries.DAMAGE_TYPE, bootstrap -> {
                             bootstrap.register(
-                                    ModDamageTypes.NORMAL_ATTACK,
+                                    DamageTypeRegistry.NORMAL_ATTACK,
                                     new DamageType(
                                             "normal_attack",
                                             DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
@@ -33,7 +33,7 @@ public class DamageTypeDataProviderGIM extends DatapackBuiltinEntriesProvider {
                                             DamageEffects.HURT,
                                             DeathMessageType.DEFAULT));
                             bootstrap.register(
-                                    ModDamageTypes.CHARGED_ATTACK,
+                                    DamageTypeRegistry.CHARGED_ATTACK,
                                     new DamageType(
                                             "charged_attack",
                                             DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
@@ -41,7 +41,7 @@ public class DamageTypeDataProviderGIM extends DatapackBuiltinEntriesProvider {
                                             DamageEffects.HURT,
                                             DeathMessageType.DEFAULT));
                             bootstrap.register(
-                                    ModDamageTypes.PLUNGING_ATTACK,
+                                    DamageTypeRegistry.PLUNGING_ATTACK,
                                     new DamageType(
                                             "plunging_attack",
                                             DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
@@ -49,7 +49,7 @@ public class DamageTypeDataProviderGIM extends DatapackBuiltinEntriesProvider {
                                             DamageEffects.HURT,
                                             DeathMessageType.DEFAULT));
                             bootstrap.register(
-                                    ModDamageTypes.ELEMENTAL_SKILL,
+                                    DamageTypeRegistry.ELEMENTAL_SKILL,
                                     new DamageType(
                                             "elemental_skill",
                                             DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
@@ -57,7 +57,7 @@ public class DamageTypeDataProviderGIM extends DatapackBuiltinEntriesProvider {
                                             DamageEffects.HURT,
                                             DeathMessageType.DEFAULT));
                             bootstrap.register(
-                                    ModDamageTypes.ELEMENTAL_BURST,
+                                    DamageTypeRegistry.ELEMENTAL_BURST,
                                     new DamageType(
                                             "elemental_burst",
                                             DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
@@ -65,13 +65,22 @@ public class DamageTypeDataProviderGIM extends DatapackBuiltinEntriesProvider {
                                             DamageEffects.HURT,
                                             DeathMessageType.DEFAULT));
                             bootstrap.register(
-                                    ModDamageTypes.SPECIAL,
+                                    DamageTypeRegistry.SPECIAL,
                                     new DamageType(
                                             "special",
                                             DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
                                             0.1f,
                                             DamageEffects.HURT,
                                             DeathMessageType.DEFAULT));
+                            bootstrap.register(
+                                    DamageTypeRegistry.MONSTER,
+                                    new DamageType(
+                                            "monster",
+                                            DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
+                                            0.1f,
+                                            DamageEffects.HURT,
+                                            DeathMessageType.DEFAULT
+                                            ));
                         }),
                 Set.of(Minegenshin.MOD_ID));
     }

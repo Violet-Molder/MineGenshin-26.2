@@ -1,4 +1,4 @@
-package com.linweiyun.genshin.core.combat.damage;
+package com.linweiyun.genshin.registry;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.enums.AttackType;
@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
  * MC DamageType 注册 —— 定义所有自定义伤害类型的 ResourceKey
@@ -29,7 +30,7 @@ import net.minecraft.world.entity.Entity;
  * - 两者一一对应，通过本类的 resolveDamageType() 方法桥接
  * - DamageSpec 持有 AttackType，通过 ModDamageSource 嵌入 DamageSource 在MC管线中传递
  */
-public class ModDamageTypes {
+public class DamageTypeRegistry {
 
     // ========== MC DamageType 的 ResourceKey 常量 ==========
 
@@ -57,6 +58,10 @@ public class ModDamageTypes {
     public static final ResourceKey<DamageType> SPECIAL =
             ResourceKey.create(Registries.DAMAGE_TYPE, Minegenshin.id("special"));
 
+    // 怪物伤害 —— 对应 AttackType.MONSTER
+    public static final ResourceKey<DamageType> MONSTER =
+            ResourceKey.create(Registries.DAMAGE_TYPE, Minegenshin.id("monster"));
+
     // ========== 解析方法 ==========
 
     /**
@@ -73,6 +78,7 @@ public class ModDamageTypes {
             case ELEMENTAL_SKILL -> ELEMENTAL_SKILL;    // 元素战技
             case ELEMENTAL_BURST -> ELEMENTAL_BURST;    // 元素爆发
             case SPECIAL -> SPECIAL;                    // 特殊/环境伤害
+            case MONSTER -> MONSTER;                    // 怪物伤害
         };
     }
 

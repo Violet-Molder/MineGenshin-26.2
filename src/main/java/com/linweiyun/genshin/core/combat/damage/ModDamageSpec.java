@@ -40,50 +40,25 @@ public class ModDamageSpec {
     // ========== 核心伤害数据 ==========
 
     // 攻击类型 —— 决定伤害分类和衰减标签
-    // 不同攻击类型使用不同的伤害计算公式
-    // 每种攻击类型默认拥有独立的衰减标签，决定计时计数器的共用关系
     private final AttackType attackType;
 
     // 伤害元素 —— 决定伤害的元素属性
-    // 使用 ElementalsGIM.FYSIKOS 表示物理伤害（"无"元素）
-    // 物理攻击存在元素量但不能提供附着
-    // 元素附魔仅修改此属性，不修改衰减标签和衰减组别
     private final ElementalsGIM element;
 
     // 伤害倍率 —— 攻击力乘数（如普通攻击的 1.5 倍率）
-    // 计算伤害 = 角色ATK × damageMultiplier + flatDamageBonus
-    // 最终实际伤害 = 计算伤害 × 伤害序列系数（由DecayGroup控制）
     private final float damageMultiplier;
 
     // 固定伤害加成 —— 在倍率计算后额外附加的固定伤害值
-    // 用于：冰凌附加伤害、特殊buff固定增伤等
-    // 计算伤害 = 角色ATK × damageMultiplier + flatDamageBonus
     private final float flatDamageBonus;
 
     // ========== 元素附着数据 ==========
 
     // 基础元素量 —— 本次攻击的原始元素量
-    // 实际施加的元素量 = 基础元素量 × 元素量序列系数
-    // 系数为0时，即使基础元素量>0也不会附着
-    // 例：基础元素量=2，序列系数=1 → 实际附着量=2
-    // 例：基础元素量=2，序列系数=0 → 实际附着量=0（不附着）
-    // 例：空中下落攻击 → 基础元素量=0 → 无论系数多少都不附着
     private final float elementAmount;
 
     // ========== 衰减系统 ==========
 
     // 衰减组别 —— 可选的自定义衰减组别
-    // null = 使用默认组别（由战斗系统根据攻击者+角色+攻击类型查找）
-    // 非null = 使用指定的组别（用于特殊攻击覆盖默认行为）
-    //
-    // 组别包含4个参数：
-    // - 清除时间：计时器倒计时时长
-    // - 元素量序列：控制每次攻击的附着量
-    // - 伤害序列：控制每次攻击的伤害输出
-    // - 削韧序列：控制每次攻击的削韧量（暂未实装）
-    //
-    // 例：申鹤战技 → 自定义组别（清除时间0.1s，元素序列[1,0,0,0,0,0,0]）
-    // 例：普通攻击 → null（使用默认组别，清除时间2.5s，元素序列[1,0,0,...]）
     private final DecayGroup decayGroup;
 
     // ========== 构造函数 ==========
@@ -101,6 +76,16 @@ public class ModDamageSpec {
         this.flatDamageBonus = flatDamageBonus;
         this.elementAmount = elementAmount;
         this.decayGroup = decayGroup;
+    }
+    public ModDamageSpec withFlatDamageBonus(float newFlatBonus) {
+        return new ModDamageSpec(
+                this.attackType,
+                this.element,
+                this.damageMultiplier,
+                newFlatBonus,
+                this.elementAmount,
+                this.decayGroup
+        );
     }
 
     // ========== Getter 方法 ==========

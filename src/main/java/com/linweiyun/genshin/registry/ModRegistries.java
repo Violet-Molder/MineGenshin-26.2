@@ -3,7 +3,7 @@ package com.linweiyun.genshin.registry;
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.core.attribute.AttributeType;
-import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.linweiyun.genshin.core.skill.CharacterSkillExecutor;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
@@ -23,10 +23,10 @@ public class ModRegistries {
                     .sync(true)
                     .create();
 
-    public static final ResourceKey<Registry<PGCharacter>> CHARACTER_REGISTRY_KEY =
+    public static final ResourceKey<Registry<PGCharacterDefine>> CHARACTER_REGISTRY_KEY =
             ResourceKey.createRegistryKey(
                     net.minecraft.resources.Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "characters"));
-    public static final Registry<PGCharacter> CHARACTER_REGISTRY =
+    public static final Registry<PGCharacterDefine> CHARACTER_REGISTRY =
             new RegistryBuilder<>(CHARACTER_REGISTRY_KEY)
                     .sync(true)
                     .create();
@@ -58,7 +58,7 @@ public class ModRegistries {
     public static final DeferredRegister<AttributeType> ATTRIBUTE_TYPES =
             DeferredRegister.create(ATTRIBUTE_TYPE_REGISTRY, Minegenshin.MOD_ID);
 
-    public static final DeferredRegister<PGCharacter> CHARACTERS =
+    public static final DeferredRegister<PGCharacterDefine> CHARACTERS =
             DeferredRegister.create(CHARACTER_REGISTRY, Minegenshin.MOD_ID);
 
     public static final DeferredRegister<ICharacterEffect> CHARACTER_EFFECTS =

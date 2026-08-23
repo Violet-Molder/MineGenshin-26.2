@@ -26,7 +26,7 @@ public class AttributeInstance implements IPersistedSerializable {
     public AttributeInstance() {}
     public AttributeInstance(AttributeType type) {
         this.type = type;
-        this.baseValue = type.getDefaultValue();
+        this.baseValue = type.defaultValue();
     }
 
     public AttributeType getType() { return type; }

@@ -13,4 +13,9 @@ public class GUIServerHelperGIM {
     var modularUI = ScreenCharacterParty.createModularUI(player);
     Minecraft.getInstance().setScreenAndShow(new ScreenCharacterParty(modularUI));
   }
+
+//  public static void openTestGraphScreen(Player player) {
+//    var modularUI = TestGraphScreen.createModularUI(player);
+//    Minecraft.getInstance().setScreenAndShow(new TestGraphScreen(modularUI));
+//  }
 }

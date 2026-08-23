@@ -3,8 +3,8 @@ package com.linweiyun.genshin.client.keybindings;
 import com.linweiyun.genshin.client.gui.screens.GUIServerHelperGIM;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.skill.CharacterSkillHandler;
 import net.minecraft.client.Minecraft;
@@ -20,20 +20,24 @@ public class KeyInputHandler {
 
 
   private static boolean wasFKeyDown = false;
-
+  private static long longPressStartTick = 0;
   @SubscribeEvent
   public static void onKeyInput(ClientTickEvent.Post event) {
     Minecraft mc = Minecraft.getInstance();
     Player player = mc.player;
+
     if (player == null) return;
 
     boolean isFKeyDown = KeyMappingRegistry.F_KEY.get().isDown();
     if (isFKeyDown && !wasFKeyDown) {
       player.sendSystemMessage(Component.literal("按下F键"));
+      longPressStartTick = System.currentTimeMillis();
     } else if (isFKeyDown) {
+
       player.sendSystemMessage(Component.literal("已按下"));
     } else if (!isFKeyDown && wasFKeyDown) {
-      player.sendSystemMessage(Component.literal("已松开F键"));
+      int time = (int) (System.currentTimeMillis() - longPressStartTick);
+      player.sendSystemMessage(Component.literal("已松开F键，持续时间：" + time + "ms"));
     }
     wasFKeyDown = isFKeyDown;
 
@@ -94,13 +98,11 @@ public class KeyInputHandler {
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     PGCharacterData currentChar = attachment.getCurrentCharacter();
     if (currentChar != null) {
-      PGCharacter def = currentChar.getDefinition();
+      PGCharacterDefine def = currentChar.getDefinition();
       if (def != null) {
         if (skill == 1) {
-          System.out.println("触发元素战技");
           CharacterSkillHandler.performElementalSkill(player, currentChar, def);
         } else if (skill == 2) {
-          System.out.println("触发元素burst");
           CharacterSkillHandler.performElementalBurst(player, currentChar, def);
         }
       }

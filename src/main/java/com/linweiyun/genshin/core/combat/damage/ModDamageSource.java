@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.combat.damage;
 
+import com.linweiyun.genshin.registry.DamageTypeRegistry;
 import net.minecraft.core.Holder;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
@@ -22,7 +23,7 @@ import javax.annotation.Nullable;
 public class ModDamageSource extends DamageSource {
 
     // 内嵌的伤害规格 —— 携带本次攻击的所有数据
-    private final ModDamageSpec spec;
+    private ModDamageSpec spec;
 
     /**
      * 构造函数 —— 基础版（攻击者即直接实体）
@@ -54,8 +55,12 @@ public class ModDamageSource extends DamageSource {
      * @return 伤害规格
      */
     public ModDamageSpec getSpec() {
-        return spec;
+        return this.spec;
     }
+    public void setSpec(ModDamageSpec newSpec) {
+        this.spec = newSpec;
+    }
+
 
     /**
      * 从规格创建伤害源（自动解析 DamageType）
@@ -66,7 +71,7 @@ public class ModDamageSource extends DamageSource {
      */
     public static ModDamageSource from(ModDamageSpec spec, Entity causer) {
         return new ModDamageSource(
-                ModDamageTypes.resolveHolder(spec.getAttackType(), causer.level().registryAccess()),
+                DamageTypeRegistry.resolveHolder(spec.getAttackType(), causer.level().registryAccess()),
                 causer,
                 spec
         );

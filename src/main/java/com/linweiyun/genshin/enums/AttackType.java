@@ -41,7 +41,10 @@ public enum AttackType {
 
     // 特殊/环境伤害 —— 非角色直接造成的伤害
     // 无标签（null）：不参与附着冷却系统
-    SPECIAL(null, "attack_type.special");
+    SPECIAL(null, "attack_type.special"),
+
+    //怪物伤害
+    MONSTER(null, "attack_type.monster");
 
     // 衰减标签 —— 决定该攻击类型的附着冷却共用关系
     // null表示不使用附着冷却系统（如特殊/环境伤害）

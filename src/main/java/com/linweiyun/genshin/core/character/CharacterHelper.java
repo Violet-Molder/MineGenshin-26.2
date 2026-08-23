@@ -31,7 +31,7 @@ public class CharacterHelper {
 
     // ========== 升级逻辑 ==========
     public static void tryLevelUp(PGCharacterData character, Player player) {
-        PGCharacter def = character.getDefinition();
+        PGCharacterDefine def = character.getDefinition();
         if (def == null) return;
 
         var expList = Config.CHARACTER_UP_EXP.get();
@@ -82,7 +82,7 @@ public class CharacterHelper {
     // ========== 突破逻辑 ==========
     public static void ascend(PGCharacterData character, Player player) {
         if (character == null) return;
-        PGCharacter def = character.getDefinition();
+        PGCharacterDefine def = character.getDefinition();
         if (def == null) return;
 
         AttributeContainer attrs = character.getAttributes();
@@ -128,7 +128,7 @@ public class CharacterHelper {
     // ========== 核心变更：统一的属性基础值更新方法 ==========
     // 从 Config 列表中读取指定等级的属性值，设置到 AttributeContainer
     private static void updateBaseStatsFromConfig(
-            AttributeContainer attrs, PGCharacter def, int statIndex) {
+            AttributeContainer attrs, PGCharacterDefine def, int statIndex) {
         for (AttributeType type : def.getStatGrowthTypes()) {
             int value = def.getStatAtLevel(type, statIndex);
             attrs.setBaseValue(type, value);

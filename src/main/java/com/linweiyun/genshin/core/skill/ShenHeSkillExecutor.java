@@ -1,10 +1,16 @@
 package com.linweiyun.genshin.core.skill;
 
+import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
+import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
+import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
+import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
-import net.minecraft.server.level.ServerPlayer;
+import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.registry.register.CharacterEffectRegister;
+import com.linweiyun.genshin.registry.register.EntityRegister;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
@@ -21,8 +27,7 @@ public class ShenHeSkillExecutor implements CharacterSkillExecutor {
         return 135001;
     }
     @Override
-    public void onElementalSkill(Player player, PGCharacterData character, PGCharacter def) {
-        System.out.println(player);
+    public void onElementalSkill(Player player, PGCharacterData character, PGCharacterDefine def) {
         Level level = player.level();
         PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         Vec3 lookVec = player.getLookAngle().normalize();
@@ -35,26 +40,28 @@ public class ShenHeSkillExecutor implements CharacterSkillExecutor {
         for (LivingEntity entity : entities) {
             Vec3 knockback = lookVec.scale(0.5);
             entity.push(knockback.x, 0.0, knockback.z);
-            // TODO: 需要重构 CombatHelper.hurt 以接受 OwnedCharacter 而非 ItemStack
+            // TODO: 需要重构 CombatHelper.hurt 以接受 OwnedCharacter
         }
         player.setDeltaMovement(lookVec.scale(2.2));
 
         for (int i = 0; i < 4; i++) {
             PGCharacterData partyChar = attachment.getPartyCharacter(i);
             if (partyChar != null) {
-                // TODO: 效果系统也需要重构为基于 OwnedCharacter
+                CharacterEffectInstance effect = new CharacterEffectInstance(CharacterEffectRegister.ICY_QUILL_EFFECT.get(), 200, 1);
+                effect.setIntData(IcyQuillEffect.ICY_QUILL_COUNT_KEY, 7);
+                CharacterEffectHelper.addEffect(player, partyChar, effect);
             }
         }
     }
 
     @Override
-    public void onElementalBurst(Player player, PGCharacterData character, PGCharacter def) {
-//        FieldTalismanSpirit fieldTalismanSpirit = EntityRegister.FIELD_TALISMAN_SPIRIT.get().create(player.level());
-//        if (fieldTalismanSpirit != null) {
-//            fieldTalismanSpirit.setPos(player.position());
-//            // TODO: 需要设置 caster 为 OwnedCharacter 而非 ItemStack
-//            fieldTalismanSpirit.setOwner(player);
-//            player.level().addFreshEntity(fieldTalismanSpirit);
-//        }
+    public void onElementalBurst(Player player, PGCharacterData character, PGCharacterDefine def) {
+        TalismanSpiritArea field = EntityRegister.FIELD_TALISMAN_SPIRIT.get()
+                .create(player.level(), EntitySpawnReason.EVENT);
+        if (field != null) {
+            field.setPos(player.position());                  // 放置在玩家位置
+            field.setOwner(player, character.getCharacterUUID()); // 设置拥有者+角色
+            player.level().addFreshEntity(field);             // 生成实体
+        }
     }
 }

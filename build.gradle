@@ -30,9 +30,19 @@ sourceSets.main.resources {
 repositories {
     // LDLib2
     maven { url = "https://maven.firstdark.dev/snapshots" }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'GeckoLib'
+                url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+            }
+        }
+        filter { includeGroupAndSubgroups('com.geckolib') }
+    }
 }
 dependencies {
     implementation("com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2_version}")
+    implementation "com.geckolib:geckolib-neoforge-${minecraft_version}:${geckolibVersion}"
 }
 base {
     archivesName = mod_id

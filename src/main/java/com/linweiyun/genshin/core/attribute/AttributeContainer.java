@@ -12,25 +12,25 @@ public class AttributeContainer implements IPersistedSerializable {
     private final Map<String, AttributeInstance> attributes = new HashMap<>();
 
     public AttributeInstance getOrCreate(AttributeType type) {
-        return attributes.computeIfAbsent(type.getId().toString(), k -> new AttributeInstance(type));
+        return attributes.computeIfAbsent(type.id().toString(), k -> new AttributeInstance(type));
     }
 
     public AttributeInstance get(AttributeType type) {
-        return attributes.get(type.getId().toString());
+        return attributes.get(type.id().toString());
     }
 
     public boolean has(AttributeType type) {
-        return attributes.containsKey(type.getId().toString());
+        return attributes.containsKey(type.id().toString());
     }
 
     public double getValue(AttributeType type) {
         AttributeInstance instance = get(type);
-        return instance != null ? instance.getTotalValue() : type.getDefaultValue();
+        return instance != null ? instance.getTotalValue() : type.defaultValue();
     }
 
     public double getBaseValue(AttributeType type) {
         AttributeInstance instance = get(type);
-        return instance != null ? instance.getBaseValue() : type.getDefaultValue();
+        return instance != null ? instance.getBaseValue() : type.defaultValue();
     }
 
     public void setBaseValue(AttributeType type, double value) {
