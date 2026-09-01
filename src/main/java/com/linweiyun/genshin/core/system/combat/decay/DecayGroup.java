@@ -1,4 +1,6 @@
-package com.linweiyun.genshin.core.system.combat.damage;
+package com.linweiyun.genshin.core.system.combat.decay;
+
+import com.linweiyun.genshin.core.system.combat.damage.DecaySequence;
 
 /**
  * 衰减组别 —— 定义攻击衰减系统的控制参数

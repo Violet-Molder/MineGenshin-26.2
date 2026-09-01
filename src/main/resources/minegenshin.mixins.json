@@ -4,7 +4,9 @@
   "package": "com.linweiyun.genshin.mixin.mixins",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "DamageContainerMixin"
+    "DamageContainerMixin",
+    "LivingEntityDecayMixin",
+    "PlayerAttackInterceptor"
   ],
   "injectors": {
     "defaultRequire": 1

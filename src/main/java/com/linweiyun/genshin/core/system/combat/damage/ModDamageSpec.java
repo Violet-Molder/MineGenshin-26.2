@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
+import com.linweiyun.genshin.core.system.combat.decay.DecayGroup;
 import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 

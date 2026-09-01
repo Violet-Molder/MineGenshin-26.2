@@ -2,9 +2,11 @@ package com.linweiyun.genshin;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.registry.register.*;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -47,9 +49,15 @@ public class Minegenshin {
         return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }
 
-    // You can use SubscribeEvent and let the Event Bus discover methods to call
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
-        LOGGER.info("HELLO from server starting");
+        DecayCounterService.initOnServer(event.getServer().getLevel(net.minecraft.world.level.Level.OVERWORLD));
+        LOGGER.info("DecayCounter Worker started");
+    }
+
+    @SubscribeEvent
+    public void onServerStopping(ServerStoppingEvent event) {
+        DecayCounterService.shutdown();
+        LOGGER.info("DecayCounter Worker stopped");
     }
 }
