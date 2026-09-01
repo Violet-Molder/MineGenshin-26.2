@@ -1,0 +1,103 @@
+//
+// Source code recreated from a .class file by IntelliJ IDEA
+// (powered by Fernflower decompiler)
+//
+
+package net.minecraft.world.entity.ai.attributes;
+
+import com.mojang.serialization.Codec;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.neoforged.neoforge.common.extensions.IAttributeExtension;
+
+public class Attribute implements IAttributeExtension {
+    public static final Codec<Holder<Attribute>> CODEC;
+    public static final StreamCodec<RegistryFriendlyByteBuf, Holder<Attribute>> STREAM_CODEC;
+    private final double defaultValue;
+    private boolean syncable;
+    private final String descriptionId;
+    private Sentiment sentiment;
+    protected static final TextColor MERGED_RED;
+    protected static final TextColor MERGED_BLUE;
+    protected static final TextColor MERGED_GRAY;
+
+    protected Attribute(String descriptionId, double defaultValue) {
+        this.sentiment = Attribute.Sentiment.POSITIVE;
+        this.defaultValue = defaultValue;
+        this.descriptionId = descriptionId;
+    }
+
+    public double getDefaultValue() {
+        return this.defaultValue;
+    }
+
+    public boolean isClientSyncable() {
+        return this.syncable;
+    }
+
+    public Attribute setSyncable(boolean watch) {
+        this.syncable = watch;
+        return this;
+    }
+
+    public Attribute setSentiment(Sentiment sentiment) {
+        this.sentiment = sentiment;
+        return this;
+    }
+
+    public double sanitizeValue(double value) {
+        return value;
+    }
+
+    public String getDescriptionId() {
+        return this.descriptionId;
+    }
+
+    public ChatFormatting getStyle(boolean isPositive) {
+        return this.sentiment.getStyle(isPositive);
+    }
+
+    public TextColor getMergedStyle(boolean isPositive) {
+        TextColor var10000;
+        switch (this.sentiment.ordinal()) {
+            case 0 -> var10000 = isPositive ? MERGED_BLUE : MERGED_RED;
+            case 1 -> var10000 = MERGED_GRAY;
+            case 2 -> var10000 = isPositive ? MERGED_RED : MERGED_BLUE;
+            default -> throw new MatchException((String)null, (Throwable)null);
+        }
+
+        return var10000;
+    }
+
+    static {
+        CODEC = BuiltInRegistries.ATTRIBUTE.holderByNameCodec();
+        STREAM_CODEC = ByteBufCodecs.holderRegistry(Registries.ATTRIBUTE);
+        MERGED_RED = TextColor.fromRgb(16331057);
+        MERGED_BLUE = TextColor.fromRgb(8026873);
+        MERGED_GRAY = TextColor.fromRgb(13421772);
+    }
+
+    public static enum Sentiment {
+        POSITIVE,
+        NEUTRAL,
+        NEGATIVE;
+
+        public ChatFormatting getStyle(boolean isPositive) {
+            ChatFormatting var10000;
+            switch (this.ordinal()) {
+                case 0 -> var10000 = isPositive ? ChatFormatting.BLUE : ChatFormatting.RED;
+                case 1 -> var10000 = ChatFormatting.GRAY;
+                case 2 -> var10000 = isPositive ? ChatFormatting.RED : ChatFormatting.BLUE;
+                default -> throw new MatchException((String)null, (Throwable)null);
+            }
+
+            return var10000;
+        }
+    }
+}

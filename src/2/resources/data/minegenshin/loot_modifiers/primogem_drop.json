@@ -1,0 +1,12 @@
+{
+  "type": "minegenshin:primogem_drop",
+  "drops": [
+    {"count": 0, "weight": 60, "item": "minegenshin:primogem"},
+    {"count": 1, "weight": 17, "item": "minegenshin:primogem"},
+    {"count": 2, "weight": 13, "item": "minegenshin:primogem"},
+    {"count": 3, "weight": 5, "item": "minegenshin:primogem"},
+    {"count": 4, "weight": 3, "item": "minegenshin:primogem"},
+    {"count": 5, "weight": 2, "item": "minegenshin:primogem"},
+    {"count": 6, "weight": 1, "item": "minegenshin:primogem"}
+  ]
+}

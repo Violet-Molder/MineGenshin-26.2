@@ -2,14 +2,12 @@ package com.linweiyun.genshin.core.network;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
-import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.registry.register.CharacterRegister;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
-import com.linweiyun.genshin.core.skill.CharacterSkillHandler;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
+import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -18,6 +16,7 @@ import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +25,7 @@ import java.util.Random;
 
 public class NetworkManager {
   private static final Random RANDOM = new Random();
-
+  private static final Logger LOGGER = LogUtils.getLogger();
   // ========== 原石同步 ==========
   @RPCPacket("primogemRPCPacket")
   public static void primogemRPCPacket(RPCSender sender, int amount) {
@@ -65,7 +64,7 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("genshinModeRPCPacket", isGenshinMode);
   }
 
-  // ========== 角色数据整体同步（替代旧的 party + sheet + characterData） ==========
+  // ========== 角色整体同步（替代旧的 party + sheet + characterData） ==========
   @RPCPacket("playerCharactersRPCPacket")
   public static void playerCharactersRPCPacket(RPCSender sender, CompoundTag data) {
     if (sender.isServer()) {
@@ -74,15 +73,57 @@ public class NetworkManager {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
+      attachment.fixCharacterTypes();
     }
   }
-
   public static void setPlayerCharactersToServer(CompoundTag data) {
     RPCPacketDistributor.rpcToServer("playerCharactersRPCPacket", data);
   }
-
   public static void setPlayerCharactersToPlayer(ServerPlayer player, CompoundTag data) {
     RPCPacketDistributor.rpcToPlayer(player, "playerCharactersRPCPacket", data);
+  }
+
+  // ========== 角色数据同步（单个角色） ==========
+  @RPCPacket("characterDataRPCPacket")
+  public static void characterDataRPCPacket(RPCSender sender, int uuid, CompoundTag data) {
+    if (sender.isServer()) {
+      ClientHandler.characterDataClientHandler(uuid, data);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter character = attachment.getCharacterByUUID(uuid);
+      if (character != null) {
+        character.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
+      }
+    }
+  }
+
+  public static void setCharacterDataToServer(int uuid, CompoundTag data) {
+    RPCPacketDistributor.rpcToServer("characterDataRPCPacket", uuid, data);
+  }
+
+  public static void setCharacterDataToPlayer(ServerPlayer player, int uuid, CompoundTag data) {
+    RPCPacketDistributor.rpcToPlayer(player, "characterDataRPCPacket", uuid, data);
+  }
+
+  // ========== 角色编队 - 设置队伍角色 ==========
+  @RPCPacket("setPartyCharacterRPCPacket")
+  public static void setPartyCharacterRPCPacket(RPCSender sender, int index, int characterUUID) {
+    if (sender.isServer()) {
+      ClientHandler.setPartyCharacterClientHandler(index, characterUUID);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      attachment.setPartyCharacter(index, characterUUID);
+    }
+  }
+
+  public static void setPartyCharacterToServer(int index, int characterUUID) {
+    RPCPacketDistributor.rpcToServer("setPartyCharacterRPCPacket", index, characterUUID);
+  }
+
+  public static void setPartyCharacterToPlayer(ServerPlayer player, int index, int characterUUID) {
+    RPCPacketDistributor.rpcToPlayer(player, "setPartyCharacterRPCPacket", index, characterUUID);
   }
 
   // ========== 角色选择同步 ==========
@@ -105,31 +146,102 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("characterSelectionRPCPacket", index);
   }
 
+  // ========== 角色编队 - 移除队伍角色 ==========
+  @RPCPacket("removePartyCharacterRPCPacket")
+  public static void removePartyCharacterRPCPacket(RPCSender sender, int index) {
+    if (sender.isServer()) {
+      ClientHandler.removePartyCharacterClientHandler(index);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      attachment.removePartyCharacter(index);
+    }
+  }
 
-  // ========== 角色技能触发 ==========
-  // 1代表元素战技，2代表元素burst
+  public static void removePartyCharacterToServer(int index) {
+    RPCPacketDistributor.rpcToServer("removePartyCharacterRPCPacket", index);
+  }
+
+  public static void removePartyCharacterToPlayer(ServerPlayer player, int index) {
+    RPCPacketDistributor.rpcToPlayer(player, "removePartyCharacterRPCPacket", index);
+  }
+
+  // ========== 角色库存 - 添加角色 ==========
+  @RPCPacket("addCharacterRPCPacket")
+  public static void addCharacterRPCPacket(RPCSender sender, CompoundTag characterData) {
+    if (sender.isServer()) {
+      ClientHandler.addCharacterClientHandler(characterData);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter character = new PGCharacter();
+      character.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), characterData));
+      attachment.addCharacter(character);
+    }
+  }
+
+  public static void addCharacterToServer(CompoundTag characterData) {
+    RPCPacketDistributor.rpcToServer("addCharacterRPCPacket", characterData);
+  }
+
+  public static void addCharacterToPlayer(ServerPlayer player, CompoundTag characterData) {
+    RPCPacketDistributor.rpcToPlayer(player, "addCharacterRPCPacket", characterData);
+  }
+
+  // ========== 角色库存 - 移除角色 ==========
+  @RPCPacket("removeCharacterRPCPacket")
+  public static void removeCharacterRPCPacket(RPCSender sender, int uuid) {
+    if (sender.isServer()) {
+      ClientHandler.removeCharacterClientHandler(uuid);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      attachment.removeCharacter(uuid);
+    }
+  }
+
+  public static void removeCharacterToServer(int uuid) {
+    RPCPacketDistributor.rpcToServer("removeCharacterRPCPacket", uuid);
+  }
+
+  public static void removeCharacterToPlayer(ServerPlayer player, int uuid) {
+    RPCPacketDistributor.rpcToPlayer(player, "removeCharacterRPCPacket", uuid);
+  }
+
+  // ==== 元素战技 ====
   @RPCPacket("characterActiveSkillRPCPacket")
-  public static void characterActiveSkillRPCPacket(RPCSender sender, int skill) {
+  public static void characterActiveSkillRPCPacket(RPCSender sender, int isLong) {
     if (!sender.isServer()) {
       ServerPlayer serverPlayer = sender.asPlayer();
       PlayerCharactersAttachment attachment =
               serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-      PGCharacterData currentChar = attachment.getCurrentCharacter();
+      PGCharacter currentChar = attachment.getCurrentCharacter();
       if (currentChar != null) {
-        PGCharacterDefine def = currentChar.getDefinition();
-        if (def != null) {
-          if (skill == 1) {
-            CharacterSkillHandler.performElementalSkill(serverPlayer, currentChar, def);
-          } else if (skill == 2) {
-            CharacterSkillHandler.performElementalBurst(serverPlayer, currentChar, def);
-          }
-        }
+            currentChar.performElementalSkill(serverPlayer, isLong);
+
       }
     }
   }
+  public static void triggerCharacterSkill(int isLong) {
+    RPCPacketDistributor.rpcToServer("characterActiveSkillRPCPacket", isLong);
+  }
 
-  public static void triggerCharacterSkill(int skill) {
-    RPCPacketDistributor.rpcToServer("characterActiveSkillRPCPacket", skill);
+  // ==== 元素爆发 ====
+  @RPCPacket("characterActiveBurstRPCPacket")
+  public static void characterActiveBurstRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer serverPlayer = sender.asPlayer();
+
+      PlayerCharactersAttachment attachment =
+              serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter currentChar = attachment.getCurrentCharacter();
+      if (currentChar != null) {
+          currentChar.performElementalBurst(serverPlayer);
+      }
+    }
+  }
+  public static void triggerCharacterBurst() {
+    RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket");
   }
 
   // ========== 祈愿系统 ==========
@@ -152,14 +264,14 @@ public class NetworkManager {
       PlayerCharactersAttachment charactersAttachment =
               serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
 
-      List<PGCharacterDefine> allCharacters = new ArrayList<>(CharacterRegister.getAllCharacters());
+      List<PGCharacter> allCharacters = new ArrayList<>(CharacterRegister.getAllCharacters());
       if (allCharacters.isEmpty()) {
         serverPlayer.sendSystemMessage(
                 Component.translatable("message.pixel_genshin.wish.no_reward"));
         return;
       }
 
-      PGCharacterDefine rolledCharacter = allCharacters.get(RANDOM.nextInt(allCharacters.size()));
+      var rolledCharacter = allCharacters.get(RANDOM.nextInt(allCharacters.size()));
       Component characterName = rolledCharacter.getName().copy().withStyle(ChatFormatting.GOLD);
 
       if (charactersAttachment.hasCharacter(rolledCharacter.getCharacterUUID())) {
@@ -173,15 +285,7 @@ public class NetworkManager {
                         characterName,
                         Component.literal(String.valueOf(compensation)).withStyle(ChatFormatting.AQUA)));
       } else {
-        double baseHP = rolledCharacter.getBaseStat(
-                ModAttributes.MAX_HP.value());
-        double baseATK = rolledCharacter.getBaseStat(
-                ModAttributes.ATK.value());
-        double baseDEF = rolledCharacter.getBaseStat(
-                ModAttributes.DEF.value());
-        PGCharacterData newChar = new PGCharacterData(
-                rolledCharacter.getCharacterUUID(), baseHP, baseATK, baseDEF);
-        charactersAttachment.addCharacter(newChar);
+        charactersAttachment.addCharacter(rolledCharacter);
 
 
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, serverPlayer.registryAccess());

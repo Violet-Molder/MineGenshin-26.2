@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.client.gui.components.state_bind_com;
 
 import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.IDataProvider;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
@@ -23,9 +23,9 @@ import java.util.Map;
 @KJSBindings
 @LDLRegister(name = "skill-progress-bar", group = "minegenshin", registry = "ldlib2:ui_element")
 public class SkillProgressBar extends ProgressBar {
-    private PGCharacterData character;
+    private PGCharacter character;
     public final UIElement barIcon;
-    protected final Map<IDataProvider<PGCharacterData>, ISubscription> characterSources =
+    protected final Map<IDataProvider<PGCharacter>, ISubscription> characterSources =
             new LinkedHashMap<>();
 
     private static final int SKILL_ICON_SIZE = 40;
@@ -71,7 +71,7 @@ public class SkillProgressBar extends ProgressBar {
     }
 
     public SkillProgressBar bindCharacterSource(
-            IDataProvider<PGCharacterData> characterProvider, int flagProvider) {
+            IDataProvider<PGCharacter> characterProvider, int flagProvider) {
         if (characterProvider instanceof ITickable tickable) {
             UIEventListener tickableListener = e -> tickable.tick();
             addEventListener(UIEvents.TICK, tickableListener);
@@ -88,30 +88,25 @@ public class SkillProgressBar extends ProgressBar {
         return this;
     }
 
-    private void setCharacterBurst(PGCharacterData characterData) {
-        this.character = characterData;
-        if (characterData == null) return;
-        PGCharacterDefine def = characterData.getDefinition();
-        if (def != null) {
-            String textureId = def.getTextureId();
-            this.barContainer.style(s -> s.background(
-                    SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin",
-                            "textures/skill/" + textureId + "_burst.png"))));
-        }
+    private void setCharacterBurst(PGCharacter character) {
+        this.character = character;
+        if (character == null) return;
+        String textureId = character.getTextureId();
+        this.barContainer.style(s -> s.background(
+                SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin",
+                        "textures/skill/" + textureId + "_burst.png"))));
+
         this.barIcon.style(s -> s.background(
                 SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin", "textures/skill/cd.png"))));
     }
 
-    private void setCharacterSkill(PGCharacterData characterData) {
-        this.character = characterData;
-        if (characterData == null) return;
-        PGCharacterDefine def = characterData.getDefinition();
-        if (def != null) {
-            String textureId = def.getTextureId();
-            this.barContainer.style(s -> s.background(
-                    SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin",
-                            "textures/skill/" + textureId + "_skill.png"))));
-        }
+    private void setCharacterSkill(PGCharacter character) {
+        this.character = character;
+        if (character == null) return;
+        String textureId = character.getTextureId();
+        this.barContainer.style(s -> s.background(
+                SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin",
+                        "textures/skill/" + textureId + "_skill.png"))));
         this.barIcon.style(s -> s.background(
                 SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin", "textures/skill/cd.png"))));
     }

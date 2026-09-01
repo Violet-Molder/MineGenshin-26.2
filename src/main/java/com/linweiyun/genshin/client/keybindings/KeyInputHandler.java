@@ -3,10 +3,8 @@ package com.linweiyun.genshin.client.keybindings;
 import com.linweiyun.genshin.client.gui.screens.GUIServerHelperGIM;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.NetworkManager;
-import com.linweiyun.genshin.core.skill.CharacterSkillHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
@@ -19,7 +17,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 public class KeyInputHandler {
 
 
-  private static boolean wasFKeyDown = false;
+  private static boolean wasXKeyDown = false;
   private static long longPressStartTick = 0;
   @SubscribeEvent
   public static void onKeyInput(ClientTickEvent.Post event) {
@@ -28,22 +26,12 @@ public class KeyInputHandler {
 
     if (player == null) return;
 
-    boolean isFKeyDown = KeyMappingRegistry.F_KEY.get().isDown();
-    if (isFKeyDown && !wasFKeyDown) {
-      player.sendSystemMessage(Component.literal("按下F键"));
-      longPressStartTick = System.currentTimeMillis();
-    } else if (isFKeyDown) {
 
-      player.sendSystemMessage(Component.literal("已按下"));
-    } else if (!isFKeyDown && wasFKeyDown) {
-      int time = (int) (System.currentTimeMillis() - longPressStartTick);
-      player.sendSystemMessage(Component.literal("已松开F键，持续时间：" + time + "ms"));
-    }
-    wasFKeyDown = isFKeyDown;
 
     boolean isInGenshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
     PlayerCharactersAttachment charactersAttachment =
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    var character = charactersAttachment.getCurrentCharacter();
 
     if (KeyMappingRegistry.R_KEY.get().consumeClick()) {
       NetworkManager.wishEventToServer();
@@ -66,12 +54,35 @@ public class KeyInputHandler {
     if (KeyMappingRegistry.V_KEY.get().consumeClick()) {
       switchToNextAvailableCharacter(player, charactersAttachment);
     }
-    if (KeyMappingRegistry.X_KEY.get().consumeClick()) {
-      NetworkManager.triggerCharacterSkill(1);
-      triggerCharacterSkill(player, 1);
+    boolean isXKeyDown = false;
+    if (character != null) {
+      if (character.getSkillShortMaxCooldownTick() == character.getSkillLongMaxCooldownTick()){
+        if (KeyMappingRegistry.X_KEY.get().consumeClick()) {
+          triggerCharacterSkill(player, -1);
+        }
+      } else {
+        KeyMappingRegistry.X_KEY.get().consumeClick();
+        isXKeyDown = KeyMappingRegistry.X_KEY.get().isDown();
+        if (isXKeyDown && !wasXKeyDown) {
+          longPressStartTick = System.currentTimeMillis();
+        } else if (isXKeyDown) {
+          int time = (int) (System.currentTimeMillis() - longPressStartTick);
+          if (time >= 1000) {
+            triggerCharacterSkill(player, time);
+          }
+        }
+        else if (!isXKeyDown && wasXKeyDown) {
+          int time = (int) (System.currentTimeMillis() - longPressStartTick);
+          if (time < 1000) {
+            triggerCharacterSkill(player, time);
+          }
+          longPressStartTick = 0;
+        }
+        wasXKeyDown = isXKeyDown;
+      }
     }
     if (KeyMappingRegistry.C_KEY.get().consumeClick()) {
-      NetworkManager.triggerCharacterSkill(2);
+      triggerCharacterBurst(player);
     }
     if (KeyMappingRegistry.O_KEY.get().consumeClick()) {
       GUIServerHelperGIM.openCharacterPartyScreen(player);
@@ -79,33 +90,40 @@ public class KeyInputHandler {
   }
 
   private static void switchToNextAvailableCharacter(Player player, PlayerCharactersAttachment attachment) {
+    wasXKeyDown = false;
+    longPressStartTick = 0;
     int currentIndex = attachment.getCurrentCharacterIndex();
     for (int i = 1; i <= 4; i++) {
       int nextIndex = (currentIndex + i) % 4;
-      PGCharacterData character = attachment.getPartyCharacter(nextIndex);
-      if (character != null && character.getCurrentHP() > 0) {
+      PGCharacter character = attachment.getPartyCharacter(nextIndex);
+
+      if (character != null && character.getData().getCurrentHP() > 0) {
+        System.out.println(character.getName());
         attachment.setCurrentCharacterIndex(nextIndex);
         NetworkManager.setCharacterSelectionToServer(nextIndex);
-        PGCharacterData def = character;
         player.sendSystemMessage(
-                Component.literal("已切换到角色 " + def.getDefinition().getName().getString()));
+                Component.literal("已切换到角色 " + character.getName().getString()));
         return;
       }
     }
   }
-  private static void triggerCharacterSkill(Player player, int skill) {
+  private static void triggerCharacterSkill(Player player, int isLong) {
     PlayerCharactersAttachment attachment =
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-    PGCharacterData currentChar = attachment.getCurrentCharacter();
+    var currentChar = attachment.getCurrentCharacter();
     if (currentChar != null) {
-      PGCharacterDefine def = currentChar.getDefinition();
-      if (def != null) {
-        if (skill == 1) {
-          CharacterSkillHandler.performElementalSkill(player, currentChar, def);
-        } else if (skill == 2) {
-          CharacterSkillHandler.performElementalBurst(player, currentChar, def);
-        }
-      }
+      currentChar.performElementalSkill(player, isLong);
     }
+    NetworkManager.triggerCharacterSkill(isLong);
+  }
+
+  private static void triggerCharacterBurst(Player player) {
+    PlayerCharactersAttachment attachment =
+            player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    PGCharacter currentChar = attachment.getCurrentCharacter();
+    if (currentChar != null) {
+      currentChar.performElementalBurst(player);
+    }
+    NetworkManager.triggerCharacterBurst();
   }
 }

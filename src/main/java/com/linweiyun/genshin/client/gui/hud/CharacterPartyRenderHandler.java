@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.client.gui.hud;// package com.linweiyun.genshin.client.gui.hud;
 //
 // import com.linweiyun.genshin.Minegenshin;
-// import com.linweiyun.genshin.core.combat.ElementalHurtHelperGIM;
+// import com.linweiyun.genshin.core.system.combat.ElementalHurtHelperGIM;
 // import com.linweiyun.genshin.content.entities.attachments.AttachmentRegistration;
 // import
 // com.linweiyun.genshin.content.entities.attachments.attachment.PlayerCharacterSelectionAttachment;

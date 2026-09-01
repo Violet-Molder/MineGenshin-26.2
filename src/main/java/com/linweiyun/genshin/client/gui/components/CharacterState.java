@@ -4,8 +4,7 @@ import com.linweiyun.genshin.client.gui.components.state_bind_com.BooleanDisplay
 import com.linweiyun.genshin.client.gui.components.state_bind_com.StackBindUIElement;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
-import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.IDataProvider;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
@@ -51,9 +50,9 @@ public class CharacterState extends UIElement {
           new LinkedHashMap<>();
   protected final Map<IDataProvider<Boolean>, ISubscription> selectedDataSources =
           new LinkedHashMap<>();
-  protected final Map<IDataProvider<PGCharacterData>, ISubscription> characterSources =
+  protected final Map<IDataProvider<PGCharacter>, ISubscription> characterSources =
           new LinkedHashMap<>();
-  private final AtomicReference<PGCharacterData> character = new AtomicReference<>();
+  private final AtomicReference<PGCharacter> character = new AtomicReference<>();
 
   public CharacterState() {
     super();
@@ -111,7 +110,7 @@ public class CharacterState extends UIElement {
     return this;
   }
 
-  public CharacterState bindCharacterSource(IDataProvider<PGCharacterData> dataProvider) {
+  public CharacterState bindCharacterSource(IDataProvider<PGCharacter> dataProvider) {
     if (dataProvider instanceof ITickable tickable) {
       UIEventListener tickableListener = e -> tickable.tick();
       addEventListener(UIEvents.TICK, tickableListener);
@@ -159,7 +158,7 @@ public class CharacterState extends UIElement {
     return this;
   }
 
-  public CharacterState setCharacter(PGCharacterData value) {
+  public CharacterState setCharacter(PGCharacter value) {
     if (value != this.character.get()) {
       this.character.set(value);
       if (this.charactersAttachment != null) {
@@ -167,29 +166,27 @@ public class CharacterState extends UIElement {
       }
     }
     characterName1.bindDataSource(SupplierDataSource.of(() -> {
-      PGCharacterData c = character.get();
+      PGCharacter c = character.get();
       if (c == null) return Component.literal("");
-      PGCharacterDefine def = c.getDefinition();
-      return def != null ? def.getName() : Component.literal("");
+      return c.getName();
     }));
     characterName2.bindDataSource(SupplierDataSource.of(() -> {
-      PGCharacterData c = character.get();
+      PGCharacter c = character.get();
       if (c == null) return Component.literal("");
-      PGCharacterDefine def = c.getDefinition();
-      return def != null ? def.getName() : Component.literal("");
+      return c.getName();
     }));
     characterIcon.bindDataSource(SupplierDataSource.of(character::get));
     characterHP.bindDataSource(SupplierDataSource.of(() -> {
-      PGCharacterData c = character.get();
+      PGCharacter c = character.get();
       if (c == null) return 0.0f;
-      double maxHP = c.getValue(ModAttributes.MAX_HP.value());
-      return maxHP > 0 ? (float) (c.getCurrentHP() / maxHP) : 0f;
+      double maxHP = c.getData().getAttributeTotalValue(ModAttributes.MAX_HP.value());
+      return maxHP > 0 ? (float) (c.getData().getCurrentHP() / maxHP) : 0f;
     }));
     return this;
   }
 
   private void applyCharacterData() {
-    PGCharacterData c = character.get();
+    PGCharacter c = character.get();
     if (c == null) {
       characterIcon.style(s -> s.background(null));
       characterName1.setText(Component.literal(""));
@@ -198,8 +195,8 @@ public class CharacterState extends UIElement {
     }
     isSelected = charactersAttachment.getCurrentCharacterIndex() == id;
     characterHP.bindDataSource(SupplierDataSource.of(() -> {
-      double maxHP = c.getValue(ModAttributes.MAX_HP.value());
-      return maxHP > 0 ? (float) (c.getCurrentHP() / maxHP) : 0f;
+      double maxHP = c.getData().getAttributeTotalValue(ModAttributes.MAX_HP.value());
+      return maxHP > 0 ? (float) (c.getData().getCurrentHP() / maxHP) : 0f;
     }));
   }
 }

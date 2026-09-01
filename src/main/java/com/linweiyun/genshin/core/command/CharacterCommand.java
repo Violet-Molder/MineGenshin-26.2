@@ -5,7 +5,7 @@ import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.registry.register.CharacterRegister;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -49,8 +49,8 @@ public class CharacterCommand {
         ServerPlayer target = EntityArgument.getPlayer(context, "target");
         int uuid = IntegerArgumentType.getInteger(context, "uuid");
 
-        PGCharacterDefine definition = CharacterRegister.getByUUID(uuid);
-        if (definition == null) {
+        PGCharacter character = CharacterRegister.getByUUID(uuid);
+        if (character == null) {
             context.getSource().sendFailure(Component.literal("未找到UUID为 " + uuid + " 的角色"));
             return 0;
         }
@@ -60,15 +60,10 @@ public class CharacterCommand {
             context.getSource().sendFailure(Component.literal("目标玩家已拥有该角色"));
             return 0;
         }
-
-        double baseHP = definition.getBaseStat(ModAttributes.MAX_HP.value());
-        double baseATK = definition.getBaseStat(ModAttributes.ATK.value());
-        double baseDEF = definition.getBaseStat(ModAttributes.DEF.value());
-        PGCharacterData newChar = new PGCharacterData(uuid, baseHP, baseATK, baseDEF);
-        attachment.addCharacterToPlayer(target ,newChar);
+        attachment.addCharacterToPlayer(target ,character);
 
         context.getSource().sendSuccess(
-                () -> Component.literal("已为 " + target.getName().getString() + " 添加角色 [" + definition.getName().getString() + "]"),
+                () -> Component.literal("已为 " + target.getName().getString() + " 添加角色 [" + character.getName().getString() + "]"),
                 true);
         return Command.SINGLE_SUCCESS;
     }
@@ -83,7 +78,7 @@ public class CharacterCommand {
             return 0;
         }
 
-        PGCharacterDefine definition = CharacterRegister.getByUUID(uuid);
+        PGCharacter definition = CharacterRegister.getByUUID(uuid);
         String characterName = definition != null ? definition.getName().getString() : String.valueOf(uuid);
 
         attachment.removeCharacterToPlayer(target, uuid);

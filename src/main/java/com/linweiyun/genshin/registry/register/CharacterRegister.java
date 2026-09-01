@@ -1,67 +1,61 @@
 package com.linweiyun.genshin.registry.register;
 
 import com.linweiyun.genshin.Config;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.character.catalyst.Columbina;
+import com.linweiyun.genshin.core.character.polearm.Arlecchino;
+import com.linweiyun.genshin.core.character.polearm.Shenhe;
 import com.linweiyun.genshin.registry.ModRegistries;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class CharacterRegister {
 
-    public static final DeferredRegister<PGCharacterDefine> CHARACTERS = ModRegistries.CHARACTERS;
+    public static final DeferredRegister<PGCharacter> CHARACTERS = ModRegistries.CHARACTERS;
 
-    public static final DeferredHolder<PGCharacterDefine, PGCharacterDefine> SHENHE = CHARACTERS.register("shenhe",
-            () -> new PGCharacterDefine(
-                    135001, 5, Component.translatable("character.name.shenhe"),
-                    ElementalsGIM.CYRO, CharacterAscendAttribute.ATK,
-                    10 * 20f, 10 * 20f, 80f, "shenhe",
-                    Map.of(
-                            ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
-                            ModAttributes.ATK.getId(), Config.SHENHE_ATK,
-                            ModAttributes.DEF.getId(), Config.SHENHE_DEF
-                    )
-            ));
+    public static final DeferredHolder<PGCharacter, Shenhe> SHENHE = CHARACTERS.register("shenhe", Shenhe::new);
 
-    public static final DeferredHolder<PGCharacterDefine, PGCharacterDefine> ARLECCHINO = CHARACTERS.register("arlecchino",
-            () -> new PGCharacterDefine(
-                    135002, 5, Component.translatable("character.name.arlecchino"),
-                    ElementalsGIM.PYRO, CharacterAscendAttribute.ATK,
-                    20 * 20f, 20 * 20f, 80f, "arlecchino",
-                    Map.of(
-                            ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
-                            ModAttributes.ATK.getId(), Config.SHENHE_ATK,
-                            ModAttributes.DEF.getId(), Config.SHENHE_DEF
-                    )
-            ));
+    public static final DeferredHolder<PGCharacter, Arlecchino> ARLECCHINO = CHARACTERS.register("arlecchino", Arlecchino::new);
 
-    public static final DeferredHolder<PGCharacterDefine, PGCharacterDefine> COLUMBINA = CHARACTERS.register("columbina",
-            () -> new PGCharacterDefine(
-                    145001, 5, Component.translatable("character.name.columbina"),
-                    ElementalsGIM.HYDRO, CharacterAscendAttribute.ATK,
-                    17 * 20f, 20 * 20f, 80f, "columbina",
-                    Map.of(
-                            ModAttributes.MAX_HP.getId(), Config.COLUMBINA_HP,
-                            ModAttributes.ATK.getId(), Config.COLUMBINA_ATK,
-                            ModAttributes.DEF.getId(), Config.COLUMBINA_DEF
-                    )
-            ));
+    public static final DeferredHolder<PGCharacter, Columbina> COLUMBINA = CHARACTERS.register("columbina",
+            Columbina::new);
 
-    public static PGCharacterDefine getByUUID(int uuid) {
-        for (PGCharacterDefine character : CHARACTERS.getRegistry().get()) {
-            if (character.getCharacterUUID() == uuid) return character;
+    public static PGCharacter getByUUID(int uuid) {
+        for (PGCharacter prototype : CHARACTERS.getRegistry().get()) {
+            if (prototype.getCharacterUUID() == uuid) {
+                PGCharacter instance = prototype;
+                // 从 statGrowthMap 中提取 1 级基础属性初始化 data
+                Double baseHP = null, baseATK = null, baseDEF = null;
+                for (Map.Entry<Identifier, Supplier<List<? extends Integer>>> entry : instance.getStatGrowthMap().entrySet()) {
+                    List<? extends Integer> list = entry.getValue().get();
+                    if (list != null && !list.isEmpty()) {
+                        double first = list.get(0);
+                        if (entry.getKey().equals(ModAttributes.MAX_HP.getId())) baseHP = first;
+                        else if (entry.getKey().equals(ModAttributes.ATK.getId())) baseATK = first;
+                        else if (entry.getKey().equals(ModAttributes.DEF.getId())) baseDEF = first;
+                    }
+                }
+                if (baseHP != null && baseATK != null && baseDEF != null) {
+                    instance.getData().initBaseStats(baseHP, baseATK, baseDEF);
+                }
+                return instance;
+            }
         }
         return null;
     }
 
-    public static Collection<PGCharacterDefine> getAllCharacters() {
+    public static Collection<PGCharacter> getAllCharacters() {
         return CHARACTERS.getRegistry().get().stream().toList();
     }
     public static void register(IEventBus bus) {

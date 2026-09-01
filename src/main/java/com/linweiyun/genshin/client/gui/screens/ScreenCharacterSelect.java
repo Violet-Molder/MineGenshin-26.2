@@ -2,7 +2,7 @@ package com.linweiyun.genshin.client.gui.screens;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUIClientAccess;
@@ -62,7 +62,6 @@ public class ScreenCharacterSelect extends Screen {
                 Identifier.parse("minegenshin:lss/character_select.lss"));
         AtomicReference<Float> number = new AtomicReference<>(0.0f);
         var charactersAttachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-        System.out.println(charactersAttachment.getSheetCharacterUUIDs());
 
         var root = new UIElement().setId("root");
         var characterView = new UIElement().setId("character-view");
@@ -71,7 +70,7 @@ public class ScreenCharacterSelect extends Screen {
         var sortSelector = new Selector<SortMethod>();
         var characterListContainer = new UIElement().setId("character-list-container");
         var characterList = new UIElement().setId("character-list");
-        AtomicReference<PGCharacterData> selectedCharacter = new AtomicReference<>();
+        AtomicReference<PGCharacter> selectedCharacter = new AtomicReference<>();
         AtomicReference<Integer> selectedUUID = new AtomicReference<>(0);
         var deployButton = new Button();
         var removeCharacterButton = new Button();
@@ -118,7 +117,7 @@ public class ScreenCharacterSelect extends Screen {
         removeCharacterButton
                 .setText("换下")
                 .setOnClick(e -> {
-                    charactersAttachment.removePartyCharacter(index);
+                    charactersAttachment.removePartyCharacterToServer(index);
                     if (charactersAttachment.getCurrentCharacterIndex() != 0) {
                         for (int i = 0; i < 4; i++) {
                             if (charactersAttachment.getPartyCharacter(i) != null) {
@@ -141,7 +140,7 @@ public class ScreenCharacterSelect extends Screen {
                     int existingSlot = partyUUIDs.indexOf(uuid);
                     charactersAttachment.setPartyCharacterToServer(index, uuid);
                     if (existingSlot != -1) {
-                        PGCharacterData oldChar = charactersAttachment.getPartyCharacter(index);
+                        PGCharacter oldChar = charactersAttachment.getPartyCharacter(index);
                         if (oldChar != null) {
                             charactersAttachment.setPartyCharacterToServer(existingSlot, oldChar.getCharacterUUID());
                         }
@@ -153,44 +152,39 @@ public class ScreenCharacterSelect extends Screen {
         // ========== 当前角色立绘 ==========
         if (index != -1) {
             removeCharacterButton.setDisplay(true);
-            PGCharacterData partyChar = charactersAttachment.getPartyCharacter(index);
+            PGCharacter partyChar = charactersAttachment.getPartyCharacter(index);
             if (partyChar != null) {
-                PGCharacterDefine def = partyChar.getDefinition();
-                if (def != null) {
-                    currentCharacter
-                            .setId("Pose-Stand-" + def.getName().getString())
-                            .addClass("character-pose")
-                            .style(style -> style.background(
-                                    SpriteTexture.of("minegenshin:textures/character_party_pose/"
-                                            + def.getTextureId() + "_prepare.png")));
-                }
+                currentCharacter
+                        .setId("Pose-Stand-" + partyChar.getName().getString())
+                        .addClass("character-pose")
+                        .style(style -> style.background(
+                                SpriteTexture.of("minegenshin:textures/character_party_pose/"
+                                        + partyChar.getTextureId() + "_prepare.png")));
+
             }
         }
 
         // ========== 渲染角色头像列表 ==========
         Runnable renderCharacterAvatars = () -> {
+
             characterList.clearAllChildren();
 
             List<Integer> sheetUUIDs = new ArrayList<>(charactersAttachment.getSheetCharacterUUIDs());
             SortMethod sort = currentSort.get();
             sheetUUIDs.sort(Comparator.comparingInt(uuid -> {
-                PGCharacterData c = charactersAttachment.getCharacterByUUID(uuid);
+                PGCharacter c = charactersAttachment.getCharacterByUUID(uuid);
                 if (c == null) return 0;
-                PGCharacterDefine def = c.getDefinition();
-                if (def == null) return 0;
                 return switch (sort) {
-                    case STAR -> def.getStarRating();
-                    case LEVEL -> c.getLevel();
+                    case STAR -> c.getStarRating();
+                    case LEVEL -> c.getData().getLevel();
                 };
             }));
 
             for (int uuid : sheetUUIDs) {
-                PGCharacterData ownedChar = charactersAttachment.getCharacterByUUID(uuid);
+                PGCharacter ownedChar = charactersAttachment.getCharacterByUUID(uuid);
                 if (ownedChar == null) continue;
-                PGCharacterDefine def = ownedChar.getDefinition();
-                if (def == null) continue;
 
-                String textureId = def.getTextureId();
+                String textureId = ownedChar.getTextureId();
                 var characterButton = new UIElement()
                         .addClass("character-avatar")
                         .style(style -> style.background(
@@ -213,7 +207,7 @@ public class ScreenCharacterSelect extends Screen {
                         })
                         .addEventListener(UIEvents.CLICK, e -> {
                             currentCharacter
-                                    .setId("Pose-Stand-" + def.getName().getString())
+                                    .setId("Pose-Stand-" + ownedChar.getName().getString())
                                     .addClass("character-pose")
                                     .style(style -> style.background(
                                             SpriteTexture.of("minegenshin:textures/character_party_pose/"

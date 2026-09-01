@@ -2,7 +2,7 @@ package com.linweiyun.genshin.client.gui.screens;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUIClientAccess;
@@ -47,20 +47,16 @@ public class ScreenCharacterParty extends Screen {
       UIElement characterButtonImage = new UIElement().setId("character-button-image-empty");
       boolean haveCharacter = false;
 
-      PGCharacterData partyChar = charactersAttachment.getPartyCharacter(i);
-      System.out.println(charactersAttachment.getPartyCharacterUUIDs());
+      PGCharacter partyChar = charactersAttachment.getPartyCharacter(i);
       if (partyChar != null) {
-        PGCharacterDefine def = partyChar.getDefinition();
-        if (def != null) {
-          String textureId = def.getTextureId();
+          String textureId = partyChar.getTextureId();
           characterButtonImage
-                  .setId("character-button-image-" + def.getName().getString())
+                  .setId("character-button-image-" + partyChar.getName().getString())
                   .addClass("character-button-image-pose")
                   .style(style -> style.overlay(
                           SpriteTexture.of("minegenshin:textures/character_party_pose/"
                                   + textureId + "_already.png")));
           haveCharacter = true;
-        }
       }
 
       int index = haveCharacter ? i : -1;

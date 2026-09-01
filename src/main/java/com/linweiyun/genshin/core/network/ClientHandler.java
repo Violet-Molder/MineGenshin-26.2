@@ -2,11 +2,15 @@ package com.linweiyun.genshin.core.network;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.TagValueInput;
+
+import java.util.Objects;
 
 public class ClientHandler {
   public static void primogemClientHandler(int amount) {
@@ -26,12 +30,54 @@ public class ClientHandler {
     PlayerCharactersAttachment attachment =
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
+    attachment.fixCharacterTypes();
   }
+
+  public static void characterDataClientHandler(int uuid, CompoundTag data) {
+    Player player = net.minecraft.client.Minecraft.getInstance().player;
+    if (player == null) return;
+    PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    PGCharacter character = attachment.getCharacterByUUID(uuid);
+    if (character != null) {
+      character.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
+    }
+  }
+
   public static void characterSelectionClientHandler(int index) {
     Player player = Minecraft.getInstance().player;
     if (player == null) return;
     PlayerCharactersAttachment attachment =
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     attachment.setCurrentCharacterIndex(index);
+  }
+
+  public static void setPartyCharacterClientHandler(int index, int characterUUID) {
+    Player player = Minecraft.getInstance().player;
+    if (player == null) return;
+    PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    attachment.setPartyCharacter(index, characterUUID);
+  }
+
+  public static void removePartyCharacterClientHandler(int index) {
+    Player player = Minecraft.getInstance().player;
+    if (player == null) return;
+    PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    attachment.removePartyCharacter(index);
+  }
+
+  public static void addCharacterClientHandler(CompoundTag characterData) {
+    Player player = Minecraft.getInstance().player;
+    if (player == null) return;
+    PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    PGCharacter character = new PGCharacter();
+    character.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), characterData));
+    attachment.addCharacter(character);
+  }
+
+  public static void removeCharacterClientHandler(int uuid) {
+    Player player = Minecraft.getInstance().player;
+    if (player == null) return;
+    PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    attachment.removeCharacter(uuid);
   }
 }

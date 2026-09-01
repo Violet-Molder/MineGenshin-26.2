@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.content.effect.character;
 
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.player.Player;
@@ -25,8 +26,8 @@ public class CharacterEffectHelper {
      * @param character 效果作用的角色数据
      * @param instance 要添加的效果实例
      */
-    public static void addEffect(Player holder, PGCharacterData character, CharacterEffectInstance instance) {
-        CharacterEffectContainer container = character.getEffectContainer(); // 获取效果容器
+    public static void addEffect(Player holder, PGCharacter character, CharacterEffectInstance instance) {
+        CharacterEffectContainer container = character.getData().getEffectContainer(); // 获取效果容器
         ICharacterEffect newEffect = instance.getEffect();                   // 从注册表获取效果对象
         if (newEffect == null) return;                                       // 效果未注册，直接返回
 
@@ -41,7 +42,7 @@ public class CharacterEffectHelper {
             container.addEffect(instance);                                   // 添加到容器
             newEffect.onEffectAdded(holder, character, instance);            // 调用添加回调
         }
-        character.syncEffectsToTag();                                        // 同步效果数据到NBT标签
+        character.getData().syncEffectsToTag();                                        // 同步效果数据到NBT标签
     }
 
     /**
@@ -50,8 +51,8 @@ public class CharacterEffectHelper {
      * @param character 效果作用的角色数据
      * @param effect 要移除的效果对象
      */
-    public static void removeEffect(Player holder, PGCharacterData character, ICharacterEffect effect) {
-        CharacterEffectContainer container = character.getEffectContainer(); // 获取效果容器
+    public static void removeEffect(Player holder, PGCharacter character, ICharacterEffect effect) {
+        CharacterEffectContainer container = character.getData().getEffectContainer(); // 获取效果容器
         CharacterEffectInstance instance = container.getEffectInstance(effect); // 查找效果实例
 
         if (instance != null) {
@@ -60,7 +61,7 @@ public class CharacterEffectHelper {
             LOGGER.info("移除");
         }
 
-        character.syncEffectsToTag();                                        // 同步效果数据到NBT标签
+        character.getData().syncEffectsToTag();                                        // 同步效果数据到NBT标签
     }
 
     /**
@@ -68,8 +69,8 @@ public class CharacterEffectHelper {
      * @param holder 效果持有者（玩家）
      * @param character 效果作用的角色数据
      */
-    public static void clearEffects(Player holder, PGCharacterData character) {
-        CharacterEffectContainer container = character.getEffectContainer(); // 获取效果容器
+    public static void clearEffects(Player holder, PGCharacter character) {
+        CharacterEffectContainer container = character.getData().getEffectContainer(); // 获取效果容器
         for (CharacterEffectInstance instance : container.getEffects()) {    // 遍历所有效果
             ICharacterEffect effect = instance.getEffect();                  // 获取效果对象
             if (effect != null) {
@@ -77,7 +78,7 @@ public class CharacterEffectHelper {
             }
         }
         container.clear();                                                   // 清空容器
-        character.syncEffectsToTag();                                        // 同步效果数据到NBT标签
+        character.getData().syncEffectsToTag();                                        // 同步效果数据到NBT标签
     }
 
     /**

@@ -1,7 +1,9 @@
 package com.linweiyun.genshin.core.attachment;
 
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.registry.register.CharacterRegister;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,7 +17,7 @@ import java.util.List;
 public class PlayerCharactersAttachment implements IPersistedSerializable {
 
     @Persisted(key = "owned_characters")
-    private List<PGCharacterData> ownedCharacters = new ArrayList<>();
+    private List<PGCharacter> ownedCharacters = new ArrayList<>();
 
     @Persisted(key = "sheet_character_uuids")
     private List<Integer> sheetCharacterUUIDs = new ArrayList<>();
@@ -28,8 +30,8 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
 
     public PlayerCharactersAttachment() {}
 
-    public @Nullable PGCharacterData getCharacterByUUID(int uuid) {
-        for (PGCharacterData character : ownedCharacters) {
+    public @Nullable PGCharacter getCharacterByUUID(int uuid) {
+        for (PGCharacter character : ownedCharacters) {
             if (character.getCharacterUUID() == uuid) {
                 return character;
             }
@@ -37,20 +39,20 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         return null;
     }
 
-    public List<PGCharacterData> getOwnedCharacters() { return ownedCharacters; }
+    public List<PGCharacter> getOwnedCharacters() { return ownedCharacters; }
 
     public boolean hasCharacter(int uuid) {
         return getCharacterByUUID(uuid) != null;
     }
 
-    public void addCharacter(PGCharacterData character) {
+    public void addCharacter(PGCharacter character) {
         if (!hasCharacter(character.getCharacterUUID())) {
             ownedCharacters.add(character);
             sheetCharacterUUIDs.add(character.getCharacterUUID());
         }
     }
     public boolean removeCharacter(int uuid) {
-        PGCharacterData removed = getCharacterByUUID(uuid);
+        PGCharacter removed = getCharacterByUUID(uuid);
         if (removed == null) return false;
         ownedCharacters.remove(removed);
         sheetCharacterUUIDs.remove(Integer.valueOf(uuid));
@@ -77,32 +79,21 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         }
         return true;
     }
-    // ========== 服务端触发 ==========
 
-    public void addCharacterToPlayer(ServerPlayer player, PGCharacterData character) {
-        addCharacter(character);
-        syncToPlayer(player);
+    // 在反序列化完成后调用（比如在客户端接收同步数据后）
+    public void fixCharacterTypes() {
+        for (int i = 0; i < ownedCharacters.size(); i++) {
+            PGCharacter base = ownedCharacters.get(i);
+            if (base == null) continue;
+            // 从注册表获取正确的子类实例
+            PGCharacter subclass = CharacterRegister.getByUUID(base.getCharacterUUID());
+            if (subclass != null && subclass.getClass() != base.getClass()) {
+                // 保留已反序列化的数据，替换为子类实例
+                subclass.setData(base.getData());
+                ownedCharacters.set(i, subclass);
+            }
+        }
     }
-
-    public void removeCharacterToPlayer(ServerPlayer player, int uuid) {
-        removeCharacter(uuid);
-        syncToPlayer(player);
-    }
-
-    // ========== 客户端触发 ==========
-
-    public void addCharacterToServer(PGCharacterData character) {
-        addCharacter(character);
-        syncToServer();
-    }
-
-    public void removeCharacterToServer(int uuid) {
-        removeCharacter(uuid);
-        syncToServer();
-    }
-
-    // ========== 序列化工具方法 ==========
-
 
     public void syncToPlayer(ServerPlayer player) {
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
@@ -117,18 +108,72 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         NetworkManager.setPlayerCharactersToServer(output.buildResult());
     }
 
+    // ========== 服务端触发 ==========
+
+    public void addCharacterToPlayer(ServerPlayer player, PGCharacter character) {
+        addCharacter(character);
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
+        character.serialize(output);
+        NetworkManager.addCharacterToPlayer(player, output.buildResult());
+    }
+
+    public void removeCharacterToPlayer(ServerPlayer player, int uuid) {
+        removeCharacter(uuid);
+        NetworkManager.removeCharacterToPlayer(player, uuid);
+    }
+
+
+
+    // ========== 客户端触发 ==========
+
+    public void addCharacterToServer(PGCharacter character) {
+        addCharacter(character);
+        TagValueOutput output = TagValueOutput.createWithContext(
+                ProblemReporter.DISCARDING,
+                net.minecraft.client.Minecraft.getInstance().player.registryAccess());
+        character.serialize(output);
+        NetworkManager.addCharacterToServer(output.buildResult());
+    }
+
+    public void removeCharacterToServer(int uuid) {
+        removeCharacter(uuid);
+        NetworkManager.removeCharacterToServer(uuid);
+    }
+    // ========== 序列化工具方法 ==========
+
+
+// ========== 角色数据同步 ==========
+
+    // 单个角色数据同步到服务端
+    public void syncSingleCharacterToServer(PGCharacter character) {
+        if (character == null) return;
+        TagValueOutput output = TagValueOutput.createWithContext(
+                ProblemReporter.DISCARDING,
+                net.minecraft.client.Minecraft.getInstance().player.registryAccess());
+        character.serialize(output);
+        NetworkManager.setCharacterDataToServer(character.getCharacterUUID(), output.buildResult());
+    }
+
+    // 单个角色数据同步到客户端
+    public void syncSingleCharacterToPlayer(ServerPlayer player, PGCharacter character) {
+        if (character == null) return;
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
+        character.serialize(output);
+        NetworkManager.setCharacterDataToPlayer(player, character.getCharacterUUID(), output.buildResult());
+    }
+
     public List<Integer> getSheetCharacterUUIDs() { return sheetCharacterUUIDs; }
 
     //当前队伍角色
     public List<Integer> getPartyCharacterUUIDs() { return partyCharacterUUIDs; }
 
-    public @Nullable PGCharacterData getPartyCharacter(int index) {
+    public @Nullable PGCharacter getPartyCharacter(int index) {
         if (index < 0 || index >= partyCharacterUUIDs.size()) return null;
         int uuid = partyCharacterUUIDs.get(index);
         return uuid == 0 ? null : getCharacterByUUID(uuid);
     }
 
-    public @Nullable PGCharacterData getCurrentCharacter() {
+    public @Nullable PGCharacter getCurrentCharacter() {
         return getPartyCharacter(currentCharacterIndex);
     }
 
@@ -165,12 +210,12 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
 
     public void setPartyCharacterToPlayer(ServerPlayer player, int index, int characterUUID) {
         setPartyCharacter(index, characterUUID);
-        syncToPlayer(player);
+        NetworkManager.setPartyCharacterToPlayer(player, index, characterUUID);
     }
 
     public void removePartyCharacterToPlayer(ServerPlayer player, int index) {
         removePartyCharacter(index);
-        syncToPlayer(player);
+        NetworkManager.removePartyCharacterToPlayer(player, index);
     }
 
     public void setCurrentCharacterToPlayer(ServerPlayer player, int index) {
@@ -182,12 +227,12 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
 
     public void setPartyCharacterToServer(int index, int characterUUID) {
         setPartyCharacter(index, characterUUID);
-        syncToServer();
+        NetworkManager.setPartyCharacterToServer(index, characterUUID);
     }
 
     public void removePartyCharacterToServer(int index) {
         removePartyCharacter(index);
-        syncToServer();
+        NetworkManager.removePartyCharacterToServer(index);
     }
 
     public void setCurrentCharacterToServer(int index) {

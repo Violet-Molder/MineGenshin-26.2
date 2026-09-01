@@ -1,9 +1,10 @@
 package com.linweiyun.genshin.content.entities.area;
 
-import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.combat.attack.HurtEntityHelper;
-import com.linweiyun.genshin.core.combat.damage.ModDamageSource;
-import com.linweiyun.genshin.core.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
+import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
+import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.minecraft.core.particles.ParticleTypes;
@@ -118,7 +119,7 @@ public class TalismanSpiritArea extends AreaEntity {
 
         // 获取拥有者信息
         Player owner = getOwner();
-        PGCharacterData ownerCharacter = getOwnerCharacter();
+        PGCharacter ownerCharacter = getOwnerCharacter();
 
         if (owner == null || ownerCharacter == null) return;
 
@@ -166,7 +167,7 @@ public class TalismanSpiritArea extends AreaEntity {
      * @param owner 伤害源头玩家
      * @param ownerCharacter 触发领域的角色数据
      */
-    private void dealDamageToEntity(LivingEntity target, Player owner, PGCharacterData ownerCharacter) {
+    private void dealDamageToEntity(LivingEntity target, Player owner, PGCharacter ownerCharacter) {
         // 构建伤害规格：元素爆发类型 + 冰元素 + 0.7倍率
         ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_BURST, ElementalsGIM.CYRO)
                 .multiplier(DAMAGE_MULTIPLIER)   // 伤害倍率
@@ -177,7 +178,7 @@ public class TalismanSpiritArea extends AreaEntity {
         ModDamageSource damageSource = ModDamageSource.from(spec, owner);
 
         // 计算实际伤害（简化版：使用角色ATK × 倍率）
-        double characterATK = ownerCharacter.getATK();
+        double characterATK = ownerCharacter.getData().getAttributeTotalValue(ModAttributes.ATK.value());
         float finalDamage = (float) (characterATK * DAMAGE_MULTIPLIER);
 
         // 对目标造成伤害
@@ -231,7 +232,6 @@ public class TalismanSpiritArea extends AreaEntity {
     private void spawnCachedParticles() {
         Level level = this.level();
         for (Vec3 pos : particlePositions) {
-            // 使用末地烛火焰粒子作为临时占位
             level.addParticle(ParticleTypes.SNOWFLAKE, pos.x, pos.y, pos.z,
                     0, 0, 0);  // 零速度，瞬生瞬灭
         }

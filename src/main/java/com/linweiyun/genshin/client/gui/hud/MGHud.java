@@ -7,8 +7,9 @@ import com.linweiyun.genshin.client.gui.components.state_bind_com.HPProgressBar;
 import com.linweiyun.genshin.client.gui.components.state_bind_com.SkillProgressBar;
 import com.linweiyun.genshin.client.gui.components.state_bind_com.StackBindUIElement;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attribute.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.character.PGCharacterDefine;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
@@ -136,19 +137,20 @@ public class MGHud {
             characterName.bindDataSource(
                     SupplierDataSource.of(
                             () -> {
-                                PGCharacterData data = characterIcon.getValue();
-                                if (data == null) return Component.literal("");
-                                PGCharacterDefine def = data.getDefinition();
-                                return def != null ? def.getName() : Component.literal("");
+                                PGCharacter character = characterIcon.getValue();
+                                if (character == null) return Component.literal("");
+                                return character.getName();
                             }));
 
             characterHP
                     .bindDataSource(
                             SupplierDataSource.of(
                                     () -> {
-                                        PGCharacterData data = characterIcon.getValue();
+                                        PGCharacter character = characterIcon.getValue();
+                                        if (character == null) return 1f;
+                                        PGCharacterData data = character.getData();
                                         if (data != null) {
-                                            return (float) (data.getCurrentHP() / data.getMaxHP());
+                                            return (float) (data.getCurrentHP() / data.getAttributeTotalValue(ModAttributes.MAX_HP.value()));
                                         }
                                         return 1f;
                                     }))
@@ -198,11 +200,11 @@ public class MGHud {
                                     if (player == null) return 0f;
                                     var attachment =
                                             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                                    var data = attachment.getCurrentCharacter();
-                                    if (data != null) {
-                                        var def = data.getDefinition();
-                                        if (def != null) {
-                                            return data.getElementalSkillCooldownTick() / def.getSkillMaxCooldownTick();
+                                    var character = attachment.getCurrentCharacter();
+                                    if (character != null) {
+                                        var data = character.getData();
+                                        if (data != null) {
+                                            return data.getElementalSkillCooldownTick() / character.getSkillShortMaxCooldownTick();
                                         }
                                     }
                                     return 0f;
@@ -233,12 +235,16 @@ public class MGHud {
                             if (player == null) return Component.literal("");
                             var attachment =
                                     player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                            var data = attachment.getCurrentCharacter();
-                            if (data != null) {
-                                float currentSkillCD =
-                                        Math.round(data.getElementalSkillCooldownTick() / 20 * 10f) / 10f;
-                                if (currentSkillCD <= 0) return Component.literal("");
-                                return Component.literal(String.valueOf(currentSkillCD));
+                            var character = attachment.getCurrentCharacter();
+                            if (character != null) {
+                                var data = character.getData();
+                                if (data != null) {
+                                    float currentSkillCD =
+                                            Math.round(data.getElementalSkillCooldownTick() / 20 * 10f) / 10f;
+                                    if (currentSkillCD <= 0) return Component.literal("");
+                                    return Component.literal(String.valueOf(currentSkillCD));
+                                }
+
                             }
                             return Component.literal("");
                         }));
@@ -251,11 +257,11 @@ public class MGHud {
                                     if (player == null) return 0f;
                                     var attachment =
                                             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                                    var data = attachment.getCurrentCharacter();
-                                    if (data != null) {
-                                        var def = data.getDefinition();
-                                        if (def != null) {
-                                            return data.getElementalBurstCooldownTick() / def.getBurstMaxCooldownTick();
+                                    var character = attachment.getCurrentCharacter();
+                                    if (character != null) {
+                                        var data = character.getData();
+                                        if (data != null) {
+                                            return data.getElementalBurstCooldownTick() / character.getBurstMaxCooldownTick();
                                         }
                                     }
                                     return 0f;
@@ -286,8 +292,9 @@ public class MGHud {
                             if (player == null) return Component.literal("");
                             var attachment =
                                     player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                            var data = attachment.getCurrentCharacter();
-                            if (data != null) {
+                            var character = attachment.getCurrentCharacter();
+                            if (character != null) {
+                                var data = character.getData();
                                 float currentBurstCD =
                                         Math.round(data.getElementalBurstCooldownTick() / 20 * 10f) / 10f;
                                 if (currentBurstCD <= 0) return Component.literal("");
@@ -304,9 +311,10 @@ public class MGHud {
                                     if (player == null) return 0f;
                                     var attachment =
                                             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                                    var data = attachment.getCurrentCharacter();
-                                    if (data != null) {
-                                        return (float) (data.getCurrentHP() / data.getMaxHP());
+                                    var character = attachment.getCurrentCharacter();
+                                    if (character != null) {
+                                        var data = character.getData();
+                                        return (float) (data.getCurrentHP() / data.getAttributeTotalValue(ModAttributes.MAX_HP.value()));
                                     }
                                     return 0f;
                                 }))
@@ -343,12 +351,16 @@ public class MGHud {
                             if (player == null) return Component.empty();
                             var attachment =
                                     player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                            var data = attachment.getCurrentCharacter();
-                            if (data != null) {
-                                return Component.literal(
-                                        Math.round(data.getCurrentHP() * 10.0f) / 10.0f
-                                                + "/"
-                                                + data.getMaxHP());
+                            var character = attachment.getCurrentCharacter();
+                            if (character != null) {
+                                var data = character.getData();
+                                if (data != null) {
+                                    return Component.literal(
+                                            Math.round(data.getCurrentHP() * 10.0f) / 10.0f
+                                                    + "/"
+                                                    + data.getAttributeTotalValue(ModAttributes.MAX_HP.value()));
+                                }
+
                             }
                             return Component.empty();
                         }));
@@ -360,14 +372,18 @@ public class MGHud {
                                     if (player == null) return Component.empty();
                                     var attachment =
                                             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                                    var data = attachment.getCurrentCharacter();
-                                    if (data != null) {
-                                        return Component.literal("Lv." + data.getLevel());
+                                    var character = attachment.getCurrentCharacter();
+                                    if (character != null) {
+                                        var data = character.getData();
+                                        if (data != null) {
+                                            return Component.literal("Lv." + data.getLevel());
+                                        }
                                     }
                                     return Component.empty();
                                 }))
                 .setId("character-level");
 
+        // 属性调试
         var attributeDebug = new Label();
         attributeDebug.bindDataSource(
                         SupplierDataSource.of(
@@ -376,12 +392,15 @@ public class MGHud {
                                     if (player == null) return Component.empty();
                                     var attachment =
                                             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                                    var data = attachment.getCurrentCharacter();
-                                    if (data != null) {
-                                        return Component.literal(
-                                                "当前攻击力：" + (int) data.getATK()
-                                                        + "\n当前防御力：" + (int) data.getDEF()
-                                                        + "\n当前生命值：" + (int) data.getMaxHP());
+                                    var character = attachment.getCurrentCharacter();
+                                    if (character != null) {
+                                        var data = character.getData();
+                                        if (data != null) {
+                                            return Component.literal(
+                                                    "当前攻击力：" + (int) data.getAttributeTotalValue(ModAttributes.ATK.value())
+                                                            + "\n当前防御力：" + (int) data.getAttributeTotalValue(ModAttributes.DEF.value())
+                                                            + "\n当前生命值：" + (int) data.getAttributeTotalValue(ModAttributes.MAX_HP.value()));
+                                        }
                                     }
                                     return Component.empty();
                                 }))
@@ -408,14 +427,14 @@ public class MGHud {
                                             if (player == null) return Component.literal("");
                                             var attachment =
                                                     player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                                            var data = attachment.getCurrentCharacter();
-                                            if (data != null) {
-                                                var def = data.getDefinition();
-                                                if (def != null) {
+                                            var character = attachment.getCurrentCharacter();
+                                            if (character != null) {
+                                                var data = character.getData();
+                                                if (data != null) {
                                                     return Component.literal(
                                                             Math.round(data.getCurrentObtainingEnergy() * 10f) / 10f
                                                                     + "/"
-                                                                    + def.getMaxObtainingEnergy());
+                                                                    + character.getMaxObtainingEnergy());
                                                 }
                                             }
                                             return Component.literal("");

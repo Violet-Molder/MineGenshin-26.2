@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "com.linweiyun.genshin.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "DamageContainerMixin",
+    "EffectCommandsMixin",
+    "EntityNoAIMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+  ],
+  "server": [
+  ]
+}

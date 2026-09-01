@@ -2,6 +2,7 @@ package com.linweiyun.genshin.content.entities.area;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
@@ -204,7 +205,7 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
      * @return 角色数据，可能为null
      */
     @Nullable
-    public PGCharacterData getOwnerCharacter() {
+    public PGCharacter getOwnerCharacter() {
         Player owner = getOwner();
         if (owner == null) return null;
         PlayerCharactersAttachment attachment = owner.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);

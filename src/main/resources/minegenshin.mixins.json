@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.linweiyun.genshin.mixin.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "DamageContainerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

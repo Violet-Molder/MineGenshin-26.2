@@ -23,7 +23,7 @@ public class AttributeContainer implements IPersistedSerializable {
         return attributes.containsKey(type.id().toString());
     }
 
-    public double getValue(AttributeType type) {
+    public double getTotalValue(AttributeType type) {
         AttributeInstance instance = get(type);
         return instance != null ? instance.getTotalValue() : type.defaultValue();
     }
@@ -31,6 +31,22 @@ public class AttributeContainer implements IPersistedSerializable {
     public double getBaseValue(AttributeType type) {
         AttributeInstance instance = get(type);
         return instance != null ? instance.getBaseValue() : type.defaultValue();
+    }
+    public double getFlatModifier(AttributeType type) {
+        AttributeInstance instance = get(type);
+        return instance != null ? instance.getTotalFlatModifier() : 0;
+    }
+    public double getTempFlatModifier(AttributeType type) {
+        AttributeInstance instance = get(type);
+        return instance != null ? instance.getTotalTempFlatModifier() : 0;
+    }
+    public double getPercentModifier(AttributeType type) {
+        AttributeInstance instance = get(type);
+        return instance != null ? instance.getTotalPercentModifier() : 0;
+    }
+    public double getTempPercentModifier(AttributeType type) {
+        AttributeInstance instance = get(type);
+        return instance != null ? instance.getTotalTempPercentModifier() : 0;
     }
 
     public void setBaseValue(AttributeType type, double value) {

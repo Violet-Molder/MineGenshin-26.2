@@ -4,7 +4,6 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
 import com.linweiyun.genshin.registry.register.*;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.damagesource.DamageType;
 import net.neoforged.fml.config.ModConfig;
 import org.slf4j.Logger;
 
@@ -25,7 +24,8 @@ public class Minegenshin {
     public Minegenshin(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
         NeoForge.EVENT_BUS.register(this);
-
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_EXP_SPEC, "minegenshin/exp.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_ATTRIBUTE_SPEC, "minegenshin/attribute.toml");
         ItemsRegister.register(modEventBus);
         ItemGroupRegister.register(modEventBus);
         EntityRegister.register(modEventBus);
@@ -34,11 +34,9 @@ public class Minegenshin {
         ModAttributes.ATTRIBUTES.register(modEventBus);
         CharacterRegister.CHARACTERS.register(modEventBus);
         AttachmentRegistration.register(modEventBus);
-        SkillExecutorRegister.register(modEventBus);
         CharacterEffectRegister.register(modEventBus);
 
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_EXP_SPEC, "minegenshin/exp.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_ATTRIBUTE_SPEC, "minegenshin/attribute.toml");
+
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

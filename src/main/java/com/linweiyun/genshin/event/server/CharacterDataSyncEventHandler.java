@@ -18,6 +18,7 @@ public class CharacterDataSyncEventHandler {
             //角色数据同步
             PlayerCharactersAttachment playerData = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             playerData.syncToPlayer(player);
+            playerData.fixCharacterTypes();
 
         }
     }
