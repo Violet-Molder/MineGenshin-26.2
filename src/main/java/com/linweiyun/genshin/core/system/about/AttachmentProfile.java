@@ -55,7 +55,7 @@ public class AttachmentProfile implements IPersistedSerializable {
 
     /** 恒定附着专用构造（衰减 0，无限时间，仅需指定满量） */
     public static AttachmentProfile permanent(float baseQuantity) {
-        return new AttachmentProfile(baseQuantity, 1.0f, 0f, -1f);
+        return new AttachmentProfile(baseQuantity, 1.0f, 0f, 999f);
     }
 
     /**

@@ -1,10 +1,13 @@
 package com.linweiyun.genshin.core.system.about;
 
+import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
+
+import java.beans.Transient;
 
 public class ElementalAttachmentInstance extends StatusInstance {
 
@@ -38,6 +41,8 @@ public class ElementalAttachmentInstance extends StatusInstance {
     @Persisted(key = "replenish_timer")
     private int replenishTimer;
 
+    private transient StatusContainer container;
+
     public ElementalAttachmentInstance(ElementalsGIM element, AttachmentSource source,
                                        AttachmentProfile profile, float initialQuantity) {
         this.typeId = TYPE_ID;
@@ -64,10 +69,19 @@ public class ElementalAttachmentInstance extends StatusInstance {
                 quantity = Math.min(quantity + replenishAmount, profile.getBaseQuantity());
                 replenishTimer = replenishTick;
             }
-        } else {
-            float decayPerTick = currentDecayPerSecond / 20f;
-            quantity = Math.max(0f, quantity - decayPerTick);
+            return;
         }
+        float effectiveDecayPerSecond;
+        if (element == ElementalsGIM.FROZEN
+                && container != null
+                && container.getFrozenDecayState() != null) {
+            effectiveDecayPerSecond = container.getFrozenDecayState().getCurrentDecayRate();
+        } else {
+            effectiveDecayPerSecond = currentDecayPerSecond;
+        }
+        float decayPerTick = effectiveDecayPerSecond / 20f;
+
+        quantity = Math.max(0f, quantity - decayPerTick);
     }
 
     @Override
@@ -87,7 +101,11 @@ public class ElementalAttachmentInstance extends StatusInstance {
         c.replenishTick = this.replenishTick;
         c.replenishAmount = this.replenishAmount;
         c.replenishTimer = this.replenishTimer;
+        c.container = null;
         return c;
+    }
+    public void setContainer(StatusContainer container) {
+        this.container = container;
     }
 
     // ========== 覆盖规则 & 消耗 ==========

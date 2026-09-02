@@ -20,6 +20,9 @@ public enum ElementalReactionType {
   QUICKEN("原激化"), // 草+雷
   AGGRAVATE("超激化"), // 激+雷
   SPREAD("蔓激化"), // 激+草
+  // 星体系
+
+  // 月体系
 
   // 特殊反应
   FROZEN("冻结"), // 水+冰

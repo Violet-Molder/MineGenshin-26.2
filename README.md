@@ -1630,20 +1630,130 @@ tryReactAfterAttach(context)
 - 冻结反应后，目标可能残留额外的水或冰（冻结藏水/藏冰逻辑，TODO 待实现）
 - 冻结效果（减速、冻结实体）暂不实现，TODO 待补充
 
-```java
-// FreezeReaction.execute 核心逻辑
-float[] consumed = calculateConsumption(attackerQty, defenderQty);
-float totalConsumed = consumed[0] + consumed[1];
+###### A/B 槽位机制
 
-// 消耗双方
-ElementalAttachmentHelper.consume(target, elementA, consumedA);
-consumeDefenderMain(container, elementB, consumedB);
+所有继承 `ElementalReaction` 的反应在注册时都声明了 `elementA` / `elementB` 两个元素槽位和对应的消耗比 `ratioA` / `ratioB`。但在实际运行时，先后手是随机的——后手可能是 A 也可能是 B。`FreezeReaction.execute` 的第一行就用 `attackerIsA` 这个布尔变量把"运行时先后手"映射回"固定的 A/B 槽位"：
 
-// 生成冻元素
-ElementalAttachmentHelper.attach(
-    target, ElementalsGIM.FROZEN, AttachmentSource.SPECIAL,
-    new AttachmentProfile(totalConsumed * 2f, 1.0f, 0.0f, 0.0f));
 ```
+注册时: elementA = HYDRO, elementB = CYRO, ratioA = 1, ratioB = 1
+
+运行时:
+  后手是水 → attackerMain == elementA → attackerIsA = true  → 后手 = A槽, 先手 = B槽(冰)
+  后手是冰 → attackerMain == elementA → attackerIsA = false → 后手 = B槽, 先手 = A槽(水)
+```
+
+这个布尔值是后续**所有分支判断的根基**——消耗哪边、传什么参数给 `calculateConsumption`、生成什么返回值，全都取决于它。
+
+###### 四步执行流程
+
+```
+① 定向 ─→ attackerIsA 把先后手映射回 A/B 槽位
+          └─ defenderTarget = attackerIsA ? elementB : elementA  (三元运算)
+          └─ totalDefenderQty = sumMainElementQuantity(...)  (遍历容器求和，支持类元素归并)
+
+② 算量 ─→ calculateConsumption(qtyA, qtyB, defenderIsA)
+          └─ rounds = min(qtyA/ratioA, qtyB/ratioB)
+          └─ consumedA = rounds × ratioA,  consumedB = rounds × ratioB
+          └─ 调用顺序必须保证：第一个参数 = A槽的数量，第二个 = B槽的数量
+          └─ attackerIsA=true  → calculateConsumption(attackerQty, totalDefenderQty, ...)
+          └─ attackerIsA=false → calculateConsumption(totalDefenderQty, attackerQty, ...)
+
+③ 扣减 ─→ consumeAttacker 消耗后手（直接 consume 按元素类型）
+          └─ consumeDefenderMain 消耗先手（按主元素遍历所有同类实例逐个扣）
+          └─ 两者分开的原因：先手可能分散在多个实例里，且需要类元素归并
+
+④ 生成 ─→ frozenQty = (consumedA + consumedB) × FROZEN_MULTIPLIER(2.0)
+          └─ attach(target, FROZEN, SPECIAL, new AttachmentProfile(frozenQty, ...))
+```
+
+###### 变量命名详解
+
+| 变量 | 含义 | 为什么叫这个 |
+|------|------|--------------|
+| `attackerMain` | 后手元素的主元素（经过 `getMainElement()` 归并） | `attacker` = 后手（攻击方附着的那方）；`Main` = 主元素归并后的结果 |
+| `attackerIsA` | 后手的主元素是否等于注册时 A 槽的元素 | 把"随机先后手"映射到"固定 A/B 槽位"，后续所有 `consume` 调用的分支条件 |
+| `defenderTarget` | 要从先手身上找的元素类型 | `defender` = 先手（目标身上已有的那方）；`Target` = 我们要"找出来反应"的那个元素 |
+| `totalDefenderQty` | 目标身上所有主元素匹配的附着量之和 | `total` = 多实例求和；`Qty` = Quantity（元素量，单位 U） |
+| `attackerQty` | 后手元素本次附着的总量 | 来自 `ctx.attackerQuantity`，全额参与反应不衰减 |
+| `consumedA` / `consumedB` | A/B 槽各自要消耗的数值 | **只算数值，还没扣减**，由 `calculateConsumption` 返回 |
+| `totalConsumed` | A+B 消耗总量 | 用于生成 FROZEN 的量：`× 2` |
+| `consumedAttacker` | 后手侧实际消耗了多少 | 返回给 `ReactionResult` 用；又一次 `attackerIsA` 分支决定是 `consumedA` 还是 `consumedB` |
+| `frozenQty` | 最终生成的 FROZEN 元素量 | `totalConsumed × FROZEN_MULTIPLIER(2.0f)` |
+
+###### 三元运算效果说明
+
+代码中出现多次 `attackerIsA ? X : Y` 三元表达式，每次的效果不同：
+
+| 位置 | 三元表达式 | attackerIsA=true（后手=水=A槽） | attackerIsA=false（后手=冰=B槽） |
+|------|-----------|-------------------------------|--------------------------------|
+| 定向 | `elementB : elementA` | `defenderTarget = CYRO`（冰） | `defenderTarget = HYDRO`（水） |
+| 算量调用 | `calculateConsumption(A槽数量, B槽数量, ...)` | `(attackerQty=水, totalDefenderQty=冰, ...)` | `(totalDefenderQty=水, attackerQty=冰, ...)` |
+| 后手消耗值 | `consumedA : consumedB` | `consumedAttacker = consumedA` | `consumedAttacker = consumedB` |
+| 先手消耗值（返回结果用） | `consumedB : consumedA` | `consumedDefender = consumedB` | `consumedDefender = consumedA` |
+
+###### 元素量消耗具体示例
+
+**场景 1：先手水 0.8U，后手冰 1.6U**
+
+```
+attackerIsA = (CYRO == HYDRO) → false → 后手是 B 槽
+defenderTarget = elementA = HYDRO
+totalDefenderQty = 0.8（目标身上的水）
+attackerQty = 1.6（本次附着的冰）
+
+调用 calculateConsumption(totalDefenderQty=0.8, attackerQty=1.6, defenderIsA=true)
+  ratioA = 1.0, ratioB = 1.0
+  rounds = min(0.8/1.0, 1.6/1.0) = min(0.8, 1.6) = 0.8
+  consumedA = 0.8 × 1.0 = 0.8   ← A槽(水)消耗
+  consumedB = 0.8 × 1.0 = 0.8   ← B槽(冰)消耗
+
+totalConsumed = 0.8 + 0.8 = 1.6
+consumedAttacker = attackerIsA ? consumedA : consumedB = consumedB = 0.8
+
+扣减:
+  consumeAttacker(target, elementB=CYRO, 0.8)    → 后手冰扣 0.8，剩余 0.8
+  consumeDefenderMain(container, elementA=HYDRO, 0.8) → 先手水全部扣完
+
+生成: frozenQty = 1.6 × 2.0 = 3.2 FROZEN
+
+后手残留: 本次附着冰 1.6U，反应消耗 0.8U → 剩余 0.8U
+  由于是 NORMAL_ATTACK 来源 → 后手不残留（ElementalReactionManager 处理）
+```
+
+**场景 2：先手 1.2 冰 + 0.6 冻（主元素都是 CYRO），后手水 1.0U**
+
+```
+attackerIsA = (HYDRO == HYDRO) → true → 后手是 A 槽
+defenderTarget = elementB = CYRO
+totalDefenderQty = sumMainElementQuantity(CYRO) = 1.2(冰) + 0.6(冻) = 1.8
+attackerQty = 1.0
+
+调用 calculateConsumption(attackerQty=1.0, totalDefenderQty=1.8, defenderIsA=false)
+  ratioA = 1.0, ratioB = 1.0
+  rounds = min(1.0/1.0, 1.8/1.0) = min(1.0, 1.8) = 1.0
+  consumedA = 1.0 × 1.0 = 1.0   ← A槽(水)消耗
+  consumedB = 1.0 × 1.0 = 1.0   ← B槽(冰+冻)消耗
+
+totalConsumed = 2.0
+consumedAttacker = consumedA = 1.0
+
+扣减:
+  consumeAttacker(target, elementA=HYDRO, 1.0)      → 后手水全部扣完
+  consumeDefenderMain(container, elementB=CYRO, 1.0)
+    顺序扣：先扣最早附着的 CYRO(1.2U) → 扣 1.0U 剩 0.2U
+    → 再扣 FROZEN(0.6U) 但 remaining 已经 0，跳过
+
+生成: frozenQty = 2.0 × 2.0 = 4.0 FROZEN
+
+先手残留: 原 CYRO 剩 0.2U，FROZEN 完好 0.6U
+```
+
+###### 两个 consume 方法的区别
+
+| 方法 | 操作对象 | 遍历方式 | 为什么这样设计 |
+|------|----------|----------|----------------|
+| `consumeAttacker` | 后手元素 | 直接 `ElementalAttachmentHelper.consume(target, element, amount)` | 后手只来自本次附着，是单一实例，直接按元素类型扣即可 |
+| `consumeDefenderMain` | 先手元素 | 遍历容器所有实例，`getMainElement()` 匹配则 `ea.consume(remaining)` | 先手可能分散在多个实例（不同 source），且需要类元素归并（CYRO + FROZEN 一起扣） |
 
 #### 添加新反应 —— 完整指南
 

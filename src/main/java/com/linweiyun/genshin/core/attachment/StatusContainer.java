@@ -1,6 +1,9 @@
 package com.linweiyun.genshin.core.attachment;
 
 import com.linweiyun.genshin.core.status.StatusInstance;
+import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
+import com.linweiyun.genshin.core.system.about.FrozenDecayState;
+import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
@@ -32,6 +35,13 @@ public class StatusContainer implements IPersistedSerializable {
     @Persisted(key = "statuses")
     private List<StatusInstance> instances;
 
+    /**
+     * 冻元素动态衰减状态 —— 独立于普通 StatusInstance
+     * 所有 FROZEN 实例共享这一个衰减率调节器
+     */
+    @Persisted(key = "frozen_decay_state")
+    private FrozenDecayState frozenDecayState = new FrozenDecayState();
+
     public StatusContainer() {
         this.instances = new ArrayList<>();
     }
@@ -43,6 +53,9 @@ public class StatusContainer implements IPersistedSerializable {
     /** 直接添加一个实例（不去重不判断，由调用方管） */
     public void add(StatusInstance instance) {
         instances.add(instance);
+        if (instance instanceof ElementalAttachmentInstance ea) {
+            ea.setContainer(this);
+        }
     }
 
     /** 按条件查找第一个匹配的实例 */
@@ -93,6 +106,15 @@ public class StatusContainer implements IPersistedSerializable {
      * 再判断是否 finished，finished 的调 onRemove() 然后清掉。
      */
     public void tick() {
+        boolean hadFrozenAlive = false;
+        for (StatusInstance inst : instances) {
+            if (!inst.isFinished()
+                    && inst instanceof ElementalAttachmentInstance ea
+                    && ea.getElement() == ElementalsGIM.FROZEN) {
+                hadFrozenAlive = true;
+                break;
+            }
+        }
         Iterator<StatusInstance> it = instances.iterator();
         while (it.hasNext()) {
             StatusInstance inst = it.next();
@@ -102,6 +124,11 @@ public class StatusContainer implements IPersistedSerializable {
                 it.remove();
             }
         }
+        frozenDecayState.onTick(hadFrozenAlive);
+    }
+
+    public FrozenDecayState getFrozenDecayState() {
+        return frozenDecayState;
     }
 
     // ========== 拷贝 ==========

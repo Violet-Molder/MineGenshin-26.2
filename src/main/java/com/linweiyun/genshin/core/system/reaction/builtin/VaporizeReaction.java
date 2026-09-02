@@ -60,16 +60,17 @@ public class VaporizeReaction extends ElementalReaction {
 
         // 按比例同时消耗
         float consumedA, consumedB;
+        float[] consumed;
         if (attackerIsA) {
             // 后手是 A，先手是 B
-            float[] consumed = calculateConsumption(attackerQty, defenderQty, false);
-            consumedA = consumed[0]; consumedB = consumed[1];
+            consumed = calculateConsumption(attackerQty, defenderQty, false);
         } else {
             // 后手是 B，先手是 A
-            float[] consumed = calculateConsumption(defenderQty, attackerQty, true);
+            consumed = calculateConsumption(defenderQty, attackerQty, true);
             // consumed[0] 是 A 的消耗，consumed[1] 是 B 的消耗
-            consumedA = consumed[0]; consumedB = consumed[1];
         }
+        consumedA = consumed[0];
+        consumedB = consumed[1];
 
         // 实际从容器里扣
         if (attackerIsA) {

@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.reaction;
 
+import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
@@ -69,7 +70,10 @@ public abstract class ElementalReaction {
      * 给定 attacker（后手）和 defender（先手，目标身上已有）的主元素，
      * 判断该反应是否可以参与匹配
      */
-    public boolean canMatch(ElementalsGIM attackerMain, ElementalsGIM defenderMain) {
+// 基类默认实现：仍然做主元素归并配对
+    public boolean canMatch(ElementalsGIM attackerElement, ElementalsGIM defenderElement) {
+        ElementalsGIM attackerMain = attackerElement.getMainElement();
+        ElementalsGIM defenderMain = defenderElement.getMainElement();
         if (attackerMain == null || defenderMain == null) return false;
         return (attackerMain == elementA && defenderMain == elementB)
                 || (attackerMain == elementB && defenderMain == elementA);
@@ -100,6 +104,47 @@ public abstract class ElementalReaction {
      * @return 反应结果（消耗量、残留量、是否增幅、增幅倍率等）
      */
     public abstract ReactionResult execute(ReactionContext context);
+
+    /**
+     * 子类重写：这个先手元素实例能不能参与"slotElement 对应槽位"的消耗
+     * 默认：主元素归并匹配（MAIN 策略，融化语义）
+     * FreezeReaction 覆盖：排除 FROZEN（EXACT 策略语义）
+     */
+    public boolean canConsume(ElementalAttachmentInstance instance, ElementalsGIM slotElement) {
+        return instance.getElement().getMainElement() == slotElement.getMainElement();
+    }
+
+    /**
+     * 基类统一：求和容器中所有能参与 slotElement 消耗的实例的元素量
+     * 内部调用 canConsume 做过滤
+     */
+    public float sumConsumable(StatusContainer container, ElementalsGIM slotElement) {
+        float sum = 0f;
+        for (StatusInstance inst : container.getAll()) {
+            if (inst.isFinished()) continue;
+            if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
+            if (!canConsume(ea, slotElement)) continue;
+            sum += ea.getQuantity();
+        }
+        return sum;
+    }
+
+    /**
+     * 基类统一：从容器中扣减 amount 量的、能参与 slotElement 消耗的实例
+     * 返回实际扣了多少
+     */
+    public float consumeFromContainer(StatusContainer container, ElementalsGIM slotElement, float amount) {
+        float remaining = amount;
+        for (StatusInstance inst : container.getAll()) {
+            if (inst.isFinished()) continue;
+            if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
+            if (!canConsume(ea, slotElement)) continue;
+            float consumed = ea.consume(remaining);
+            remaining -= consumed;
+            if (remaining <= 0f) break;
+        }
+        return amount - remaining;
+    }
 
     /**
      * 预留：聚变反应的"伤害冷却"和"公共冷却"接口

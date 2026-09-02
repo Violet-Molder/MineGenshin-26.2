@@ -27,6 +27,8 @@ public class PlayerAttackInterceptor {
         Player player = (Player) (Object) this;
 
         if (!(target instanceof LivingEntity livingTarget)) return;
+        boolean isGenshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+        if (!isGenshinMode) return;
 
         PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         PGCharacter character = attachment.getCurrentCharacter();

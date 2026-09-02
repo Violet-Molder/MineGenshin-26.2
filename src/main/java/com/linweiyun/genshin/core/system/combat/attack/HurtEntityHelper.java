@@ -2,6 +2,7 @@ package com.linweiyun.genshin.core.system.combat.attack;
 
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
