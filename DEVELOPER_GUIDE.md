@@ -1,0 +1,1675 @@
+# MineGenshin 开发者文档
+
+> Minecraft NeoForge 原神风格 Mod 开发指南
+> 版本：26.2 | Java 21
+
+---
+
+## 目录
+
+1. [项目概览](#1-项目概览)
+2. [开发环境](#2-开发环境)
+3. [架构总览](#3-架构总览)
+4. [核心系统详解](#4-核心系统详解)
+   - 4.1 [注册中心与自定义注册表](#41-注册中心与自定义注册表)
+   - 4.2 [角色系统](#42-角色系统)
+   - 4.3 [属性系统](#43-属性系统)
+   - 4.4 [效果系统 (CharacterEffect)](#44-效果系统-charactereffect)
+   - 4.5 [伤害系统与衰减机制](#45-伤害系统与衰减机制)
+   - 4.6 [玩家附件 (Attachment)](#46-玩家附件-attachment)
+   - 4.7 [网络同步系统](#47-网络同步系统)
+   - 4.8 [事件系统](#48-事件系统)
+   - 4.9 [实体系统](#49-实体系统)
+   - 4.10 [元素附着系统](#410-元素附着系统)
+5. [扩展开发指南](#5-扩展开发指南)
+   - 5.1 [添加新角色](#51-添加新角色)
+   - 5.2 [添加新角色效果](#52-添加新角色效果)
+   - 5.3 [添加新实体](#53-添加新实体)
+   - 5.4 [添加新伤害类型](#54-添加新伤害类型)
+6. [Mixin 系统](#6-mixin-系统)
+7. [常见问题与设计决策](#7-常见问题与设计决策)
+8. [关键文件索引](#8-关键文件索引)
+
+---
+
+## 1. 项目概览
+
+MineGenshin 是一个将原神核心玩法机制移植到 Minecraft 的 Mod。
+
+### 核心系统
+
+| 系统 | 说明 |
+|------|------|
+| **角色系统** | 可收集的原神角色，支持等级、突破、技能等级 |
+| **属性系统** | HP/ATK/DEF + 修饰器（固定/百分比，临时/永久） |
+| **效果系统** | Buff/Debuff 框架，支持伤害修改、前后台 Tick |
+| **伤害系统** | 带元素类型、倍率、衰减序列的伤害管线 |
+| **衰减系统** | 附着冷却机制，还原原神附着规则 |
+| **祈愿系统** | 原石抽卡，角色重复返还原石 |
+| **网络系统** | RPC 双向同步角色、编队、原石等数据 |
+
+### 技术栈
+
+- **Minecraft 版本**: NeoForge 26.2
+- **Java 版本**: 21
+- **依赖库**: LowDragLib2（同步框架、RPC 网络）
+- **混合器**: SpongePowered Mixin
+
+### 目录结构
+
+```
+src/main/java/com/linweiyun/genshin/
+├── Minegenshin.java              // Mod 主入口
+├── MinegenshinClient.java        // 客户端入口
+├── Config.java                   // 配置文件（EXP、角色属性）
+├── core/                         // 核心系统
+│   ├── character/                // 角色系统基类
+│   ├── attribute/                // 属性系统
+│   ├── system/combat/            // 战斗系统
+│   ├── attachment/               // 玩家附件
+│   ├── network/                  // 网络同步
+│   └── ...
+├── content/                      // 内容实现
+│   ├── effect/character/         // 角色效果
+│   ├── entities/                 // 实体
+│   └── ...
+├── registry/                     // 注册表
+├── event/                        // 事件监听
+├── mixin/                        // 混合器
+└── client/                       // 客户端 GUI
+```
+
+---
+
+## 2. 开发环境
+
+### 构建命令
+
+```bash
+./gradlew build          # 编译构建
+./gradlew classes        # 只编译
+./gradlew runClient      # 开发运行客户端
+./gradlew runServer      # 开发运行服务端
+```
+
+### 配置文件
+
+运行后在 `./config/minegenshin/` 下生成：
+
+| 文件 | 内容 |
+|------|------|
+| `exp.toml` | 角色升级经验（1-90级，共88个值） |
+| `attribute.toml` | 各角色各等级 HP/ATK/DEF（95级基础，含突破跃升） |
+
+---
+
+## 3. 架构总览
+
+### 3.1 核心数据流
+
+```
+玩家攻击 → PlayerAttackInterceptor (Mixin)
+    ├─ 构建 ModDamageSpec (攻击类型 + 元素 + 倍率 + 元素量)
+    │     └─ 元素模式 + 哥伦比娅 → HYDRO 元素伤害
+    ├─ 构建 ModDamageSource (继承 MC DamageSource)
+    ├─ HurtEntityHelper.calculateCharacterDamage()
+    │     └─ 遍历角色效果 → ICharacterEffect.onAttacked() 修改伤害
+    │     └─ 最终伤害 = (ATK + 固定加成) x 倍率
+    ├─ DecayCounterManager.processHit() → 获取衰减系数
+    │     └─ 计时计数器 (按 attacker:character:decayTag 独立)
+    │     └─ 读取 DecaySequence 中的系数
+    ├─ target.hurt(damageSource, finalDamage)
+    └─ 元素附着判断
+          └─ hasAuraPotential() && elementCoefficient > 0
+          └─ chooseProfile(elementAmount) → WEAK/MEDIUM/STRONG/ULTRA_STRONG
+          └─ ElementalAttachmentHelper.attach(target, element, source, profile)
+                └─ StatusAccessor.of(target) → 拿到 StatusContainer
+                └─ doAttach() → 新建/覆盖 ElementalAttachmentInstance
+
+StatusTickEvent (每 tick)
+    └─ 遍历 LivingEntity → getData(CONTAINER) → container.tick()
+          └─ 遍历 StatusInstance → inst.tick() → 衰减 quantity
+          └─ isFinished() → 清掉耗尽的实例
+```
+
+### 3.2 角色-玩家关系模型
+
+```
+Player (MC 原生)
+    └── PlayerCharactersAttachment (附件)
+            ├── ownedCharacters: List<PGCharacter>    // 拥有的角色
+            ├── sheetCharacterUUIDs: List<Integer>     // 角色图鉴
+            ├── partyCharacterUUIDs: List<Integer>     // 队伍编队 (最多4人)
+            └── currentCharacterIndex: int             // 当前前台角色
+```
+
+### 3.3 角色内部结构
+
+```
+PGCharacter (可序列化原型)
+    └── PGCharacterData data
+        ├── characterLevel / maxExp / currentExp
+        ├── currentHP
+        ├── ascensionPhase
+        ├── attributes: AttributeContainer            // HP/ATK/DEF + 修饰器
+        ├── skillLevels (normal/charged/plunging/skill/burst)
+        ├── currentObtainingEnergy                     // 元素能量
+        ├── elementalSkillCooldownTick                 // E技能CD
+        ├── elementalBurstCooldownTick                 // Q技能CD
+        ├── effectContainer: CharacterEffectContainer   // 效果容器
+        └── dirty: boolean                             // 脏标记
+```
+
+---
+
+## 4. 核心系统详解
+
+### 4.1 注册中心与自定义注册表
+
+#### 注册表定义
+
+位置：`registry/ModRegistries.java`
+
+本 Mod 创建了三个自定义注册表，通过 NeoForge 的 `RegistryBuilder` 构建并在 `NewRegistryEvent` 中注册：
+
+```java
+// 属性类型注册表
+public static final Registry<AttributeType> ATTRIBUTE_TYPE_REGISTRY =
+    new RegistryBuilder<>(ATTRIBUTE_TYPE_REGISTRY_KEY)
+        .sync(true)   // 客户端-服务端同步
+        .create();
+
+// 角色注册表
+public static final Registry<PGCharacter> CHARACTER_REGISTRY =
+    new RegistryBuilder<>(CHARACTER_REGISTRY_KEY)
+        .sync(true)
+        .create();
+
+// 角色效果注册表
+public static final Registry<ICharacterEffect> CHARACTER_EFFECT_REGISTRY =
+    new RegistryBuilder<>(CHARACTER_EFFECT_REGISTRY_KEY)
+        .sync(true)
+        .defaultKey(Minegenshin.id("empty"))  // 默认值占位
+        .maxId(256)                            // 最多256种效果
+        .create();
+```
+
+每个注册表同时创建对应的 `DeferredRegister` 供子类注册：
+
+```java
+public static final DeferredRegister<AttributeType> ATTRIBUTE_TYPES =
+    DeferredRegister.create(ATTRIBUTE_TYPE_REGISTRY, Minegenshin.MOD_ID);
+
+public static final DeferredRegister<PGCharacter> CHARACTERS =
+    DeferredRegister.create(CHARACTER_REGISTRY, Minegenshin.MOD_ID);
+
+public static final DeferredRegister<ICharacterEffect> CHARACTER_EFFECTS =
+    DeferredRegister.create(CHARACTER_EFFECT_REGISTRY, Minegenshin.MOD_ID);
+```
+
+#### 注册示例
+
+位置：`registry/register/CharacterEffectRegister.java`
+
+```java
+public class CharacterEffectRegister {
+    public static final DeferredRegister<ICharacterEffect> CHARACTER_EFFECTS = 
+        ModRegistries.CHARACTER_EFFECTS;
+
+    public static final DeferredHolder<ICharacterEffect, IcyQuillEffect> 
+        ICY_QUILL_EFFECT = CHARACTER_EFFECTS.register("icy_quill", IcyQuillEffect::new);
+
+    public static void register(IEventBus eventBus) {
+        CHARACTER_EFFECTS.register(eventBus);
+    }
+}
+```
+
+#### 主入口注册
+
+位置：`Minegenshin.java` 构造函数
+
+```java
+public Minegenshin(IEventBus modEventBus, ModContainer modContainer) {
+    CharacterRegister.CHARACTERS.register(modEventBus);
+    AttachmentRegistration.register(modEventBus);
+    CharacterEffectRegister.register(modEventBus);
+    ModAttributes.ATTRIBUTES.register(modEventBus);
+    EntityRegister.register(modEventBus);
+    DamageTypeRegister.register(modEventBus);
+    // ...
+}
+```
+
+### 4.2 角色系统
+
+#### PGCharacter 基类构造
+
+```java
+public PGCharacter(
+    int characterUUID,                          // 唯一标识（如 135001）
+    int weaponType,                             // 武器类型
+    Component name,                             // 显示名称
+    ElementalsGIM element,                      // 元素类型
+    CharacterAscendAttribute ascendAttribute,   // 突破属性类型
+    int skillCooldownTick,                      // E技能CD (tick)
+    int burstCooldownTick,                     // Q技能CD (tick)
+    int maxEnergy,                              // 元素能量上限
+    float defaultSkillDamage,                   // 默认技能伤害系数
+    String characterId,                         // 注册名
+    Map<Identifier, Supplier<List<? extends Integer>>> statGrowthMap  // 属性成长曲线
+)
+```
+
+#### 关键方法
+
+| 方法 | 说明 |
+|------|------|
+| `getData()` | 获取角色状态数据 PGCharacterData |
+| `addExp(int amount)` | 增加经验值，自动触发升级检查 |
+| `performElementalSkill(Player, int skillTime)` | RPC 调用入口，处理 CD 后调用 triggerElementalSkill |
+| `performElementalBurst(Player)` | RPC 调用入口，处理能量后调用 triggerElementalBurst |
+| `triggerElementalSkill(Player, int skillTime)` | **子类实现点**：E 技能具体逻辑 |
+| `triggerElementalBurst(Player)` | **子类实现点**：Q 技能具体逻辑 |
+| `tick(Player)` | 每 tick 更新（CD、能量、效果 duration） |
+| `getCharacterUUID()` / `getName()` / `getElement()` | 基础属性读取 |
+
+#### 角色 Tick 逻辑链
+
+```
+CharacterTickEvent.onPlayerTick(PlayerTickEvent.Post)
+    │
+    ├─ 读取 PlayerCharactersAttachment
+    │     └─ attachment = player.getData(PLAYER_CHARACTERS_ATTACHMENT)
+    │
+    ├─ 服务端：tick 队伍角色（最多4人）
+    │     └─ for uuid in partyCharacterUUIDs
+    │           └─ character = CharacterHelper.getCharacterByUUID(player, uuid)
+    │                 └─ PGCharacter.tick(player)
+    │                       ├─ elementalSkillCooldownTick--  (到0可按E)
+    │                       ├─ elementalBurstCooldownTick--  (到0可按Q)
+    │                       ├─ currentObtainingEnergy = min(maxEnergy, current + perTick)
+    │                       └─ effectContainer.tick() → 逐效果递减 duration
+    │
+    └─ 同步脏数据
+          └─ for character in ownedCharacters
+                └─ characterData.isDirty()? → syncSingleCharacterToPlayer/Server()
+```
+
+#### 角色实现示例
+
+位置：`core/character/polearm/Shenhe.java`
+
+```java
+public class Shenhe extends PGCharacter {
+    public Shenhe() {
+        super(
+            135001,                              // UUID
+            5,                                    // 长柄武器
+            Component.translatable("character.name.shenhe"),
+            ElementalsGIM.CYRO,
+            CharacterAscendAttribute.ATK,
+            10 * 20,                              // E技能CD 10秒
+            15 * 20,                              // Q技能CD 15秒
+            10 * 20,                              // 能量恢复
+            80f,                                  // 默认技能伤害系数
+            "shenhe",                             // 注册名
+            Map.of(
+                ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
+                ModAttributes.ATK.getId(), Config.SHENHE_ATK,
+                ModAttributes.DEF.getId(), Config.SHENHE_DEF
+            )
+        );
+        data.setElementalSkillStacks(2);  // 战技可存储2层
+    }
+
+    @Override
+    protected void triggerElementalSkill(Player player, int skillTime) {
+        PlayerCharactersAttachment attachment = 
+            player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        
+        // 为队伍4人分别添加冰凌效果
+        for (int i = 0; i < 4; i++) {
+            PGCharacter partyChar = attachment.getPartyCharacter(i);
+            if (partyChar != null) {
+                CharacterEffectInstance effect = new CharacterEffectInstance(
+                    CharacterEffectRegister.ICY_QUILL_EFFECT.get(),
+                    200,    // 持续 200 tick = 10秒
+                    1       // amplifier
+                );
+                effect.setIntData(IcyQuillEffect.ICY_QUILL_COUNT_KEY, 7);
+                CharacterEffectHelper.addEffect(player, partyChar, effect);
+            }
+        }
+    }
+
+    @Override
+    protected void triggerElementalBurst(Player player) {
+        TalismanSpiritArea field = EntityRegister.FIELD_TALISMAN_SPIRIT.get()
+            .create(player.level(), EntitySpawnReason.EVENT);
+        field.setPos(player.position());
+        player.level().addFreshEntity(field);
+    }
+
+    @Override
+    public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {
+        return Map.of(
+            ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
+            ModAttributes.ATK.getId(), Config.SHENHE_ATK,
+            ModAttributes.DEF.getId(), Config.SHENHE_DEF
+        );
+    }
+}
+```
+
+#### 从玩家获取角色
+
+```java
+// 获取当前前台角色
+PGCharacter currentChar = CharacterHelper.getCurrentCharacter(player);
+
+// 根据 UUID 获取特定角色
+PGCharacter shenhe = CharacterHelper.getCharacterByUUID(player, 135001);
+
+// 直接从附件获取队伍角色
+PlayerCharactersAttachment attachment = 
+    player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+PGCharacter partyChar = attachment.getPartyCharacter(0);  // 队伍第1人
+boolean hasChar = attachment.hasCharacter(135001);        // 是否拥有某角色
+```
+
+### 4.3 属性系统
+
+#### AttributeType —— 属性类型标识
+
+`AttributeType` 是 Java Record，作为属性的唯一标识：
+
+```java
+public record AttributeType(
+    Identifier id,           // 注册表 ID (如 minegenshin:max_hp)
+    String translationKey,   // 翻译键
+    float defaultValue       // 默认值
+)
+
+// 快捷构造
+new AttributeType("max_hp", "attribute.minegenshin.max_hp", 0)
+```
+
+注册方式：
+
+```java
+public class ModAttributes {
+    public static final DeferredHolder<AttributeType, AttributeType> MAX_HP =
+        ATTRIBUTES.register("max_hp", 
+            () -> new AttributeType("max_hp", "attribute.minegenshin.max_hp", 0));
+
+    public static final DeferredHolder<AttributeType, AttributeType> ATK =
+        ATTRIBUTES.register("atk",
+            () -> new AttributeType("atk", "attribute.minegenshin.atk", 0));
+
+    public static final DeferredHolder<AttributeType, AttributeType> DEF =
+        ATTRIBUTES.register("def",
+            () -> new AttributeType("def", "attribute.minegenshin.def", 0));
+}
+```
+
+#### AttributeContainer —— 属性容器
+
+管理角色的基础值和修饰器：
+
+```java
+AttributeContainer container = character.getData().getAttributeContainer();
+
+// 计算总属性值
+double totalAtk = container.getTotalValue(ModAttributes.ATK.value());
+
+// 修改基础值（通常只在等级变化时）
+container.setBaseValue(ModAttributes.ATK.value(), 300);
+
+// 添加永久修饰器（来源名作为 key，可用于后续移除）
+container.addFlatModifier(ModAttributes.ATK.value(), "weapon", 200);
+container.addPercentModifier(ModAttributes.ATK.value(), "artifact", 0.2f);
+
+// 添加临时修饰器（效果用，效果过期后需手动移除）
+container.addTempFlatModifier(ModAttributes.ATK.value(), "buff", 100);
+
+// 移除修饰器
+container.removeModifier(ModAttributes.ATK.value(), "weapon");
+```
+
+#### 总属性值计算公式
+
+```
+total = baseValue * (1 + permanentPercent + tempPercent)
+      + permanentFlat + tempFlat
+```
+
+#### AttributeInstance —— 单个属性实例
+
+```java
+public class AttributeInstance {
+    private double baseValue;           // 基础值
+    private double permanentFlat;       // 永久固定加成
+    private double permanentPercent;    // 永久百分比加成
+    private double tempFlat;            // 临时固定加成
+    private double tempPercent;         // 临时百分比加成
+
+    public double getTotalValue() {
+        return baseValue * (1 + permanentPercent + tempPercent)
+             + permanentFlat + tempFlat;
+    }
+}
+```
+
+### 4.4 效果系统 (CharacterEffect)
+
+#### ICharacterEffect 接口
+
+位置：`content/effect/character/ICharacterEffect.java`
+
+所有角色效果的实现接口，方法均为 default 可选择性实现：
+
+| 方法 | 触发时机 | 典型用途 |
+|------|----------|----------|
+| `onEffectAdded()` | 效果首次添加 | 初始化状态、应用临时修饰器 |
+| `onEffectRemoved()` | 效果移除 | 清理修饰器、恢复原状态 |
+| `onEffectOverride()` | 重复添加相同效果 | 自定义叠加规则 |
+| `onEffectFrontTick()` | 角色处于前台时每 tick | 前台专属逻辑 |
+| `onEffectBackTick()` | 角色处于后台时每 tick | 后台逻辑（如璃月共鸣） |
+| `onEffectTick()` | 不管前后台都调用 | 默认递减 duration，返回 false 移除效果 |
+| `onAttacked()` | 角色造成攻击时 | 修改伤害规格（加伤、减伤） |
+| `isInstantaneous()` | 查询效果性质 | 标记一次性效果 |
+
+#### 实现效果 —— 完整示例
+
+位置：`content/effect/character/shenhe/IcyQuillEffect.java`
+
+```java
+public class IcyQuillEffect implements ICharacterEffect {
+    public static final String ICY_QUILL_COUNT_KEY = "icy_quill_count";
+
+    @Override
+    public void onAttacked(Player holder, PGCharacter character, 
+                           LivingEntity target, CharacterEffectInstance instance,
+                           ModDamageSource damageSource) {
+        
+        ModDamageSpec oldSpec = damageSource.getSpec();
+        
+        // 只对冰伤生效
+        if (oldSpec.getElement() == ElementalsGIM.CYRO) {
+            PlayerCharactersAttachment attachment = 
+                holder.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            PGCharacter shenhe = attachment.getCharacterByUUID(
+                CharacterRegister.SHENHE.get().getCharacterUUID());
+
+            if (shenhe != null) {
+                float bonus = (float)(
+                    shenhe.getData().getAttributeTotalValue(ModAttributes.ATK.value()) 
+                    * 0.776f
+                );
+                ModDamageSpec newSpec = oldSpec.withFlatDamageBonus(bonus);
+                damageSource.setSpec(newSpec);
+            }
+        }
+    }
+
+    @Override
+    public void onEffectOverride(Player holder, PGCharacter character,
+                                 CharacterEffectInstance existing,
+                                 CharacterEffectInstance newInstance) {
+        // 持续时间取较大值
+        newInstance.setDuration(Math.max(
+            existing.getDuration(), newInstance.getDuration()));
+        // 冰凌数量取较大值
+        newInstance.setIntData(ICY_QUILL_COUNT_KEY, 
+            Math.max(
+                existing.getIntData(ICY_QUILL_COUNT_KEY), 
+                newInstance.getIntData(ICY_QUILL_COUNT_KEY)));
+    }
+}
+```
+
+#### CharacterEffectInstance —— 效果实例
+
+```java
+// 创建效果实例
+CharacterEffectInstance effect = new CharacterEffectInstance(
+    CharacterEffectRegister.ICY_QUILL_EFFECT.get(),  // ICharacterEffect 实现
+    200,                                              // 持续 200 tick (10秒)
+    1,                                                // amplifier
+    false,                                            // 是否在 HUD 隐藏
+    new CompoundTag()                                 // 额外数据
+);
+
+// 快捷构造（不带额外数据）
+CharacterEffectInstance effect = new CharacterEffectInstance(
+    CharacterEffectRegister.ICY_QUILL_EFFECT.get(), 200, 1);
+
+// 设置效果特有数据
+effect.setIntData("icy_quill_count", 7);
+effect.setBooleanData("some_flag", true);
+effect.setFloatData("bonus", 1.5f);
+
+// 深拷贝
+CharacterEffectInstance copy = effect.copy();
+
+// INFINITE 常量表示无限持续
+CharacterEffectInstance.INFINITE
+```
+
+#### CharacterEffectHelper —— 效果操作工具类
+
+```java
+// 添加效果（自动调用 onEffectAdded 或 onEffectOverride）
+CharacterEffectHelper.addEffect(player, character, effectInstance);
+
+// 移除效果
+CharacterEffectHelper.removeEffect(player, character, IcyQuillEffect.INSTANCE);
+
+// 清除所有效果
+CharacterEffectHelper.clearEffects(player, character);
+
+// 查询效果
+boolean hasEffect = CharacterEffectHelper.hasEffect(characterData, IcyQuillEffect.INSTANCE);
+CharacterEffectInstance inst = CharacterEffectHelper.getEffectInstance(characterData, IcyQuillEffect.INSTANCE);
+```
+
+#### 注册效果
+
+位置：`registry/register/CharacterEffectRegister.java`
+
+```java
+public class CharacterEffectRegister {
+    public static final DeferredHolder<ICharacterEffect, IcyQuillEffect> 
+        ICY_QUILL_EFFECT = CHARACTER_EFFECTS.register("icy_quill", IcyQuillEffect::new);
+
+    public static void register(IEventBus eventBus) {
+        CHARACTER_EFFECTS.register(eventBus);
+    }
+}
+```
+
+#### 效果 Tick 逻辑链
+
+```
+CharacterEffectEvent.characterEffectTick(PlayerTickEvent.Post)
+    │
+    └─ 队伍角色循环（最多4人）
+          └─ for i in 0..3
+                └─ character = attachment.getPartyCharacter(i)
+                      │
+                      └─ 复制 effects 列表（避免并发修改）
+                            └─ for effect in copiedEffects
+                                  ├─ ICharacterEffect.onEffectBackTick()    ← 后台逻辑
+                                  ├─ ICharacterEffect.onEffectFrontTick()   ← 前台逻辑
+                                  │
+                                  └─ ICharacterEffect.onEffectTick()         ← 返回 false 移除
+                                        ├─ true  → 保留（内部 duration--）
+                                        └─ false → CharacterEffectHelper.removeEffect()
+                                              ├─ onEffectRemoved() 清理修饰器
+                                              └─ 从 container 列表移除
+```
+
+#### 添加效果逻辑链
+
+```
+CharacterEffectHelper.addEffect(player, character, instance)
+    │
+    ├─ 检查是否已存在同类效果
+    │     ├─ 不存在 → effectContainer.add(instance)
+    │     │              └─ instance.getEffect().onEffectAdded()  ← 初始化修饰器
+    │     │
+    │     └─ 已存在 → 合并
+    │           └─ existing.getEffect().onEffectOverride(existing, instance)
+    │                 └─ example: duration = max(existing.duration, new.duration)
+```
+
+### 4.5 伤害系统与衰减机制
+
+#### 概述
+
+伤害管线设计参考原神的攻击衰减系统：
+
+1. **ModDamageSpec** —— 纯数据类，携带一次攻击的完整参数
+2. **ModDamageSource** —— 继承 MC 的 `DamageSource`，嵌入 ModDamageSpec
+3. **DecayCounterManager** —— 目标实体上的计时计数器管理器
+4. **DecaySequence** —— 三种序列（元素/伤害/削韧）的系数数组
+5. **DecayGroup** —— 清除时间 + 三个序列
+6. **HurtEntityHelper** —— 整合所有计算的最终入口
+
+#### ModDamageSpec —— 伤害规格
+
+```java
+// 方式1：快速工厂方法（物理伤害）
+ModDamageSpec physicalSpec = ModDamageSpec.physical(AttackType.NORMAL_ATTACK, 1.5f);
+
+// 方式2：快速工厂方法（元素伤害，默认元素量1.0）
+ModDamageSpec elementalSpec = ModDamageSpec.elemental(
+    AttackType.ELEMENTAL_SKILL,   // 攻击类型
+    ElementalsGIM.PYRO,           // 元素类型
+    2.5f                           // 伤害倍率
+);
+
+// 方式3：Builder 模式（最灵活）
+ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.CYRO)
+    .multiplier(1.5f)          // ATK 乘以的系数
+    .flatBonus(0.0f)           // 固定额外伤害
+    .elementAmount(1.0f)       // 元素附着量
+    .decayGroup(DecayGroup.DEFAULT)  // 衰减组别（null = 默认）
+    .build();
+```
+
+**关键字段：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `attackType` | `AttackType` | 攻击分类，携带衰减标签 |
+| `element` | `ElementalsGIM` | 元素类型（FYSIKOS=物理） |
+| `damageMultiplier` | `float` | 伤害倍率 |
+| `flatDamageBonus` | `float` | 固定额外伤害 |
+| `elementAmount` | `float` | 元素附着基础量 |
+| `decayGroup` | `DecayGroup` | 自定义衰减组别（null = 默认） |
+
+#### AttackType —— 攻击分类（带衰减标签）
+
+| 类型 | 衰减标签 | 说明 |
+|------|----------|------|
+| `NORMAL_ATTACK` | `"normal_attack"` | 普通攻击 |
+| `CHARGED_ATTACK` | `"charged_attack"` | 重击 |
+| `PLUNGING_ATTACK` | `"plunging_attack"` | 下落攻击 |
+| `ELEMENTAL_SKILL` | `"elemental_skill"` | 元素战技 |
+| `ELEMENTAL_BURST` | `"elemental_burst"` | 元素爆发 |
+| `SPECIAL` | `null` | 不参与附着冷却 |
+| `MONSTER` | `null` | 怪物伤害，不参与附着冷却 |
+
+#### ElementalsGIM —— 元素类型
+
+| 枚举值 | 说明 |
+|--------|------|
+| `FYSIKOS` | 物理（希腊语 "Physical"，不参与元素反应） |
+| `PYRO` / `HYDRO` / `CYRO` / `ELECTRO` / `ANEMO` / `GEO` / `DENDRO` | 火/水/冰/雷/风/岩/草 |
+
+#### DecaySequence —— 衰减序列
+
+序列是系数数组，按攻击命中次数查表得到系数。超过序列长度后系数为 0。
+
+```java
+// 默认序列
+DecaySequence.DEFAULT_ELEMENT    // [1,0,0, 1,0,0, ...] 长度24 → 每3次附着1次
+DecaySequence.DEFAULT_DAMAGE     // [1,1,1, ...] 长度15 → 伤害不衰减
+DecaySequence.DEFAULT_POISE      // [1,1,1, ...] 长度14 → 削韧不衰减
+
+// 自定义序列
+// 申鹤战技：只有第1次有附着
+DecaySequence shenheElement = DecaySequence.of(1f, 0f, 0f, 0f, 0f, 0f, 0f);
+
+// 长柄重击：只有第1次有伤害
+DecaySequence polearmHeavy = DecaySequence.of(1f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
+
+// 绫华重击：前3次有伤害
+DecaySequence ayakaHeavy = DecaySequence.createRepeating(
+    new float[]{1f, 1f, 1f, 0f}, 7
+);
+```
+
+#### DecayGroup —— 衰减组别
+
+一个衰减组别定义了计时器和三组序列：
+
+```java
+// 默认组别（大多数攻击使用）
+DecayGroup.DEFAULT
+
+// 自定义组别
+DecayGroup shenheGroup = new DecayGroup(
+    2,                                                              // 清除时间：2 tick = 0.1秒
+    DecaySequence.of(1f, 0f, 0f, 0f, 0f, 0f, 0f),                  // 元素量序列
+    DecaySequence.DEFAULT_DAMAGE,                                    // 伤害序列
+    DecaySequence.DEFAULT_POISE                                     // 削韧序列
+);
+```
+
+默认组别参数：
+- 清除时间 50 tick = 2.5 秒
+- 元素量序列 [1,0,0] x 8 = 每3次附着1次
+- 伤害序列 全1，长度15
+- 削韧序列 全1，长度14
+
+#### 伤害计算流程
+
+```java
+// HurtEntityHelper
+
+// Step 1: 效果修改伤害规格
+for (CharacterEffectInstance effect : attacker.getData()
+        .getEffectContainer().getEffects()) {
+    effect.getEffect().onAttacked(player, attacker, target, effect, damageSource);
+}
+
+// Step 2: 基础伤害计算
+float baseDamage = (float)(
+    attacker.getData().getAttributeTotalValue(ModAttributes.ATK.value()) 
+    + damageSpec.getFlatDamageBonus()
+) * damageSpec.getDamageMultiplier();
+
+// Step 3: 衰减系数应用
+if (damageSpec.hasDecayTag()) {
+    IDecayCounterHolder holder = (IDecayCounterHolder) target;
+    DecayCounterManager manager = holder.getDecayCounterManager();
+    DecayResult result = manager.processHit(attacker, character, spec, currentTick);
+    baseDamage *= result.getDamageCoefficient();
+}
+
+// Step 4: 最终应用
+target.hurt(damageSource, baseDamage);
+```
+
+#### 完整攻击→伤害→衰减→附着 逻辑链
+
+```
+PlayerAttackInterceptor.onPlayerAttack(Player.attack HEAD 注入)
+    │
+    ├─ 取角色 → 非原神模式 return
+    ├─ ci.cancel() 取消原版攻击
+    │
+    ├─ buildModDamageSource()
+    │     ├─ genshinMode + 哥伦比娅 → elemental(NORMAL_ATTACK, HYDRO, 1.0f)
+    │     └─ 其他 → physical(NORMAL_ATTACK, 1.0f)
+    │
+    └─ HurtEntityHelper.hurtEntityForPlayer(source, character, target, 1.0f)
+          │
+          ├─ [仅服务端]
+          │
+          ├─ calculateCharacterDamage()
+          │     ├─ 遍历效果 → onAttacked() 可修改 damageSpec
+          │     └─ baseDamage = (ATK + flatBonus) × multiplier
+          │
+          ├─ DecayCounterManager.processHit()
+          │     ├─ key = "playerUUID:characterUUID:normal_attack:0"
+          │     ├─ getOrCreateCounter() → 计数器不存在则新建
+          │     ├─ hitCount++
+          │     └─ 从三个序列查当前系数：
+          │           ├─ elementCoef  = elementSequence[hitCount]
+          │           ├─ damageCoef   = damageSequence[hitCount]
+          │           └─ poiseCoef    = poiseSequence[hitCount]
+          │
+          ├─ finalDamage = baseDamage × damageCoef
+          ├─ target.hurt(damageSource, finalDamage)    ← 原版伤害应用
+          │
+          └─ 元素附着（详见 4.10）
+                ├─ hasAuraPotential() && elementCoef > 0
+                └─ ElementalAttachmentHelper.attach(...)
+```
+
+#### 衰减计数器清理逻辑链
+
+```
+DecayCounterWorker (后台线程，服务端启动时初始化)
+    │
+    └─ 定期扫描所有已注册的 DecayCounterManager
+          └─ for counter in manager.allCounters
+                └─ currentTick - startTime > clearTime?
+                      ├─ true → 从 map 移除 counter
+                      └─ false → 保留继续累积 hitCount
+```
+
+#### ModDamageSource —— 自定义伤害源
+
+```java
+// 最常用：从 DamageSpec 和攻击者创建
+ModDamageSource source = ModDamageSource.from(damageSpec, player);
+
+// 手动指定 DamageType
+ModDamageSource source = new ModDamageSource(
+    DamageTypeRegister.NORMAL_ATTACK_TYPE,  // DamageType Holder
+    player,                                  // 直接伤害源
+    spec                                     // DamageSpec
+);
+
+// 获取和修改内部 Spec
+ModDamageSpec spec = source.getSpec();
+source.setSpec(newSpec);
+```
+
+#### DecayCounterManager —— 计时计数器管理
+
+每个 LivingEntity 身上都有一个 `DecayCounterManager`（通过 Mixin 注入），存储多个独立的计数器。
+
+计数器 Key 格式：`attackerUuid:characterId:decayTag:groupId`
+
+```java
+IDecayCounterHolder holder = (IDecayCounterHolder) targetEntity;
+DecayCounterManager manager = holder.getDecayCounterManager();
+
+// 主线程处理攻击 → 获取衰减结果
+DecayResult result = manager.processHit(attacker, character, spec, gameTime);
+float elementCoef = result.getElementCoefficient();
+float damageCoef  = result.getDamageCoefficient();
+float poiseCoef   = result.getPoiseCoefficient();
+```
+
+Worker 线程（`DecayCounterWorker`）定期扫描超时计数器并清理，在服务端启动时初始化。
+
+### 4.6 玩家附件 (Attachment)
+
+位置：`core/attachment/AttachmentRegistration.java`
+
+附件是 NeoForge 推荐的存储玩家数据的方式。
+
+#### 注册附件
+
+```java
+// 原石附件（简单整数）
+ATTACHMENTS.register("player_primogem",
+    () -> AttachmentType.builder(() -> 0)
+        .serialize(Codec.INT.fieldOf("primogem"))
+        .sync(StreamCodec.of(
+            FriendlyByteBuf::writeInt,
+            FriendlyByteBuf::readInt
+        ))
+        .copyOnDeath()
+        .build()
+);
+
+// 角色附件（复杂对象，使用 LowDragLib 的 IPersistedSerializable）
+ATTACHMENTS.register("player_characters",
+    () -> AttachmentType.serializable(PlayerCharactersAttachment::new)
+        .copyOnDeath()
+        .build()
+);
+```
+
+#### 使用附件
+
+```java
+// 读取数据
+int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
+
+// 写入数据
+player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, 160);
+
+// 角色附件
+PlayerCharactersAttachment attachment = 
+    player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+PGCharacter currentChar = attachment.getCurrentCharacter();
+List<Integer> partyUuids = attachment.getPartyCharacterUUIDs();
+attachment.setPartyCharacterToServer(0, shenheUuid);
+```
+
+### 4.7 网络同步系统
+
+#### RPC 框架
+
+使用 LowDragLib2 的 RPC 注解驱动机制：
+
+```java
+public class NetworkManager {
+
+    // 定义 RPC 方法 —— sender.isServer() 判断当前在哪一侧
+    @RPCPacket("primogemRPCPacket")
+    public static void primogemRPCPacket(RPCSender sender, int amount) {
+        if (sender.isServer()) {
+            // 服务端收到请求 → 修改数据
+            ServerPlayer player = sender.asPlayer();
+            player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get(), amount);
+        } else {
+            // 客户端收到响应 → 更新显示
+            ClientHandler.primogemClientHandler(amount);
+        }
+    }
+
+    // 客户端 → 服务端
+    public static void setPrimogemToServer(int amount) {
+        RPCPacketDistributor.rpcToServer("primogemRPCPacket", amount);
+    }
+
+    // 服务端 → 客户端
+    public static void setPrimogemToPlayer(ServerPlayer player, int amount) {
+        RPCPacketDistributor.rpcToPlayer(player, "primogemRPCPacket", amount);
+    }
+}
+```
+
+#### 同步模式
+
+```
+客户端 ──rpcToServer──▶ 服务端（修改数据 + 持久化）
+服务端 ──rpcToPlayer──▶ 客户端（更新显示）
+```
+
+#### 角色数据脏标记同步
+
+位置：`event/server/CharacterTickEvent.java`
+
+角色数据内部有 `dirty` 标记，每 tick 检查：
+
+```java
+for (PGCharacter character : attachment.getOwnedCharacters()) {
+    if (character.getData().isDirty()) {
+        character.getData().clearDirty();
+        if (player instanceof ServerPlayer serverPlayer) {
+            attachment.syncSingleCharacterToPlayer(serverPlayer, character);
+        } else {
+            attachment.syncSingleCharacterToServer(character);
+        }
+    }
+}
+```
+
+#### ClientHandler —— 客户端处理侧
+
+位置：`core/network/ClientHandler.java`
+
+所有从服务端收到的同步请求都在这里处理：
+
+```java
+public class ClientHandler {
+    public static void primogemClientHandler(int amount) {
+        Player player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, amount);
+        }
+    }
+    // ...
+}
+```
+
+### 4.8 事件系统
+
+所有事件监听类都使用 `@EventBusSubscriber` 注解。
+
+#### CharacterTickEvent —— 角色每 tick
+
+位置：`event/server/CharacterTickEvent.java`
+
+更新队伍角色 tick（CD、能量等），并同步脏数据：
+
+```java
+@SubscribeEvent
+public static void onPlayerTick(PlayerTickEvent.Post event) {
+    Player player = event.getEntity();
+    PlayerCharactersAttachment attachment = 
+        player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+
+    // 更新队伍角色 tick（仅服务端）
+    if (!player.level().isClientSide()) {
+        for (int uuid : attachment.getPartyCharacterUUIDs()) {
+            PGCharacter character = CharacterHelper.getCharacterByUUID(player, uuid);
+            if (character != null) {
+                character.tick(player);
+            }
+        }
+    }
+
+    // 同步脏数据
+    for (PGCharacter character : attachment.getOwnedCharacters()) {
+        if (character.getData().isDirty()) {
+            character.getData().clearDirty();
+            // 双向同步...
+        }
+    }
+}
+```
+
+#### CharacterEffectEvent —— 效果每 tick
+
+位置：`event/server/CharacterEffectEvent.java`
+
+遍历所有队伍角色的所有效果，调用前后台 Tick 和默认 Tick：
+
+```java
+@SubscribeEvent
+public static void characterEffectTick(PlayerTickEvent.Post event) {
+    // ...
+    for (int i = 0; i < 4; i++) {
+        PGCharacter character = attachment.getPartyCharacter(i);
+        if (character != null) {
+            List<CharacterEffectInstance> effects = new ArrayList<>(
+                character.getData().getEffectContainer().getEffects()
+            );
+            for (CharacterEffectInstance effect : effects) {
+                effect.getEffect().onEffectBackTick(player, character, effect);
+                effect.getEffect().onEffectFrontTick(player, character, effect);
+                if (!effect.getEffect().onEffectTick(player, character, effect)) {
+                    CharacterEffectHelper.removeEffect(player, character, effect.getEffect());
+                }
+            }
+        }
+    }
+}
+```
+
+#### PlayerLoginEventListeners —— 玩家登录全量同步
+
+位置：`event/server/PlayerLoginEventListeners.java`
+
+登录时触发 `CharacterDataSyncEventHandler.handle()` 进行全量同步。
+
+### 4.9 实体系统
+
+#### 实体注册
+
+位置：`registry/register/EntityRegister.java`
+
+```java
+public class EntityRegister {
+    public static final Supplier<EntityType<TalismanSpiritArea>> FIELD_TALISMAN_SPIRIT =
+        ENTITIES.register("talisman_spirit",
+            () -> EntityType.Builder.of(TalismanSpiritArea::new, MobCategory.CREATURE)
+                .build(ResourceKey.create(Registries.ENTITY_TYPE, Minegenshin.id("talisman_spirit")))
+        );
+
+    public static final Supplier<EntityType<SlimeCyro>> SLIME_CYRO =
+        ENTITIES.register("slime_cyro",
+            () -> EntityType.Builder.of(SlimeCyro::new, MobCategory.MONSTER)
+                .sized(1.3964844F, 1.6F)
+                .eyeHeight(1.52F)
+                .build(ResourceKey.create(Registries.ENTITY_TYPE, Minegenshin.id("slime_cyro")))
+        );
+
+    public static void register(IEventBus eventBus) {
+        ENTITIES.register(eventBus);
+        eventBus.addListener(EntityRegister::registerEntityAttributes);
+    }
+}
+```
+
+#### 生成实体
+
+```java
+TalismanSpiritArea field = EntityRegister.FIELD_TALISMAN_SPIRIT.get()
+    .create(player.level(), EntitySpawnReason.EVENT);
+if (field != null) {
+    field.setPos(player.position());
+    field.setOwner(player, characterUUID);
+    player.level().addFreshEntity(field);
+}
+```
+
+### 4.10 元素附着系统
+
+#### 概述
+
+元素附着系统是还原原神七元素附着机制的核心系统。攻击命中目标后，根据元素类型和附着量在目标身上创建附着效果实例（ElementalAttachmentInstance），实例随时间自动衰减，可被其他元素反应消耗。
+
+**两层架构**：
+
+| 层 | 包 | 职责 |
+|----|----|------|
+| **桥接层** | `core.status` + `core.attachment` | 定义 StatusInstance 基类、StatusContainer 容器、StatusAccessor 宿主访问器 |
+| **元素层** | `core.system.about` | ElementalAttachmentInstance（元素特有字段）、ElementalAttachmentHelper（附着入口）、AttachmentProfile（衰减预设） |
+
+依赖方向：元素层 → 桥接层（元素层继承 StatusInstance、往 StatusContainer 里 add）。
+
+#### 宿主兼容性
+
+附着可以附加到四种宿主，通过 StatusAccessor 统一入口：
+
+| 宿主类型 | 存储方式 | 说明 |
+|----------|----------|------|
+| `LivingEntity` | NeoForge Attachment | `AttachmentRegistration.CONTAINER` |
+| `BlockEntity` | NeoForge Attachment | 同上 |
+| `PGCharacterData` | `@Persisted` 字段 | `PGCharacterData.statusContainer` |
+| `ItemStack` | DataComponent | `StatusDataComponents.CONTAINER` |
+
+```java
+StatusAccessor.of(livingEntity);   // LivingEntity → 自动创建/读取 Attachment
+StatusAccessor.of(blockEntity);    // BlockEntity → 同上
+StatusAccessor.of(characterData);  // PGCharacterData → 直接返回字段
+StatusAccessor.of(itemStack);      // ItemStack → get DataComponent，null 返回 EMPTY
+```
+
+#### StatusInstance —— 叠加实例基类
+
+所有能存进 StatusContainer 的东西都必须继承 StatusInstance：
+
+```java
+public class StatusInstance implements IPersistedSerializable {
+    @Persisted(key = "type_id")
+    protected String typeId;
+
+    public String getTypeId() { return typeId; }
+    public void tick() {}           // 每 tick 让生命周期流逝
+    public boolean isFinished() { return false; }  // 是否该被移除
+    public void onRemove() {}       // 移除时钩子（自然结束/强制清除）
+    public StatusInstance copy() { return null; }   // 深拷贝
+}
+```
+
+LDLib2 多态序列化机制：`@Persisted List<StatusInstance>` 序列化时每条先写 `type_id` 字段，反序列化时按 `type_id` 值找到对应子类实例化再读取字段。**子类必须提供无参构造并在其中设置 `this.typeId = "xxx"`**。
+
+#### ElementalAttachmentInstance —— 元素附着实例
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `element` | `ElementalsGIM` | 元素类型（HYDRO/CYRO/PYRO/...） |
+| `source` | `AttachmentSource` | 附着来源（NORMAL_ATTACK/ELEMENTAL_SKILL/...） |
+| `profile` | `AttachmentProfile` | 附着预设（衰减速率、持续时间等） |
+| `quantity` | `float` | 当前附着量（单位 U） |
+| `currentDecayPerSecond` | `float` | 当前每秒衰减速率 U/s |
+| `permanent` | `boolean` | 是否永久附着（false = 会衰减消失） |
+
+#### AttachmentProfile —— 附着预设
+
+预设决定附着的衰减参数：
+
+```java
+// 弱附着：1U，衰减 0.084U/s，约 7 秒消失
+AttachmentProfile.WEAK     // normal(1.0f)
+
+// 中附着：1.5U，衰减更快，约 9.5 秒
+AttachmentProfile.MEDIUM   // normal(1.5f)
+
+// 强附着：2U，衰减最快，约 12 秒
+AttachmentProfile.STRONG   // normal(2.0f)
+
+// 超强附着：4U
+AttachmentProfile.ULTRA_STRONG  // normal(4.0f)
+
+// 永久附着：4U，不衰减，自动补充
+AttachmentProfile.PERMANENT
+```
+
+公式：
+```
+baseQuantity = x
+actualQuantity = baseQuantity × 0.8    // 损耗系数
+decayPerSecond = (0.8 × x) / (7 + 2.5 × x)    // 原神还原公式
+duration = baseQuantity / decayPerSecond
+permanent = durationSeconds < 0
+```
+
+#### 附着入口 —— ElementalAttachmentHelper
+
+```java
+// 四种宿主的 attach 方法
+ElementalAttachmentHelper.attach(livingEntity, element, source, profile);
+ElementalAttachmentHelper.attach(blockEntity, element, source, profile);
+ElementalAttachmentHelper.attach(characterData, element, source, profile);
+ElementalAttachmentHelper.attach(itemStack, element, source, profile);
+
+// 消耗（元素反应调用）
+float consumed = ElementalAttachmentHelper.consume(livingEntity, element, amount);
+```
+
+#### 附着逻辑链（doAttach 内部）
+
+```
+doAttach(container, element, source, profile)
+    │
+    ├─ 1. actualQuantity = profile.actualQuantity()  ← base × lossMultiplier(0.8)
+    │
+    ├─ 2. 查找已有实例 findMatching()
+    │     └─ 条件：同元素 && 同 source && 未 finished
+    │
+    ├─ 3. existing == null → 新建实例
+    │     └─ new ElementalAttachmentInstance(element, source, profile, actualQuantity)
+    │     └─ container.add(newInst)
+    │
+    └─ 4. existing != null
+          ├─ actualQuantity ≤ existing.quantity → 不覆盖，直接 return
+          └─ actualQuantity > existing.quantity → 量多覆盖
+                ├─ existing.refreshQuantity(actualQuantity)
+                └─ element.canOverrideDecay()?
+                      ├─ true（PYRO/ELECTRO/燃元素）→ 替换衰减速率
+                      └─ false → 继承原衰减速率
+```
+
+#### 完整攻击→附着逻辑链
+
+```
+PlayerAttackInterceptor.onPlayerAttack()
+    │
+    ├─ buildModDamageSource()
+    │     └─ genshinMode && characterUUID == 145001 → ModDamageSpec.elemental(NORMAL_ATTACK, HYDRO, 1.0f)
+    │
+    └─ HurtEntityHelper.hurtEntityForPlayer(source, character, target, 1.0f)
+          │
+          ├─ [已存在的伤害计算...]
+          ├─ target.hurt(damageSource, finalDamage)
+          │
+          └─ ★ 元素附着 ★
+                ├─ spec.hasAuraPotential()  ← elementAmount > 0 && element != FYSIKOS
+                ├─ decayResult.getElementCoefficient() > 0  ← 衰减序列允许本次附着
+                │     └─ DEFAULT 序列 [1,0,0] → 每 3 次攻击 1 次有附着
+                │
+                ├─ chooseProfile(spec.getElementAmount())
+                │     └─ 1.0U → WEAK / 1.5U → MEDIUM / 2.0U → STRONG / 4.0U+ → ULTRA_STRONG
+                │
+                └─ ElementalAttachmentHelper.attach(target, HYDRO, NORMAL_ATTACK, profile)
+                      └─ ElementalAttachmentHelper.doAttach(container, HYDRO, NORMAL_ATTACK, profile)
+                            └─ (上面的 doAttach 逻辑链)
+```
+
+#### 附着衰减逻辑链（每 tick）
+
+```
+StatusTickEvent.onEntityTick(EntityTickEvent.Post)
+    │
+    ├─ 遍历所有 LivingEntity（仅服务端）
+    │     └─ living.getData(AttachmentRegistration.CONTAINER).tick()
+    │           │
+    │           └─ StatusContainer.tick()
+    │                 │
+    │                 └─ 遍历 instances
+    │                       ├─ ElementalAttachmentInstance.tick()
+    │                       │     ├─ permanent?
+    │                       │     │     ├─ true → replenishTimer-- 到点补充 quantity
+    │                       │     │     └─ false → quantity -= (decayPerSecond / 20)
+    │                       │     │
+    │                       │     └─ // TEST: 每秒打印附着状态
+    │                       │
+    │                       └─ inst.isFinished()?
+    │                             ├─ true → inst.onRemove() + 从 list 移除
+    │                             └─ false → 保留继续衰减
+```
+
+#### 覆盖规则总结
+
+| 条件 | 行为 |
+|------|------|
+| 不同 source 的同元素 | 独立实例，互不干扰 |
+| 同 source + 新附着量 ≤ 旧附着量 | 不覆盖 |
+| 同 source + 新附着量 > 旧附着量 | 覆盖 quantity |
+| 覆盖时 element.canOverrideDecay() == true | 替换衰减速率（PYRO/ELECTRO） |
+| 覆盖时 element.canOverrideDecay() == false | 继承原衰减速率（HYDRO/CYRO/DENDRO/ANEMO/GEO） |
+
+#### 序列化机制
+
+所有涉及类都实现 `IPersistedSerializable` + `@Persisted` 注解，Codec 由 LDLib2 自动生成：
+
+```java
+// StatusContainer 自身 Codec（用在 Attachment 和 DataComponent）
+public static final Codec<StatusContainer> CODEC = PersistedParser.createCodec(StatusContainer::new);
+public static final StreamCodec<ByteBuf, StatusContainer> STREAM_CODEC = PersistedParser.createStreamCodec(StatusContainer::new);
+```
+
+⚠️ **Attachment 注册必须显式指定 Codec**，不能用 `AttachmentType.serializable(factory)`：
+
+```java
+// ✅ 正确：显式指定
+AttachmentType.builder(StatusContainer::new)
+    .serialize(StatusContainer.CODEC)
+    .sync(StatusContainer.STREAM_CODEC)
+    .copyOnDeath()
+    .build()
+
+// ❌ 错误：用默认 IPersistedSerializable 序列化可能丢失数据
+AttachmentType.serializable(StatusContainer::new).build()
+```
+
+#### 关键文件索引
+
+| 类 | 路径 |
+|----|------|
+| StatusInstance（基类） | `core/status/StatusInstance.java` |
+| StatusContainer（容器） | `core/attachment/StatusContainer.java` |
+| StatusAccessor（访问器） | `core/status/StatusAccessor.java` |
+| ElementalAttachmentInstance | `core/system/about/ElementalAttachmentInstance.java` |
+| ElementalAttachmentHelper | `core/system/about/ElementalAttachmentHelper.java` |
+| AttachmentProfile | `core/system/about/AttachmentProfile.java` |
+| AttachmentSource | `core/system/about/AttachmentSource.java` |
+| AttachmentRegistration | `core/attachment/AttachmentRegistration.java` |
+| StatusDataComponents | `core/system/registry/register/StatusDataComponents.java` |
+| StatusTickEvent | `event/server/StatusTickEvent.java` |
+
+---
+
+## 5. 扩展开发指南
+
+### 5.1 添加新角色
+
+假设要添加角色 "ExampleChar"：
+
+**Step 1: 创建角色类**
+
+```java
+// src/main/java/com/linweiyun/genshin/core/character/sword/ExampleChar.java
+public class ExampleChar extends PGCharacter {
+    public ExampleChar() {
+        super(
+            135099,                              // UUID (保持唯一)
+            0,                                   // 武器类型 (0=单手剑, 3=法器, 5=长柄)
+            Component.translatable("character.name.example"),
+            ElementalsGIM.HYDRO,                // 水元素
+            CharacterAscendAttribute.HP,        // 突破属性是HP
+            12 * 20,                            // E技能CD 12秒
+            20 * 20,                            // Q技能CD 20秒
+            80,                                 // 能量需求
+            1.2f,                               // 默认技能倍率
+            "example_char",                     // 注册名
+            Map.of(
+                ModAttributes.MAX_HP.getId(), Config.EXAMPLE_HP,
+                ModAttributes.ATK.getId(), Config.EXAMPLE_ATK,
+                ModAttributes.DEF.getId(), Config.EXAMPLE_DEF
+            )
+        );
+    }
+
+    @Override
+    protected void triggerElementalSkill(Player player, int skillTime) {
+        // TODO: 实现 E 技能逻辑
+    }
+
+    @Override
+    protected void triggerElementalBurst(Player player) {
+        // TODO: 实现 Q 技能逻辑
+    }
+}
+```
+
+**Step 2: 添加配置数据**
+
+在 `Config.java` 中添加属性成长数据（95 个等级值，含 5 次突破跃升）：
+
+```java
+public static final ModConfigSpec.ConfigValue<List<? extends Integer>> EXAMPLE_HP;
+public static final ModConfigSpec.ConfigValue<List<? extends Integer>> EXAMPLE_ATK;
+public static final ModConfigSpec.ConfigValue<List<? extends Integer>> EXAMPLE_DEF;
+
+static {
+    CHARACTER_ATTRIBUTE_BUILDER.push("example_char");
+    EXAMPLE_HP = CHARACTER_ATTRIBUTE_BUILDER
+        .translation("config.attribute.example.hp")
+        .defineList(List.of("hp"), 
+            () -> List.of(1000, 1100, 1200, /* ... 95 个等级值 */),
+            null, obj -> obj instanceof Integer,
+            ModConfigSpec.Range.of(95, 95));
+    // ... ATK、DEF 同理
+}
+```
+
+**Step 3: 注册角色**
+
+```java
+// CharacterRegister.java
+public static final DeferredHolder<PGCharacter, ExampleChar> EXAMPLE_CHAR = 
+    CHARACTERS.register("example_char", ExampleChar::new);
+```
+
+**Step 4: 添加翻译文本**
+
+```json
+// resources/assets/minegenshin/lang/zh_cn.json
+{
+    "character.name.example": "示例角色",
+    "character.name.example.skill": "示例战技",
+    "character.name.example.burst": "示例爆发"
+}
+```
+
+### 5.2 添加新角色效果
+
+假设要添加 "ReflectEffect" —— 受击时反伤：
+
+**Step 1: 创建效果类**
+
+```java
+// content/effect/character/example/ReflectEffect.java
+public class ReflectEffect implements ICharacterEffect {
+
+    public static final String REFLECT_PERCENT_KEY = "reflect_percent";
+
+    @Override
+    public void onAttacked(Player holder, PGCharacter character,
+                           LivingEntity target, CharacterEffectInstance instance,
+                           ModDamageSource damageSource) {
+        // 示例：增加固定伤害加成
+        float reflectPercent = instance.getFloatData(REFLECT_PERCENT_KEY);
+        ModDamageSpec oldSpec = damageSource.getSpec();
+        ModDamageSpec newSpec = oldSpec.withFlatDamageBonus(
+            oldSpec.getFlatDamageBonus() + character.getData().getCurrentHP() * reflectPercent
+        );
+        damageSource.setSpec(newSpec);
+    }
+
+    @Override
+    public void onEffectAdded(Player holder, PGCharacter character, 
+                              CharacterEffectInstance instance) {
+        // 可在这里添加临时属性修饰器
+    }
+
+    @Override
+    public void onEffectRemoved(Player holder, PGCharacter character, 
+                                CharacterEffectInstance instance) {
+        // 清理修饰器等
+    }
+}
+```
+
+**Step 2: 注册效果**
+
+```java
+// CharacterEffectRegister.java
+public static final DeferredHolder<ICharacterEffect, ReflectEffect> 
+    REFLECT_EFFECT = CHARACTER_EFFECTS.register("reflect", ReflectEffect::new);
+```
+
+**Step 3: 在技能中使用**
+
+```java
+@Override
+protected void triggerElementalSkill(Player player, int skillTime) {
+    PGCharacter currentChar = CharacterHelper.getCurrentCharacter(player);
+    if (currentChar != null) {
+        CharacterEffectInstance effect = new CharacterEffectInstance(
+            CharacterEffectRegister.REFLECT_EFFECT.get(),
+            200,   // 10秒
+            1
+        );
+        effect.setFloatData(ReflectEffect.REFLECT_PERCENT_KEY, 0.2f);
+        CharacterEffectHelper.addEffect(player, currentChar, effect);
+    }
+}
+```
+
+### 5.3 添加新实体
+
+**Step 1: 创建实体类**
+
+```java
+// content/entities/teyvat/monster/slime/ExampleMonster.java
+public class ExampleMonster extends TeyvatLivingEntity {
+    public ExampleMonster(EntityType<?> type, Level level) {
+        super(type, level);
+    }
+    // 攻击逻辑、掉落物、AI行为...
+}
+```
+
+**Step 2: 注册实体**
+
+```java
+// EntityRegister.java
+public static final Supplier<EntityType<ExampleMonster>> EXAMPLE_MONSTER =
+    ENTITIES.register("example_monster",
+        () -> EntityType.Builder.of(ExampleMonster::new, MobCategory.MONSTER)
+            .sized(0.6f, 1.8f)
+            .build(ResourceKey.create(Registries.ENTITY_TYPE, Minegenshin.id("example_monster")))
+    );
+
+private static void registerEntityAttributes(EntityAttributeCreationEvent event) {
+    event.put(EXAMPLE_MONSTER.get(), ExampleMonster.createAttributes().build());
+}
+```
+
+**Step 3: 创建资源文件**
+
+- `assets/minegenshin/geo/example_monster.geo.json` —— 模型（或 GeckoLib）
+- `assets/minegenshin/textures/entity/example_monster.png` —— 贴图
+- `assets/minegenshin/lang/zh_cn.json` —— 翻译
+
+### 5.4 添加新伤害类型
+
+```java
+// DamageTypeRegister.java
+public static final DeferredHolder<DamageType, DamageType> CUSTOM_DAMAGE =
+    DAMAGE_TYPES.register("custom_damage",
+        () -> new DamageType("custom_damage", 0));
+
+// 使用
+ModDamageSource source = new ModDamageSource(
+    DamageTypeRegister.CUSTOM_DAMAGE,  // DamageType Holder
+    attacker,                            // 直接伤害源
+    spec                                 // DamageSpec
+);
+```
+
+---
+
+## 6. Mixin 系统
+
+### 已注册的 Mixin
+
+配置文件：`src/main/resources/minegenshin.mixins.json`
+
+```json
+{
+  "required": true,
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "DamageContainerMixin",
+    "LivingEntityDecayMixin",
+    "PlayerAttackInterceptor"
+  ]
+}
+```
+
+| Mixin 类 | 注入目标 | 功能 |
+|----------|----------|------|
+| `DamageContainerMixin` | 伤害相关类 | 元素伤害容器修改 |
+| `LivingEntityDecayMixin` | `LivingEntity` | 注入 `DecayCounterManager`，实现 `IDecayCounterHolder` |
+| `PlayerAttackInterceptor` | `Player.attack()` | 拦截玩家攻击，走 Mod 伤害管线 |
+
+### PlayerAttackInterceptor —— 攻击拦截
+
+```java
+@Mixin(Player.class)
+public class PlayerAttackInterceptor {
+    
+    @Inject(method = "attack", at = @At("HEAD"), cancellable = true)
+    private void onPlayerAttack(Entity target, CallbackInfo ci) {
+        Player player = (Player) (Object) this;
+        
+        if (!(target instanceof LivingEntity livingTarget)) return;
+        
+        PlayerCharactersAttachment attachment = 
+            player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        PGCharacter character = attachment.getCurrentCharacter();
+        if (character == null) return;  // 非原神模式放行原版
+        
+        ci.cancel();  // 取消原版攻击
+        ModDamageSource source = ModDamageSource.physical(AttackType.NORMAL_ATTACK, 1.0f);
+        HurtEntityHelper.hurtEntityForPlayer(source, character, livingTarget);
+    }
+}
+```
+
+### LivingEntityDecayMixin —— 注入衰减计数器支持
+
+```java
+@Mixin(LivingEntity.class)
+public abstract class LivingEntityDecayMixin implements IDecayCounterHolder {
+
+    @Unique
+    private DecayCounterManager genshin$decayCounterManager;
+
+    @Override
+    public DecayCounterManager getDecayCounterManager() {
+        if (genshin$decayCounterManager == null) {
+            genshin$decayCounterManager = new DecayCounterManager(
+                (LivingEntity)(Object) this);
+            // 注册到 Worker 线程以便定期清理
+            DecayCounterWorker.getInstance().registerManager(genshin$decayCounterManager);
+        }
+        return genshin$decayCounterManager;
+    }
+}
+```
+
+---
+
+## 7. 常见问题与设计决策
+
+### 为什么 PGCharacter 使用原型模式？
+
+角色注册时创建的是**原型实例**，玩家拥有的是从原型初始化数据后的实例副本。`CharacterRegister.getByUUID()` 从注册表查找原型，然后调用 `initBaseStats()` 用等级配置初始化属性。
+
+### 为什么用 UUID 而不是 Identifier 区分角色？
+
+UUID 是纯数字 (int)，在 Attachment 的持久化和 RPC 传输中更轻量。注册表中的 key 仍是 String（如 `"shenhe"`），但角色间通信时用 UUID (135001)。
+
+### 效果是如何持久化的？
+
+`CharacterEffectContainer` 在 `PGCharacterData` 中以 `ListTag` 存储。每次效果变化后调用 `syncEffectsToTag()` 同步。效果实例的反序列化通过 Registry ID 查找对应的 `ICharacterEffect` 实现。未注册的效果会用 `DummyEffect` 占位防止 NPE。
+
+### 衰减计数器为什么存在目标实体上？
+
+原神的附着冷却规则是"对同一个目标"的多个同类型攻击共享一个冷却计时器。因此计数器存储在**目标**身上，而不是攻击者身上。
+
+### 为什么有 Dirty 标记？
+
+角色数据只在 `dirty=true` 时才同步。每 tick 检查 dirty 标记并触发网络同步，避免每 tick 发送完整角色数据造成网络拥堵。
+
+### 元素类型 FYSIKOS 是什么？
+
+"Physical" 的希腊语，原神代码中表示物理伤害。`ElementalsGIM.FYSIKOS` 不参与元素反应。
+
+### 为什么 DecaySequence 长度超过后返回 0？
+
+原神中同类型攻击有附着上限（如15次普攻后不再附着），超过序列长度后系数为 0 实现这种"无限衰减"效果。使用 `DecaySequence.DEFAULT_DAMAGE`（全1）则不会衰减。
+
+---
+
+## 8. 关键文件索引
+
+| 系统 | 文件路径 |
+|------|----------|
+| 主入口 | `Minegenshin.java` |
+| 注册表总览 | `registry/ModRegistries.java` |
+| 角色注册表 | `registry/register/CharacterRegister.java` |
+| 效果注册表 | `registry/register/CharacterEffectRegister.java` |
+| 实体注册表 | `registry/register/EntityRegister.java` |
+| 伤害类型注册 | `registry/register/DamageTypeRegister.java` |
+| 角色基类 | `core/character/PGCharacter.java` |
+| 角色数据 | `core/character/PGCharacterData.java` |
+| 角色帮助类 | `core/character/CharacterHelper.java` |
+| 属性容器 | `core/attribute/AttributeContainer.java` |
+| 属性实例 | `core/attribute/AttributeInstance.java` |
+| 属性类型 | `core/attribute/AttributeType.java` |
+| 属性注册 | `core/attribute/ModAttributes.java` |
+| 效果接口 | `content/effect/character/ICharacterEffect.java` |
+| 效果实例 | `content/effect/character/CharacterEffectInstance.java` |
+| 效果容器 | `content/effect/character/CharacterEffectContainer.java` |
+| 效果工具 | `content/effect/character/CharacterEffectHelper.java` |
+| 伤害规格 | `core/system/combat/damage/ModDamageSpec.java` |
+| 伤害源 | `core/system/combat/damage/ModDamageSource.java` |
+| 衰减组别 | `core/system/combat/decay/DecayGroup.java` |
+| 衰减序列 | `core/system/combat/damage/DecaySequence.java` |
+| 计数器数据 | `core/system/combat/decay/DecayCounterData.java` |
+| 计数器管理 | `core/system/combat/decay/DecayCounterManager.java` |
+| 持有接口 | `core/system/combat/decay/IDecayCounterHolder.java` |
+| 伤害计算 | `core/system/combat/attack/HurtEntityHelper.java` |
+| 状态实例基类 | `core/status/StatusInstance.java` |
+| 状态容器 | `core/attachment/StatusContainer.java` |
+| 状态访问器 | `core/status/StatusAccessor.java` |
+| 元素附着实例 | `core/system/about/ElementalAttachmentInstance.java` |
+| 元素附着工具 | `core/system/about/ElementalAttachmentHelper.java` |
+| 附着预设 | `core/system/about/AttachmentProfile.java` |
+| 附着来源 | `core/system/about/AttachmentSource.java` |
+| 状态 Tick | `event/server/StatusTickEvent.java` |
+| DataComponent 注册 | `core/system/registry/register/StatusDataComponents.java` |
+| 玩家附件 | `core/attachment/PlayerCharactersAttachment.java` |
+| 附件注册 | `core/attachment/AttachmentRegistration.java` |
+| 网络同步 | `core/network/NetworkManager.java` |
+| 客户端处理 | `core/network/ClientHandler.java` |
+| 角色 Tick | `event/server/CharacterTickEvent.java` |
+| 效果 Tick | `event/server/CharacterEffectEvent.java` |
+| 玩家登录 | `event/server/PlayerLoginEventListeners.java` |
+| Mixin 配置 | `resources/minegenshin.mixins.json` |
+| Mixin 注入 | `mixin/mixins/LivingEntityDecayMixin.java` |
+| Mixin 攻击拦截 | `mixin/mixins/PlayerAttackInterceptor.java` |
+| 配置文件 | `Config.java` |
+| 元素枚举 | `enums/ElementalsGIM.java` |
+| 攻击类型 | `enums/AttackType.java` |
+| 突破属性 | `enums/CharacterAscendAttribute.java` |

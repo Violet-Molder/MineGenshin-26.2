@@ -4,7 +4,7 @@ import com.linweiyun.genshin.content.effect.character.CharacterEffectContainer;
 import com.linweiyun.genshin.core.attribute.AttributeContainer;
 import com.linweiyun.genshin.core.attribute.AttributeType;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
-import com.linweiyun.genshin.registry.register.CharacterRegister;
+import com.linweiyun.genshin.core.system.registry.register.CharacterRegister;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import net.minecraft.nbt.ListTag;

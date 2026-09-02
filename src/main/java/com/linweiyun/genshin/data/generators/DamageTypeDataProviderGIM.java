@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.data.generators;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.registry.DamageTypeRegistry;
+import com.linweiyun.genshin.core.system.registry.DamageTypeRegistry;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;

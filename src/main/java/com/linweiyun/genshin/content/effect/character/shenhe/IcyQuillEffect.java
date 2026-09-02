@@ -9,7 +9,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.enums.ElementalsGIM;
-import com.linweiyun.genshin.registry.register.CharacterRegister;
+import com.linweiyun.genshin.core.system.registry.register.CharacterRegister;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 

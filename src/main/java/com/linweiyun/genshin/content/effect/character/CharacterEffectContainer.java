@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.content.effect.character;
 
-import com.linweiyun.genshin.registry.ModRegistries;
+import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 

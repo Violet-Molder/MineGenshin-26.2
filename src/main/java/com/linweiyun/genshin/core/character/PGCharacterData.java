@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.attribute.AttributeContainer;
 import com.linweiyun.genshin.core.attribute.AttributeInstance;
 import com.linweiyun.genshin.core.attribute.AttributeType;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import net.minecraft.nbt.ListTag;
@@ -50,6 +51,8 @@ public class PGCharacterData implements IPersistedSerializable {
     private int elementalSkillStacks;
     @Persisted(key = "skill_list")
     protected List<Integer> skillCoolList;
+    @Persisted(key = "status_container")
+    private StatusContainer statusContainer = new StatusContainer();
     // 效果容器的缓存引用，延迟加载，避免每次操作都重新反序列化
     private CharacterEffectContainer effectContainer;
 
@@ -110,6 +113,7 @@ public class PGCharacterData implements IPersistedSerializable {
     public float getElementalBurstCooldownTick() { return elementalBurstCooldownTick; }
     public int getElementalSkillMaxStacks() { return elementalSkillMaxStacks; }
     public int getElementalSkillStacks() { return elementalSkillStacks; }
+    public StatusContainer getStatusContainer() { return statusContainer; }
 
     public List<Integer> getSkillCoolList() {
         return skillCoolList;
@@ -165,8 +169,7 @@ public class PGCharacterData implements IPersistedSerializable {
                 }
             }
         }
-
-
+        statusContainer.tick();
     }
     public CharacterEffectContainer getEffectContainer() {
         if (effectContainer == null) {                                     // 首次调用时加载

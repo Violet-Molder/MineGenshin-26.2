@@ -7,13 +7,18 @@ import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.enums.ElementalsGIM;
+import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import static com.linweiyun.genshin.Minegenshin.LOGGER;
 
 @Mixin(Player.class)
 public class PlayerAttackInterceptor {
@@ -21,33 +26,25 @@ public class PlayerAttackInterceptor {
     private void onPlayerAttack(Entity target, CallbackInfo ci) {
         Player player = (Player) (Object) this;
 
-        // 只拦截 LivingEntity 目标
         if (!(target instanceof LivingEntity livingTarget)) return;
 
-        // 获取玩家持有的原神角色
         PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         PGCharacter character = attachment.getCurrentCharacter();
-        if (character == null) return;  // 非原神角色，放行原版
+        if (character == null) return;
 
-        // 取消原版攻击流程
         ci.cancel();
 
-        // 构建伤害源 + 走管线
         ModDamageSource source = buildModDamageSource(player, character, livingTarget);
         HurtEntityHelper.hurtEntityForPlayer(source, character, livingTarget, 1.0f);
     }
 
-    /**
-     * 从 Player 获取 PGCharacter
-     * TODO: 替换为你项目实际的关联方式
-     */
-
-    /**
-     * 构建 ModDamageSource
-     * 可根据玩家状态判断普攻/重击/战技/爆发
-     */
     private ModDamageSource buildModDamageSource(Player player, PGCharacter character, LivingEntity target) {
-        // 暂时默认普攻，后续细化
+        boolean genshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+        if (genshinMode && character.getCharacterUUID() == 145001) {
+            ModDamageSpec spec = ModDamageSpec.elemental(
+                    AttackType.NORMAL_ATTACK, ElementalsGIM.HYDRO, 1.0f);
+            return ModDamageSource.from(spec, player);
+        }
         ModDamageSpec spec = ModDamageSpec.physical(AttackType.NORMAL_ATTACK, 1.0f);
         return ModDamageSource.from(spec, player);
     }

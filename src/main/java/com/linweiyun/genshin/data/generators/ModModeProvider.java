@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.data.generators;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.registry.register.ItemsRegister;
+import com.linweiyun.genshin.core.system.registry.register.ItemsRegister;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.ModelProvider;

@@ -3,6 +3,9 @@ package com.linweiyun.genshin.core.system.combat.attack;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.system.about.AttachmentProfile;
+import com.linweiyun.genshin.core.system.about.AttachmentSource;
+import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterData;
@@ -18,23 +21,20 @@ import java.util.Objects;
 
 public class HurtEntityHelper {
     public static final Logger LOGGER = LogUtils.getLogger();
-    //玩家伤害实体
+
     public static void hurtEntityForPlayer(ModDamageSource damageSource, PGCharacter attacker, LivingEntity target) {
         if (target.level().isClientSide()) {
             return;
         }
 
-
         float finalDamage = calculateCharacterDamage(damageSource, attacker, target);
         hurtEntityForPlayer(damageSource, attacker, target, finalDamage);
-
-        // TODO: 如果有元素附着能力且有元素系数，施加元素附着
     }
+
     public static void hurtEntityForPlayer(ModDamageSource damageSource, PGCharacter attacker, LivingEntity target, float damage) {
         ModDamageSpec spec = damageSource.getSpec();
         DecayResult decayResult = DecayResult.NONE;
 
-        // ========== 衰减系统集成 ==========
         if (spec.hasDecayTag()) {
             IDecayCounterHolder holder = (IDecayCounterHolder) target;
             DecayCounterManager manager = holder.getDecayCounterManager();
@@ -44,33 +44,48 @@ public class HurtEntityHelper {
             decayResult = manager.processHit((LivingEntity) damageSource.getEntity(), attacker, spec, currentTick);
 
             // TEST: 打印附着冷却信息
-            LOGGER.info("[附着冷却] 目标={} | 源实体={} | 源角色={} | 计数器={} | 计时器={} | 系数: 元素={} 伤害={} 削韧={}",
-                    target.getName().getString(),                           // 目标
-                    damageSource.getEntity().getName().getString(),         // 源实体
-                    attacker != null ? attacker.getName().getString() : "无",  // 源角色
-                    counter.getHitCount(),                                  // 计数器当前值
-                    (currentTick - counter.getStartTimeTick()) + "tick",   // 计时器已运行时间
-                    decayResult.getElementCoefficient(),                   // 元素系数
-                    decayResult.getDamageCoefficient(),                    // 伤害系数
-                    decayResult.getPoiseCoefficient()                      // 削韧系数
-            );
+//            LOGGER.info("[附着冷却] 目标={} | 源实体={} | 源角色={} | 计数器={} | 计时器={} | 系数: 元素={} 伤害={} 削韧={}",
+//                    target.getName().getString(),
+//                    damageSource.getEntity().getName().getString(),
+//                    attacker != null ? attacker.getName().getString() : "无",
+//                    counter.getHitCount(),
+//                    (currentTick - counter.getStartTimeTick()) + "tick",
+//                    decayResult.getElementCoefficient(),
+//                    decayResult.getDamageCoefficient(),
+//                    decayResult.getPoiseCoefficient()
+//            );
         }
-        // ==================================
 
         damage *= decayResult.getDamageCoefficient();
         target.hurt(damageSource, damage);
 
+        // 元素附着逻辑 —— 用衰减序列的元素系数
+        if (spec.hasAuraPotential() && decayResult.getElementCoefficient() > 0) {
+            AttachmentProfile profile = chooseProfile(spec.getElementAmount());
+            ElementalAttachmentHelper.attach(
+                    target,
+                    spec.getElement(),
+                    AttachmentSource.NORMAL_ATTACK,
+                    profile
+            );
+        }
+    }
+
+    private static AttachmentProfile chooseProfile(float elementAmount) {
+        if (elementAmount >= 4.0f) return AttachmentProfile.ULTRA_STRONG;
+        if (elementAmount >= 2.0f) return AttachmentProfile.STRONG;
+        if (elementAmount >= 1.5f) return AttachmentProfile.MEDIUM;
+        return AttachmentProfile.WEAK;
     }
 
     private static float calculateCharacterDamage(ModDamageSource damageSource, PGCharacter attacker, LivingEntity target) {
         for (CharacterEffectInstance effect : attacker.getData().getEffectContainer().getEffects()) {
             if (effect != null) {
-                Objects.requireNonNull(effect.getEffect()).onAttacked((Player) damageSource.getEntity() ,attacker, target, effect, damageSource);
+                Objects.requireNonNull(effect.getEffect()).onAttacked((Player) damageSource.getEntity(), attacker, target, effect, damageSource);
             }
-
         }
         ModDamageSpec damageSpec = damageSource.getSpec();
-        float baseDamageValue = (float) ((attacker.getData().getAttributeTotalValue(ModAttributes.ATK.value()) + damageSpec.getFlatDamageBonus() )* damageSpec.getDamageMultiplier());
+        float baseDamageValue = (float) ((attacker.getData().getAttributeTotalValue(ModAttributes.ATK.value()) + damageSpec.getFlatDamageBonus()) * damageSpec.getDamageMultiplier());
         LOGGER.info("" + damageSpec.getFlatDamageBonus());
         return baseDamageValue;
     }

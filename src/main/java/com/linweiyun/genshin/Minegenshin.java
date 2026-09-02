@@ -3,7 +3,7 @@ package com.linweiyun.genshin;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
-import com.linweiyun.genshin.registry.register.*;
+import com.linweiyun.genshin.core.system.registry.register.*;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;

@@ -1,9 +1,8 @@
 package com.linweiyun.genshin.core.attachment;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.network.NetworkManager;
-import com.linweiyun.genshin.registry.register.CharacterRegister;
+import com.linweiyun.genshin.core.system.registry.register.CharacterRegister;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import net.minecraft.server.level.ServerPlayer;

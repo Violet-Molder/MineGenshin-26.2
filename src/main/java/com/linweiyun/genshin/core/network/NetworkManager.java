@@ -2,7 +2,7 @@ package com.linweiyun.genshin.core.network;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.registry.register.CharacterRegister;
+import com.linweiyun.genshin.core.system.registry.register.CharacterRegister;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;

@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.data.generators;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.registry.register.ItemsRegister;
+import com.linweiyun.genshin.core.system.registry.register.ItemsRegister;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;

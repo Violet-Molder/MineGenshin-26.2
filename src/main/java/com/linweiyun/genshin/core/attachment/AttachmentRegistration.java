@@ -44,6 +44,10 @@ public class AttachmentRegistration {
                     "player_characters",
                     () -> AttachmentType.serializable(PlayerCharactersAttachment::new).copyOnDeath().build());
 
+    public static final Supplier<AttachmentType<StatusContainer>> CONTAINER =
+            ATTACHMENTS.register("status_container",
+                    () -> AttachmentType.serializable(StatusContainer::new).build());
+
 //    public static final Supplier<AttachmentType<GenshinBackpack>> GENSHIN_BACKPACK_ATTACHMENT =
 //            ATTACHMENTS.register(
 //                    "genshin_backpack",

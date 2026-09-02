@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.attribute;
 
-import com.linweiyun.genshin.registry.ModRegistries;
+import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;

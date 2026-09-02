@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
-import com.linweiyun.genshin.registry.DamageTypeRegistry;
+import com.linweiyun.genshin.core.system.registry.DamageTypeRegistry;
 import net.minecraft.core.Holder;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;

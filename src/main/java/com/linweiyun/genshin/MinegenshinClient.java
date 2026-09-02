@@ -2,7 +2,7 @@ package com.linweiyun.genshin;
 
 import com.geckolib.renderer.GeoEntityRenderer;
 import com.linweiyun.genshin.client.render.entity.FieldTalismanSpiritRender;
-import com.linweiyun.genshin.registry.register.EntityRegister;
+import com.linweiyun.genshin.core.system.registry.register.EntityRegister;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -13,8 +13,6 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterDebugEntriesEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
-
-import javax.swing.text.html.parser.Entity;
 
 
 @Mod(value = Minegenshin.MOD_ID, dist = Dist.CLIENT)
