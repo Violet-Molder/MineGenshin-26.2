@@ -21,6 +21,7 @@
     - 4.8 [事件系统](#48-事件系统)
     - 4.9 [实体系统](#49-实体系统)
     - 4.10 [元素附着系统](#410-元素附着系统)
+    - 4.11 [元素反应系统](#411-元素反应系统)
 5. [扩展开发指南](#5-扩展开发指南)
     - 5.1 [添加新角色](#51-添加新角色)
     - 5.2 [添加新角色效果](#52-添加新角色效果)
@@ -1313,6 +1314,459 @@ AttachmentType.serializable(StatusContainer::new).build()
 | StatusDataComponents | `core/system/registry/register/StatusDataComponents.java` |
 | StatusTickEvent | `event/server/StatusTickEvent.java` |
 
+### 4.11 元素反应系统
+
+#### 概述
+
+元素反应系统是还原原神七元素相互作用机制的核心系统。当攻击命中目标并成功附着元素后，管理器立即扫描目标身上已有的先手元素，按优先级顺序尝试触发反应，消耗双方元素并执行对应的反应效果（增幅伤害、额外伤害、状态异常等）。
+
+**两层架构**：
+
+| 层 | 包 | 职责 |
+|----|----|------|
+| **基类与注册层** | `core.system.reaction` | ElementalReaction 基类、ReactionContext/ReactionResult 数据类、ElementalReactionManager 管理器、ReactionPriorityCalculator 优先级计算器 |
+| **具体反应层** | `core.system.reaction.builtin` | VaporizeReaction（蒸发）、MeltReaction（融化）、FreezeReaction（冻结）等 |
+
+依赖方向：具体反应 → 基类 + 管理器 + 附着系统（ElementalAttachmentHelper.consume 消耗元素）。
+
+#### 核心概念
+
+**先手/后手**：目标身上已有的元素是"先手"，本次附着的元素是"后手"。
+
+**消耗比**：每个反应注册时声明的消耗参数。`ratioA:ratioB` 表示双方元素同时按比例消耗，不是一方消耗另一方。例如蒸发消耗比为火:水 = 1:2，1 份火同时消耗 2 份水。
+
+**克制关系**：消耗比中，消耗少的一方是克制方。蒸发中火 1 份消耗水 2 份 → 火克制水。
+
+**类元素自动归并**：反应匹配时通过 `getMainElement()` 将类元素映射到主元素：
+- FROZEN（冻）→ CYRO（冰）
+- AGGRAVATE（激）→ DENDRO（草）
+- BURNING（燃）→ PYRO（火）
+
+所以融化反应注册的是 `(PYRO, CYRO)`，它自然能匹配到目标身上的 FROZEN。
+
+**后手不残留规则**：反应执行完后如果后手元素还有剩余：
+- 来源为 `NORMAL_ATTACK`（常规攻击附着）→ 清 0，不残留
+- 其他来源（SPECIAL/SELF_ATTACH/ENVIRONMENTAL/WEAPON_ENCHANT）→ 保留剩余量
+
+#### ElementalReaction 基类
+
+位置：`core/system/reaction/ElementalReaction.java`
+
+```java
+public abstract class ElementalReaction {
+    protected final ElementalsGIM elementA;   // 元素1
+    protected final ElementalsGIM elementB;   // 元素2
+    protected final float ratioA;             // 元素1消耗系数
+    protected final float ratioB;             // 元素2消耗系数
+    protected final int basePriority;         // 注册时声明的优先级（>0 时直接使用，≤0 时从默认序列计算）
+    protected final ElementalReactionType reactionType;
+
+    // 判断后手+先手（主元素）是否能匹配这个反应
+    public boolean canMatch(ElementalsGIM attackerMain, ElementalsGIM defenderMain);
+
+    // 按比例同时消耗，返回 [A消耗, B消耗]
+    public float[] calculateConsumption(float qtyA, float qtyB);
+
+    // 子类实现：消耗元素 + 执行效果
+    public abstract ReactionResult execute(ReactionContext context);
+
+    // 子类可覆盖：当前状态下是否禁止发生此反应（例：冻结目标禁止蒸发）
+    public boolean isBlocked(ReactionContext context);
+
+    // 聚变反应冷却预留接口
+    public int getDamageCooldownMs();    // 伤害冷却（同攻击者同反应）
+    public int getReactionCooldownMs();  // 公共冷却（同目标同反应）
+}
+```
+
+#### ReactionContext —— 反应执行上下文
+
+```java
+public class ReactionContext {
+    public final LivingEntity target;           // 先手元素持有者
+    public final ElementalsGIM attackerElement;  // 后手元素
+    public final float attackerQuantity;        // 后手附着量（全额参与反应）
+    public final AttachmentSource attackerSource;// 后手附着来源（用于判断后手不残留规则）
+    public final AttachmentProfile attackerProfile;
+    public final ModDamageSpec damageSpec;      // 本次攻击的伤害规格
+    public final Entity attackerEntity;         // 攻击者实体
+    public final StatusContainer targetContainer;// 目标的状态容器（消耗用）
+}
+```
+
+#### ReactionResult —— 反应执行结果
+
+```java
+public class ReactionResult {
+    public static Builder builder(ElementalReactionType type);
+
+    public ElementalReactionType getReactionType();
+    public boolean isReacted();                // 是否成功触发
+    public float getConsumedAttacker();        // 后手消耗量
+    public float getConsumedDefender();        // 先手消耗量
+    public boolean isAmplified();              // 是否是增幅反应
+    public float getAmplifyMultiplier();       // 增幅倍率
+}
+```
+
+#### 优先级系统
+
+位置：`core/system/reaction/ReactionPriorityCalculator.java`
+
+**默认优先级序列**（后手元素依次与各先手元素反应的顺序，index 越小越优先）：
+
+```
+风(0) 冰(1) 雷(2) 水(3) 冻(4) 火(5) 草(6) 激(7) 岩(8)
+```
+
+优先级计算逻辑：
+- 如果反应注册时 `basePriority > 0`，直接使用注册值（用于固定优先的特殊反应）
+- 如果 `basePriority ≤ 0`，从默认序列中查先手主元素对应的 index
+
+**例外因素**（`ReactionPriorityCalculator.computeFor` 中集中处理，当前框架已预留判断工具方法）：
+
+| 例外 | 说明 |
+|------|------|
+| 冻结状态下碎冰最高 | 检查容器是否有 FROZEN，优先级改为 -1 |
+| 蔓激化/超激化优先 | 检查容器是否有 AGGRAVATE，反应类型为激化时提升优先级 |
+| 冻结目标禁止蒸发 | `VaporizeReaction.isBlocked()` 中检查 FROZEN |
+| 冰与冻共同消耗 | `consumeDefenderMain()` 按主元素遍历所有实例（不区分 CYRO/FROZEN） |
+
+#### 消耗计算逻辑
+
+反应消耗不是"一方消耗另一方"，而是**双方同时按比例消耗**：
+
+```
+消耗比 A:B = ratioA:ratioB
+→ rounds = min( qtyA/ratioA, qtyB/ratioB )
+→ 实际消耗 A = rounds × ratioA
+→ 实际消耗 B = rounds × ratioB
+```
+
+例：蒸发，火1份 水2份。目标身上有 0.8 水，后手附着 1.6 火：
+```
+rounds = min(1.6/1, 0.8/2) = min(1.6, 0.4) = 0.4
+消耗火 = 0.4 × 1 = 0.4
+消耗水 = 0.4 × 2 = 0.8
+后手剩余火 = 1.6 - 0.4 = 1.2
+→ NORMAL_ATTACK 来源 → 后手不残留，剩余清 0
+```
+
+#### 元素反应注册表
+
+位置：`registry/ModRegistries.java`（声明）+ `registry/register/ElementalReactionRegister.java`（实例注册）
+
+遵循项目标准的三层注册模式：
+
+**ModRegistries.java —— 注册表声明**：
+```java
+public static final ResourceKey<Registry<ElementalReaction>> ELEMENTAL_REACTION_REGISTRY_KEY =
+    ResourceKey.createRegistryKey(Identifier.fromNamespaceAndPath(
+        Minegenshin.MOD_ID, "elemental_reactions"));
+
+public static final Registry<ElementalReaction> ELEMENTAL_REACTION_REGISTRY =
+    new RegistryBuilder<>(ELEMENTAL_REACTION_REGISTRY_KEY)
+        .sync(true)
+        .maxId(64)
+        .create();
+
+public static final DeferredRegister<ElementalReaction> ELEMENTAL_REACTIONS =
+    DeferredRegister.create(ELEMENTAL_REACTION_REGISTRY, Minegenshin.MOD_ID);
+```
+
+同时在 `@SubscribeEvent registerRegistries` 方法里加一行：
+```java
+event.register(ELEMENTAL_REACTION_REGISTRY);
+```
+
+**ElementalReactionRegister.java —— 具体反应注册**：
+```java
+public class ElementalReactionRegister {
+    public static final DeferredRegister<ElementalReaction> ELEMENTAL_REACTIONS =
+        ModRegistries.ELEMENTAL_REACTIONS;
+
+    // 蒸发：火:水 = 1:2，火是克制方
+    public static final DeferredHolder<ElementalReaction, VaporizeReaction> VAPORIZE =
+        ELEMENTAL_REACTIONS.register("vaporize",
+            () -> new VaporizeReaction(
+                ElementalReactionType.VAPORIZE,
+                ElementalsGIM.PYRO, ElementalsGIM.HYDRO,
+                1f, 2f, 0));
+
+    // 融化：火:冰 = 1:2，火是克制方
+    public static final DeferredHolder<ElementalReaction, MeltReaction> MELT =
+        ELEMENTAL_REACTIONS.register("melt",
+            () -> new MeltReaction(
+                ElementalReactionType.MELT,
+                ElementalsGIM.PYRO, ElementalsGIM.CYRO,
+                1f, 2f, 0));
+
+    // 冻结：水:冰 = 1:1
+    public static final DeferredHolder<ElementalReaction, FreezeReaction> FREEZE =
+        ELEMENTAL_REACTIONS.register("freeze",
+            () -> new FreezeReaction(
+                ElementalReactionType.FROZEN,
+                ElementalsGIM.HYDRO, ElementalsGIM.CYRO,
+                1f, 1f, 0));
+
+    public static void register(IEventBus eventBus) {
+        ELEMENTAL_REACTIONS.register(eventBus);
+    }
+}
+```
+
+**Minegenshin.java 构造函数里调用**：
+```java
+ElementalReactionRegister.register(modEventBus);
+```
+
+#### ElementalReactionManager —— 反应管理器
+
+位置：`core/system/reaction/ElementalReactionManager.java`
+
+附着后触发反应的主入口：
+
+```java
+ReactionResult result = ElementalReactionManager.tryReactAfterAttach(context);
+```
+
+**核心流程**：
+
+```
+tryReactAfterAttach(context)
+    │
+    ├─ 1. 收集先手元素实例
+    │     └─ 遍历 targetContainer.getAll()
+    │     └─ 过滤：未 finished、是 ElementalAttachmentInstance、
+    │            主元素 ≠ 后手主元素、≠ FYSIKOS
+    │     └─ defenders.isEmpty() → 直接返回空结果
+    │
+    ├─ 2. 收集候选反应
+    │     └─ 遍历注册表中所有 ElementalReaction
+    │     └─ 对每个先手 defender：
+    │           ├─ reaction.canMatch(后手主元素, 先手主元素)
+    │           ├─ !reaction.isBlocked(context)
+    │           └─ 计算 priority
+    │                 ├─ reaction.basePriority > 0 → 直接用
+    │                 └─ 否则 ReactionPriorityCalculator.computeFor(先手主元素, reaction)
+    │
+    ├─ 3. 排序：按 priority 从小到大
+    │
+    ├─ 4. 依次执行反应
+    │     └─ remainingAttackerQty 递减
+    │     └─ firstAmplified 记录第一个增幅反应
+    │
+    └─ 5. 后手残留处理
+          └─ NORMAL_ATTACK → consume(target, 后手元素, MAX_VALUE) 清 0
+          └─ 其他来源 → 保留（附着逻辑已处理）
+```
+
+#### 反应在伤害管线中的位置
+
+附着 → 反应 → 增幅修正是 `HurtEntityHelper.hurtEntityForPlayer` 中的**关键时序**：
+
+```
+伤害管线（修改后的 HurtEntityHelper.hurtEntityForPlayer）
+    │
+    ├─ 1. calculateCharacterDamage() → 算基础伤害
+    ├─ 2. DecayCounterManager.processHit() → 衰减系数
+    ├─ 3. finalDamage = baseDamage × damageCoefficient
+    │
+    ├─ 4. ★ 附着（全额 × elementCoefficient）★
+    │     └─ ElementalAttachmentHelper.attach(target, element, NORMAL_ATTACK, profile)
+    │
+    ├─ 5. ★ 触发反应 ★
+    │     └─ canAttach && container != null
+    │     └─ ElementalReactionManager.tryReactAfterAttach(context)
+    │
+    ├─ 6. ★ 增幅修正 ★
+    │     └─ result.isAmplified() → finalDamage × result.getAmplifyMultiplier()
+    │
+    └─ 7. target.hurt(damageSource, finalDamage)  ← 最终造成伤害
+```
+
+**为什么先附着再算反应？** —— 附着是让后手元素先进入容器，反应逻辑才能在同一个 tick 内读到"先手+后手"共存，按正确优先级判断反应。增幅倍率随后用于修正本次伤害。
+
+#### 内置反应详解
+
+##### 蒸发（VaporizeReaction）
+
+消耗比：火:水 = 1:2（火克制水）
+
+| 场景 | 倍率 | 说明 |
+|------|------|------|
+| 先手水 + 后手火 | **2.0** | 火是克制方 → 火蒸发 |
+| 先手火 + 后手水 | **1.5** | 水是被克制方 → 水蒸发 |
+
+特殊规则：
+- 冻结状态的目标**禁止蒸发**（`isBlocked` 中检查容器是否有 FROZEN）
+- 非攻击行为触发（环境伤害等）不增幅（需 `damageSpec` 存在且有伤害）
+
+##### 融化（MeltReaction）
+
+消耗比：火:冰 = 1:2（火克制冰）
+
+| 场景 | 倍率 | 说明 |
+|------|------|------|
+| 先手冰/冻 + 后手火 | **2.0** | 火是克制方 → 火融化 |
+| 先手火 + 后手冰/冻 | **1.5** | 冰是被克制方 → 冰融化 |
+
+特殊规则：
+- **冰和冻同时消耗**：`consumeDefenderMain()` 按 CYRO 主元素遍历容器，自动覆盖 CYRO 和 FROZEN 两类实例
+- 火元素量足够多时可以一次性消耗完冻和冰全部元素
+
+##### 冻结（FreezeReaction）
+
+消耗比：水:冰 = 1:1
+
+**非增幅、非聚变**，不修改伤害倍率，属于状态异常类反应。
+
+效果：
+- 按 1:1 同时消耗水和冰元素
+- **生成总量 × 2 的 FROZEN（冻）元素**附加到目标（`AttachmentSource.SPECIAL`）
+
+特殊规则：
+- 后手为 FROZEN 元素时禁止发生冻结（冻不能再冻）
+- 冻结反应后，目标可能残留额外的水或冰（冻结藏水/藏冰逻辑，TODO 待实现）
+- 冻结效果（减速、冻结实体）暂不实现，TODO 待补充
+
+```java
+// FreezeReaction.execute 核心逻辑
+float[] consumed = calculateConsumption(attackerQty, defenderQty);
+float totalConsumed = consumed[0] + consumed[1];
+
+// 消耗双方
+ElementalAttachmentHelper.consume(target, elementA, consumedA);
+consumeDefenderMain(container, elementB, consumedB);
+
+// 生成冻元素
+ElementalAttachmentHelper.attach(
+    target, ElementalsGIM.FROZEN, AttachmentSource.SPECIAL,
+    new AttachmentProfile(totalConsumed * 2f, 1.0f, 0.0f, 0.0f));
+```
+
+#### 添加新反应 —— 完整指南
+
+假设要添加"超载"（聚变反应，火+雷）：
+
+**Step 1: 创建反应类**
+
+```java
+// core/system/reaction/builtin/OverloadReaction.java
+public class OverloadReaction extends ElementalReaction {
+
+    public OverloadReaction(ElementalReactionType type,
+                            ElementalsGIM elementA, ElementalsGIM elementB,
+                            float ratioA, float ratioB, int basePriority) {
+        super(type, elementA, elementB, ratioA, ratioB, basePriority);
+    }
+
+    @Override
+    public ReactionResult execute(ReactionContext ctx) {
+        // 匹配后手+先手、计算消耗、扣元素...
+        // 聚变反应的效果：额外造成一次伤害（需接入 ModDamageSource）
+        // TODO: 聚变冷却系统（伤害冷却 + 公共冷却）
+    }
+
+    @Override
+    public int getDamageCooldownMs() { return 500; }   // 同攻击者同反应 0.5s 最多1次
+    @Override
+    public int getReactionCooldownMs() { return 100; }  // 同目标同反应公共冷却 0.1s
+}
+```
+
+**Step 2: 注册**
+
+```java
+// ElementalReactionRegister.java
+public static final DeferredHolder<ElementalReaction, OverloadReaction> OVERLOAD =
+    ELEMENTAL_REACTIONS.register("overload",
+        () -> new OverloadReaction(
+            ElementalReactionType.OVERLOAD,
+            ElementalsGIM.PYRO, ElementalsGIM.ELECTRO,
+            1f, 1f, 0));
+```
+
+**Step 3: （可选）覆盖 `isBlocked` 添加禁止条件**
+
+```java
+@Override
+public boolean isBlocked(ReactionContext context) {
+    // 示例：冻结状态禁止超载（如果需要）
+    return ReactionPriorityCalculator.hasFrozen(context.targetContainer);
+}
+```
+
+#### 聚变反应冷却系统（TODO 预留）
+
+聚变反应（超载、超导、扩散、感电、碎冰等）有两种冷却机制，当前框架已预留接口，具体实现待后续补充：
+
+| 冷却类型 | 说明 | 共用情况 |
+|----------|------|----------|
+| **伤害冷却** | 同攻击者在 0.5s 内对同防守者用同反应最多造成伤害次数 | 同攻击者+同防守者+同反应 共用；不同攻击者、不同反应不共用 |
+| **公共冷却** | 同防守者触发同反应的最小间隔时间 | 按反应类型：碎冰 0.2s，超载/超导/扩散 0.1s；不同种扩散不共用 |
+
+伤害冷却限额：
+
+| 反应类别 | 0.5s 内最多伤害次数 |
+|----------|---------------------|
+| 超导 / 碎冰 / 四种扩散 | 2 次 |
+| 超载 / 感电 | 1 次 |
+
+#### 完整攻击→附着→反应→增幅 逻辑链
+
+```
+PlayerAttackInterceptor.onPlayerAttack()
+    │
+    ├─ buildModDamageSource()
+    └─ HurtEntityHelper.hurtEntityForPlayer(source, character, target)
+          │
+          ├─ calculateCharacterDamage()
+          │     └─ baseDamage = (ATK + flatBonus) × multiplier
+          │
+          ├─ DecayCounterManager.processHit()
+          │     └─ elementCoef / damageCoef / poiseCoef
+          │
+          ├─ finalDamage = baseDamage × damageCoef
+          │
+          ├─ ★ 附着 ★
+          │     └─ ElementalAttachmentHelper.attach(target, element,
+          │           NORMAL_ATTACK, chooseProfile(elementAmount))
+          │
+          ├─ ★ 反应触发 ★
+          │     └─ ElementalReactionManager.tryReactAfterAttach(ctx)
+          │           │
+          │           ├─ collectDefenders()   ← 收集先手
+          │           ├─ 遍历注册表匹配反应    ← canMatch + isBlocked
+          │           ├─ priority 排序         ← ReactionPriorityCalculator
+          │           ├─ 依次 reaction.execute() ← 消耗元素 + 执行效果
+          │           │     └─ ElementalAttachmentHelper.consume()
+          │           ├─ 记录 firstAmplified
+          │           └─ applyAttackerResidual() ← 后手不残留
+          │
+          ├─ ★ 增幅修正 ★
+          │     └─ result.isAmplified()
+          │           └─ finalDamage ×= result.getAmplifyMultiplier()
+          │
+          └─ target.hurt(damageSource, finalDamage)  ← 最终伤害
+```
+
+#### 关键文件索引
+
+| 类 | 路径 |
+|----|------|
+| ElementalReaction（基类） | `core/system/reaction/ElementalReaction.java` |
+| ElementalReactionManager（管理器） | `core/system/reaction/ElementalReactionManager.java` |
+| ReactionContext（上下文） | `core/system/reaction/ReactionContext.java` |
+| ReactionResult（结果） | `core/system/reaction/ReactionResult.java` |
+| ReactionPriorityCalculator（优先级） | `core/system/reaction/ReactionPriorityCalculator.java` |
+| VaporizeReaction（蒸发） | `core/system/reaction/builtin/VaporizeReaction.java` |
+| MeltReaction（融化） | `core/system/reaction/builtin/MeltReaction.java` |
+| FreezeReaction（冻结） | `core/system/reaction/builtin/FreezeReaction.java` |
+| 注册表声明 | `registry/ModRegistries.java` |
+| 反应注册入口 | `registry/register/ElementalReactionRegister.java` |
+| 主入口调用 | `Minegenshin.java` 构造函数 |
+
 ---
 
 ## 5. 扩展开发指南
@@ -1658,6 +2112,15 @@ UUID 是纯数字 (int)，在 Attachment 的持久化和 RPC 传输中更轻量�
 | 附着预设 | `core/system/about/AttachmentProfile.java` |
 | 附着来源 | `core/system/about/AttachmentSource.java` |
 | 状态 Tick | `event/server/StatusTickEvent.java` |
+| 元素反应基类 | `core/system/reaction/ElementalReaction.java` |
+| 反应管理器 | `core/system/reaction/ElementalReactionManager.java` |
+| 反应上下文 | `core/system/reaction/ReactionContext.java` |
+| 反应结果 | `core/system/reaction/ReactionResult.java` |
+| 优先级计算器 | `core/system/reaction/ReactionPriorityCalculator.java` |
+| 蒸发 | `core/system/reaction/builtin/VaporizeReaction.java` |
+| 融化 | `core/system/reaction/builtin/MeltReaction.java` |
+| 冻结 | `core/system/reaction/builtin/FreezeReaction.java` |
+| 反应注册 | `core/system/registry/register/ElementalReactionRegister.java` |
 | DataComponent 注册 | `core/system/registry/register/StatusDataComponents.java` |
 | 玩家附件 | `core/attachment/PlayerCharactersAttachment.java` |
 | 附件注册 | `core/attachment/AttachmentRegistration.java` |

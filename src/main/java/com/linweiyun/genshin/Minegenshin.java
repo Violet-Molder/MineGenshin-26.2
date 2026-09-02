@@ -32,6 +32,8 @@ public class Minegenshin {
         ItemGroupRegister.register(modEventBus);
         EntityRegister.register(modEventBus);
         DamageTypeRegister.register(modEventBus);
+        StatusDataComponents.register(modEventBus);
+        ElementalReactionRegister.register(modEventBus);
 
         ModAttributes.ATTRIBUTES.register(modEventBus);
         CharacterRegister.CHARACTERS.register(modEventBus);

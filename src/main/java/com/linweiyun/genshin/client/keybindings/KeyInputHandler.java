@@ -98,7 +98,6 @@ public class KeyInputHandler {
       PGCharacter character = attachment.getPartyCharacter(nextIndex);
 
       if (character != null && character.getData().getCurrentHP() > 0) {
-        System.out.println(character.getName());
         attachment.setCurrentCharacterIndex(nextIndex);
         NetworkManager.setCharacterSelectionToServer(nextIndex);
         player.sendSystemMessage(

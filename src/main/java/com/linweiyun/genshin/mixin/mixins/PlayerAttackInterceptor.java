@@ -40,10 +40,22 @@ public class PlayerAttackInterceptor {
 
     private ModDamageSource buildModDamageSource(Player player, PGCharacter character, LivingEntity target) {
         boolean genshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
-        if (genshinMode && character.getCharacterUUID() == 145001) {
-            ModDamageSpec spec = ModDamageSpec.elemental(
-                    AttackType.NORMAL_ATTACK, ElementalsGIM.HYDRO, 1.0f);
-            return ModDamageSource.from(spec, player);
+        //TEST
+        if (genshinMode) {
+            if (character.getCharacterUUID() == 145001) {
+                ModDamageSpec spec = ModDamageSpec.elemental(
+                        AttackType.NORMAL_ATTACK, ElementalsGIM.HYDRO, 1.0f);
+                return ModDamageSource.from(spec, player);
+            } else if (character.getCharacterUUID() == 135001) {
+                ModDamageSpec spec = ModDamageSpec.elemental(
+                        AttackType.NORMAL_ATTACK, ElementalsGIM.CYRO, 1.0f);
+                return ModDamageSource.from(spec, player);
+            } else if (character.getCharacterUUID() == 135002) {
+                ModDamageSpec spec = ModDamageSpec.elemental(
+                        AttackType.NORMAL_ATTACK, ElementalsGIM.PYRO, 1.0f);
+                return ModDamageSource.from(spec, player);
+            }
+
         }
         ModDamageSpec spec = ModDamageSpec.physical(AttackType.NORMAL_ATTACK, 1.0f);
         return ModDamageSource.from(spec, player);

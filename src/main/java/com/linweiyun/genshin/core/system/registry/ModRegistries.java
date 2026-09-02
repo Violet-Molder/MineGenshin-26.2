@@ -4,6 +4,7 @@ import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.core.attribute.AttributeType;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -34,6 +35,10 @@ public class ModRegistries {
             ResourceKey.createRegistryKey(
                     net.minecraft.resources.Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "character_effects"));
 
+    public static final ResourceKey<Registry<ElementalReaction>> REACTION_REGISTRY_KEY =
+            ResourceKey.createRegistryKey(
+                    net.minecraft.resources.Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "elemental_reactions"));
+
     // 角色效果注册表实例 —— 存储所有注册的角色效果（buff/debuff）
     // sync(true)确保客户端和服务端注册表同步
     // defaultKey设置默认效果ID为"minegenshin:empty"
@@ -45,6 +50,12 @@ public class ModRegistries {
                     .maxId(256)
                     .create();
 
+    public static final Registry<ElementalReaction> ELEMENTAL_REACTIONS_REGISTRY =
+            new RegistryBuilder<>(REACTION_REGISTRY_KEY)
+                    .sync(true)
+                    .maxId(64)
+                    .create();
+
     public static final DeferredRegister<AttributeType> ATTRIBUTE_TYPES =
             DeferredRegister.create(ATTRIBUTE_TYPE_REGISTRY, Minegenshin.MOD_ID);
 
@@ -54,10 +65,14 @@ public class ModRegistries {
     public static final DeferredRegister<ICharacterEffect> CHARACTER_EFFECTS =
             DeferredRegister.create(CHARACTER_EFFECT_REGISTRY, Minegenshin.MOD_ID);
 
+    public static final DeferredRegister<ElementalReaction> ELEMENTAL_REACTIONS =
+            DeferredRegister.create(ELEMENTAL_REACTIONS_REGISTRY, Minegenshin.MOD_ID);
+
     @SubscribeEvent
     public static void registerRegistries(NewRegistryEvent event) {
         event.register(ATTRIBUTE_TYPE_REGISTRY);
         event.register(CHARACTER_REGISTRY);
         event.register(CHARACTER_EFFECT_REGISTRY);
+        event.register(ELEMENTAL_REACTIONS_REGISTRY);
     }
 }

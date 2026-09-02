@@ -38,8 +38,6 @@ public class ElementalAttachmentInstance extends StatusInstance {
     @Persisted(key = "replenish_timer")
     private int replenishTimer;
 
-    private int logCounter;
-
     public ElementalAttachmentInstance(ElementalsGIM element, AttachmentSource source,
                                        AttachmentProfile profile, float initialQuantity) {
         this.typeId = TYPE_ID;
@@ -52,7 +50,6 @@ public class ElementalAttachmentInstance extends StatusInstance {
         this.replenishTick = 200;
         this.replenishAmount = 1.0f;
         this.replenishTimer = replenishTick;
-        this.logCounter = 0;
     }
 
     public ElementalAttachmentInstance() {

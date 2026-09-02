@@ -1,6 +1,8 @@
 package com.linweiyun.genshin.core.system.combat.attack;
 
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.attribute.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.about.AttachmentProfile;
@@ -12,6 +14,9 @@ import com.linweiyun.genshin.core.system.combat.decay.DecayCounterData;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterManager;
 import com.linweiyun.genshin.core.system.combat.decay.DecayResult;
 import com.linweiyun.genshin.core.system.combat.decay.IDecayCounterHolder;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionManager;
+import com.linweiyun.genshin.core.system.reaction.ReactionContext;
+import com.linweiyun.genshin.core.system.reaction.ReactionResult;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -32,6 +37,9 @@ public class HurtEntityHelper {
     }
 
     public static void hurtEntityForPlayer(ModDamageSource damageSource, PGCharacter attacker, LivingEntity target, float damage) {
+        if (target.level().isClientSide()) {
+            return;
+        }
         ModDamageSpec spec = damageSource.getSpec();
         DecayResult decayResult = DecayResult.NONE;
 
@@ -55,20 +63,40 @@ public class HurtEntityHelper {
 //                    decayResult.getPoiseCoefficient()
 //            );
         }
-
+        float elementCoefficient = decayResult.getElementCoefficient();
         damage *= decayResult.getDamageCoefficient();
-        target.hurt(damageSource, damage);
-
-        // 元素附着逻辑 —— 用衰减序列的元素系数
-        if (spec.hasAuraPotential() && decayResult.getElementCoefficient() > 0) {
-            AttachmentProfile profile = chooseProfile(spec.getElementAmount());
+        // 1. 先附着（全额 × 元素系数）
+        AttachmentProfile profile = chooseProfile(spec.getElementAmount());
+        boolean canAttach = spec.hasAuraPotential() && elementCoefficient > 0;
+        if (canAttach) {
             ElementalAttachmentHelper.attach(
+                    target, spec.getElement(),
+                    AttachmentSource.NORMAL_ATTACK, profile);
+        }
+
+        // 2. 触发反应
+        ReactionResult reactionResult = null;
+        if (canAttach) {
+            StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
+            ReactionContext ctx = new ReactionContext(
                     target,
                     spec.getElement(),
+                    spec.getElementAmount() * elementCoefficient,
                     AttachmentSource.NORMAL_ATTACK,
-                    profile
+                    profile,
+                    spec,
+                    damageSource.getEntity(),
+                    container
             );
+            reactionResult = ElementalReactionManager.tryReactAfterAttach(ctx);
         }
+
+        // 3. 增幅修正
+        if (reactionResult != null && reactionResult.isAmplified()) {
+            damage *= reactionResult.getAmplifyMultiplier();
+        }
+        target.hurt(damageSource, damage);
+
     }
 
     private static AttachmentProfile chooseProfile(float elementAmount) {
@@ -86,7 +114,6 @@ public class HurtEntityHelper {
         }
         ModDamageSpec damageSpec = damageSource.getSpec();
         float baseDamageValue = (float) ((attacker.getData().getAttributeTotalValue(ModAttributes.ATK.value()) + damageSpec.getFlatDamageBonus()) * damageSpec.getDamageMultiplier());
-        LOGGER.info("" + damageSpec.getFlatDamageBonus());
         return baseDamageValue;
     }
 }
