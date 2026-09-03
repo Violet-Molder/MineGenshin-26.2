@@ -2,10 +2,10 @@ package com.linweiyun.genshin.core.character;
 
 import com.linweiyun.genshin.content.effect.character.CharacterEffectContainer;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
-import com.linweiyun.genshin.core.attribute.AttributeContainer;
-import com.linweiyun.genshin.core.attribute.AttributeInstance;
-import com.linweiyun.genshin.core.attribute.AttributeType;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.content.attribute.AttributeContainer;
+import com.linweiyun.genshin.content.attribute.AttributeInstance;
+import com.linweiyun.genshin.content.attribute.AttributeType;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
@@ -25,14 +25,12 @@ public class PGCharacterData implements IPersistedSerializable {
     private double currentHP;
     @Persisted(key = "ascension_phase")
     private int ascensionPhase;
+    @Persisted(key = "constellation")
+    private int constellation;
     @Persisted(key = "attributes")
     private AttributeContainer attributes = new AttributeContainer();
     @Persisted(key = "normal_attack_level")
     private int normalAttackLevel;
-    @Persisted(key = "charged_attack_level")
-    private int chargedAttackLevel;
-    @Persisted(key = "plunging_attack_level")
-    private int plungingAttackLevel;
     @Persisted(key = "elemental_skill_level")
     private int elementalSkillLevel;
     @Persisted(key = "elemental_burst_level")
@@ -63,9 +61,8 @@ public class PGCharacterData implements IPersistedSerializable {
         this.currentExp = 0;
         this.maxExp = 1000;
         this.ascensionPhase = 0;
+        this.constellation = 0;
         this.normalAttackLevel = 1;
-        this.chargedAttackLevel = 1;
-        this.plungingAttackLevel = 1;
         this.elementalSkillLevel = 1;
         this.elementalBurstLevel = 1;
         this.currentObtainingEnergy = 0;
@@ -114,6 +111,11 @@ public class PGCharacterData implements IPersistedSerializable {
     public int getElementalSkillMaxStacks() { return elementalSkillMaxStacks; }
     public int getElementalSkillStacks() { return elementalSkillStacks; }
     public StatusContainer getStatusContainer() { return statusContainer; }
+    public int getNormalAttackLevel() { return normalAttackLevel; }
+    public int getElementalSkillLevel() { return elementalSkillLevel; }
+    public int getElementalBurstLevel() { return elementalBurstLevel; }
+
+
 
     public List<Integer> getSkillCoolList() {
         return skillCoolList;
@@ -161,14 +163,6 @@ public class PGCharacterData implements IPersistedSerializable {
             elementalBurstCooldownTick--;
             markDirty();
         }
-        if (effectContainer != null) {
-            for (CharacterEffectInstance effect : effectContainer.getEffects()) {
-                if (effect != null) {
-                    effect.setDuration(effect.getDuration() - 1);
-                    markDirty();
-                }
-            }
-        }
         statusContainer.tick();
     }
     public CharacterEffectContainer getEffectContainer() {
@@ -196,10 +190,9 @@ public class PGCharacterData implements IPersistedSerializable {
         copy.maxExp = this.maxExp;
         copy.currentHP = this.currentHP;
         copy.ascensionPhase = this.ascensionPhase;
+        copy.constellation = this.constellation;
         copy.attributes = this.attributes.copy();
         copy.normalAttackLevel = this.normalAttackLevel;
-        copy.chargedAttackLevel = this.chargedAttackLevel;
-        copy.plungingAttackLevel = this.plungingAttackLevel;
         copy.elementalSkillLevel = this.elementalSkillLevel;
         copy.elementalBurstLevel = this.elementalBurstLevel;
         copy.currentObtainingEnergy = this.currentObtainingEnergy;

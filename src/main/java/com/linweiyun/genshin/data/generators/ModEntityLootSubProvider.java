@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.data.generators;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.core.system.registry.register.ItemsRegister;
+import com.linweiyun.genshin.core.system.registry.register.ModItems;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -60,37 +60,37 @@ public class ModEntityLootSubProvider extends EntityLootSubProvider {
                           LootPool.lootPool()
                               .setRolls(ConstantValue.exactly(1))
                               .add(
-                                  LootItem.lootTableItem(ItemsRegister.PRIMOGEM.get())
+                                  LootItem.lootTableItem(ModItems.PRIMOGEM.get())
                                       .setWeight(60)
                                       .apply(
                                           SetItemCountFunction.setCount(ConstantValue.exactly(0))))
                               .add(
-                                  LootItem.lootTableItem(ItemsRegister.PRIMOGEM.get())
+                                  LootItem.lootTableItem(ModItems.PRIMOGEM.get())
                                       .setWeight(17)
                                       .apply(
                                           SetItemCountFunction.setCount(ConstantValue.exactly(1))))
                               .add(
-                                  LootItem.lootTableItem(ItemsRegister.PRIMOGEM.get())
+                                  LootItem.lootTableItem(ModItems.PRIMOGEM.get())
                                       .setWeight(13)
                                       .apply(
                                           SetItemCountFunction.setCount(ConstantValue.exactly(2))))
                               .add(
-                                  LootItem.lootTableItem(ItemsRegister.PRIMOGEM.get())
+                                  LootItem.lootTableItem(ModItems.PRIMOGEM.get())
                                       .setWeight(5)
                                       .apply(
                                           SetItemCountFunction.setCount(ConstantValue.exactly(3))))
                               .add(
-                                  LootItem.lootTableItem(ItemsRegister.PRIMOGEM.get())
+                                  LootItem.lootTableItem(ModItems.PRIMOGEM.get())
                                       .setWeight(3)
                                       .apply(
                                           SetItemCountFunction.setCount(ConstantValue.exactly(4))))
                               .add(
-                                  LootItem.lootTableItem(ItemsRegister.PRIMOGEM.get())
+                                  LootItem.lootTableItem(ModItems.PRIMOGEM.get())
                                       .setWeight(2)
                                       .apply(
                                           SetItemCountFunction.setCount(ConstantValue.exactly(5))))
                               .add(
-                                  LootItem.lootTableItem(ItemsRegister.PRIMOGEM.get())
+                                  LootItem.lootTableItem(ModItems.PRIMOGEM.get())
                                       .setWeight(1)
                                       .apply(
                                           SetItemCountFunction.setCount(

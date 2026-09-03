@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.data.generators;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.core.system.registry.register.ItemsRegister;
+import com.linweiyun.genshin.core.system.registry.register.ModItems;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.ModelProvider;
@@ -15,6 +15,6 @@ public class ModModeProvider extends ModelProvider {
 
   @Override
   protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
-    itemModels.generateFlatItem(ItemsRegister.PRIMOGEM.get(), ModelTemplates.FLAT_ITEM);
+    itemModels.generateFlatItem(ModItems.PRIMOGEM.get(), ModelTemplates.FLAT_ITEM);
   }
 }

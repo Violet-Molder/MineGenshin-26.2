@@ -2,7 +2,7 @@ package com.linweiyun.genshin.core.system.registry;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
-import com.linweiyun.genshin.core.attribute.AttributeType;
+import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import net.minecraft.core.Registry;

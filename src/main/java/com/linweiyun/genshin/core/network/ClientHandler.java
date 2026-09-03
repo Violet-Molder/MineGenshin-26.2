@@ -3,16 +3,19 @@ package com.linweiyun.genshin.core.network;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.TagValueInput;
+import org.slf4j.Logger;
 
 import java.util.Objects;
 
 public class ClientHandler {
+  private static final Logger LOGGER = LogUtils.getLogger();
   public static void primogemClientHandler(int amount) {
     Player player = Minecraft.getInstance().player;
     if (player == null) return;
@@ -25,12 +28,17 @@ public class ClientHandler {
     player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT, isGenshinMode);
   }
   public static void playerCharactersClientHandler(CompoundTag data) {
-    Player player = Minecraft.getInstance().player;
-    if (player == null) return;
-    PlayerCharactersAttachment attachment =
-            player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-    attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
-    attachment.fixCharacterTypes();
+    Minecraft mc = Minecraft.getInstance();
+    mc.execute(() -> {
+      if (mc.player == null || mc.player.isRemoved()) {
+        mc.execute(() -> playerCharactersClientHandler(data));
+        return;
+      }
+      PlayerCharactersAttachment attachment =
+              mc.player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, mc.player.registryAccess(), data));
+      attachment.fixCharacterTypes();
+    });
   }
 
   public static void characterDataClientHandler(int uuid, CompoundTag data) {

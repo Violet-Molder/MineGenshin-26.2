@@ -3,7 +3,7 @@ package com.linweiyun.genshin.client.gui.components;
 import com.linweiyun.genshin.client.gui.components.state_bind_com.BooleanDisplayBindUIElement;
 import com.linweiyun.genshin.client.gui.components.state_bind_com.StackBindUIElement;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.IDataProvider;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;

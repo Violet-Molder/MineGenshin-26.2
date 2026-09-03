@@ -100,7 +100,7 @@ public class FreezeReaction extends ElementalReaction {
      */
     @Override
     public boolean isBlocked(ReactionContext context) {
-        if (context.attackerElement == ElementalsGIM.FROZEN) return true;
+        if (context.attackerElement() == ElementalsGIM.FROZEN) return true;
         return false;
     }
 
@@ -132,7 +132,7 @@ public class FreezeReaction extends ElementalReaction {
         // attackerMain：后手元素的"主元素"
         // getMainElement() 会把类元素归并到主元素（FROZEN→CYRO, AGGRAVATE→DENDRO, BURNING→PYRO）
         // 这样后手即使是 FROZEN，也能被识别成"主元素是 CYRO 的一方"
-        ElementalsGIM attackerMain = ctx.attackerElement.getMainElement();
+        ElementalsGIM attackerMain = ctx.attackerElement().getMainElement();
 
         // attackerIsA = 后手的主元素 == 注册时放在 A 槽位的元素？
         // 注册时 FreezeReaction: elementA=HYDRO, elementB=CYRO
@@ -148,21 +148,21 @@ public class FreezeReaction extends ElementalReaction {
         // 例：attackerIsA=true → elementB（冰）；attackerIsA=false → elementA（水）
         ElementalsGIM defenderTarget = attackerIsA ? elementB : elementA;
 
-        // totalDefenderQty：目标身上所有"能参与 defenderTarget 槽位消耗"的附着实例的元素量之和
+        // totalDefenderUnit：目标身上所有"能参与 defenderTarget 槽位消耗"的附着实例的元素量之和
         // 调用基类 sumConsumable（内部走 canConsume 过滤）：
         //   - FreezeReaction 的 canConsume 排除 FROZEN → 只统计精确的 CYRO / HYDRO（不含冻）
         //   - MeltReaction 用基类默认 canConsume → 会把 CYRO + FROZEN 都统计（主元素归并）
-        // 例：目标有 1.0 CYRO + 2.0 FROZEN，FreezeReaction 下 totalDefenderQty=1.0
-        //     同场景 MeltReaction 下 totalDefenderQty=3.0
-        float totalDefenderQty = sumConsumable(ctx.targetContainer, defenderTarget);
+        // 例：目标有 1.0 CYRO + 2.0 FROZEN，FreezeReaction 下 totalDefenderUnit=1.0
+        //     同场景 MeltReaction 下 totalDefenderUnit=3.0
+        float totalDefenderUnit = sumConsumable(ctx.targetContainer(), defenderTarget);
 
         // 如果目标身上完全没有能反应的先手元素 → 直接返回空结果（没反应发生）
-        if (totalDefenderQty <= 0f) {
+        if (totalDefenderUnit <= 0f) {
             return ReactionResult.builder(reactionType).build();
         }
 
         // attackerQty：后手元素本次附着的总量（全额参与反应，不衰减）
-        float attackerQty = ctx.attackerQuantity;
+        float attackerQty = ctx.attackerUnit();
 
         // ===== 第 ② 步：算量 —— 按消耗比算出双方各要扣多少 =====
 
@@ -179,19 +179,19 @@ public class FreezeReaction extends ElementalReaction {
         //   第二个参数 = B槽当前的数量
         //
         // 情况1: 后手是 A 槽（attackerIsA=true）
-        //   attackerQty = A槽的数量，totalDefenderQty = B槽的数量
-        //   → calculateConsumption(attackerQty, totalDefenderQty, ...)
+        //   attackerQty = A槽的数量，totalDefenderUnit = B槽的数量
+        //   → calculateConsumption(attackerQty, totalDefenderUnit, ...)
         //   → consumed[0] = A消耗, consumed[1] = B消耗
         //
         // 情况2: 后手是 B 槽（attackerIsA=false）
-        //   attackerQty = B槽的数量，totalDefenderQty = A槽的数量
-        //   → calculateConsumption(totalDefenderQty, attackerQty, ...)
+        //   attackerQty = B槽的数量，totalDefenderUnit = A槽的数量
+        //   → calculateConsumption(totalDefenderUnit, attackerQty, ...)
         //   → consumed[0] = A消耗, consumed[1] = B消耗
         if (attackerIsA) {
-            float[] consumed = calculateConsumption(attackerQty, totalDefenderQty, false);
+            float[] consumed = calculateConsumption(attackerQty, totalDefenderUnit);
             consumedA = consumed[0]; consumedB = consumed[1];
         } else {
-            float[] consumed = calculateConsumption(totalDefenderQty, attackerQty, true);
+            float[] consumed = calculateConsumption(totalDefenderUnit, attackerQty);
             consumedA = consumed[0]; consumedB = consumed[1];
         }
 
@@ -203,16 +203,9 @@ public class FreezeReaction extends ElementalReaction {
         float consumedAttacker = attackerIsA ? consumedA : consumedB;
 
         // ===== 第 ③ 步：扣减 —— 真正从目标身上扣元素 =====
-
-        if (attackerIsA) {
             // 后手是 A 槽 → 扣 A 槽元素（从目标身上消耗）+ 扣 B 槽元素（从先手容器扣，用基类统一方法）
-            consumeAttacker(ctx.target, elementA, consumedA);
-            consumeFromContainer(ctx.targetContainer, elementB, consumedB);
-        } else {
-            // 后手是 B 槽 → 扣 B 槽元素（从目标身上消耗）+ 扣 A 槽元素（从先手容器扣，用基类统一方法）
-            consumeAttacker(ctx.target, elementB, consumedB);
-            consumeFromContainer(ctx.targetContainer, elementA, consumedA);
-        }
+            consumeElementUnit(ctx.targetContainer(), elementB, consumedB);
+            consumeElementUnit(ctx.targetContainer(), elementA, consumedA);
         // 两个消耗方法的区别：
         //   consumeAttacker：直接按元素类型消耗（调用 ElementalAttachmentHelper.consume）
         //     → 针对"后手元素"，它只消耗本次附着的那一批
@@ -226,11 +219,11 @@ public class FreezeReaction extends ElementalReaction {
         // 为什么不用基类 sumConsumable？因为 FreezeReaction.canConsume 会排除 FROZEN，
         // 我们要的是【所有冻元素】（不管能不能被消耗），直接精确匹配更准确
         float frozenBefore = 0f;
-        for (StatusInstance inst : ctx.targetContainer.getAll()) {
+        for (StatusInstance inst : ctx.targetContainer().getAll()) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
             if (ea.getElement() == ElementalsGIM.FROZEN) {
-                frozenBefore += ea.getQuantity();
+                frozenBefore += ea.getUnit();
             }
         }
 
@@ -242,28 +235,27 @@ public class FreezeReaction extends ElementalReaction {
             // 用 SPECIAL 来源附加 FROZEN（不是 NORMAL_ATTACK，因为这是反应生成物，不是直接攻击附着）
             // TODO: 完整冻结效果（减速、冻结实体）待实现
             ElementalAttachmentHelper.attach(
-                    ctx.target,
+                    ctx.targetContainer(),
                     ElementalsGIM.FROZEN,
                     AttachmentSource.SPECIAL,
                     new AttachmentProfile(frozenQty, 1.0f, 0.0f, 999.0f)
             );
-            StatusContainer container =
-                    StatusAccessor.of(ctx.target);
-            if (container != null && container.getFrozenDecayState() != null) {
+            StatusContainer container = ctx.targetContainer();
+            if (container.getFrozenDecayState() != null) {
                 container.getFrozenDecayState().activate();
             }
         }
 
         // 计算日志用的残余先手元素量
         float defenderConsumedQty = attackerIsA ? consumedB : consumedA;
-        float defenderResidual = totalDefenderQty - defenderConsumedQty;
+        float defenderResidual = totalDefenderUnit - defenderConsumedQty;
         ElementalsGIM defenderElementConsumed = attackerIsA ? elementB : elementA;
         // 反应后冻元素总量 = 反应前已有的冻 + 新生成的冻
         float frozenAfter = frozenBefore + (totalConsumed > 0f ? totalConsumed * FROZEN_MULTIPLIER : 0f);
 
         LOGGER.info("冻结反应触发 | 总消耗={}U | 后手={} {}U | 先手={} {}U | 残余先手={} {}U | 反应后冻={}U",
                 totalConsumed,
-                ctx.attackerElement, consumedAttacker,
+                ctx.attackerElement(), consumedAttacker,
                 defenderElementConsumed, defenderConsumedQty,
                 defenderElementConsumed, defenderResidual,
                 frozenAfter);
@@ -279,13 +271,4 @@ public class FreezeReaction extends ElementalReaction {
                 .build();
     }
 
-    /**
-     * consumeAttacker —— 消耗后手元素
-     *
-     * 简单委托 ElementalAttachmentHelper.consume，直接按元素类型从目标身上扣减。
-     * 用单独方法只是为了和基类 consumeFromContainer 的命名对称。
-     */
-    private void consumeAttacker(LivingEntity target, ElementalsGIM element, float amount) {
-        ElementalAttachmentHelper.consume(target, element, amount);
-    }
 }

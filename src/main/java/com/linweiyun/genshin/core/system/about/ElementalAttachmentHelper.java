@@ -1,15 +1,9 @@
 package com.linweiyun.genshin.core.system.about;
 
-import com.linweiyun.genshin.core.status.StatusAccessor;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
-import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.system.registry.register.StatusDataComponents;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import org.slf4j.Logger;
 
 /**
@@ -35,38 +29,10 @@ public class ElementalAttachmentHelper {
 
     // ========== 附着入口 —— 四种宿主 ==========
     public static final Logger LOGGER = LogUtils.getLogger();
-    public static void attach(LivingEntity target,
+    public static void attach(StatusContainer container,
                               ElementalsGIM element,
                               AttachmentSource source,
                               AttachmentProfile profile) {
-        doAttach(StatusAccessor.of(target), element, source, profile);
-    }
-
-    public static void attach(BlockEntity be,
-                              ElementalsGIM element,
-                              AttachmentSource source,
-                              AttachmentProfile profile) {
-        doAttach(StatusAccessor.of(be), element, source, profile);
-    }
-
-    public static void attach(PGCharacterData data,
-                              ElementalsGIM element,
-                              AttachmentSource source,
-                              AttachmentProfile profile) {
-        doAttach(StatusAccessor.of(data), element, source, profile);
-    }
-
-    public static void attach(ItemStack stack,
-                              ElementalsGIM element,
-                              AttachmentSource source,
-                              AttachmentProfile profile) {
-        // ItemStack 先 get DataComponent，没有就创建新的 StatusContainer
-        StatusContainer container = stack.get(
-                StatusDataComponents.CONTAINER);
-        if (container == null) {
-            container = new StatusContainer();
-            stack.set(StatusDataComponents.CONTAINER, container);
-        }
         doAttach(container, element, source, profile);
     }
 
@@ -78,14 +44,9 @@ public class ElementalAttachmentHelper {
      * 注意：类元素（FROZEN）和对应的主元素（CYRO）是不同的 ElementalsGIM 值，
      * 不会被一起消耗。元素反应需要根据实际消耗规则自行决定消耗哪些。
      */
-    public static float consume(LivingEntity target, ElementalsGIM element, float amount) {
-        return consumeInternal(StatusAccessor.of(target), element, amount);
-    }
-    public static float consume(BlockEntity be, ElementalsGIM element, float amount) {
-        return consumeInternal(StatusAccessor.of(be), element, amount);
-    }
-    public static float consume(PGCharacterData data, ElementalsGIM element, float amount) {
-        return consumeInternal(StatusAccessor.of(data), element, amount);
+    public static float consume(StatusContainer container, ElementalsGIM element, float amount) {
+        if (container == null) return 0f;
+        return consumeInternal(container, element, amount);
     }
 
     private static float consumeInternal(StatusContainer container, ElementalsGIM element, float amount) {
@@ -133,7 +94,7 @@ public class ElementalAttachmentHelper {
         }
 
         // 4. 量多则覆盖判断
-        if (actualQuantity <= existing.getQuantity()) {
+        if (actualQuantity <= existing.getUnit()) {
             // 后手段量 ≤ 先手段量 → 不覆盖
             return;
         }

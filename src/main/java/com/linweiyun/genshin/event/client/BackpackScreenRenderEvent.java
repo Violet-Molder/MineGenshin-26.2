@@ -9,11 +9,12 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.world.entity.player.Player;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 
-@EventBusSubscriber
+@EventBusSubscriber(value = Dist.CLIENT)
 public class BackpackScreenRenderEvent {
 
     @SubscribeEvent

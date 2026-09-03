@@ -31,7 +31,7 @@ public class MeltReaction extends ElementalReaction {
 
     @Override
     public ReactionResult execute(ReactionContext ctx) {
-        ElementalsGIM attackerMain = ctx.attackerElement.getMainElement();
+        ElementalsGIM attackerMain = ctx.attackerElement().getMainElement();
         boolean attackerIsA = (attackerMain == elementA);
 
         // 找到目标身上主元素为 elementB 的所有实例（CYRO 主元素，可能是 CYRO 或 FROZEN）
@@ -42,27 +42,21 @@ public class MeltReaction extends ElementalReaction {
             return ReactionResult.builder(reactionType).build();
         }
 
-        float attackerQty = ctx.attackerQuantity;
+        float attackerQty = ctx.attackerUnit();
 
         // 按比例同时消耗
         float consumedA, consumedB;
         if (attackerIsA) {
-            float[] consumed = calculateConsumption(attackerQty, totalDefenderQty, false);
+            float[] consumed = calculateConsumption(attackerQty, totalDefenderQty);
             consumedA = consumed[0]; consumedB = consumed[1];
         } else {
-            float[] consumed = calculateConsumption(totalDefenderQty, attackerQty, true);
+            float[] consumed = calculateConsumption(totalDefenderQty, attackerQty);
             consumedA = consumed[0]; consumedB = consumed[1];
         }
 
         // 从容器里扣
-        if (attackerIsA) {
-            consumeAttacker(ctx.target, elementA, consumedA);
-            consumeDefenderMain(ctx.targetContainer, elementB, consumedB);
-        } else {
-            consumeAttacker(ctx.target, elementB, consumedB);
-            consumeDefenderMain(ctx.targetContainer, elementA, consumedA);
-        }
-
+        consumeElementUnit(ctx.targetContainer(), elementB, consumedB);
+        consumeElementUnit(ctx.targetContainer(), elementA, consumedA);
         // 倍率
         boolean dominant = attackerIsA;
         float multiplier = dominant ? DOMINANT_MULTIPLIER : SUBMISSIVE_MULTIPLIER;
@@ -78,34 +72,15 @@ public class MeltReaction extends ElementalReaction {
 
     private float sumMainElementQuantity(ReactionContext ctx, ElementalsGIM mainTarget) {
         float sum = 0f;
-        for (StatusInstance inst : ctx.targetContainer.getAll()) {
+        for (StatusInstance inst : ctx.targetContainer().getAll()) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
             if (ea.getElement().getMainElement() == mainTarget) {
-                sum += ea.getQuantity();
+                sum += ea.getUnit();
             }
         }
         return sum;
     }
 
-    private void consumeAttacker(LivingEntity target, ElementalsGIM element, float amount) {
-        ElementalAttachmentHelper.consume(target, element, amount);
-    }
 
-    /**
-     * 消耗目标身上主元素为 mainTarget 的所有实例（如消耗 CYRO 主元素时同时消耗 CYRO 和 FROZEN）
-     * 不严格保证消耗顺序，实际中如果有冻结藏冰/藏水的情况需要特殊顺序
-     */
-    private void consumeDefenderMain(com.linweiyun.genshin.core.attachment.StatusContainer container,
-                                     ElementalsGIM mainTarget, float amount) {
-        float remaining = amount;
-        for (StatusInstance inst : container.getAll()) {
-            if (inst.isFinished()) continue;
-            if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
-            if (ea.getElement().getMainElement() != mainTarget) continue;
-            float consumed = ea.consume(remaining);
-            remaining -= consumed;
-            if (remaining <= 0f) break;
-        }
-    }
 }

@@ -3,7 +3,7 @@ package com.linweiyun.genshin.core.status;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.system.registry.register.StatusDataComponents;
+import com.linweiyun.genshin.core.system.registry.register.ModStatusDataComponents;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -34,7 +34,7 @@ public class StatusAccessor {
     }
 
     public static StatusContainer of(ItemStack stack) {
-        StatusContainer c = stack.get(StatusDataComponents.CONTAINER);
+        StatusContainer c = stack.get(ModStatusDataComponents.CONTAINER);
         return c != null ? c : StatusContainer.EMPTY;
     }
 }

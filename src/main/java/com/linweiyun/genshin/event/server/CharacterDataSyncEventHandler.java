@@ -7,7 +7,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 public class CharacterDataSyncEventHandler {
-    public static void handle(PlayerEvent.PlayerLoggedInEvent event) {
+    public static void
+    handle(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             //原石数据同步
             int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);

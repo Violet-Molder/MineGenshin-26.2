@@ -109,6 +109,7 @@ public class KeyInputHandler {
   private static void triggerCharacterSkill(Player player, int isLong) {
     PlayerCharactersAttachment attachment =
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+
     var currentChar = attachment.getCurrentCharacter();
     if (currentChar != null) {
       currentChar.performElementalSkill(player, isLong);

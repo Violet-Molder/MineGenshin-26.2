@@ -7,7 +7,7 @@ import com.linweiyun.genshin.client.gui.components.state_bind_com.HPProgressBar;
 import com.linweiyun.genshin.client.gui.components.state_bind_com.SkillProgressBar;
 import com.linweiyun.genshin.client.gui.components.state_bind_com.StackBindUIElement;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;

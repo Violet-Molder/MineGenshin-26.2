@@ -2,19 +2,21 @@ package com.linweiyun.genshin.core.attachment;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.NetworkManager;
-import com.linweiyun.genshin.core.system.registry.register.CharacterRegister;
+import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.storage.TagValueOutput;
+import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerCharactersAttachment implements IPersistedSerializable {
-
+    public static final Logger LOGGER = LogUtils.getLogger();
     @Persisted(key = "owned_characters")
     private List<PGCharacter> ownedCharacters = new ArrayList<>();
 
@@ -85,7 +87,7 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
             PGCharacter base = ownedCharacters.get(i);
             if (base == null) continue;
             // 从注册表获取正确的子类实例
-            PGCharacter subclass = CharacterRegister.getByUUID(base.getCharacterUUID());
+            PGCharacter subclass = ModCharacters.getByUUID(base.getCharacterUUID());
             if (subclass != null && subclass.getClass() != base.getClass()) {
                 // 保留已反序列化的数据，替换为子类实例
                 subclass.setData(base.getData());

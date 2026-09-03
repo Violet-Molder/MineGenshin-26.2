@@ -1,3 +1,0 @@
--Dstdout.encoding=UTF-8
--Dstderr.encoding=UTF-8
--XX:+AllowEnhancedClassRedefinition

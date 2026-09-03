@@ -1,9 +1,10 @@
 package com.linweiyun.genshin;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
+import com.linweiyun.genshin.mixin.ElementalReactionConfig;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -28,17 +29,20 @@ public class Minegenshin {
         NeoForge.EVENT_BUS.register(this);
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_EXP_SPEC, "minegenshin/exp.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_ATTRIBUTE_SPEC, "minegenshin/attribute.toml");
-        ItemsRegister.register(modEventBus);
-        ItemGroupRegister.register(modEventBus);
-        EntityRegister.register(modEventBus);
-        DamageTypeRegister.register(modEventBus);
-        StatusDataComponents.register(modEventBus);
-        ElementalReactionRegister.register(modEventBus);
+        modContainer.registerConfig(ModConfig.Type.COMMON, ElementalReactionConfig.REACTION_SPEC, "minegenshin/genshin_reaction.toml");
+
+        ModItems.register(modEventBus);
+        ModItemGroups.register(modEventBus);
+        ModEntities.register(modEventBus);
+        ModDamageTypes.register(modEventBus);
+        ModMobEffects.register(modEventBus);
+        ModStatusDataComponents.register(modEventBus);
+        ModElementalReactions.register(modEventBus);
 
         ModAttributes.ATTRIBUTES.register(modEventBus);
-        CharacterRegister.CHARACTERS.register(modEventBus);
+        ModCharacters.CHARACTERS.register(modEventBus);
         AttachmentRegistration.register(modEventBus);
-        CharacterEffectRegister.register(modEventBus);
+        ModCharacterEffects.register(modEventBus);
 
 
     }

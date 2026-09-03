@@ -1,14 +1,10 @@
 package com.linweiyun.genshin.core.character;
 
 
-import com.linweiyun.genshin.Config;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.attribute.AttributeContainer;
-import com.linweiyun.genshin.core.attribute.AttributeType;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
-import com.linweiyun.genshin.enums.CharacterAscendAttribute;
-import net.minecraft.network.chat.Component;
+import com.linweiyun.genshin.content.attribute.AttributeContainer;
+import com.linweiyun.genshin.content.attribute.AttributeType;
 import net.minecraft.world.entity.player.Player;
 
 public class CharacterHelper {

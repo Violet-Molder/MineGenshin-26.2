@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.core.character.catalyst;
 
 import com.linweiyun.genshin.Config;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import com.linweiyun.genshin.enums.ElementalsGIM;

@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
@@ -37,7 +38,7 @@ public class PlayerAttackInterceptor {
         ci.cancel();
 
         ModDamageSource source = buildModDamageSource(player, character, livingTarget);
-        HurtEntityHelper.hurtEntityForPlayer(source, character, livingTarget, 1.0f);
+        HurtEntityHelper.hurtEntityForPlayer(source, character, livingTarget);
     }
 
     private ModDamageSource buildModDamageSource(Player player, PGCharacter character, LivingEntity target) {

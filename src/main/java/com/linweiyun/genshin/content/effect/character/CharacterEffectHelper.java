@@ -58,7 +58,6 @@ public class CharacterEffectHelper {
         if (instance != null) {
             effect.onEffectRemoved(holder, character, instance);             // 调用移除回调
             container.removeEffect(effect);                                  // 从容器移除
-            LOGGER.info("移除");
         }
 
         character.getData().syncEffectsToTag();                                        // 同步效果数据到NBT标签

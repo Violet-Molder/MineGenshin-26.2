@@ -1,8 +1,8 @@
 package com.linweiyun.genshin.core.character;
 
 import com.linweiyun.genshin.Config;
-import com.linweiyun.genshin.core.attribute.AttributeType;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.content.attribute.AttributeType;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
@@ -90,7 +90,6 @@ public class PGCharacter implements IPersistedSerializable {
         return ModAttributes.ATTRIBUTES.getRegistry().get().getValue(id);
     }
     public void performElementalSkill(Player player, int skillTime) {
-        LOGGER.info(player + String.valueOf(data.getElementalSkillCooldownTick()));
         if (data.getElementalSkillCooldownTick() == 0) {
             triggerElementalSkill(player, skillTime);
             data.setElementalSkillStacks(data.getElementalSkillStacks() - 1);
@@ -106,7 +105,6 @@ public class PGCharacter implements IPersistedSerializable {
 
     };
     public void performElementalBurst(Player player) {
-        LOGGER.info(String.valueOf(data.getElementalBurstCooldownTick()));
         if (data.getElementalBurstCooldownTick() == 0) {
             triggerElementalBurst(player);
             if (player.level().isClientSide()) return;

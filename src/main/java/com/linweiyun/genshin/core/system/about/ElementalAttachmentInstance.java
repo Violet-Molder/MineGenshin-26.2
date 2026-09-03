@@ -7,8 +7,6 @@ import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
-import java.beans.Transient;
-
 public class ElementalAttachmentInstance extends StatusInstance {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -23,8 +21,8 @@ public class ElementalAttachmentInstance extends StatusInstance {
     @Persisted(key = "profile")
     private AttachmentProfile profile;
 
-    @Persisted(key = "quantity")
-    private float quantity;
+    @Persisted(key = "unit")
+    private float unit;
 
     @Persisted(key = "current_decay_per_second")
     private float currentDecayPerSecond;
@@ -44,12 +42,12 @@ public class ElementalAttachmentInstance extends StatusInstance {
     private transient StatusContainer container;
 
     public ElementalAttachmentInstance(ElementalsGIM element, AttachmentSource source,
-                                       AttachmentProfile profile, float initialQuantity) {
+                                       AttachmentProfile profile, float initialUnit) {
         this.typeId = TYPE_ID;
         this.element = element;
         this.source = source;
         this.profile = profile;
-        this.quantity = initialQuantity;
+        this.unit = initialUnit;
         this.currentDecayPerSecond = profile.getDecayPerSecond();
         this.permanent = profile.isPermanent();
         this.replenishTick = 200;
@@ -66,7 +64,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
         if (permanent) {
             replenishTimer--;
             if (replenishTimer <= 0) {
-                quantity = Math.min(quantity + replenishAmount, profile.getBaseQuantity());
+                unit = Math.min(unit + replenishAmount, profile.getBaseQuantity());
                 replenishTimer = replenishTick;
             }
             return;
@@ -81,12 +79,12 @@ public class ElementalAttachmentInstance extends StatusInstance {
         }
         float decayPerTick = effectiveDecayPerSecond / 20f;
 
-        quantity = Math.max(0f, quantity - decayPerTick);
+        unit = Math.max(0f, unit - decayPerTick);
     }
 
     @Override
     public boolean isFinished() {
-        return quantity <= 0f;
+        return unit <= 0f;
     }
 
     @Override
@@ -95,7 +93,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
         c.element = this.element;
         c.source = this.source;
         c.profile = this.profile;
-        c.quantity = this.quantity;
+        c.unit = this.unit;
         c.currentDecayPerSecond = this.currentDecayPerSecond;
         c.permanent = this.permanent;
         c.replenishTick = this.replenishTick;
@@ -112,7 +110,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
 
     /** 覆盖规则：量多则覆盖，设置新 quantity（衰减速率是否替换由 Helper 决定） */
     public void refreshQuantity(float newQuantity) {
-        this.quantity = newQuantity;
+        this.unit = newQuantity;
     }
 
     /** 覆盖规则：火/激/燃 覆盖时直接替换衰减速率 */
@@ -122,8 +120,8 @@ public class ElementalAttachmentInstance extends StatusInstance {
 
     /** 消耗（元素反应调用），返回实际消耗量 */
     public float consume(float amount) {
-        float actual = Math.min(amount, quantity);
-        quantity -= actual;
+        float actual = Math.min(amount, unit);
+        unit -= actual;
         return actual;
     }
 
@@ -132,7 +130,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
     public ElementalsGIM getElement() { return element; }
     public AttachmentSource getSource() { return source; }
     public AttachmentProfile getProfile() { return profile; }
-    public float getQuantity() { return quantity; }
+    public float getUnit() { return unit; }
     public float getCurrentDecayPerSecond() { return currentDecayPerSecond; }
     public boolean isPermanent() { return permanent; }
 }

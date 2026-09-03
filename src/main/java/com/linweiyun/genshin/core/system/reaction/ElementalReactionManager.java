@@ -53,7 +53,7 @@ public class ElementalReactionManager {
      */
     public static ReactionResult tryReactAfterAttach(ReactionContext context) {
         // 后手附着量（全额参与反应，先手已在附着时衰减到 0.8，后手全额）
-        float remainingAttackerQty = context.attackerQuantity;
+        float remainingAttackerQty = context.attackerUnit();
 
         // 收集所有"先手元素实例"（排除后手自己的那一份，虽然刚附着的也是后手元素）
         List<ElementalAttachmentInstance> defenders = collectDefenders(context);
@@ -66,7 +66,7 @@ public class ElementalReactionManager {
         List<Candidate> candidates = new ArrayList<>();
         for (ElementalAttachmentInstance defender : defenders) {
             ElementalsGIM defenderMain = defender.getElement().getMainElement();
-            ElementalsGIM attackerMain = context.attackerElement.getMainElement();
+            ElementalsGIM attackerMain = context.attackerElement().getMainElement();
 
             for (ElementalReaction reaction : ModRegistries.ELEMENTAL_REACTIONS_REGISTRY) {
                 if (!reaction.canMatch(attackerMain, defenderMain)) continue;
@@ -76,7 +76,7 @@ public class ElementalReactionManager {
                 // 如果反应未设置专属优先级，则按默认序列算
                 if (priority < 0) {
                     priority = ReactionPriorityCalculator.computeFor(
-                            context.attackerElement, defender.getElement(), reaction);
+                            context.attackerElement(), defender.getElement(), reaction);
                 }
 
                 candidates.add(new Candidate(reaction, defender, priority));
@@ -96,14 +96,13 @@ public class ElementalReactionManager {
             if (cand.defender.isFinished()) continue;
 
             ReactionContext roundContext = new ReactionContext(
-                    context.target,
-                    context.attackerElement,
+                    context.attackerElement(),
                     remainingAttackerQty,
-                    context.attackerSource,
-                    context.attackerProfile,
-                    context.damageSpec,
-                    context.attackerEntity,
-                    context.targetContainer
+                    context.attackerSource(),
+                    context.attackerProfile(),
+                    context.damageSpec(),
+                    context.attackerEntity(),
+                    context.targetContainer()
             );
 
             ReactionResult result = cand.reaction.execute(roundContext);
@@ -130,9 +129,9 @@ public class ElementalReactionManager {
     /** 收集目标身上的"先手元素"实例（排除自己这方附着的、元素不反应的等） */
     private static List<ElementalAttachmentInstance> collectDefenders(ReactionContext context) {
         List<ElementalAttachmentInstance> result = new ArrayList<>();
-        ElementalsGIM attackerMain = context.attackerElement.getMainElement();
+        ElementalsGIM attackerMain = context.attackerElement().getMainElement();
 
-        for (StatusInstance inst : context.targetContainer.getAll()) {
+        for (StatusInstance inst : context.targetContainer().getAll()) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
 
@@ -154,7 +153,7 @@ public class ElementalReactionManager {
         if (context.attackerFollowsNoResidualRule()) {
             // 常规附着遵循后手不残留：反应后清 0
             ElementalAttachmentHelper.consume(
-                    context.target, context.attackerElement, Float.MAX_VALUE);
+                    context.targetContainer(), context.attackerElement(), Float.MAX_VALUE);
         } else {
             // 直接附着：保留剩余量（不用管，附着时已经加进容器了）
             // 如果反应需要额外生成元素（如冻结生成冻），在反应的 execute 里处理

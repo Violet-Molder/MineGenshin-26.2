@@ -21,7 +21,6 @@ public class CharacterTickEvent {
                 PGCharacter character = CharacterHelper.getCharacterByUUID(player, uuid);
                 if (character != null) {
                     character.tick(player);
-
                 }
             }
         }
@@ -30,8 +29,6 @@ public class CharacterTickEvent {
                 character.getData().clearDirty();
                 if (player instanceof ServerPlayer serverPlayer) {
                     attachment.syncSingleCharacterToPlayer(serverPlayer, character);
-                } else {
-                    attachment.syncSingleCharacterToServer(character);
                 }
 
             }

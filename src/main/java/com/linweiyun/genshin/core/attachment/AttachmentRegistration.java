@@ -46,7 +46,7 @@ public class AttachmentRegistration {
 
     public static final Supplier<AttachmentType<StatusContainer>> CONTAINER =
             ATTACHMENTS.register("status_container",
-                    () -> AttachmentType.serializable(StatusContainer::new).build());
+                    () -> AttachmentType.serializable(StatusContainer::new).copyOnDeath().build());
 
 //    public static final Supplier<AttachmentType<GenshinBackpack>> GENSHIN_BACKPACK_ATTACHMENT =
 //            ATTACHMENTS.register(

@@ -3,14 +3,13 @@ package com.linweiyun.genshin.client.gui.hud;
 import com.google.common.base.Suppliers;
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.lowdragmc.lowdraglib2.gui.hud.ModularHudLayer;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
-import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -34,7 +33,6 @@ public class DebugInfoScreen {
     }
 
     private static UIElement buildDebugInfoHud() {
-        LOGGER.info("TEST");
         var root = new UIElement().setId("root")
                 .layout(l -> l.widthPercent(100).heightPercent(100))
                 .lss("position", "absolute");

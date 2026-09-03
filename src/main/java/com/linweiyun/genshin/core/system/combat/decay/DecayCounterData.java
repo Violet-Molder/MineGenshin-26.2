@@ -76,7 +76,7 @@ public class DecayCounterData {
     public boolean checkAndResetIfTimeout(long currentTick) {
         long start = startTimeTick.get();
         lastAccessTick = currentTick;
-        if (start > 0 && (currentTick - start) >= group.getClearTimeTicks()) {
+        if (start > 0 && (currentTick - start) >= group.clearTimeTicks()) {
             hitCount.set(0);
             startTimeTick.set(currentTick);
             return true;
@@ -122,7 +122,7 @@ public class DecayCounterData {
      */
     public void workerCheckTimeout(long currentTick) {
         long start = startTimeTick.get();
-        if (start > 0 && (currentTick - start) > group.getClearTimeTicks()) {
+        if (start > 0 && (currentTick - start) > group.clearTimeTicks()) {
             pendingReset.set(true);
         }
     }
@@ -132,7 +132,7 @@ public class DecayCounterData {
      * 条件：超时2倍周期以上，且30秒内无访问
      */
     public boolean isExpiredForCleanup(long currentTick) {
-        return (currentTick - startTimeTick.get()) > (group.getClearTimeTicks() * 2L)
+        return (currentTick - startTimeTick.get()) > (group.clearTimeTicks() * 2L)
                 && (currentTick - lastAccessTick) > 600L;
     }
 

@@ -1,0 +1,79 @@
+package com.linweiyun.genshin.core.character.polearm.shenhe;
+
+import com.linweiyun.genshin.Config;
+import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
+import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
+import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
+import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
+import com.linweiyun.genshin.content.skill_node.RushesForward;
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
+import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.enums.CharacterAscendAttribute;
+import com.linweiyun.genshin.enums.ElementalsGIM;
+import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
+import com.linweiyun.genshin.core.system.registry.register.ModEntities;
+import com.mojang.logging.LogUtils;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+
+public class Shenhe extends PGCharacter {
+    private static final Logger LOGGER= LogUtils.getLogger();
+
+    public Shenhe() {
+        super(135001, 5, Component.translatable("character.name.shenhe"),
+                ElementalsGIM.CYRO, CharacterAscendAttribute.ATK,
+                10 * 20, 15*20, 10 * 20, 80f, "shenhe",
+                Map.of(
+                        ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
+                        ModAttributes.ATK.getId(), Config.SHENHE_ATK,
+                        ModAttributes.DEF.getId(), Config.SHENHE_DEF
+                ));
+        data.setElementalSkillStacks(2);
+
+    }
+
+    @Override
+    protected void triggerElementalSkill(Player player, int skillTime) {
+        ShenheTalent.elementalSkill(player,this, skillTime);
+    }
+
+    @Override
+    protected void triggerElementalBurst(Player player) {
+        PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        PGCharacter character = attachment.getCurrentCharacter();
+
+        TalismanSpiritArea field = ModEntities.FIELD_TALISMAN_SPIRIT.get()
+                .create(player.level(), EntitySpawnReason.EVENT);
+        if (field != null) {
+            field.setPos(player.position());
+            if (character != null) {
+                field.setOwner(player, character);
+            }
+            boolean added = player.level().addFreshEntity(field);
+        }
+    }
+
+    @Override
+    public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {
+        return Map.of(
+                ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
+                ModAttributes.ATK.getId(), Config.SHENHE_ATK,
+                ModAttributes.DEF.getId(), Config.SHENHE_DEF
+        );
+    }
+}

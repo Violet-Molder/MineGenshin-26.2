@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroup;
+import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 
@@ -39,134 +40,73 @@ import com.linweiyun.genshin.enums.ElementalsGIM;
 public class ModDamageSpec {
 
     // ========== 核心伤害数据 ==========
+    private final AttackType attackType;                 // 攻击类型 —— 决定伤害分类和衰减标签
+    private final ElementalsGIM element;                 // 伤害元素 —— 决定伤害的元素属性
 
-    // 攻击类型 —— 决定伤害分类和衰减标签
-    private final AttackType attackType;
+    // ========== 基础伤害区 - 倍率 ==========
+    private final float atkMultiplier;                   // 攻击力倍率（技能面板描述的那个）
+    private final float hpMultiplier;                    // 生命值倍率
+    private final float defMultiplier;                   // 防御力倍率
+    private final float emMultiplier;                    // 元素精通倍率
+    private final float skillMultiplierBonus;            // 技能倍率提升（行秋4命、深渊buff等，不是技能面板倍率）
+    private final float flatDamageBonus;                 // 基础伤害附加（申鹤冰凌等）
 
-    // 伤害元素 —— 决定伤害的元素属性
-    private final ElementalsGIM element;
-
-    // 伤害倍率 —— 攻击力乘数（如普通攻击的 1.5 倍率）
-    private final float damageMultiplier;
-
-    // 固定伤害加成 —— 在倍率计算后额外附加的固定伤害值
-    private final float flatDamageBonus;
 
     // ========== 元素附着数据 ==========
-
-    // 基础元素量 —— 本次攻击的原始元素量
-    private final float elementAmount;
+    private final float elementAmount;                   // 基础元素量 —— 本次攻击的原始元素量
 
     // ========== 衰减系统 ==========
-
-    // 衰减组别 —— 可选的自定义衰减组别
-    private final DecayGroup decayGroup;
+    private final DecayGroup decayGroup;                // 衰减组别 —— 决定三个序列（元素量、伤害、削韧）和清除时间
 
     // ========== 构造函数 ==========
-
-    /**
-     * 完整构造函数 —— 包含所有字段
-     * 通常不直接使用，而是通过 Builder 构建
-     */
     private ModDamageSpec(AttackType attackType, ElementalsGIM element,
-                          float damageMultiplier, float flatDamageBonus,
+                          float atkMultiplier, float hpMultiplier, float defMultiplier, float emMultiplier,
+                          float skillMultiplierBonus, float flatDamageBonus,
                           float elementAmount, DecayGroup decayGroup) {
         this.attackType = attackType;
         this.element = element;
-        this.damageMultiplier = damageMultiplier;
+        this.atkMultiplier = atkMultiplier;
+        this.hpMultiplier = hpMultiplier;
+        this.defMultiplier = defMultiplier;
+        this.emMultiplier = emMultiplier;
+        this.skillMultiplierBonus = skillMultiplierBonus;
         this.flatDamageBonus = flatDamageBonus;
         this.elementAmount = elementAmount;
         this.decayGroup = decayGroup;
     }
+
     public ModDamageSpec withFlatDamageBonus(float newFlatBonus) {
         return new ModDamageSpec(
-                this.attackType,
-                this.element,
-                this.damageMultiplier,
-                newFlatBonus,
-                this.elementAmount,
-                this.decayGroup
+                this.attackType, this.element,
+                this.atkMultiplier, this.hpMultiplier, this.defMultiplier, this.emMultiplier,
+                this.skillMultiplierBonus, newFlatBonus,
+                this.elementAmount, this.decayGroup
         );
     }
 
-    // ========== Getter 方法 ==========
+    // ========== Getter ==========
+    public AttackType getAttackType() { return attackType; }
+    public ElementalsGIM getElement() { return element; }
+    public float getAtkMultiplier() { return atkMultiplier; }
+    public float getHpMultiplier() { return hpMultiplier; }
+    public float getDefMultiplier() { return defMultiplier; }
+    public float getEmMultiplier() { return emMultiplier; }
+    public float getSkillMultiplierBonus() { return skillMultiplierBonus; }
+    public float getFlatDamageBonus() { return flatDamageBonus; }
+    public float getElementAmount() { return elementAmount; }
+    public DecayGroup getDecayGroup() { return decayGroup; }
 
-    /** 获取攻击类型 */
-    public AttackType getAttackType() {
-        return attackType;
-    }
+    // ========== 便捷判断 ==========
+    public boolean isElemental() { return element != ElementalsGIM.FYSIKOS; }
+    public boolean isPhysical() { return element == ElementalsGIM.FYSIKOS; }
+    public boolean hasDecayTag() { return attackType.hasDecayTag(); }
+    public boolean hasAuraPotential() { return elementAmount > 0 && isElemental(); }
 
-    /** 获取伤害元素 */
-    public ElementalsGIM getElement() {
-        return element;
-    }
-
-    /** 获取伤害倍率（攻击力乘数） */
-    public float getDamageMultiplier() {
-        return damageMultiplier;
-    }
-
-    /** 获取固定伤害加成 */
-    public float getFlatDamageBonus() {
-        return flatDamageBonus;
-    }
-
-    /** 获取基础元素量 */
-    public float getElementAmount() {
-        return elementAmount;
-    }
-
-    /** 获取自定义衰减组别（null=使用默认） */
-    public DecayGroup getDecayGroup() {
-        return decayGroup;
-    }
-
-    /**
-     * 获取有效的衰减组别
-     * 如果规格指定了自定义组别则返回自定义组别，否则返回默认组别
-     * @return 有效的衰减组别
-     */
     public DecayGroup getEffectiveDecayGroup() {
-        return decayGroup != null ? decayGroup : DecayGroup.DEFAULT;
+        return decayGroup != null ? decayGroup : DecayGroups.DEFAULT_NORMAL_ATTACK;
     }
+    public String getDecayTag() { return attackType.getDecayTag(); }
 
-    /**
-     * 获取该攻击类型的衰减标签
-     * 来自AttackType，决定计时计数器的共用关系
-     * @return 衰减标签字符串，null表示不参与附着冷却
-     */
-    public String getDecayTag() {
-        return attackType.getDecayTag();
-    }
-
-    // ========== 便捷判断方法 ==========
-
-    /** 判断是否为元素伤害（非物理） */
-    public boolean isElemental() {
-        return element != ElementalsGIM.FYSIKOS;
-    }
-
-    /** 判断是否为物理伤害 */
-    public boolean isPhysical() {
-        return element == ElementalsGIM.FYSIKOS;
-    }
-
-    /**
-     * 判断该攻击是否参与附着冷却系统
-     * @return true=有衰减标签，参与冷却；false=无标签，不参与
-     */
-    public boolean hasDecayTag() {
-        return attackType.hasDecayTag();
-    }
-
-    /**
-     * 判断该攻击是否有元素附着能力（基础元素量>0 且 是元素伤害）
-     * 注意：这只代表"有能力"附着，实际是否附着还取决于元素量序列系数
-     * @return true=有附着能力，false=无附着能力
-     */
-    public boolean hasAuraPotential() {
-        return elementAmount > 0 && isElemental();
-    }
 
     // ========== 工厂方法 ==========
 
@@ -238,64 +178,47 @@ public class ModDamageSpec {
      *     .build();
      * </pre>
      */
+    // ========== Builder ==========
     public static class Builder {
-
-        // 必填字段
         private final AttackType attackType;
         private final ElementalsGIM element;
 
-        // 可选字段（带默认值）
-        private float multiplier = 1.0f;
-        private float flatBonus = 0.0f;
+        private float atkMultiplier = 1.0f;
+        private float hpMultiplier = 0.0f;
+        private float defMultiplier = 0.0f;
+        private float emMultiplier = 0.0f;
+        private float skillMultiplierBonus = 0.0f;
+        private float flatDamageBonus = 0.0f;
         private float elementAmount = 0.0f;
         private DecayGroup decayGroup = null;
 
-        /**
-         * Builder 构造函数
-         * @param attackType 攻击类型（必填）
-         * @param element 伤害元素（必填）
-         */
         private Builder(AttackType attackType, ElementalsGIM element) {
             this.attackType = attackType;
             this.element = element;
         }
 
-        /** 设置伤害倍率 */
-        public Builder multiplier(float multiplier) {
-            this.multiplier = multiplier;
-            return this;
-        }
+        /** 设置攻击力倍率（旧的 multiplier 方法指向这里，保持兼容） */
+        public Builder multiplier(float v) { return atkMultiplier(v); }
+        public Builder atkMultiplier(float v) { this.atkMultiplier = v; return this; }
+        public Builder hpMultiplier(float v) { this.hpMultiplier = v; return this; }
+        public Builder defMultiplier(float v) { this.defMultiplier = v; return this; }
+        public Builder emMultiplier(float v) { this.emMultiplier = v; return this; }
 
-        /** 设置固定伤害加成 */
-        public Builder flatBonus(float flatBonus) {
-            this.flatBonus = flatBonus;
-            return this;
-        }
+        /** 设置技能倍率提升（不是技能面板上的倍率，是额外乘的，如行秋4命、深渊buff） */
+        public Builder skillMultiplierBonus(float v) { this.skillMultiplierBonus = v; return this; }
 
-        /** 设置基础元素量 */
-        public Builder elementAmount(float amount) {
-            this.elementAmount = amount;
-            return this;
-        }
+        public Builder flatBonus(float v) { return flatDamageBonus(v); }
+        public Builder flatDamageBonus(float v) { this.flatDamageBonus = v; return this; }
 
-        /** 设置自定义衰减组别 */
-        public Builder decayGroup(DecayGroup group) {
-            this.decayGroup = group;
-            return this;
-        }
+        public Builder elementAmount(float v) { this.elementAmount = v; return this; }
+        public Builder decayGroup(DecayGroup g) { this.decayGroup = g; return this; }
 
-        /**
-         * 构建伤害规格
-         * @return 构建完成的 DamageSpec 实例
-         */
         public ModDamageSpec build() {
             return new ModDamageSpec(
-                    attackType,
-                    element,
-                    multiplier,
-                    flatBonus,
-                    elementAmount,
-                    decayGroup
+                    attackType, element,
+                    atkMultiplier, hpMultiplier, defMultiplier, emMultiplier,
+                    skillMultiplierBonus, flatDamageBonus,
+                    elementAmount, decayGroup
             );
         }
     }
@@ -307,10 +230,9 @@ public class ModDamageSpec {
         return "DamageSpec{" +
                 "type=" + attackType +
                 ", element=" + element +
-                ", multiplier=" + damageMultiplier +
+                ", atkMult=" + atkMultiplier +
                 ", flatBonus=" + flatDamageBonus +
                 ", elementAmt=" + elementAmount +
-                ", decayGroup=" + (decayGroup != null ? "custom" : "default") +
                 '}';
     }
 }

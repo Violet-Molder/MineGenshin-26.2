@@ -46,12 +46,12 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
     // ========== LDLib2 持久化字段 ==========
 
     // 触发领域的玩家UUID —— 记录是哪个玩家释放了这个领域
-    @Persisted(key = "owner_uuid")
-    protected String ownerUUID = "";
+    @Persisted(key = "owner")
+    protected Player owner;
 
     // 触发领域的角色UUID —— 记录是玩家的哪个角色（PGCharacterData）触发了领域
-    @Persisted(key = "character_uuid")
-    protected int characterUUID = 0;
+    @Persisted(key = "character")
+    protected PGCharacter character;
 
     // 领域剩余持续时间（tick）—— -1 表示无限持续
     @Persisted(key = "duration")
@@ -190,10 +190,9 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
      */
     @Nullable
     public Player getOwner() {
-        if (ownerUUID == null || ownerUUID.isEmpty()) return null;
+        if (owner == null) return null;
         try {
-            UUID uuid = UUID.fromString(ownerUUID);
-            return this.level().getPlayerByUUID(uuid);
+            return this.owner;
         } catch (IllegalArgumentException e) {
             return null;
         }
@@ -206,32 +205,25 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
      */
     @Nullable
     public PGCharacter getOwnerCharacter() {
-        Player owner = getOwner();
-        if (owner == null) return null;
-        PlayerCharactersAttachment attachment = owner.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-        return attachment.getCharacterByUUID(characterUUID);
+        return character;
     }
 
     /**
      * 设置领域拥有者
      * @param owner 触发领域的玩家
-     * @param characterUUID 触发领域的角色UUID（PGCharacterData的UUID）
+     * @param character 触发领域的角色数据（PGCharacterData）
      */
-    public void setOwner(Player owner, int characterUUID) {
+    public void setOwner(Player owner, PGCharacter character) {
         if (owner != null) {
-            this.ownerUUID = owner.getStringUUID();  // 存储玩家UUID
+            this.owner = owner;  // 存储玩家
         }
-        this.characterUUID = characterUUID;  // 存储角色UUID
+        this.character = character;  // 存储角色数据
     }
 
-    /** 获取拥有者玩家UUID字符串 */
-    public String getOwnerUUIDString() {
-        return ownerUUID;
-    }
 
-    /** 获取触发角色的UUID */
-    public int getCharacterUUID() {
-        return characterUUID;
+    /** 获取触发角色的数据 */
+    public PGCharacter getCharacter() {
+        return character;
     }
 
     // ========== 碰撞与维度 ==========

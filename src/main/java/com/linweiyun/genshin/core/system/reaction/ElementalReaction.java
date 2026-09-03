@@ -2,16 +2,9 @@ package com.linweiyun.genshin.core.system.reaction;
 
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.status.StatusInstance;
-import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.linweiyun.genshin.enums.ElementalReactionType;
-import net.minecraft.world.entity.LivingEntity;
-
-import javax.annotation.Nullable;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * 元素反应基类 —— 所有元素反应继承此类
@@ -88,10 +81,10 @@ public abstract class ElementalReaction {
      *
      * @return 消耗结果，包含 elementA/elementB 各消耗了多少
      */
-    public float[] calculateConsumption(float qtyA, float qtyB, boolean defenderIsA) {
-        // 按比例消耗，找 min( qtyA/ratioA, qtyB/ratioB )
-        if (qtyA <= 0 || qtyB <= 0) return new float[]{0f, 0f};
-        float rounds = Math.min(qtyA / ratioA, qtyB / ratioB);
+    public float[] calculateConsumption(float unitA, float unitB) {
+        // 按比例消耗，找 min( unitA/ratioA, unitB/ratioB )
+        if (unitA <= 0 || unitB <= 0) return new float[]{0f, 0f};
+        float rounds = Math.min(unitA / ratioA, unitB / ratioB);
         float consumedA = rounds * ratioA;
         float consumedB = rounds * ratioB;
         return new float[]{consumedA, consumedB};
@@ -124,7 +117,7 @@ public abstract class ElementalReaction {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
             if (!canConsume(ea, slotElement)) continue;
-            sum += ea.getQuantity();
+            sum += ea.getUnit();
         }
         return sum;
     }
@@ -133,7 +126,7 @@ public abstract class ElementalReaction {
      * 基类统一：从容器中扣减 amount 量的、能参与 slotElement 消耗的实例
      * 返回实际扣了多少
      */
-    public float consumeFromContainer(StatusContainer container, ElementalsGIM slotElement, float amount) {
+    public void consumeElementUnit(StatusContainer container, ElementalsGIM slotElement, float amount) {
         float remaining = amount;
         for (StatusInstance inst : container.getAll()) {
             if (inst.isFinished()) continue;
@@ -143,7 +136,6 @@ public abstract class ElementalReaction {
             remaining -= consumed;
             if (remaining <= 0f) break;
         }
-        return amount - remaining;
     }
 
     /**

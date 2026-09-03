@@ -4,16 +4,19 @@ import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.linweiyun.genshin.enums.ElementalsGIM;
-import com.linweiyun.genshin.core.system.registry.register.CharacterRegister;
+import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import org.slf4j.Logger;
 
 public class IcyQuillEffect implements ICharacterEffect {
+    public static final Logger LOGGER = LogUtils.getLogger();
     public static final String ICY_QUILL_COUNT_KEY = "icy_quill_count";
 
     @Override
@@ -21,7 +24,7 @@ public class IcyQuillEffect implements ICharacterEffect {
         ModDamageSpec oldDamageSpec = damageSource.getSpec();
         if (oldDamageSpec.getElement() == ElementalsGIM.CYRO) {
             PlayerCharactersAttachment charactersAttachment = holder.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-            PGCharacter shenhe = charactersAttachment.getCharacterByUUID(CharacterRegister.SHENHE.get().getCharacterUUID());
+            PGCharacter shenhe = charactersAttachment.getCharacterByUUID(ModCharacters.SHENHE.get().getCharacterUUID());
             if (shenhe != null) {
                 float flatDamageBonus = (float) (shenhe.getData().getAttributeTotalValue(ModAttributes.ATK.value()) * 0.776f);
                 ModDamageSpec newDamageSpec = oldDamageSpec.withFlatDamageBonus(flatDamageBonus);

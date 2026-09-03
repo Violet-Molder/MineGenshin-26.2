@@ -138,7 +138,7 @@ public class DecayCounterManager {
         String characterUuid = character != null
                 ? character.getClass().getSimpleName() + ":" + attackerUuid
                 : "direct:" + attackerUuid;
-        String groupId = spec.getEffectiveDecayGroup() == DecayGroup.DEFAULT
+        String groupId = spec.getEffectiveDecayGroup() == DecayGroups.DEFAULT_NORMAL_ATTACK
                 ? "default" : "custom";
 
         return attackerUuid + ":" + characterUuid + ":" + decayTag + ":" + groupId;
@@ -151,7 +151,7 @@ public class DecayCounterManager {
                 ? character.getClass().getSimpleName() + ":" + attackerUuid
                 : "direct:" + attackerUuid;
         String decayTag = spec.getDecayTag();
-        String groupId = spec.getEffectiveDecayGroup() == DecayGroup.DEFAULT
+        String groupId = spec.getEffectiveDecayGroup() == DecayGroups.DEFAULT_NORMAL_ATTACK
                 ? "default" : "custom";
 
         return new DecayCounterData(attackerUuid, characterUuid,

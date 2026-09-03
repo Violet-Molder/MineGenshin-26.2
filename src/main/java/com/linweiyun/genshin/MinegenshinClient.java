@@ -2,7 +2,7 @@ package com.linweiyun.genshin;
 
 import com.geckolib.renderer.GeoEntityRenderer;
 import com.linweiyun.genshin.client.render.entity.FieldTalismanSpiritRender;
-import com.linweiyun.genshin.core.system.registry.register.EntityRegister;
+import com.linweiyun.genshin.core.system.registry.register.ModEntities;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -34,9 +34,9 @@ public class MinegenshinClient {
     @SubscribeEvent
     public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(
-                EntityRegister.FIELD_TALISMAN_SPIRIT.get(), FieldTalismanSpiritRender::new);
+                ModEntities.FIELD_TALISMAN_SPIRIT.get(), FieldTalismanSpiritRender::new);
         event.registerEntityRenderer(
-                EntityRegister.SLIME_CYRO.get(), context -> new GeoEntityRenderer<>(context, EntityRegister.SLIME_CYRO.get())
+                ModEntities.SLIME_CYRO.get(), context -> new GeoEntityRenderer<>(context, ModEntities.SLIME_CYRO.get())
         );
     }
 

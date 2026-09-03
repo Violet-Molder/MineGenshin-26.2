@@ -2,7 +2,7 @@ package com.linweiyun.genshin.core.network;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.system.registry.register.CharacterRegister;
+import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
@@ -73,6 +73,7 @@ public class NetworkManager {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
+
       attachment.fixCharacterTypes();
     }
   }
@@ -264,7 +265,7 @@ public class NetworkManager {
       PlayerCharactersAttachment charactersAttachment =
               serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
 
-      List<PGCharacter> allCharacters = new ArrayList<>(CharacterRegister.getAllCharacters());
+      List<PGCharacter> allCharacters = new ArrayList<>(ModCharacters.getAllCharacters());
       if (allCharacters.isEmpty()) {
         serverPlayer.sendSystemMessage(
                 Component.translatable("message.pixel_genshin.wish.no_reward"));

@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.content.entities.area;
 
-import com.linweiyun.genshin.core.attribute.ModAttributes;
+import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
@@ -23,9 +23,6 @@ public class TalismanSpiritArea extends AreaEntity {
 
     // 伤害触发间隔（tick）—— 每1秒（20tick）对范围敌人造成一次伤害
     private static final int DAMAGE_INTERVAL_TICKS = 20;
-
-    // 冰元素伤害倍率 —— 相对于角色攻击力的倍率
-    private static final float DAMAGE_MULTIPLIER = 0.7f;
 
     // 领域总持续时间（tick）—— 12秒 = 240tick
     private static final int FIELD_DURATION = 30 * 20;
@@ -131,7 +128,7 @@ public class TalismanSpiritArea extends AreaEntity {
             // 如果需要跳过队友，可以在此扩展
 
             // 对目标施加伤害
-            dealDamageToEntity(entity, owner, ownerCharacter);
+            dealDamageToEntity(entity);
         }
     }
 
@@ -164,25 +161,20 @@ public class TalismanSpiritArea extends AreaEntity {
      * 使用新的 ModDamageSpec 体系
      *
      * @param target 受伤实体
-     * @param owner 伤害源头玩家
-     * @param ownerCharacter 触发领域的角色数据
      */
-    private void dealDamageToEntity(LivingEntity target, Player owner, PGCharacter ownerCharacter) {
+    private void dealDamageToEntity(LivingEntity target) {
+        int burstLevel = this.character.getData().getElementalBurstLevel();
+        float damageMultiplier = 0.033f * burstLevel + 0.3f;
         // 构建伤害规格：元素爆发类型 + 冰元素 + 0.7倍率
         ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_BURST, ElementalsGIM.CYRO)
-                .multiplier(DAMAGE_MULTIPLIER)   // 伤害倍率
+                .multiplier(damageMultiplier)   // 伤害倍率
                 .elementAmount(1.0f)              // 元素附着量
                 .build();
 
         // 从规格创建伤害源
         ModDamageSource damageSource = ModDamageSource.from(spec, owner);
-
-        // 计算实际伤害（简化版：使用角色ATK × 倍率）
-        double characterATK = ownerCharacter.getData().getAttributeTotalValue(ModAttributes.ATK.value());
-        float finalDamage = (float) (characterATK * DAMAGE_MULTIPLIER);
-
         // 对目标造成伤害
-        HurtEntityHelper.hurtEntityForPlayer(damageSource, ownerCharacter, target);
+        HurtEntityHelper.hurtEntityForPlayer(damageSource, this.character, target);
     }
 
     // ========== 临时粒子效果（标注领域范围） ==========
