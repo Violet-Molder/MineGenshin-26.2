@@ -1,16 +1,17 @@
 package com.linweiyun.genshin.core.character;
 
 import com.linweiyun.genshin.content.effect.character.CharacterEffectContainer;
-import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.content.attribute.AttributeContainer;
 import com.linweiyun.genshin.content.attribute.AttributeInstance;
 import com.linweiyun.genshin.content.attribute.AttributeType;
+import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,11 +54,21 @@ public class PGCharacterData implements IPersistedSerializable {
     protected List<Integer> skillCoolList;
     @Persisted(key = "status_container")
     private StatusContainer statusContainer = new StatusContainer();
-    //AI 序列化保存所属玩家的 UUID，重启后可通过它找回归属关系
     @Persisted(key = "owner_uuid")
     private UUID ownerUUID;
-    //AI 运行时直接持有 Player 实体引用，供 incapacitate() 无参调用
-    private transient Player ownerPlayer;
+
+    @Persisted(key = "flower")
+    private ItemStack flower;
+    @Persisted(key = "plume")
+    private ItemStack plume;
+    @Persisted(key = "sands")
+    private ItemStack sands;
+    @Persisted(key = "goblet")
+    private ItemStack goblet;
+    @Persisted(key = "circle")
+    private ItemStack circlet;
+
+    private Player ownerPlayer;
     // 效果容器的缓存引用，延迟加载，避免每次操作都重新反序列化
     private CharacterEffectContainer effectContainer;
 
@@ -80,6 +91,13 @@ public class PGCharacterData implements IPersistedSerializable {
         this.attributes = new AttributeContainer();
         this.effectDataList = new ListTag();
         this.skillCoolList = new ArrayList<>();
+        this.flower = ItemStack.EMPTY;
+        this.plume = ItemStack.EMPTY;
+        this.sands = ItemStack.EMPTY;
+        this.goblet = ItemStack.EMPTY;
+        this.circlet = ItemStack.EMPTY;
+        initAllAttributes();
+
     }
     public void initBaseStats(double baseHP, double baseATK, double baseDEF) {
         this.attributes.setBaseValue(ModAttributes.MAX_HP.value(), baseHP);
@@ -87,7 +105,11 @@ public class PGCharacterData implements IPersistedSerializable {
         this.attributes.setBaseValue(ModAttributes.DEF.value(), baseDEF);
         this.currentHP = this.attributes.getTotalValue(ModAttributes.MAX_HP.value());
     }
-
+    private void initAllAttributes() {
+        for (AttributeType type : ModRegistries.ATTRIBUTE_TYPE_REGISTRY) {
+            attributes.getOrCreate(type);
+        }
+    }
 
 
     // ==== 属性数据获取 ====
@@ -122,6 +144,14 @@ public class PGCharacterData implements IPersistedSerializable {
     public int getElementalSkillLevel() { return elementalSkillLevel; }
     public int getElementalBurstLevel() { return elementalBurstLevel; }
 
+    public ItemStack getFlower() { return flower; }
+    public ItemStack getPlume() { return plume; }
+    public ItemStack getSands() { return sands; }
+    public ItemStack getGoblet() { return goblet; }
+    public ItemStack getCirclet() { return circlet; }
+    public List<ItemStack> getAllArtifactsAsList() {
+        return List.of(flower, plume, sands, goblet, circlet);
+    }
 
 
     public List<Integer> getSkillCoolList() {
@@ -138,6 +168,14 @@ public class PGCharacterData implements IPersistedSerializable {
     public void setElementalBurstCooldownTick(float tick) { this.elementalBurstCooldownTick = tick;markDirty();}
     public void setElementalSkillMaxStacks(int stacks) { this.elementalSkillMaxStacks = stacks;markDirty();}
     public void setElementalSkillStacks(int stacks) { this.elementalSkillStacks = stacks;markDirty();}
+
+    public void setFlower(ItemStack stack) { this.flower = stack; markDirty(); }
+    public void setPlume(ItemStack stack) { this.plume = stack; markDirty(); }
+    public void setSands(ItemStack stack) { this.sands = stack; markDirty(); }
+    public void setGoblet(ItemStack stack) { this.goblet = stack; markDirty(); }
+    public void setCirclet(ItemStack stack) { this.circlet = stack; markDirty(); }
+
+
     public void addLevel(int levels) {this.characterLevel = Math.max(1, Math.min(this.characterLevel + levels, 90));markDirty();}
     public void healHP(double amount) {this.currentHP = Math.min(this.currentHP + amount, getAttributeTotalValue(ModAttributes.MAX_HP.value()));markDirty();}
     public void hurtHP(float amount) {this.currentHP = Math.max(0, this.currentHP - amount);markDirty();}
@@ -224,6 +262,11 @@ public class PGCharacterData implements IPersistedSerializable {
         if (this.effectContainer != null) {                                // 如果容器已加载
             copy.effectContainer = this.effectContainer.copy();            // 也深拷贝容器缓存
         }
+        copy.flower = this.flower.copy();
+        copy.plume = this.plume.copy();
+        copy.sands = this.sands.copy();
+        copy.goblet = this.goblet.copy();
+        copy.circlet = this.circlet.copy();
         return copy;
     }
 

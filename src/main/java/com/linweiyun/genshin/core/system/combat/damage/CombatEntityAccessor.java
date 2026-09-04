@@ -4,6 +4,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.linweiyun.genshin.mixin.interfaces.IMonsterLevel;
+import net.minecraft.client.model.animal.fish.PufferfishBigModel;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
@@ -49,6 +50,11 @@ public final class CombatEntityAccessor {
         return DEFAULT_MOB_LEVEL;
     }
 
+    public static float getDamageBonus(PGCharacter character, ElementalsGIM element) {
+        if (character == null) return 0;
+        return getElementBonusFromCharacter(character, element);
+    }
+
     // ==================== 防御力 ====================
 
     /**
@@ -82,6 +88,20 @@ public final class CombatEntityAccessor {
             return ml.genshin$getElementResistance(element);
         }
         return DEFAULT_MOB_RESISTANCE;
+    }
+
+    private static float getElementBonusFromCharacter(PGCharacter character, ElementalsGIM elemental) {
+        var data = character.getData();
+        return switch (elemental) {
+            case PYRO    -> (float) data.getAttributeTotalValue(ModAttributes.PYRO_BONUS.value());
+            case HYDRO   -> (float) data.getAttributeTotalValue(ModAttributes.HYDRO_BONUS.value());
+            case DENDRO  -> (float) data.getAttributeTotalValue(ModAttributes.DENDRO_BONUS.value());
+            case ELECTRO -> (float) data.getAttributeTotalValue(ModAttributes.ELECTRO_BONUS.value());
+            case ANEMO   -> (float) data.getAttributeTotalValue(ModAttributes.ANEMO_BONUS.value());
+            case CYRO    -> (float) data.getAttributeTotalValue(ModAttributes.CYRO_BONUS.value());
+            case GEO     -> (float) data.getAttributeTotalValue(ModAttributes.GEO_BONUS.value());
+            default      -> 0.0f;
+        };
     }
 
     private static float getElementResistanceFromCharacter(PGCharacter c, ElementalsGIM element) {

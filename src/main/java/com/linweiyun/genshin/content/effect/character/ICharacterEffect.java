@@ -57,7 +57,7 @@ public interface ICharacterEffect {
      */
     default boolean onEffectTick(Player holder, PGCharacter character, CharacterEffectInstance instance) {
         if (!holder.level().isClientSide()) {
-
+            if (instance.getDuration() == CharacterEffectInstance.INFINITE) return true;
             instance.setDuration(instance.getDuration() - 1);
         }
         return instance.getDuration() > 0;

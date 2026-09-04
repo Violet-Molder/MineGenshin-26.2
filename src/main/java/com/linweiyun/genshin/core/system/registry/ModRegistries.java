@@ -3,9 +3,11 @@ package com.linweiyun.genshin.core.system.registry;
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.content.attribute.AttributeType;
+import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import net.minecraft.core.Registry;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -15,34 +17,41 @@ import net.neoforged.neoforge.registries.RegistryBuilder;
 
 @EventBusSubscriber
 public class ModRegistries {
+    // 属性类型注册表实例 —— 存储所有注册的属性类型（如生命值、攻击伤害等）
     public static final ResourceKey<Registry<AttributeType>> ATTRIBUTE_TYPE_REGISTRY_KEY =
             ResourceKey.createRegistryKey(
-                    net.minecraft.resources.Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "attribute_types"));
+                    Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "attribute_types"));
+
+
+    public static final ResourceKey<Registry<PGCharacter>> CHARACTER_REGISTRY_KEY =
+            ResourceKey.createRegistryKey(
+                    Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "characters"));
+
+
+    public static final ResourceKey<Registry<ICharacterEffect>> CHARACTER_EFFECT_REGISTRY_KEY =
+            ResourceKey.createRegistryKey(
+                    Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "character_effects"));
+
+    public static final ResourceKey<Registry<ElementalReaction>> REACTION_REGISTRY_KEY =
+            ResourceKey.createRegistryKey(
+                    Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "elemental_reactions"));
+
+    public static final ResourceKey<Registry<ArtifactSet>> ARTIFACT_SET_REGISTRY_KEY =
+            ResourceKey.createRegistryKey(
+                    Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "artifact_sets"));
+
+
+    // ======== 注册表 ========
     public static final Registry<AttributeType> ATTRIBUTE_TYPE_REGISTRY =
             new RegistryBuilder<>(ATTRIBUTE_TYPE_REGISTRY_KEY)
                     .sync(true)
                     .create();
 
-    public static final ResourceKey<Registry<PGCharacter>> CHARACTER_REGISTRY_KEY =
-            ResourceKey.createRegistryKey(
-                    net.minecraft.resources.Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "characters"));
     public static final Registry<PGCharacter> CHARACTER_REGISTRY =
             new RegistryBuilder<>(CHARACTER_REGISTRY_KEY)
                     .sync(true)
                     .create();
 
-    public static final ResourceKey<Registry<ICharacterEffect>> CHARACTER_EFFECT_REGISTRY_KEY =
-            ResourceKey.createRegistryKey(
-                    net.minecraft.resources.Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "character_effects"));
-
-    public static final ResourceKey<Registry<ElementalReaction>> REACTION_REGISTRY_KEY =
-            ResourceKey.createRegistryKey(
-                    net.minecraft.resources.Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "elemental_reactions"));
-
-    // 角色效果注册表实例 —— 存储所有注册的角色效果（buff/debuff）
-    // sync(true)确保客户端和服务端注册表同步
-    // defaultKey设置默认效果ID为"minegenshin:empty"
-    // maxId(256)限制最多256种效果
     public static final Registry<ICharacterEffect> CHARACTER_EFFECT_REGISTRY =
             new RegistryBuilder<>(CHARACTER_EFFECT_REGISTRY_KEY)
                     .sync(true)
@@ -56,6 +65,12 @@ public class ModRegistries {
                     .maxId(64)
                     .create();
 
+    public static final Registry<ArtifactSet> ARTIFACT_SET_REGISTRY =
+            new RegistryBuilder<>(ARTIFACT_SET_REGISTRY_KEY)
+                    .sync(true)
+                    .create();
+
+    // ======== 注册表实例 ========
     public static final DeferredRegister<AttributeType> ATTRIBUTE_TYPES =
             DeferredRegister.create(ATTRIBUTE_TYPE_REGISTRY, Minegenshin.MOD_ID);
 
@@ -68,11 +83,15 @@ public class ModRegistries {
     public static final DeferredRegister<ElementalReaction> ELEMENTAL_REACTIONS =
             DeferredRegister.create(ELEMENTAL_REACTIONS_REGISTRY, Minegenshin.MOD_ID);
 
+    public static final DeferredRegister<ArtifactSet> ARTIFACT_SETS =
+            DeferredRegister.create(ARTIFACT_SET_REGISTRY, Minegenshin.MOD_ID);
+
     @SubscribeEvent
     public static void registerRegistries(NewRegistryEvent event) {
         event.register(ATTRIBUTE_TYPE_REGISTRY);
         event.register(CHARACTER_REGISTRY);
         event.register(CHARACTER_EFFECT_REGISTRY);
         event.register(ELEMENTAL_REACTIONS_REGISTRY);
+        event.register(ARTIFACT_SET_REGISTRY);
     }
 }

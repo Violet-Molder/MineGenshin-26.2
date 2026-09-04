@@ -38,36 +38,36 @@ public class ModAttributes {
             ATTRIBUTES.register("shield_strength", () -> new AttributeType("ss", "attribute.minegenshin.ss", 0));
 
     // Elemental Type
-    public static final DeferredHolder<AttributeType, AttributeType> PYRO_DMGB =
-            ATTRIBUTES.register("pyro_dmg_bonus", () -> new AttributeType("pyro_dmgb", "attribute.minegenshin.pyro_dmgb", 0));
+    public static final DeferredHolder<AttributeType, AttributeType> PYRO_BONUS =
+            ATTRIBUTES.register("pyro_bonus", () -> new AttributeType("pyro_bonus", "attribute.minegenshin.pyro_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> PYRO_RES =
             ATTRIBUTES.register("pyro_res", () -> new AttributeType("pyro_res", "attribute.minegenshin.pyro_res", 0));
-    public static final DeferredHolder<AttributeType, AttributeType> HYDRO_DMGB =
-            ATTRIBUTES.register("hydro_dmg_bonus", () -> new AttributeType("hydro_dmgb", "attribute.minegenshin.hydro_dmgb", 0));
+    public static final DeferredHolder<AttributeType, AttributeType> HYDRO_BONUS =
+            ATTRIBUTES.register("hydro_bonus", () -> new AttributeType("hydro_bonus", "attribute.minegenshin.hydro_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> HYDRO_RES =
             ATTRIBUTES.register("hydro_res", () -> new AttributeType("hydro_res", "attribute.minegenshin.hydro_res", 0));
-    public static final DeferredHolder<AttributeType, AttributeType> DENDRO_DMGB =
-            ATTRIBUTES.register("dendro_dmg_bonus", () -> new AttributeType("dendro_dmgb", "attribute.minegenshin.dendro_dmgb", 0));
+    public static final DeferredHolder<AttributeType, AttributeType> DENDRO_BONUS =
+            ATTRIBUTES.register("dendro_bonus", () -> new AttributeType("dendro_bonus", "attribute.minegenshin.dendro_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> DENDRO_RES =
             ATTRIBUTES.register("dendro_res", () -> new AttributeType("dendro_res", "attribute.minegenshin.dendro_res", 0));
-    public static final DeferredHolder<AttributeType, AttributeType> ELECTRO_DMGB =
-            ATTRIBUTES.register("electro_dmg_bonus", () -> new AttributeType("electro_dmgb", "attribute.minegenshin.electro_dmgb", 0));
+    public static final DeferredHolder<AttributeType, AttributeType> ELECTRO_BONUS =
+            ATTRIBUTES.register("electro_bonus", () -> new AttributeType("electro_bonus", "attribute.minegenshin.electro_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> ELECTRO_RES =
             ATTRIBUTES.register("electro_res", () -> new AttributeType("electro_res", "attribute.minegenshin.electro_res", 0));
-    public static final DeferredHolder<AttributeType, AttributeType> ANEMO_DMGB =
-            ATTRIBUTES.register("anemo_dmg_bonus", () -> new AttributeType("anemo_dmgb", "attribute.minegenshin.anemo_dmgb", 0));
+    public static final DeferredHolder<AttributeType, AttributeType> ANEMO_BONUS =
+            ATTRIBUTES.register("anemo_bonus", () -> new AttributeType("anemo_bonus", "attribute.minegenshin.anemo_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> ANEMO_RES =
             ATTRIBUTES.register("anemo_res", () -> new AttributeType("anemo_res", "attribute.minegenshin.anemo_res", 0));
-    public static final DeferredHolder<AttributeType, AttributeType> CYRO_DMGB =
-            ATTRIBUTES.register("cyro_dmg_bonus", () -> new AttributeType("cyro_dmgb", "attribute.minegenshin.cyro_dmgb", 0));
+    public static final DeferredHolder<AttributeType, AttributeType> CYRO_BONUS =
+            ATTRIBUTES.register("cyro_bonus", () -> new AttributeType("cyro_bonus", "attribute.minegenshin.cyro_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> CYRO_RES =
             ATTRIBUTES.register("cyro_res", () -> new AttributeType("cyro_res", "attribute.minegenshin.cyro_res", 0));
-    public static final DeferredHolder<AttributeType, AttributeType> GEO_DMGB =
-            ATTRIBUTES.register("geo_dmg_bonus", () -> new AttributeType("geo_dmgb", "attribute.minegenshin.geo_dmgb", 0));
+    public static final DeferredHolder<AttributeType, AttributeType> GEO_BONUS =
+            ATTRIBUTES.register("geo_bonus", () -> new AttributeType("geo_bonus", "attribute.minegenshin.geo_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> GEO_RES =
             ATTRIBUTES.register("geo_res", () -> new AttributeType("geo_res", "attribute.minegenshin.geo_res", 0));
-    public static final DeferredHolder<AttributeType, AttributeType> PHYSICAL_DMGB =
-            ATTRIBUTES.register("physical_dmg_bonus", () -> new AttributeType("physical_dmgb", "attribute.minegenshin.physical_dmgb", 0));
+    public static final DeferredHolder<AttributeType, AttributeType> PHYSICAL_BONUS =
+            ATTRIBUTES.register("physical_bonus", () -> new AttributeType("physical_bonus", "attribute.minegenshin.physical_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> PHYSICAL_RES =
             ATTRIBUTES.register("physical_res", () -> new AttributeType("physical_res", "attribute.minegenshin.physical_res", 0));
 

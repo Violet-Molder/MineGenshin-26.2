@@ -35,10 +35,10 @@ public class HurtEntityHelper {
                                                 PGCharacter attacker,
                                                 LivingEntity target) {
         ModDamageSpec spec = damageSource.getSpec();
-        LOGGER.info("[伤害管线] === 攻击={} | 目标={} | 元素={} | 类型={} ===",
-                attacker != null ? attacker.getName() : damageSource.getEntity(),
-                target.getName().getString(),
-                spec.getElement(), spec.getAttackType());
+//        LOGGER.info("[伤害管线] === 攻击={} | 目标={} | 元素={} | 类型={} ===",
+//                attacker != null ? attacker.getName() : damageSource.getEntity(),
+//                target.getName().getString(),
+//                spec.getElement(), spec.getAttackType());
 
         if (attacker != null) {
             for (CharacterEffectInstance effect : new ArrayList<>(attacker.getData().getEffectContainer().getEffects())) {
@@ -50,7 +50,7 @@ public class HurtEntityHelper {
             }
         }
         spec = damageSource.getSpec();
-        LOGGER.info("[效果处理后] spec={}", spec);
+//        LOGGER.info("[效果处理后] spec={}", spec);
 
         float baseDamage = attacker != null
                 ? calculateCharacterDamage(spec, attacker)
@@ -152,7 +152,9 @@ public class HurtEntityHelper {
     }
 
     private static float critZone(PGCharacter attacker) { return 1.0f; }
-    private static float dmgBonusZone(PGCharacter attacker, ModDamageSpec spec) { return 1.0f; }
+    private static float dmgBonusZone(PGCharacter attacker, ModDamageSpec spec) {
+        float elementalBonus = CombatEntityAccessor.getDamageBonus(attacker, spec.getElement());
+        return CombatMath.dmgBonusZone(elementalBonus); }
 
     private static float defenseZone(LivingEntity attacker, PGCharacter attackerCharacter,
                                      LivingEntity defender, PGCharacter defenderCharacter) {

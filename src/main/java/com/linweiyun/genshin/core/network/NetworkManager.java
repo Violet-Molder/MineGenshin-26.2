@@ -80,7 +80,7 @@ public class NetworkManager {
         return;
       }
       player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT.get(), isGenshinMode);
-      //AI 统一由服务端发消息，防止客户端先发成功消息再收到拒绝提示的乱序问题
+      //test 统一由服务端发消息，防止客户端先发成功消息再收到拒绝提示的乱序问题
       player.sendSystemMessage(Component.literal(isGenshinMode ? "已进入原神模式" : "已退出原神模式"));
     }
   }

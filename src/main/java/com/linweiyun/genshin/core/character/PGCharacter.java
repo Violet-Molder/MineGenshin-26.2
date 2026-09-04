@@ -2,6 +2,14 @@ package com.linweiyun.genshin.core.character;
 
 import com.linweiyun.genshin.config.Config;
 import com.linweiyun.genshin.content.attribute.AttributeType;
+import com.linweiyun.genshin.content.effect.character.CharacterEffectContainer;
+import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
+import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
+import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
+import com.linweiyun.genshin.content.effect.character.artifact.ArtifactSetEffect;
+import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
+import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
+import com.linweiyun.genshin.content.items.artifact.ArtifactType;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.network.NetworkManager;
@@ -16,8 +24,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -119,9 +129,7 @@ public class PGCharacter implements IPersistedSerializable {
         }
     };
     protected void triggerElementalSkill(Player player, int skillTime){};
-    protected void triggerElementalBurst(Player player){
-        System.out.println(player + "bbbbbbbbb)");
-    };
+    protected void triggerElementalBurst(Player player){};
 
     public void frontTick(Player player) {
 
@@ -136,6 +144,65 @@ public class PGCharacter implements IPersistedSerializable {
         frontTick(player);
         backTick(player);
     }
+
+    public void equipArtifact(ArtifactType type, ItemStack artifactStack) {
+        if (artifactStack.getItem() instanceof ArtifactItem artifactItem) {
+            if (artifactItem.getType() != type) return;
+            switch (type) {
+                case FLOWER -> data.setFlower(artifactStack);
+                case PLUME -> data.setPlume(artifactStack);
+                case SANDS -> data.setSands(artifactStack);
+                case GOBLET -> data.setGoblet(artifactStack);
+                case CIRCLET -> data.setCirclet(artifactStack);
+            }
+        }
+        refreshArtifactSetEffects();
+    }
+    public void unequipArtifact(ArtifactType type) {
+        switch (type) {
+            case FLOWER -> data.setFlower(ItemStack.EMPTY);
+            case PLUME -> data.setPlume(ItemStack.EMPTY);
+            case SANDS -> data.setSands(ItemStack.EMPTY);
+            case GOBLET -> data.setGoblet(ItemStack.EMPTY);
+            case CIRCLET -> data.setCirclet(ItemStack.EMPTY);
+        }
+        refreshArtifactSetEffects();
+    }
+
+    private void refreshArtifactSetEffects() {
+        CharacterEffectContainer container = data.getEffectContainer();
+        List<ICharacterEffect> toRemove = container.getEffects().stream()
+                .filter(inst -> inst.getEffect() instanceof ArtifactSetEffect)
+                .map(CharacterEffectInstance::getEffect)
+                .toList();
+        for (ICharacterEffect effect : toRemove) {
+            CharacterEffectHelper.removeEffect(this.data.getOwnerPlayer(), this, effect);
+        }
+        Map<ArtifactSet, Integer> setCountMap = new HashMap<>();
+        for (ItemStack stack : data.getAllArtifactsAsList()) {
+            if (!(stack.getItem() instanceof ArtifactItem art)) continue;
+            ArtifactSet set = art.getSet().get();
+            setCountMap.merge(set, 1, Integer::sum);
+        }
+        setCountMap.forEach((set, count) -> {
+            if (count >= 2){
+                CharacterEffectInstance inst = new CharacterEffectInstance(
+                        set.twoPcEffect().get(),
+                        CharacterEffectInstance.INFINITE, 1, true
+                );
+                CharacterEffectHelper.addEffect(this.data.getOwnerPlayer(), this, inst);
+            }
+            if (count >= 4 && set.hasFourPcEffect()) {
+                CharacterEffectInstance inst = new CharacterEffectInstance(
+                        set.fourPcEffect().get(),
+                        CharacterEffectInstance.INFINITE, 1, true
+                );
+                CharacterEffectHelper.addEffect(this.data.getOwnerPlayer(), this, inst);
+            }
+            data.syncEffectsToTag();
+        });
+    }
+
 
     public boolean hurt(float amount) {
         double before = data.getCurrentHP();

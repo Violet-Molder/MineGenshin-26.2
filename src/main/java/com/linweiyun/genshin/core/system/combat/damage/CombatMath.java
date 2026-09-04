@@ -7,6 +7,9 @@ public final class CombatMath {
     public static double levelCoefficient(int level) {
         return level * 5.0 + 500.0;
     }
+    public static float dmgBonusZone(float elementalBonus) {
+        return 1.0f + elementalBonus;
+    }
 
     /**
      * 防御区：

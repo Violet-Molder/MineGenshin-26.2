@@ -41,6 +41,7 @@ public class Minegenshin {
         ModMobEffects.register(modEventBus);
         ModStatusDataComponents.register(modEventBus);
         ModElementalReactions.register(modEventBus);
+        ArtifactSets.register(modEventBus);
 
         ModAttributes.ATTRIBUTES.register(modEventBus);
         ModCharacters.CHARACTERS.register(modEventBus);
