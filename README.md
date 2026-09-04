@@ -109,29 +109,65 @@ src/main/java/com/linweiyun/genshin/
 
 ### 3.1 核心数据流
 
-```
-玩家攻击 → PlayerAttackInterceptor (Mixin)
-    ├─ 构建 ModDamageSpec (攻击类型 + 元素 + 倍率 + 元素量)
-    │     └─ 元素模式 + 哥伦比娅 → HYDRO 元素伤害
-    ├─ 构建 ModDamageSource (继承 MC DamageSource)
-    ├─ HurtEntityHelper.calculateCharacterDamage()
-    │     └─ 遍历角色效果 → ICharacterEffect.onAttacked() 修改伤害
-    │     └─ 最终伤害 = (ATK + 固定加成) x 倍率
-    ├─ DecayCounterManager.processHit() → 获取衰减系数
-    │     └─ 计时计数器 (按 attacker:character:decayTag 独立)
-    │     └─ 读取 DecaySequence 中的系数
-    ├─ target.hurt(damageSource, finalDamage)
-    └─ 元素附着判断
-          └─ hasAuraPotential() && elementCoefficient > 0
-          └─ chooseProfile(elementAmount) → WEAK/MEDIUM/STRONG/ULTRA_STRONG
-          └─ ElementalAttachmentHelper.attach(target, element, source, profile)
-                └─ StatusAccessor.of(target) → 拿到 StatusContainer
-                └─ doAttach() → 新建/覆盖 ElementalAttachmentInstance
+#### 攻击伤害管线
 
-StatusTickEvent (每 tick)
-    └─ 遍历 LivingEntity → getData(CONTAINER) → container.tick()
-          └─ 遍历 StatusInstance → inst.tick() → 衰减 quantity
-          └─ isFinished() → 清掉耗尽的实例
+```
+玩家攻击（原神模式开）
+  │
+  ▼
+PlayerAttackInterceptor (Mixin, 注入 Player.attack HEAD)
+  ├─ 取当前角色 PGCharacter
+  ├─ 构建 ModDamageSpec(AttackType, Element, ..., attackerCharacter)
+  ├─ 构建 ModDamageSource.from(spec, player)
+  └─ target.hurtServer(serverLevel, modSource, 0f)    ← 传 0f，MOD 管线自己算
+        │
+        ▼
+目标实体 hurtServer 分发：
+  │
+  ├─ 目标是 TeyvatLivingEntity（本 Mod 实体）
+  │     └─ 自行重写 hurtServer，内部直接调用 HurtEntityHelper.calculateFinalModDamage
+  │
+  ├─ 目标是非 TeyvatLivingEntity（原版实体 / 其他 Mod 实体）
+  │     └─ LivingEntityHurtMixin (Mixin, 注入 LivingEntity.hurtServer HEAD)
+  │           ├─ source instanceof ModDamageSource？
+  │           │     ├─ 是 → HurtEntityHelper.calculateFinalModDamage(...)
+  │           │     │         └─ [完整伤害管线见 4.5 节]
+  │           │     ├─ 扣血：玩家(原神模式开) → character.hurt()；普通目标 → setHealth()
+  │           │     ├─ level.broadcastDamageEvent(target, source)  ← 客户端同步
+  │           │     └─ cir.setReturnValue(true)  ← cancel 原版流程
+  │           │
+  │           └─ 否 → return  ← 放行原版 hurtServer 逻辑
+  │
+  └─ 目标是玩家（非 MOD 伤害，原神模式开）
+        └─ PlayerHurtInterceptor (Mixin, 注入 Player.actuallyHurt HEAD)
+              ├─ source 不是 ModDamageSource + 原神模式开
+              ├─ character.hurt(damage) + incapacitate(attachment)
+              └─ ci.cancel()  ← 跳过原版 actuallyHurt，玩家血量不变
+```
+
+#### 角色倒下自动切换管线
+
+```
+LivingEntityHurtMixin / PlayerHurtInterceptor 扣血后
+  │
+  ├─ character.hurt(finalDamage)
+  │     ├─ before = data.getCurrentHP()
+  │     ├─ data.hurtHP(amount)
+  │     └─ 返回 data.getCurrentHP() <= 0 && before > 0
+  │
+  └─ 如果返回 true（倒下）：
+        └─ character.incapacitate(attachment)
+              ├─ 确保血量归零
+              └─ 从当前角色下一个位置开始，找队伍中第一个有角色的位置切换
+```
+
+#### 元素附着 Tick 管线
+
+```
+StatusTickEvent (每 tick, EntityTickEvent.Post)
+  └─ 遍历 LivingEntity → getData(CONTAINER) → container.tick()
+        └─ 遍历 StatusInstance → inst.tick() → 衰减 quantity
+        └─ isFinished() → 清掉耗尽的实例
 ```
 
 ### 3.2 角色-玩家关系模型
@@ -737,70 +773,93 @@ DecayGroup shenheGroup = new DecayGroup(
 - 伤害序列 全1，长度15
 - 削韧序列 全1，长度14
 
-#### 伤害计算流程
+#### HurtEntityHelper —— 完整伤害管线
 
-```java
-// HurtEntityHelper
-
-// Step 1: 效果修改伤害规格
-for (CharacterEffectInstance effect : attacker.getData()
-        .getEffectContainer().getEffects()) {
-    effect.getEffect().onAttacked(player, attacker, target, effect, damageSource);
-}
-
-// Step 2: 基础伤害计算
-float baseDamage = (float)(
-    attacker.getData().getAttributeTotalValue(ModAttributes.ATK.value()) 
-    + damageSpec.getFlatDamageBonus()
-) * damageSpec.getDamageMultiplier();
-
-// Step 3: 衰减系数应用
-if (damageSpec.hasDecayTag()) {
-    IDecayCounterHolder holder = (IDecayCounterHolder) target;
-    DecayCounterManager manager = holder.getDecayCounterManager();
-    DecayResult result = manager.processHit(attacker, character, spec, currentTick);
-    baseDamage *= result.getDamageCoefficient();
-}
-
-// Step 4: 最终应用
-target.hurt(damageSource, baseDamage);
-```
-
-#### 完整攻击→伤害→衰减→附着 逻辑链
+v0.2.0 重构为纯计算工具类，暴露唯一入口 `calculateFinalModDamage(ModDamageSource, PGCharacter, LivingEntity)`，内部拆解为三个私有阶段。**整个管线只在 LivingEntityHurtMixin 中被调用一次**，不经过原版 `target.hurt()` 避免二次计算。
 
 ```
-PlayerAttackInterceptor.onPlayerAttack(Player.attack HEAD 注入)
+calculateFinalModDamage(damageSource, attacker, target)
     │
-    ├─ 取角色 → 非原神模式 return
-    ├─ ci.cancel() 取消原版攻击
+    ├─ Phase 1: 效果修改（onAttacked）
+    │     └─ for effect in new ArrayList<>(attacker effects)   ← 快照遍历防并发
+    │           └─ effect.onAttacked(player, attacker, target, effect, damageSource)
+    │     └─ spec = damageSource.getSpec()   ← 刷新引用，防止 flatBonus 丢失
     │
-    ├─ buildModDamageSource()
-    │     ├─ genshinMode + 哥伦比娅 → elemental(NORMAL_ATTACK, HYDRO, 1.0f)
-    │     └─ 其他 → physical(NORMAL_ATTACK, 1.0f)
+    ├─ Phase 2: calculateCharacterDamage —— 基础伤害区
+    │     ├─ 读取 ATK / HP / DEF / EM 属性快照
+    │     └─ base = (
+    │           atk * atkMult + hp * hpMult + def * defMult + em * emMult
+    │         ) * (1 + skillMultBonus) + flatBonus
     │
-    └─ HurtEntityHelper.hurtEntityForPlayer(source, character, target, 1.0f)
+    └─ Phase 3: processPipeline —— 衰减→附着→反应→乘区
           │
-          ├─ [仅服务端]
+          ├─ 衰减
+          │     ├─ spec.hasDecayTag() → manager.processHit()
+          │     └─ decayResult → elementCoef / damageCoef / poiseCoef
           │
-          ├─ calculateCharacterDamage()
-          │     ├─ 遍历效果 → onAttacked() 可修改 damageSpec
-          │     └─ baseDamage = (ATK + flatBonus) × multiplier
+          ├─ 元素附着
+          │     ├─ hasAuraPotential() && elementCoef > 0
+          │     └─ ElementalAttachmentHelper.attach(target, element, source, profile)
           │
-          ├─ DecayCounterManager.processHit()
-          │     ├─ key = "playerUUID:characterUUID:normal_attack:0"
-          │     ├─ getOrCreateCounter() → 计数器不存在则新建
-          │     ├─ hitCount++
-          │     └─ 从三个序列查当前系数：
-          │           ├─ elementCoef  = elementSequence[hitCount]
-          │           ├─ damageCoef   = damageSequence[hitCount]
-          │           └─ poiseCoef    = poiseSequence[hitCount]
+          ├─ 元素反应
+          │     └─ ElementalReactionManager.tryReactAfterAttach(ctx)
           │
-          ├─ finalDamage = baseDamage × damageCoef
-          ├─ target.hurt(damageSource, finalDamage)    ← 原版伤害应用
+          ├─ calculateFinalDamage —— 乘区计算
+          │     ├─ critZone(attacker)          → crit
+          │     ├─ dmgBonusZone(attacker, spec) → bonus
+          │     ├─ defenseZone(attacker, target) → def    (CombatMath.levelCoefficient + defenseZone)
+          │     ├─ resistanceZone(element, target) → res   (CombatEntityAccessor 统一取抗性)
+          │     │
+          │     └─ 反应修正
+          │           ├─ MELT / VAPORIZE → crit × amplifyMult × emReactionBonus × bonus × def × res
+          │           └─ 其他 → crit × bonus × def × res
           │
-          └─ 元素附着（详见 4.10）
-                ├─ hasAuraPotential() && elementCoef > 0
-                └─ ElementalAttachmentHelper.attach(...)
+          └─ finalDamage ×= decayResult.getDamageCoefficient()
+             return finalDamage
+```
+
+#### 乘区公式
+
+```
+critZone()       → 1.0 + CRIT_RATE
+dmgBonusZone()   → 1.0 + DMG_BONUS
+defenseZone()    → atkLevelCoef / (atkLevelCoef + targetDefense)
+resistanceZone() → 1.0 - elementResistance
+CombatMath.levelCoefficient(level) → 500 + level × 50
+```
+
+#### 攻击→伤害→衰减→附着→反应 端到端流程
+
+```
+玩家攻击（原神模式开）
+    │
+    ▼
+PlayerAttackInterceptor (Mixin, 注入 Player.attack HEAD)
+    ├─ ci.cancel()
+    ├─ buildModDamageSource(spec + attackerCharacter)
+    └─ target.hurtServer(serverLevel, modSource, 0f)    ← 传 0f，MOD 管线自己算
+          │
+          ▼
+目标实体 hurtServer 分发：
+    │
+    ├─ TeyvatLivingEntity → 子类自行重写 hurtServer → 直接调 calculateFinalModDamage
+    │
+    └─ 非 TeyvatLivingEntity → LivingEntityHurtMixin (Mixin, 注入 LivingEntity.hurtServer HEAD)
+          │
+          ├─ source instanceof ModDamageSource？
+          │     ├─ 是 → calculateFinalModDamage(modSource, attackerChar, target)
+          │     │     ├─ Phase 1: onAttacked 效果处理
+          │     │     ├─ Phase 2: 基础伤害区 (ATK * mult + flatBonus + HP/DEF/EM 乘区 + skillMultBonus)
+          │     │     └─ Phase 3: 衰减 → 附着 → 反应 → 防御区 → 抗性区 → 最终乘区
+          │     │
+          │     ├─ 扣血
+          │     │     ├─ Player + 原神模式开 → character.hurt() → incapacitate()
+          │     │     └─ 其他 → target.setHealth(max(0, health - finalDamage))
+          │     │
+          │     ├─ level.broadcastDamageEvent(target, source)  ← 客户端同步
+          │     └─ cir.setReturnValue(true)  ← 阻断原版 hurtServer 全部后续（invulnerableTime / actuallyHurt）
+          │
+          └─ 否 → return（放行原版 hurtServer）
 ```
 
 #### 衰减计数器清理逻辑链
@@ -1225,22 +1284,30 @@ PlayerAttackInterceptor.onPlayerAttack()
     ├─ buildModDamageSource()
     │     └─ genshinMode && characterUUID == 145001 → ModDamageSpec.elemental(NORMAL_ATTACK, HYDRO, 1.0f)
     │
-    └─ HurtEntityHelper.hurtEntityForPlayer(source, character, target, 1.0f)
+    └─ target.hurtServer(serverLevel, modSource, 0f)
           │
-          ├─ [已存在的伤害计算...]
-          ├─ target.hurt(damageSource, finalDamage)
-          │
-          └─ ★ 元素附着 ★
-                ├─ spec.hasAuraPotential()  ← elementAmount > 0 && element != FYSIKOS
-                ├─ decayResult.getElementCoefficient() > 0  ← 衰减序列允许本次附着
-                │     └─ DEFAULT 序列 [1,0,0] → 每 3 次攻击 1 次有附着
-                │
-                ├─ chooseProfile(spec.getElementAmount())
-                │     └─ 1.0U → WEAK / 1.5U → MEDIUM / 2.0U → STRONG / 4.0U+ → ULTRA_STRONG
-                │
-                └─ ElementalAttachmentHelper.attach(target, HYDRO, NORMAL_ATTACK, profile)
-                      └─ ElementalAttachmentHelper.doAttach(container, HYDRO, NORMAL_ATTACK, profile)
-                            └─ (上面的 doAttach 逻辑链)
+          ▼
+LivingEntityHurtMixin (hurtServer HEAD)
+    ├─ calculateFinalModDamage(modSource, attackerChar, target)
+    │     ├─ [效果处理...]
+    │     ├─ [基础伤害区...]
+    │     └─ processPipeline
+    │           ├─ [衰减...]
+    │           │
+    │           └─ ★ 元素附着 ★
+    │                 ├─ spec.hasAuraPotential()  ← elementAmount > 0 && element != FYSIKOS
+    │                 ├─ decayResult.getElementCoefficient() > 0  ← 衰减序列允许本次附着
+    │                 │     └─ DEFAULT 序列 [1,0,0] → 每 3 次攻击 1 次有附着
+    │                 │
+    │                 ├─ chooseProfile(spec.getElementAmount())
+    │                 │     └─ 1.0U → WEAK / 1.5U → MEDIUM / 2.0U → STRONG / 4.0U+ → ULTRA_STRONG
+    │                 │
+    │                 └─ ElementalAttachmentHelper.attach(target, HYDRO, NORMAL_ATTACK, profile)
+    │                       └─ ElementalAttachmentHelper.doAttach(container, HYDRO, NORMAL_ATTACK, profile)
+    │                             └─ (上面的 doAttach 逻辑链)
+    │
+    ├─ [扣血 + 广播...]
+    └─ cir.setReturnValue(true)
 ```
 
 #### 附着衰减逻辑链（每 tick）
@@ -1564,29 +1631,32 @@ tryReactAfterAttach(context)
 
 #### 反应在伤害管线中的位置
 
-附着 → 反应 → 增幅修正是 `HurtEntityHelper.hurtEntityForPlayer` 中的**关键时序**：
+附着 → 反应 → 增幅修正是 `HurtEntityHelper.processPipeline` 中的**关键时序**：
 
 ```
-伤害管线（修改后的 HurtEntityHelper.hurtEntityForPlayer）
+calculateFinalModDamage → processPipeline（衰减→附着→反应→乘区）
     │
-    ├─ 1. calculateCharacterDamage() → 算基础伤害
-    ├─ 2. DecayCounterManager.processHit() → 衰减系数
-    ├─ 3. finalDamage = baseDamage × damageCoefficient
+    ├─ [Phase 1: onAttacked 效果处理]
+    ├─ [Phase 2: calculateCharacterDamage 基础伤害区]
+    ├─ [衰减] manager.processHit() → damageCoef
     │
-    ├─ 4. ★ 附着（全额 × elementCoefficient）★
+    ├─ 1. ★ 附着（全额 × elementCoefficient）★
     │     └─ ElementalAttachmentHelper.attach(target, element, NORMAL_ATTACK, profile)
     │
-    ├─ 5. ★ 触发反应 ★
+    ├─ 2. ★ 触发反应 ★
     │     └─ canAttach && container != null
     │     └─ ElementalReactionManager.tryReactAfterAttach(context)
     │
-    ├─ 6. ★ 增幅修正 ★
-    │     └─ result.isAmplified() → finalDamage × result.getAmplifyMultiplier()
+    ├─ 3. ★ 增幅修正 ★
+    │     └─ result.isAmplified() → 伤害乘区加入 amplifyMult × emReactionBonus
     │
-    └─ 7. target.hurt(damageSource, finalDamage)  ← 最终造成伤害
+    ├─ 4. calculateFinalDamage —— 完整乘区
+    │     ├─ critZone × dmgBonusZone × defenseZone × resistanceZone
+    │     ├─ 增幅反应额外 × amplifyMult × emReactionBonus
+    │     └─ finalDamage ×= decayResult.getDamageCoefficient()
+    │
+    └─ return finalDamage → LivingEntityHurtMixin 扣血 + broadcastDamageEvent
 ```
-
-**为什么先附着再算反应？** —— 附着是让后手元素先进入容器，反应逻辑才能在同一个 tick 内读到"先手+后手"共存，按正确优先级判断反应。增幅倍率随后用于修正本次伤害。
 
 #### 内置反应详解
 
@@ -1830,36 +1900,46 @@ public boolean isBlocked(ReactionContext context) {
 PlayerAttackInterceptor.onPlayerAttack()
     │
     ├─ buildModDamageSource()
-    └─ HurtEntityHelper.hurtEntityForPlayer(source, character, target)
+    └─ target.hurtServer(serverLevel, modSource, 0f)
           │
-          ├─ calculateCharacterDamage()
-          │     └─ baseDamage = (ATK + flatBonus) × multiplier
-          │
-          ├─ DecayCounterManager.processHit()
-          │     └─ elementCoef / damageCoef / poiseCoef
-          │
-          ├─ finalDamage = baseDamage × damageCoef
-          │
-          ├─ ★ 附着 ★
-          │     └─ ElementalAttachmentHelper.attach(target, element,
-          │           NORMAL_ATTACK, chooseProfile(elementAmount))
-          │
-          ├─ ★ 反应触发 ★
-          │     └─ ElementalReactionManager.tryReactAfterAttach(ctx)
-          │           │
-          │           ├─ collectDefenders()   ← 收集先手
-          │           ├─ 遍历注册表匹配反应    ← canMatch + isBlocked
-          │           ├─ priority 排序         ← ReactionPriorityCalculator
-          │           ├─ 依次 reaction.execute() ← 消耗元素 + 执行效果
-          │           │     └─ ElementalAttachmentHelper.consume()
-          │           ├─ 记录 firstAmplified
-          │           └─ applyAttackerResidual() ← 后手不残留
-          │
-          ├─ ★ 增幅修正 ★
-          │     └─ result.isAmplified()
-          │           └─ finalDamage ×= result.getAmplifyMultiplier()
-          │
-          └─ target.hurt(damageSource, finalDamage)  ← 最终伤害
+          ▼
+LivingEntityHurtMixin (hurtServer HEAD)
+    ├─ calculateFinalModDamage(modSource, attackerChar, target)
+    │     │
+    │     ├─ Phase 1: onAttacked 效果处理
+    │     ├─ Phase 2: calculateCharacterDamage()
+    │     │     └─ base = (ATK × atkMult + flatBonus + HP×hpMult + DEF×defMult + EM×emMult) × (1 + skillMultBonus)
+    │     │
+    │     └─ Phase 3: processPipeline()
+    │           │
+    │           ├─ DecayCounterManager.processHit()
+    │           │     └─ elementCoef / damageCoef / poiseCoef
+    │           │
+    │           ├─ ★ 附着 ★
+    │           │     └─ ElementalAttachmentHelper.attach(target, element,
+    │           │           NORMAL_ATTACK, chooseProfile(elementAmount))
+    │           │
+    │           ├─ ★ 反应触发 ★
+    │           │     └─ ElementalReactionManager.tryReactAfterAttach(ctx)
+    │           │           │
+    │           │           ├─ collectDefenders()   ← 收集先手
+    │           │           ├─ 遍历注册表匹配反应    ← canMatch + isBlocked
+    │           │           ├─ priority 排序         ← ReactionPriorityCalculator
+    │           │           ├─ 依次 reaction.execute() ← 消耗元素 + 执行效果
+    │           │           │     └─ ElementalAttachmentHelper.consume()
+    │           │           ├─ 记录 firstAmplified
+    │           │           └─ applyAttackerResidual() ← 后手不残留
+    │           │
+    │           └─ calculateFinalDamage() —— 完整乘区
+    │                 ├─ critZone × dmgBonusZone × defenseZone × resistanceZone
+    │                 ├─ MELT/VAPORIZE → 额外 × amplifyMult × emReactionBonus
+    │                 └─ finalDamage ×= decayResult.getDamageCoefficient()
+    │
+    ├─ 扣血
+    │     ├─ Player + 原神模式开 → character.hurt() → incapacitate()
+    │     └─ 其他 → target.setHealth(max(0, health - finalDamage))
+    ├─ level.broadcastDamageEvent(target, source)
+    └─ cir.setReturnValue(true)
 ```
 
 #### 关键文件索引
@@ -1947,7 +2027,7 @@ worldLevelBias = 0              # BIAS 模式使用，世界等级偏移
 | 文件 | 职责 |
 |------|------|
 | `mixin/interfaces/IMonsterLevel.java` | Mixin 注入接口：`get/setMonsterLevel`、`getDefense` |
-| `mixin/mixins/MonsterLevelMixin.java` | 注入 `Monster.class`，实现接口，内置 `levelLocked` 防重复写入 |
+| `mixin/mixins/MonsterMixin.java` | 注入 `Monster.class`，实现接口，内置 `levelLocked` 防重复写入；另有 `MagmaCubeResistanceMixin` / `BlazeResistanceMixin` 加火抗 |
 | `mixin/MonsterLevelConfig.java` | NeoForge 配置，枚举定义（CalculationMode / SpawnMode） |
 | `core/monster/MonsterLevelCalculator.java` | 等级计算核心：世界等级映射、4 种计算模式、加权随机 |
 | `core/monster/MonsterLevelSpawnHandler.java` | 监听 `FinalizeSpawnEvent`，给非 TeyvatMonster 设置等级 |
@@ -2195,53 +2275,104 @@ ModDamageSource source = new ModDamageSource(
 
 ## 6. Mixin 系统
 
-### 已注册的 Mixin
+### 总览
 
 配置文件：`src/main/resources/minegenshin.mixins.json`
 
 ```json
 {
   "required": true,
+  "minVersion": "0.8",
+  "package": "com.linweiyun.genshin.mixin.mixins",
   "compatibilityLevel": "JAVA_21",
+  "plugin": "com.linweiyun.genshin.mixin.MixinConfig",
   "mixins": [
+    "BlazeResistanceMixin",
     "DamageContainerMixin",
     "LivingEntityDecayMixin",
-    "PlayerAttackInterceptor"
+    "LivingEntityHurtMixin",
+    "MagmaCubeResistanceMixin",
+    "MonsterMixin",
+    "PlayerAttackInterceptor",
+    "PlayerHurtInterceptor"
   ]
 }
 ```
 
-| Mixin 类 | 注入目标 | 功能 |
-|----------|----------|------|
-| `DamageContainerMixin` | 伤害相关类 | 元素伤害容器修改 |
-| `LivingEntityDecayMixin` | `LivingEntity` | 注入 `DecayCounterManager`，实现 `IDecayCounterHolder` |
-| `PlayerAttackInterceptor` | `Player.attack()` | 拦截玩家攻击，走 Mod 伤害管线 |
+使用 `MixinConfig` 插件在运行时跳过对 `TeyvatLivingEntity` 子类的 `MonsterMixin` 和 `LivingEntityHurtMixin` 应用（通过 ASM 遍历接口链判断），避免与本 Mod 自定义实现冲突。
 
-### PlayerAttackInterceptor —— 攻击拦截
+### 完整 Mixin 清单
 
-```java
-@Mixin(Player.class)
-public class PlayerAttackInterceptor {
-    
-    @Inject(method = "attack", at = @At("HEAD"), cancellable = true)
-    private void onPlayerAttack(Entity target, CallbackInfo ci) {
-        Player player = (Player) (Object) this;
-        
-        if (!(target instanceof LivingEntity livingTarget)) return;
-        
-        PlayerCharactersAttachment attachment = 
-            player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-        PGCharacter character = attachment.getCurrentCharacter();
-        if (character == null) return;  // 非原神模式放行原版
-        
-        ci.cancel();  // 取消原版攻击
-        ModDamageSource source = ModDamageSource.physical(AttackType.NORMAL_ATTACK, 1.0f);
-        HurtEntityHelper.hurtEntityForPlayer(source, character, livingTarget);
-    }
-}
+| # | Mixin 类 | 注入目标 | 位置 | 功能 |
+|---|----------|----------|------|------|
+| 1 | `PlayerAttackInterceptor` | `Player.attack()` | HEAD, cancellable | 原神模式开时拦截攻击，构建 `ModDamageSource` 调用 `target.hurtServer()`，不走原版攻击 |
+| 2 | `LivingEntityHurtMixin` | `LivingEntity.hurtServer()` | HEAD, cancellable | 非 TeyvatLivingEntity 实体的 `ModDamageSource` 伤害入口：调 `HurtEntityHelper.calculateFinalModDamage`，扣血，广播，cancel |
+| 3 | `PlayerHurtInterceptor` | `Player.actuallyHurt()` | HEAD, cancellable | 原神模式开 + 非 ModDamageSource 时，原版伤害改为扣 PGCharacter 血，cancel |
+| 4 | `LivingEntityDecayMixin` | `LivingEntity` | 接口实现 | 注入 `DecayCounterManager` 字段，实现 `IDecayCounterHolder`，延迟初始化 |
+| 5 | `MonsterMixin` | `Monster` | 接口实现 | 注入等级 + 防御 + 默认元素抗性，实现 `IMonsterLevel` |
+| 6 | `MagmaCubeResistanceMixin` | `MagmaCube` | 接口实现 | 继承 MonsterMixin 等级机制，额外加 80% 火抗 |
+| 7 | `BlazeResistanceMixin` | `Blaze` | 接口实现 | 继承 MonsterMixin 等级机制，额外加 80% 火抗 |
+| 8 | `DamageContainerMixin` | NeoForge `DamageContainer` | HEAD, cancellable | 注入 `modifiedSource` 字段，拦截 `getSource()` 支持替换 DamageSource |
+
+### 伤害管线三件套（v0.2.0 核心）
+
+v0.2.0 将伤害入口从 `HurtEntityHelper.hurtEntityForPlayer` 迁移到实体的 `hurtServer` 方法，由三个 Mixin 协同完成：
+
+#### PlayerAttackInterceptor —— 攻击拦截
+
+注入 `Player.attack` HEAD，构建 `ModDamageSource` 后直接调 `target.hurtServer(serverLevel, modSource, 0f)`（传 0f，MOD 管线自己算伤害）。
+
+```
+玩家左键攻击
+    │
+    ▼
+Player.attack (原版) → PlayerAttackInterceptor
+    ├─ 非 LivingEntity 目标 → 放行
+    ├─ 非原神模式 → 放行
+    ├─ ci.cancel()
+    └─ target.hurtServer(serverLevel, ModDamageSource, 0f)
+```
+
+#### LivingEntityHurtMixin —— 伤害拦截（目标侧）
+
+注入 `LivingEntity.hurtServer` HEAD。收到 `ModDamageSource` 后接管整条伤害管线：调 `HurtEntityHelper.calculateFinalModDamage` → 扣血 → `level.broadcastDamageEvent` 广播 → cancel。非 ModDamageSource 放行原版。
+
+```
+LivingEntity.hurtServer (原版) → LivingEntityHurtMixin
+    │
+    ├─ !(source instanceof ModDamageSource) → return（放行）
+    │
+    ├─ HurtEntityHelper.calculateFinalModDamage(modSource, attackerChar, target)
+    │     └─ [完整管线见 4.5 节]
+    │
+    ├─ 扣血
+    │     ├─ Player + 原神模式开 → character.hurt() → incapacitate()
+    │     └─ 其他 → target.setHealth(max(0, health - finalDamage))
+    │
+    ├─ level.broadcastDamageEvent(target, source)  ← 客户端同步
+    └─ cir.setReturnValue(true)  ← 阻断原版 hurtServer 全部后续逻辑
+```
+
+**为什么一定要在 HEAD 处 cancel？** 原版 `hurtServer` 内部有 `invulnerableTime > 10 && damage <= lastHurt` 的冷却检查，不 cancel 会导致连续攻击被吞掉。同时 `actuallyHurt` 会被再次调起原版伤害计算。
+
+#### PlayerHurtInterceptor —— 反向伤害拦截（玩家受击侧）
+
+注入 `Player.actuallyHurt` HEAD。非 ModDamageSource（怪物打玩家）+ 原神模式开时，扣 PGCharacter 血而不是 Player 血，cancel 原版。
+
+```
+Player.actuallyHurt (原版) → PlayerHurtInterceptor
+    │
+    ├─ 非原神模式 → return（放行）
+    ├─ source instanceof ModDamageSource → return（放 LivingEntityHurtMixin 处理）
+    │
+    ├─ current.hurt(damage)
+    ├─ dead → current.incapacitate(attachment)
+    └─ ci.cancel()
 ```
 
 ### LivingEntityDecayMixin —— 注入衰减计数器支持
+
+注入目标：`LivingEntity`，实现 `IDecayCounterHolder`。
 
 ```java
 @Mixin(LivingEntity.class)
@@ -2255,13 +2386,67 @@ public abstract class LivingEntityDecayMixin implements IDecayCounterHolder {
         if (genshin$decayCounterManager == null) {
             genshin$decayCounterManager = new DecayCounterManager(
                 (LivingEntity)(Object) this);
-            // 注册到 Worker 线程以便定期清理
             DecayCounterWorker.getInstance().registerManager(genshin$decayCounterManager);
         }
         return genshin$decayCounterManager;
     }
 }
 ```
+
+### MonsterMixin 系列 —— 怪物等级与抗性
+
+三个 Mixin 都实现 `IMonsterLevel` 接口：
+
+| Mixin | 注入目标 | 特殊抗性 |
+|-------|----------|----------|
+| `MonsterMixin` | `Monster` | 默认全元素 10% 抗性 |
+| `MagmaCubeResistanceMixin` | `MagmaCube` | 火抗 80% |
+| `BlazeResistanceMixin` | `Blaze` | 火抗 80% |
+
+等级通过 `MonsterLevelSpawnHandler` 在 `FinalizeSpawnEvent` 中一次性写入（`levelLocked=true` 永久锁定）。防御公式：`level * 500 + 500`。
+
+**跳过 TeyvatLivingEntity**：`MixinConfig.shouldApplyMixin` 通过 ASM 遍历目标类的接口链，若实现了 `TeyvatLivingEntity` 则不对其应用 `MonsterMixin` 和 `LivingEntityHurtMixin`（Teyvat 实体自行重写 `hurtServer`）。
+
+### DamageContainerMixin —— 伤害源替换
+
+注入 NeoForge 的 `DamageContainer`（原版伤害管线中包裹 DamageSource 的容器类）：
+
+```java
+@Mixin(DamageContainer.class)
+public class DamageContainerMixin implements IDamageSourceModifier {
+
+    @Final @Shadow private DamageSource source;
+    @Unique private DamageSource modifiedSource;
+
+    @Override
+    public void setModifiedSource(DamageSource newSource) {
+        this.modifiedSource = newSource;
+    }
+
+    @Inject(method = "getSource", at = @At("HEAD"), cancellable = true)
+    public void onGetSource(CallbackInfoReturnable<DamageSource> cir) {
+        cir.setReturnValue(modifiedSource != null ? modifiedSource : source);
+    }
+}
+```
+
+通过 `IDamageSourceModifier` 接口暴露 `setModifiedSource`，允许在伤害管线中用新的 DamageSource 替换原版的。
+
+### MixinConfig —— 运行时过滤
+
+位置：`mixin/MixinConfig.java`
+
+```java
+@Override
+public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+    boolean skipTeyvat = mixinClassName.endsWith("MonsterMixin")
+            || mixinClassName.endsWith("LivingEntityHurtMixin");
+    if (!skipTeyvat) return true;
+    return !implementsTeyvat(targetClassName.replace('.', '/'));
+}
+```
+
+只对 `MonsterMixin` 和 `LivingEntityHurtMixin` 做 Teyvat 过滤。其他 Mixin（`PlayerAttackInterceptor`、`PlayerHurtInterceptor`、`LivingEntityDecayMixin` 等）按正常逻辑对所有目标应用。
 
 ---
 
