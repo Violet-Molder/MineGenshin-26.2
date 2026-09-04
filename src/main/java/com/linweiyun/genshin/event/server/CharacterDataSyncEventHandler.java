@@ -16,6 +16,9 @@ public class CharacterDataSyncEventHandler {
             //原神模式同步
             boolean isGenshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
             NetworkManager.setGenshinModeToPlayer(player, isGenshinMode);
+            //冒险者信息同步
+            var adventurerInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+            adventurerInfo.syncToPlayer(player);
             //角色数据同步
             PlayerCharactersAttachment playerData = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             playerData.syncToPlayer(player);

@@ -3,10 +3,16 @@
   "minVersion": "0.8",
   "package": "com.linweiyun.genshin.mixin.mixins",
   "compatibilityLevel": "JAVA_21",
+  "plugin": "com.linweiyun.genshin.mixin.MixinConfig",
   "mixins": [
+    "BlazeResistanceMixin",
     "DamageContainerMixin",
     "LivingEntityDecayMixin",
-    "PlayerAttackInterceptor"
+    "LivingEntityHurtMixin",
+    "MagmaCubeResistanceMixin",
+    "MonsterMixin",
+    "PlayerAttackInterceptor",
+    "PlayerHurtInterceptor"
   ],
   "injectors": {
     "defaultRequire": 1

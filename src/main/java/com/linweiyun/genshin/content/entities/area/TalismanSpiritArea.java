@@ -165,16 +165,16 @@ public class TalismanSpiritArea extends AreaEntity {
     private void dealDamageToEntity(LivingEntity target) {
         int burstLevel = this.character.getData().getElementalBurstLevel();
         float damageMultiplier = 0.033f * burstLevel + 0.3f;
-        // 构建伤害规格：元素爆发类型 + 冰元素 + 0.7倍率
         ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_BURST, ElementalsGIM.CYRO)
-                .multiplier(damageMultiplier)   // 伤害倍率
-                .elementAmount(1.0f)              // 元素附着量
+                .multiplier(damageMultiplier)
+                .elementAmount(1.0f)
+                .attackerCharacter(this.character)
                 .build();
 
-        // 从规格创建伤害源
         ModDamageSource damageSource = ModDamageSource.from(spec, owner);
-        // 对目标造成伤害
-        HurtEntityHelper.hurtEntityForPlayer(damageSource, this.character, target);
+        if (target.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            target.hurtServer(serverLevel, damageSource, 0f);
+        }
     }
 
     // ========== 临时粒子效果（标注领域范围） ==========

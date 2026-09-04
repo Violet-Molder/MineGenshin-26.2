@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.network;
 
+import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
@@ -43,6 +44,26 @@ public class NetworkManager {
 
   public static void setPrimogemToPlayer(ServerPlayer player, int amount) {
     RPCPacketDistributor.rpcToPlayer(player, "primogemRPCPacket", amount);
+  }
+
+  // ========== 冒险者信息同步 ==========
+  @RPCPacket("adventurerInfoRPCPacket")
+  public static void adventurerInfoRPCPacket(RPCSender sender, CompoundTag data) {
+    if (sender.isServer()) {
+      ClientHandler.adventurerInfoClientHandler(data);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      AdventurerInfoAttachment attachment = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+      attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
+    }
+  }
+
+  public static void setAdventurerInfoToServer(CompoundTag data) {
+    RPCPacketDistributor.rpcToServer("adventurerInfoRPCPacket", data);
+  }
+
+  public static void setAdventurerInfoToPlayer(ServerPlayer player, CompoundTag data) {
+    RPCPacketDistributor.rpcToPlayer(player, "adventurerInfoRPCPacket", data);
   }
 
   // ========== 游戏模式同步 ==========

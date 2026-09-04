@@ -54,9 +54,12 @@ public class ShenheTalent {
                                     .multiplier(damageMultiplier.get())
                                     .elementAmount(AttachmentType.WEAK.getInitialAmount())
                                     .decayGroup(DecayGroups.SHENHE_SKILL)
+                                    .attackerCharacter(character)
                                     .build();
                             ModDamageSource source = ModDamageSource.from(spec, player);
-                            HurtEntityHelper.hurtEntityForPlayer(source, character, entity);
+                            if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                                entity.hurtServer(serverLevel, source, 0f);
+                            }
                         }
 
                     }
@@ -65,7 +68,7 @@ public class ShenheTalent {
                 for (int i = 0; i < 4; i++) {
                     PGCharacter partyChar = attachment.getPartyCharacter(i);
                     if (partyChar != null) {
-                        CharacterEffectInstance effect = new CharacterEffectInstance(ModCharacterEffects.ICY_QUILL_EFFECT.get(), 250, 1);
+                        CharacterEffectInstance effect = new CharacterEffectInstance(ModCharacterEffects.ICY_QUILL_EFFECT.get(), 350, 1);
                         effect.setIntData(IcyQuillEffect.ICY_QUILL_COUNT_KEY, 7);
                         CharacterEffectHelper.addEffect(player, partyChar, effect);
                     }
@@ -81,5 +84,3 @@ public class ShenheTalent {
         float damageMultiplier = 0.103f * burstLevel + 0.89f;
     }
  }
-
-

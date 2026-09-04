@@ -25,64 +25,56 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Objects;
 
 public class HurtEntityHelper {
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // =====================================================================
-    //  伤害计算主入口 —— 按反应类型分发到不同乘区公式
-    // =====================================================================
-
-    public static void hurtEntityForPlayer(ModDamageSource damageSource, PGCharacter attacker, LivingEntity target) {
-        if (target.level().isClientSide()) return;
-
+    public static float calculateFinalModDamage(ModDamageSource damageSource,
+                                                PGCharacter attacker,
+                                                LivingEntity target) {
         ModDamageSpec spec = damageSource.getSpec();
-        LOGGER.info("[伤害] === 攻击={} | 目标={} | 元素={} | 类型={} ===",
-                attacker.getName(), target.getName().getString(),
+        LOGGER.info("[伤害管线] === 攻击={} | 目标={} | 元素={} | 类型={} ===",
+                attacker != null ? attacker.getName() : damageSource.getEntity(),
+                target.getName().getString(),
                 spec.getElement(), spec.getAttackType());
 
-        // 角色身上的效果先跑（申鹤冰凌等会在这往 spec 里塞 flatBonus）
-        for (CharacterEffectInstance effect : attacker.getData().getEffectContainer().getEffects()) {
-            if (effect != null) {
-                Objects.requireNonNull(effect.getEffect()).onAttacked(
-                        (Player) damageSource.getEntity(), attacker, target, effect, damageSource);
+        if (attacker != null) {
+            for (CharacterEffectInstance effect : new ArrayList<>(attacker.getData().getEffectContainer().getEffects())) {
+                if (effect != null) {
+                    Objects.requireNonNull(effect.getEffect()).onAttacked(
+                            damageSource.getEntity() instanceof Player p ? p : null,
+                            attacker, target, effect, damageSource);
+                }
             }
         }
-        LOGGER.info("[效果处理后] spec={}", damageSource.getSpec());
-        float baseDamage = calculateCharacterDamage(damageSource, attacker);
+        spec = damageSource.getSpec();
+        LOGGER.info("[效果处理后] spec={}", spec);
 
-        LOGGER.info("[效果处理后] spec={}", damageSource.getSpec());
-        hurtEntityForPlayer(damageSource, attacker, target, baseDamage);
+        float baseDamage = attacker != null
+                ? calculateCharacterDamage(spec, attacker)
+                : 0.0f;
+
+        return processPipeline(damageSource, attacker, target, baseDamage);
     }
 
-    // =====================================================================
-    //  管线：接收一个已经算好的基础伤害，走 附着→反应→衰减→最终hurt
-    //  （剧变反应、特殊固定伤害等直接调用这个方法，跳过 calculateCharacterDamage）
-    // =====================================================================
-
-    public static void hurtEntityForPlayer(ModDamageSource damageSource, PGCharacter attacker,
-                                           LivingEntity target, float baseDamage) {
-        if (target.level().isClientSide()) return;
-
+    private static float processPipeline(ModDamageSource damageSource, PGCharacter attacker,
+                                         LivingEntity target, float baseDamage) {
         ModDamageSpec spec = damageSource.getSpec();
-        LivingEntity sourceEntity = (LivingEntity) damageSource.getEntity(); // 攻击方实体
+        LivingEntity sourceEntity = (LivingEntity) damageSource.getEntity();
         PGCharacter targetCharacter = resolveCharacter(target);
 
         DecayResult decayResult = DecayResult.NONE;
-
-        // 衰减系统
         if (spec.hasDecayTag()) {
             IDecayCounterHolder holder = (IDecayCounterHolder) target;
             DecayCounterManager manager = holder.getDecayCounterManager();
             long currentTick = target.level().getGameTime();
-            manager.getOrCreateCounter(
-                    (LivingEntity) damageSource.getEntity(), attacker, spec, currentTick);
-            decayResult = manager.processHit(
-                    (LivingEntity) damageSource.getEntity(), attacker, spec, currentTick);
+            manager.getOrCreateCounter(sourceEntity, attacker, spec, currentTick);
+            decayResult = manager.processHit(sourceEntity, attacker, spec, currentTick);
         }
         float elementCoefficient = decayResult.getElementCoefficient();
-        // 1. 附着
+
         AttachmentProfile profile = chooseProfile(spec.getElementAmount());
         boolean canAttach = spec.hasAuraPotential() && elementCoefficient > 0;
         if (canAttach) {
@@ -91,7 +83,6 @@ public class HurtEntityHelper {
                     AttachmentSource.NORMAL_ATTACK, profile);
         }
 
-        // 2. 触发反应
         ReactionResult reactionResult = null;
         if (canAttach) {
             StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
@@ -102,29 +93,15 @@ public class HurtEntityHelper {
             reactionResult = ElementalReactionManager.tryReactAfterAttach(ctx);
         }
 
-        // 关键改动：把 sourceEntity 和 targetCharacter 传进去
         float finalDamage = calculateFinalDamage(
-                baseDamage, spec,
-                sourceEntity, attacker,
-                target, targetCharacter,
-                reactionResult);
-        // ↓↓↓ 加这里：hurt 之前
+                baseDamage, spec, sourceEntity, attacker, target, targetCharacter, reactionResult);
+
         LOGGER.info("[最终伤害] base={} → final={}", baseDamage, finalDamage);
-        // ↑↑↑
-        // 4. 最后乘衰减的伤害系数
         finalDamage *= decayResult.getDamageCoefficient();
-        target.hurt(damageSource, finalDamage);
+        return finalDamage;
     }
 
-
-
-    // =====================================================================
-    //  基础伤害计算 —— 只算乘区，不管反应
-    //  (ATK×atkMult + HP×hpMult + DEF×defMult + EM×emMult) × (1 + skillMultiplierBonus) + flatDamageBonus
-    // =====================================================================
-
-    private static float calculateCharacterDamage(ModDamageSource damageSource, PGCharacter attacker) {
-        ModDamageSpec spec = damageSource.getSpec();
+    private static float calculateCharacterDamage(ModDamageSpec spec, PGCharacter attacker) {
         var data = attacker.getData();
 
         double atk = data.getAttributeTotalValue(ModAttributes.ATK.value());
@@ -132,12 +109,10 @@ public class HurtEntityHelper {
         double def = data.getAttributeTotalValue(ModAttributes.DEF.value());
         double em  = data.getAttributeTotalValue(ModAttributes.ELEMENTAL_MASTERY.value());
 
-        // ↓↓↓ 加这里：算出 atk/hp/def/em 之后
         LOGGER.info("[属性快照] ATK={} | HP={} | DEF={} | EM={}", atk, hp, def, em);
         LOGGER.info("[倍率快照] atkMult={} | hpMult={} | defMult={} | emMult={} | skillMultBonus={} | flatBonus={}",
                 spec.getAtkMultiplier(), spec.getHpMultiplier(), spec.getDefMultiplier(), spec.getEmMultiplier(),
                 spec.getSkillMultiplierBonus(), spec.getFlatDamageBonus());
-        // ↑↑↑
 
         float base = (float) ((
                 atk * spec.getAtkMultiplier() +
@@ -147,13 +122,8 @@ public class HurtEntityHelper {
         ) * (1 + spec.getSkillMultiplierBonus()) + spec.getFlatDamageBonus());
 
         LOGGER.info("[基础伤害区] = {}", base);
-
         return base;
     }
-
-    // =====================================================================
-    //  乘区分发 —— 在已经算好的 baseDamage 上乘对应乘区
-    // =====================================================================
 
     private static float calculateFinalDamage(float baseDamage, ModDamageSpec spec,
                                               LivingEntity attacker, PGCharacter attackerCharacter,
@@ -163,57 +133,47 @@ public class HurtEntityHelper {
         float bonus = dmgBonusZone(attackerCharacter, spec);
         float def = defenseZone(attacker, attackerCharacter, target, targetCharacter);
         float res = resistanceZone(spec.getElement(), target, targetCharacter);
-        LOGGER.info("[最终伤害区] crit={} | bonus={} | def={} | res={}",
-                crit, bonus, def, res);
+        LOGGER.info("[最终伤害区] crit={} | bonus={} | def={} | res={}", crit, bonus, def, res);
 
-        // 无反应
         if (reaction == null || !reaction.isReacted()) {
             return baseDamage * crit * bonus * def * res;
         }
 
         return switch (reaction.getReactionType()) {
-            // 增幅
             case MELT, VAPORIZE -> baseDamage
-                    * crit
-                    * reaction.getAmplifyMultiplier()
+                    * crit * reaction.getAmplifyMultiplier()
                     * emAndReactionBonus(attackerCharacter)
                     * bonus * def * res;
-
-            // TODO: 激化
             case AGGRAVATE, SPREAD, QUICKEN -> baseDamage * crit * bonus * def * res;
-
-            // TODO: 剧变（剧变伤害不乘防御区，但主伤害还是要的）
             case OVERLOAD, SUPERCONDUCT, ELECTRO_CHARGED, BURNING, BLOOM, HYPERBLOOM, BURGEON
                     -> baseDamage * crit * bonus * def * res;
-
             default -> baseDamage * crit * bonus * def * res;
         };
     }
 
-    // =====================================================================
-    //  各乘区独立计算方法（目前占位，逐个填）
-    // =====================================================================
-
-    /** 暴击区：(1 + CR × CDG)  TODO */
     private static float critZone(PGCharacter attacker) { return 1.0f; }
-
-    /** 增伤区：对应元素 DMGB 属性 TODO */
     private static float dmgBonusZone(PGCharacter attacker, ModDamageSpec spec) { return 1.0f; }
+
     private static float defenseZone(LivingEntity attacker, PGCharacter attackerCharacter,
                                      LivingEntity defender, PGCharacter defenderCharacter) {
         int attackerLevel = CombatEntityAccessor.getAttackerLevel(attacker, attackerCharacter);
+        int defenderLevel = CombatEntityAccessor.getDefenderLevel(defender, defenderCharacter);
         double defenderDef = CombatEntityAccessor.getDefenderDefense(defender, defenderCharacter);
+        double atkCoef = CombatMath.levelCoefficient(attackerLevel);
+        LOGGER.info("[防御区] 攻方等级={} | 攻方等级系数={} | 被攻方等级={} | 被攻方防御={}",
+                attackerLevel, atkCoef, defenderLevel, defenderDef);
         return CombatMath.defenseZone(attackerLevel, defenderDef);
     }
+
     private static float resistanceZone(ElementalsGIM element,
                                         LivingEntity defender, PGCharacter defenderCharacter) {
         float res = CombatEntityAccessor.getDefenderResistance(defender, defenderCharacter, element);
+        LOGGER.info("[元素抗性区] {}抗性={}", element, res);
         return CombatMath.resistanceZone(res);
     }
-    /** 元素精通+反应伤害加成 TODO */
+
     private static float emAndReactionBonus(PGCharacter attacker) { return 1.0f; }
 
-    // =====================================================================
     private static AttachmentProfile chooseProfile(float elementAmount) {
         if (elementAmount >= 4.0f) return AttachmentProfile.ULTRA_STRONG;
         if (elementAmount >= 2.0f) return AttachmentProfile.STRONG;
@@ -221,13 +181,10 @@ public class HurtEntityHelper {
         return AttachmentProfile.WEAK;
     }
 
-    /** 尝试从 LivingEntity 上解析出对应的 PGCharacter（如果是玩家角色） */
     private static PGCharacter resolveCharacter(LivingEntity entity) {
         if (entity instanceof Player player) {
-            // 怪物打玩家 → 从 PlayerCharactersAttachment 拿当前角色
             return player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT).getCurrentCharacter();
         }
         return null;
     }
-
 }

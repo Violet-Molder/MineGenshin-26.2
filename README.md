@@ -22,6 +22,7 @@
     - 4.9 [实体系统](#49-实体系统)
     - 4.10 [元素附着系统](#410-元素附着系统)
     - 4.11 [元素反应系统](#411-元素反应系统)
+    - 4.12 [怪物等级与防御系统](#412-怪物等级与防御系统)
 5. [扩展开发指南](#5-扩展开发指南)
     - 5.1 [添加新角色](#51-添加新角色)
     - 5.2 [添加新角色效果](#52-添加新角色效果)
@@ -1876,6 +1877,117 @@ PlayerAttackInterceptor.onPlayerAttack()
 | 注册表声明 | `registry/ModRegistries.java` |
 | 反应注册入口 | `registry/register/ElementalReactionRegister.java` |
 | 主入口调用 | `Minegenshin.java` 构造函数 |
+
+### 4.12 怪物等级与防御系统
+
+#### 概述
+
+怪物等级与防御系统通过 Mixin 为所有 `Monster` 子类（排除本 Mod 自定义的 `TeyvatMonster`）注入等级和防御力属性。等级在怪物生成时一次性确定（不可修改），防御力 = 等级 × 500 + 500。
+
+**设计目标**：
+- 为 **本 Mod 以外的怪物**（原版、其他 Mod）提供通用的等级+防御逻辑
+- 本 Mod 内部的 `TeyvatMonster` 子类自行实现等级体系，不受本系统干预
+- 等级计算与玩家冒险等阶挂钩，支持 4 种计算模式 + 3 种生成模式
+
+#### 世界等级映射
+
+玩家**冒险等阶（AR）** → **世界等级（WL）** → **怪物等级范围**：
+
+| 冒险等阶 | 世界等级 | 怪物等级 |
+|---------|---------|---------|
+| 01 ~ 20 | 0 | 1 ~ 10 |
+| 20 ~ 25 | 1 | 11 ~ 21 |
+| 25 ~ 30 | 2 | 21 ~ 40 |
+| 30 ~ 35 | 3 | 41 ~ 50 |
+| 35 ~ 40 | 4 | 51 ~ 60 |
+| 40 ~ 45 | 5 | 61 ~ 70 |
+| 45 ~ 50 | 6 | 71 ~ 80 |
+| 50 ~ 55 | 7 | 81 ~ 89 |
+| 55 ~ 58 | 8 | 90 ~ 91 |
+| 58 ~ 60 | 9 | 92 ~ 103 |
+
+> **加权随机**：同一世界等级范围内，AR 越高则出现较高等级怪物的概率越大。例如 WL0 中 AR20 遇到 10 级怪的概率远高于 AR1。
+
+#### 冒险等阶计算方式（4种）
+
+生成时根据附近玩家的冒险等阶计算"目标世界等级"：
+
+| 模式 | 说明 |
+|------|------|
+| `NEAREST` | 取生成点距离最近玩家的 AR → 世界等级 |
+| `HIGHEST` | 搜索半径内取最高 AR 的玩家 → 世界等级 |
+| `LOWEST` | 搜索半径内取最低 AR 的玩家 → 世界等级 |
+| `COMPREHENSIVE` | 排除最高 AR，取第二高 AR，低于第二高 25 级及以上的排除，剩余取平均 AR 再转世界等级 |
+
+#### 生成模式（3种）
+
+| 模式 | 说明 | 典型用途 |
+|------|------|---------|
+| `NATURAL` | 自然生成：按玩家 AR 加权随机一个等级 | 野外自然刷新 |
+| `FIXED` | 固定等级：直接使用配置中指定的等级 | 副本/Boss 固定等级 |
+| `BIAS` | 偏差值：先算出世界等级，再 + 偏移值（可正可负） | 不想完全固定等级但需限制范围 |
+
+#### 配置文件
+
+路径：`./config/minegenshin/monster_level.toml`
+
+```toml
+[monsterSpawnLogic.spawnLevelCalculation]
+calculationMode = "NEAREST"     # NEAREST / HIGHEST / LOWEST / COMPREHENSIVE
+searchRadius = 64.0             # 搜索半径（方块）
+
+[monsterSpawnLogic.spawnMode]
+spawnMode = "NATURAL"           # NATURAL / FIXED / BIAS
+fixedLevel = 1                  # FIXED 模式使用
+worldLevelBias = 0              # BIAS 模式使用，世界等级偏移
+```
+
+#### 核心文件
+
+| 文件 | 职责 |
+|------|------|
+| `mixin/interfaces/IMonsterLevel.java` | Mixin 注入接口：`get/setMonsterLevel`、`getDefense` |
+| `mixin/mixins/MonsterLevelMixin.java` | 注入 `Monster.class`，实现接口，内置 `levelLocked` 防重复写入 |
+| `mixin/MonsterLevelConfig.java` | NeoForge 配置，枚举定义（CalculationMode / SpawnMode） |
+| `core/monster/MonsterLevelCalculator.java` | 等级计算核心：世界等级映射、4 种计算模式、加权随机 |
+| `core/monster/MonsterLevelSpawnHandler.java` | 监听 `FinalizeSpawnEvent`，给非 TeyvatMonster 设置等级 |
+
+#### Mixin 注入接口
+
+```java
+public interface IMonsterLevel {
+    int genshin$getMonsterLevel();   // 获取等级
+    void genshin$setMonsterLevel(int level);  // 设置等级（仅第一次生效）
+    int genshin$getDefense();        // 等级 * 500 + 500
+}
+```
+
+#### 等级生成流程
+
+```
+FinalizeSpawnEvent 触发
+    │
+    ├─ TeyvatMonster？→ 跳过（子类自行实现）
+    ├─ 已经有等级？→ 跳过（防重复）
+    │
+    └─ MonsterLevelCalculator.getMonsterLevel(serverLevel, spawnPos, seed)
+          │
+          ├─ SpawnMode == FIXED
+          │     └─ 返回 fixedLevel
+          │
+          ├─ SpawnMode == NATURAL 或 BIAS
+          │     ├─ 计算目标世界等级（4种 CalculationMode）
+          │     ├─ NATURAL → 直接使用该世界等级
+          │     ├─ BIAS → worldLevel + bias（clamp 到 0~9）
+          │     ├─ 查世界等级对应的怪物等级范围
+          │     └─ 加权随机出一个具体等级
+          │
+          └─ monster.genshin$setMonsterLevel(level)  ← levelLocked=true，永久固定
+```
+
+#### 排除 TeyvatMonster 的原因
+
+`TeyvatMonster` 是本 Mod 自定义怪物的基类，具有独立的等级体系。`MonsterLevelSpawnHandler` 在第 23 行通过 `instanceof TeyvatMonster` 跳过，确保 Mixin 注入的 `IMonsterLevel` 逻辑只作用于外部怪物。
 
 ---
 

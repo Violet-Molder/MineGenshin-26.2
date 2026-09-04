@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.content.effect.character.shenhe;
 
+import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
@@ -29,6 +30,13 @@ public class IcyQuillEffect implements ICharacterEffect {
                 float flatDamageBonus = (float) (shenhe.getData().getAttributeTotalValue(ModAttributes.ATK.value()) * 0.776f);
                 ModDamageSpec newDamageSpec = oldDamageSpec.withFlatDamageBonus(flatDamageBonus);
                 damageSource.setSpec(newDamageSpec);
+
+                int remaining = instance.getIntData(ICY_QUILL_COUNT_KEY) - 1;
+                if (remaining <= 0) {
+                    CharacterEffectHelper.removeEffect(holder, shenhe, this);
+                } else {
+                    instance.setIntData(ICY_QUILL_COUNT_KEY, remaining);
+                }
             }
         }
     }
@@ -40,13 +48,11 @@ public class IcyQuillEffect implements ICharacterEffect {
             CharacterEffectInstance existingInstance,
             CharacterEffectInstance newInstance) {
 
-        // 1. 持续时间：取较大值
         int existingDuration = existingInstance.getDuration();
         int newDuration = newInstance.getDuration();
         int maxDuration = Math.max(existingDuration, newDuration);
         newInstance.setDuration(maxDuration);
 
-        // 2. 冰凌数量：取较大值
         int existingCount = existingInstance.getIntData(ICY_QUILL_COUNT_KEY);
         int newCount = newInstance.getIntData(ICY_QUILL_COUNT_KEY);
         int maxCount = Math.max(existingCount, newCount);

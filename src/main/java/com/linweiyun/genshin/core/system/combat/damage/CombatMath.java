@@ -5,7 +5,7 @@ public final class CombatMath {
 
     /** 原神等级系数：level × 500 + 500 */
     public static double levelCoefficient(int level) {
-        return level * 500.0 + 500.0;
+        return level * 5.0 + 500.0;
     }
 
     /**

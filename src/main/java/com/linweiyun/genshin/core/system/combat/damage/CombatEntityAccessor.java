@@ -1,17 +1,17 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
-import com.linweiyun.genshin.content.entities.teyvat.TeyvatLivingEntity;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.ElementalsGIM;
+import com.linweiyun.genshin.mixin.interfaces.IMonsterLevel;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
  * 统一从攻击方 / 被攻击方身上获取等级、防御、元素抗性。
- * 三种来源：
- *   1. PGCharacter          → 从角色数据里读
- *   2. TeyvatLivingEntity   → MOD 的实体，以后会加自定义属性，目前先给默认值
- *   3. 普通 LivingEntity    → MC 原生实体，给默认值
+ * 来源优先级：
+ *   1. PGCharacter     → 角色数据里读
+ *   2. IMonsterLevel   → Mixin 注入的怪物数据（外部怪物才有）
+ *   3. 默认值兜底
  */
 public final class CombatEntityAccessor {
     private CombatEntityAccessor() {}
@@ -30,7 +30,9 @@ public final class CombatEntityAccessor {
         if (attackerCharacter != null) {
             return attackerCharacter.getData().getLevel();
         }
-        // TODO: TeyvatLivingEntity 以后加 getLevel() 接口方法
+        if (attacker instanceof IMonsterLevel ml && ml.genshin$getMonsterLevel() > 0) {
+            return ml.genshin$getMonsterLevel();
+        }
         return DEFAULT_MOB_LEVEL;
     }
 
@@ -40,6 +42,9 @@ public final class CombatEntityAccessor {
     public static int getDefenderLevel(LivingEntity defender, PGCharacter defenderCharacter) {
         if (defenderCharacter != null) {
             return defenderCharacter.getData().getLevel();
+        }
+        if (defender instanceof IMonsterLevel ml && ml.genshin$getMonsterLevel() > 0) {
+            return ml.genshin$getMonsterLevel();
         }
         return DEFAULT_MOB_LEVEL;
     }
@@ -55,9 +60,10 @@ public final class CombatEntityAccessor {
         if (defenderCharacter != null) {
             return defenderCharacter.getData().getAttributeTotalValue(ModAttributes.DEF.value());
         }
-        // TODO: TeyvatLivingEntity 以后加 getDefense() 接口方法
-        double defense = CombatMath.levelCoefficient(DEFAULT_MOB_LEVEL);
-        return defense;
+        if (defender instanceof IMonsterLevel ml && ml.genshin$getMonsterLevel() > 0) {
+            return ml.genshin$getDefense();
+        }
+        return CombatMath.levelCoefficient(DEFAULT_MOB_LEVEL);
     }
 
     // ==================== 元素抗性 ====================
@@ -72,7 +78,9 @@ public final class CombatEntityAccessor {
         if (defenderCharacter != null) {
             return getElementResistanceFromCharacter(defenderCharacter, element);
         }
-        // TODO: TeyvatLivingEntity 以后加 getResistance(element) 接口方法
+        if (defender instanceof IMonsterLevel ml) {
+            return ml.genshin$getElementResistance(element);
+        }
         return DEFAULT_MOB_RESISTANCE;
     }
 
@@ -94,7 +102,9 @@ public final class CombatEntityAccessor {
         if (defenderCharacter != null) {
             return (float) defenderCharacter.getData().getAttributeTotalValue(ModAttributes.PHYSICAL_RES.value());
         }
-        // TODO: TeyvatLivingEntity 以后加 getPhysicalResistance()
+        if (defender instanceof IMonsterLevel ml) {
+            return ml.genshin$getPhysicalResistance();
+        }
         return DEFAULT_MOB_RESISTANCE;
     }
 }

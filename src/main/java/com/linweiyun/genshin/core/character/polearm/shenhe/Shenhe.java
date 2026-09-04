@@ -1,30 +1,19 @@
 package com.linweiyun.genshin.core.character.polearm.shenhe;
 
-import com.linweiyun.genshin.Config;
-import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
-import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
-import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
+import com.linweiyun.genshin.config.Config;
 import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
-import com.linweiyun.genshin.content.skill_node.RushesForward;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import com.linweiyun.genshin.enums.ElementalsGIM;
-import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
 import com.linweiyun.genshin.core.system.registry.register.ModEntities;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 
 import java.util.List;

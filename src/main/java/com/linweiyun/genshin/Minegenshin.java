@@ -1,10 +1,12 @@
 package com.linweiyun.genshin;
 
+import com.linweiyun.genshin.config.Config;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
-import com.linweiyun.genshin.mixin.ElementalReactionConfig;
+import com.linweiyun.genshin.config.ElementalReactionConfig;
+import com.linweiyun.genshin.config.MonsterLevelConfig;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -30,6 +32,7 @@ public class Minegenshin {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_EXP_SPEC, "minegenshin/exp.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_ATTRIBUTE_SPEC, "minegenshin/attribute.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, ElementalReactionConfig.REACTION_SPEC, "minegenshin/genshin_reaction.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, MonsterLevelConfig.MONSTER_LEVEL_SPEC, "minegenshin/monster_level.toml");
 
         ModItems.register(modEventBus);
         ModItemGroups.register(modEventBus);

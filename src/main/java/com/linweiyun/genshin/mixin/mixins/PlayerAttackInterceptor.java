@@ -3,23 +3,18 @@ package com.linweiyun.genshin.mixin.mixins;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
-import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalsGIM;
-import com.mojang.logging.LogUtils;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import static com.linweiyun.genshin.Minegenshin.LOGGER;
 
 @Mixin(Player.class)
 public class PlayerAttackInterceptor {
@@ -38,29 +33,30 @@ public class PlayerAttackInterceptor {
         ci.cancel();
 
         ModDamageSource source = buildModDamageSource(player, character, livingTarget);
-        HurtEntityHelper.hurtEntityForPlayer(source, character, livingTarget);
+        if (livingTarget.level() instanceof ServerLevel serverLevel) {
+            livingTarget.hurtServer(serverLevel, source, 0f);
+        }
     }
 
     private ModDamageSource buildModDamageSource(Player player, PGCharacter character, LivingEntity target) {
         boolean genshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
-        //TEST
         if (genshinMode) {
             if (character.getCharacterUUID() == 145001) {
-                ModDamageSpec spec = ModDamageSpec.elemental(
-                        AttackType.NORMAL_ATTACK, ElementalsGIM.HYDRO, 1.0f);
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.HYDRO)
+                        .multiplier(1.0f).elementAmount(1.0f).attackerCharacter(character).build();
                 return ModDamageSource.from(spec, player);
             } else if (character.getCharacterUUID() == 135001) {
-                ModDamageSpec spec = ModDamageSpec.elemental(
-                        AttackType.NORMAL_ATTACK, ElementalsGIM.CYRO, 1.0f);
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.CYRO)
+                        .multiplier(1.0f).elementAmount(1.0f).attackerCharacter(character).build();
                 return ModDamageSource.from(spec, player);
             } else if (character.getCharacterUUID() == 135002) {
-                ModDamageSpec spec = ModDamageSpec.elemental(
-                        AttackType.NORMAL_ATTACK, ElementalsGIM.PYRO, 1.0f);
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.PYRO)
+                        .multiplier(1.0f).elementAmount(1.0f).attackerCharacter(character).build();
                 return ModDamageSource.from(spec, player);
             }
-
         }
-        ModDamageSpec spec = ModDamageSpec.physical(AttackType.NORMAL_ATTACK, 1.0f);
+        ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.FYSIKOS)
+                .multiplier(1.0f).attackerCharacter(character).build();
         return ModDamageSource.from(spec, player);
     }
 }

@@ -1,9 +1,12 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroup;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalsGIM;
+
+import javax.annotation.Nullable;
 
 /**
  * 伤害规格 —— 定义一次攻击的完整参数规格
@@ -58,11 +61,15 @@ public class ModDamageSpec {
     // ========== 衰减系统 ==========
     private final DecayGroup decayGroup;                // 衰减组别 —— 决定三个序列（元素量、伤害、削韧）和清除时间
 
+    // ========== 攻击者角色信息 ==========
+    private final PGCharacter attackerCharacter;       // 攻击者的PGCharacter —— 非玩家攻击者时为null
+
     // ========== 构造函数 ==========
     private ModDamageSpec(AttackType attackType, ElementalsGIM element,
                           float atkMultiplier, float hpMultiplier, float defMultiplier, float emMultiplier,
                           float skillMultiplierBonus, float flatDamageBonus,
-                          float elementAmount, DecayGroup decayGroup) {
+                          float elementAmount, DecayGroup decayGroup,
+                          PGCharacter attackerCharacter) {
         this.attackType = attackType;
         this.element = element;
         this.atkMultiplier = atkMultiplier;
@@ -73,6 +80,7 @@ public class ModDamageSpec {
         this.flatDamageBonus = flatDamageBonus;
         this.elementAmount = elementAmount;
         this.decayGroup = decayGroup;
+        this.attackerCharacter = attackerCharacter;
     }
 
     public ModDamageSpec withFlatDamageBonus(float newFlatBonus) {
@@ -80,7 +88,8 @@ public class ModDamageSpec {
                 this.attackType, this.element,
                 this.atkMultiplier, this.hpMultiplier, this.defMultiplier, this.emMultiplier,
                 this.skillMultiplierBonus, newFlatBonus,
-                this.elementAmount, this.decayGroup
+                this.elementAmount, this.decayGroup,
+                this.attackerCharacter
         );
     }
 
@@ -95,6 +104,7 @@ public class ModDamageSpec {
     public float getFlatDamageBonus() { return flatDamageBonus; }
     public float getElementAmount() { return elementAmount; }
     public DecayGroup getDecayGroup() { return decayGroup; }
+    public @Nullable PGCharacter getAttackerCharacter() { return attackerCharacter; }
 
     // ========== 便捷判断 ==========
     public boolean isElemental() { return element != ElementalsGIM.FYSIKOS; }
@@ -191,6 +201,7 @@ public class ModDamageSpec {
         private float flatDamageBonus = 0.0f;
         private float elementAmount = 0.0f;
         private DecayGroup decayGroup = null;
+        private PGCharacter attackerCharacter = null;
 
         private Builder(AttackType attackType, ElementalsGIM element) {
             this.attackType = attackType;
@@ -212,13 +223,15 @@ public class ModDamageSpec {
 
         public Builder elementAmount(float v) { this.elementAmount = v; return this; }
         public Builder decayGroup(DecayGroup g) { this.decayGroup = g; return this; }
+        public Builder attackerCharacter(PGCharacter c) { this.attackerCharacter = c; return this; }
 
         public ModDamageSpec build() {
             return new ModDamageSpec(
                     attackType, element,
                     atkMultiplier, hpMultiplier, defMultiplier, emMultiplier,
                     skillMultiplierBonus, flatDamageBonus,
-                    elementAmount, decayGroup
+                    elementAmount, decayGroup,
+                    attackerCharacter
             );
         }
     }

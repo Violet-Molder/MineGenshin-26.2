@@ -1,4 +1,4 @@
-package com.linweiyun.genshin.mixin;
+package com.linweiyun.genshin.config;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 

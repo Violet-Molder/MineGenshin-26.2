@@ -1,7 +1,8 @@
 package com.linweiyun.genshin.core.character;
 
-import com.linweiyun.genshin.Config;
+import com.linweiyun.genshin.config.Config;
 import com.linweiyun.genshin.content.attribute.AttributeType;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import com.linweiyun.genshin.enums.ElementalsGIM;
@@ -131,6 +132,25 @@ public class PGCharacter implements IPersistedSerializable {
         data.tick();
         frontTick(player);
         backTick(player);
+    }
+
+    public boolean hurt(float amount) {
+        double before = data.getCurrentHP();
+        data.hurtHP(amount);
+        return data.getCurrentHP() <= 0 && before > 0;
+    }
+
+    public void incapacitate(PlayerCharactersAttachment attachment) {
+        if (attachment == null) return;
+        data.hurtHP((float) data.getCurrentHP());
+        int currentIndex = attachment.getCurrentCharacterIndex();
+        for (int offset = 1; offset < 4; offset++) {
+            int nextIndex = (currentIndex + offset) % 4;
+            if (attachment.getPartyCharacter(nextIndex) != null) {
+                attachment.setCurrentCharacterIndex(nextIndex);
+                break;
+            }
+        }
     }
 
     public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {

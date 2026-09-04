@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.network;
 
+import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
@@ -26,6 +27,19 @@ public class ClientHandler {
     Player player = Minecraft.getInstance().player;
     if (player == null) return;
     player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT, isGenshinMode);
+  }
+
+  public static void adventurerInfoClientHandler(CompoundTag data) {
+    Minecraft mc = Minecraft.getInstance();
+    mc.execute(() -> {
+      if (mc.player == null || mc.player.isRemoved()) {
+        mc.execute(() -> adventurerInfoClientHandler(data));
+        return;
+      }
+      AdventurerInfoAttachment attachment =
+              mc.player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+      attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, mc.player.registryAccess(), data));
+    });
   }
   public static void playerCharactersClientHandler(CompoundTag data) {
     Minecraft mc = Minecraft.getInstance();

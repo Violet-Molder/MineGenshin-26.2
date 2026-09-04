@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.event.server;
 
+import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
@@ -26,7 +27,15 @@ public class PlayerDeathCloneEvent {
         entity.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT,
                 original.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT));
 
-        // 复杂对象 — getData 拿到目标引用，直接改内部状态
+        // 冒险者信息 — 复制持久化数据
+        AdventurerInfoAttachment dstInfo = entity.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+        AdventurerInfoAttachment srcInfo = original.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+        dstInfo.setAdventureRank(srcInfo.getAdventureRank());
+        dstInfo.setWorldLevel(srcInfo.getWorldLevel());
+        dstInfo.setBreakthroughLevel(srcInfo.getBreakthroughLevel());
+        dstInfo.setCurrentExp(srcInfo.getCurrentExp());
+
+        // 复杂对象
         PlayerCharactersAttachment dstChar = entity.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         PlayerCharactersAttachment srcChar = original.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         dstChar.getOwnedCharacters().clear();
@@ -43,9 +52,10 @@ public class PlayerDeathCloneEvent {
         for (var inst : srcStatus.getAll()) {
             dstStatus.add(inst.copy());
         }
-        // === 同步到客户端（关键！之前缺的就是这个） ===
+        // === 同步到客户端 ===
         NetworkManager.setPrimogemToPlayer(player, player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT));
         NetworkManager.setGenshinModeToPlayer(player, player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT));
+        dstInfo.syncToPlayer(player);
         dstChar.syncToPlayer(player);
         dstChar.fixCharacterTypes();
     }
