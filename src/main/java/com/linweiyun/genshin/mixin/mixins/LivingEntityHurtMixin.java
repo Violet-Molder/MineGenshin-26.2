@@ -33,10 +33,8 @@ public class LivingEntityHurtMixin {
                     player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter current = attachment.getCurrentCharacter();
             if (current != null) {
-                boolean dead = current.hurt(finalDamage);
-                if (dead) {
-                    current.incapacitate(); //AI 改为无参调用
-                }
+                //AI hurt() 内部已处理倒下逻辑，不再需要外部手动调用 incapacitate()
+                current.hurt(finalDamage);
             }
         } else {
             target.setHealth(Math.max(target.getHealth() - finalDamage, 0));

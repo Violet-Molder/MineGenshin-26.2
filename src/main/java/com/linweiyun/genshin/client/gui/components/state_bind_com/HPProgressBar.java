@@ -4,6 +4,7 @@ import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.IDataProvider;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.data.Clip;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ProgressBar;
 import com.lowdragmc.lowdraglib2.integration.kjs.KJSBindings;
 import com.lowdragmc.lowdraglib2.registry.annotation.LDLRegister;
@@ -34,7 +35,10 @@ public class HPProgressBar extends ProgressBar {
                 .layout(layout -> {
                     layout.positionType(TaffyPosition.ABSOLUTE);
                 })
-                .style(s -> s.background(SpriteTexture.of(
-                        Identifier.fromNamespaceAndPath("minegenshin", "textures/empty.png"))));
+                .style(s -> {
+                    s.background(SpriteTexture.of(
+                            Identifier.fromNamespaceAndPath("minegenshin", "textures/empty.png")));
+                    s.clip(Clip.SCISSOR);
+                });
     }
 }

@@ -74,12 +74,14 @@ public class NetworkManager {
       ClientHandler.genshinModeClientHandler(isGenshinMode);
     } else {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
-      if (isGenshinMode && !hasAlivePartyCharacter(player)) { //AI 开启校验
+      if (isGenshinMode && !hasAlivePartyCharacter(player)) {
         player.sendSystemMessage(Component.literal("队伍中没有生命值大于0的角色，无法开启原神模式"));
         setGenshinModeToPlayer(player, false);
         return;
       }
       player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT.get(), isGenshinMode);
+      //AI 统一由服务端发消息，防止客户端先发成功消息再收到拒绝提示的乱序问题
+      player.sendSystemMessage(Component.literal(isGenshinMode ? "已进入原神模式" : "已退出原神模式"));
     }
   }
 

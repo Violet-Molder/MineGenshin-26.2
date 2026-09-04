@@ -42,7 +42,6 @@ public class KeyInputHandler {
     if (KeyMappingRegistry.G_KEY.get().consumeClick()) {
       boolean newMode = !isInGenshinMode;
       NetworkManager.setGenshinModeToServer(newMode);
-      player.sendSystemMessage(Component.literal(newMode ? "已进入原神模式" : "已退出原神模式"));
     }
 
     //AI O_KEY 移到后面，取消原神模式限制（退出原神模式也能开配队面板）
