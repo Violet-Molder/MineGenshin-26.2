@@ -17,6 +17,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
+import com.mojang.logging.LogUtils;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import dev.vfyjxf.taffy.style.TaffyDisplay;
 import net.minecraft.client.Minecraft;
@@ -25,10 +26,11 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import org.slf4j.Logger;
 
 @EventBusSubscriber(value = Dist.CLIENT)
 public class MGHud {
-
+    public static final Logger LOGGER = LogUtils.getLogger();
     @SubscribeEvent
     public static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
         var hudUICache =
@@ -51,7 +53,8 @@ public class MGHud {
                                         () -> {
                                             var player = Minecraft.getInstance().player;
                                             if (player == null) return false;
-                                            return player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+                                            boolean isGenShin = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+                                            return isGenShin;
                                         }))
                         .setId("root")
                         .layout(l -> l.widthPercent(100).heightPercent(100))

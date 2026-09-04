@@ -27,7 +27,7 @@ public class PlayerHurtInterceptor {
         if (current != null) {
             boolean dead = current.hurt(damage);
             if (dead) {
-                current.incapacitate(attachment);
+                current.incapacitate(); //AI 改为无参调用
             }
         }
         ci.cancel();

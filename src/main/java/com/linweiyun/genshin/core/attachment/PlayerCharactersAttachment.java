@@ -8,6 +8,7 @@ import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.TagValueOutput;
 import org.slf4j.Logger;
 
@@ -46,10 +47,21 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         return getCharacterByUUID(uuid) != null;
     }
 
-    public void addCharacter(PGCharacter character) {
+    //AI addCharacter 加 Player 参数，绑定所属玩家
+    public void addCharacter(PGCharacter character, @Nullable Player player) {
         if (!hasCharacter(character.getCharacterUUID())) {
+            if (player != null) {
+                character.getData().setOwnerPlayer(player);
+            }
             ownedCharacters.add(character);
             sheetCharacterUUIDs.add(character.getCharacterUUID());
+        }
+    }
+
+    //AI 反序列化后统一给所有角色绑定 ownerPlayer（通过已有的 ownerUUID 验证）
+    public void bindAllOwners(Player player) {
+        for (PGCharacter c : ownedCharacters) {
+            c.getData().setOwnerPlayer(player);
         }
     }
     public boolean removeCharacter(int uuid) {
@@ -57,23 +69,17 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         if (removed == null) return false;
         ownedCharacters.remove(removed);
         sheetCharacterUUIDs.remove(Integer.valueOf(uuid));
+        boolean wasInParty = false;
         for (int i = 0; i < partyCharacterUUIDs.size(); i++) {
             if (partyCharacterUUIDs.get(i) == uuid) {
                 partyCharacterUUIDs.set(i, 0);
+                wasInParty = true;
             }
         }
+        if (wasInParty) sortParty();
         if (!ownedCharacters.isEmpty()) {
-            boolean currentStillValid = false;
-            if (currentCharacterIndex < partyCharacterUUIDs.size() && partyCharacterUUIDs.get(currentCharacterIndex) != 0) {
-                currentStillValid = true;
-            }
-            if (!currentStillValid) {
-                for (int i = 0; i < partyCharacterUUIDs.size(); i++) {
-                    if (partyCharacterUUIDs.get(i) != 0) {
-                        currentCharacterIndex = i;
-                        break;
-                    }
-                }
+            if (partyCharacterUUIDs.get(currentCharacterIndex) == 0) {
+                currentCharacterIndex = 0;
             }
         } else {
             currentCharacterIndex = 0;
@@ -112,7 +118,7 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
     // ========== 服务端触发 ==========
 
     public void addCharacterToPlayer(ServerPlayer player, PGCharacter character) {
-        addCharacter(character);
+        addCharacter(character, player); //AI 透传 Player 进行绑定
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
         character.serialize(output);
         NetworkManager.addCharacterToPlayer(player, output.buildResult());
@@ -128,7 +134,7 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
     // ========== 客户端触发 ==========
 
     public void addCharacterToServer(PGCharacter character) {
-        addCharacter(character);
+        addCharacter(character, net.minecraft.client.Minecraft.getInstance().player); //AI 客户端也透传 Player
         TagValueOutput output = TagValueOutput.createWithContext(
                 ProblemReporter.DISCARDING,
                 net.minecraft.client.Minecraft.getInstance().player.registryAccess());
@@ -193,19 +199,38 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         }
     }
 
-    public void removePartyCharacter(int index) {
-        if (index >= 0 && index < 4 && index < partyCharacterUUIDs.size()) {
-            partyCharacterUUIDs.set(index, 0);
-            if (currentCharacterIndex == index) {
-                for (int i = 0; i < partyCharacterUUIDs.size(); i++) {
-                    if (partyCharacterUUIDs.get(i) != 0) {
-                        currentCharacterIndex = i;
-                        return;
-                    }
-                }
-                currentCharacterIndex = 0;
-            }
+    public boolean removePartyCharacter(int index) {
+        if (index < 0 || index >= 4) return false;
+        if (partyCharacterUUIDs.get(index) == 0) return false;
+
+        long count = partyCharacterUUIDs.stream().filter(uuid -> uuid != 0).count();
+        if (count <= 1) return false;
+
+        partyCharacterUUIDs.set(index, 0);
+        sortParty();
+
+        if (currentCharacterIndex == index) {
+            currentCharacterIndex = 0;
+        } else if (currentCharacterIndex > index) {
+            currentCharacterIndex--;
         }
+        return true;
+    }
+
+    public void sortParty() {
+        List<Integer> nonZero = new ArrayList<>();
+        for (int uuid : partyCharacterUUIDs) {
+            if (uuid != 0) nonZero.add(uuid);
+        }
+        for (int i = 0; i < 4; i++) {
+            partyCharacterUUIDs.set(i, i < nonZero.size() ? nonZero.get(i) : 0);
+        }
+    }
+
+    public boolean canRemovePartyCharacter(int index) {
+        if (index < 0 || index >= 4) return false;
+        if (partyCharacterUUIDs.get(index) == 0) return false;
+        return partyCharacterUUIDs.stream().filter(uuid -> uuid != 0).count() > 1;
     }
     // ========== 队伍同步 - 服务端触发 ==========
 
@@ -214,9 +239,13 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         NetworkManager.setPartyCharacterToPlayer(player, index, characterUUID);
     }
 
-    public void removePartyCharacterToPlayer(ServerPlayer player, int index) {
-        removePartyCharacter(index);
-        NetworkManager.removePartyCharacterToPlayer(player, index);
+    public boolean removePartyCharacterToPlayer(ServerPlayer player, int index) {
+        boolean removed = removePartyCharacter(index);
+        if (removed) {
+            NetworkManager.removePartyCharacterToPlayer(player, index);
+            syncToPlayer(player);
+        }
+        return removed;
     }
 
     public void setCurrentCharacterToPlayer(ServerPlayer player, int index) {
@@ -231,9 +260,12 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         NetworkManager.setPartyCharacterToServer(index, characterUUID);
     }
 
-    public void removePartyCharacterToServer(int index) {
-        removePartyCharacter(index);
-        NetworkManager.removePartyCharacterToServer(index);
+    public boolean removePartyCharacterToServer(int index) {
+        boolean removed = removePartyCharacter(index);
+        if (removed) {
+            NetworkManager.removePartyCharacterToServer(index);
+        }
+        return removed;
     }
 
     public void setCurrentCharacterToServer(int index) {

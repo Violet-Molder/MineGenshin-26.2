@@ -20,17 +20,15 @@ public class BooleanDisplayBindUIElement extends BindableUIElement<Boolean> {
 
   @Override
   public BindableUIElement<Boolean> setValue(@Nullable Boolean value, boolean notify) {
-    if (Boolean.TRUE.equals(value) != this.display) {
-      this.display = Boolean.TRUE.equals(value);
-      if (Boolean.TRUE.equals(value)) {
-        this.addClass("__selected__");
-        this.removeClass("__unselected__");
-      } else {
-        this.addClass("__unselected__");
-        this.removeClass("__selected__");
-      }
+    boolean newDisplay = Boolean.TRUE.equals(value);
+    this.display = newDisplay;
+    if (newDisplay) {
+      this.addClass("__selected__");
+      this.removeClass("__unselected__");
+    } else {
+      this.addClass("__unselected__");
+      this.removeClass("__selected__");
     }
-
     return this;
   }
 }

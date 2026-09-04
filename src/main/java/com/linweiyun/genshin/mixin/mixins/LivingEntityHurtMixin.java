@@ -35,7 +35,7 @@ public class LivingEntityHurtMixin {
             if (current != null) {
                 boolean dead = current.hurt(finalDamage);
                 if (dead) {
-                    current.incapacitate(attachment);
+                    current.incapacitate(); //AI 改为无参调用
                 }
             }
         } else {

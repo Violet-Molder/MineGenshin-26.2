@@ -117,16 +117,10 @@ public class ScreenCharacterSelect extends Screen {
         removeCharacterButton
                 .setText("换下")
                 .setOnClick(e -> {
-                    charactersAttachment.removePartyCharacterToServer(index);
-                    if (charactersAttachment.getCurrentCharacterIndex() != 0) {
-                        for (int i = 0; i < 4; i++) {
-                            if (charactersAttachment.getPartyCharacter(i) != null) {
-                                charactersAttachment.setCurrentCharacterToServer(i);
-                                break;
-                            }
-                        }
+                    boolean removed = charactersAttachment.removePartyCharacterToServer(index);
+                    if (removed) {
+                        GUIServerHelperGIM.openCharacterPartyScreen(player);
                     }
-                    GUIServerHelperGIM.openCharacterPartyScreen(player);
                 })
                 .setDisplay(false);
 
@@ -171,14 +165,30 @@ public class ScreenCharacterSelect extends Screen {
 
             List<Integer> sheetUUIDs = new ArrayList<>(charactersAttachment.getSheetCharacterUUIDs());
             SortMethod sort = currentSort.get();
-            sheetUUIDs.sort(Comparator.comparingInt(uuid -> {
-                PGCharacter c = charactersAttachment.getCharacterByUUID(uuid);
-                if (c == null) return 0;
-                return switch (sort) {
-                    case STAR -> c.getStarRating();
-                    case LEVEL -> c.getData().getLevel();
-                };
-            }));
+
+            Comparator<Integer> comparator = switch (sort) {
+                case STAR -> Comparator
+                        .comparingInt((Integer uuid) -> {
+                            PGCharacter c = charactersAttachment.getCharacterByUUID(uuid);
+                            return c != null ? c.getStarRating() : 0;
+                        }).reversed()
+                        .thenComparingInt(uuid -> {
+                            PGCharacter c = charactersAttachment.getCharacterByUUID(uuid);
+                            return c != null ? c.getData().getLevel() : 0;
+                        }).reversed()
+                        .thenComparingInt(uuid -> uuid);
+                case LEVEL -> Comparator
+                        .comparingInt((Integer uuid) -> {
+                            PGCharacter c = charactersAttachment.getCharacterByUUID(uuid);
+                            return c != null ? c.getData().getLevel() : 0;
+                        }).reversed()
+                        .thenComparingInt(uuid -> {
+                            PGCharacter c = charactersAttachment.getCharacterByUUID(uuid);
+                            return c != null ? c.getStarRating() : 0;
+                        }).reversed()
+                        .thenComparingInt(uuid -> uuid);
+            };
+            sheetUUIDs.sort(comparator);
 
             for (int uuid : sheetUUIDs) {
                 PGCharacter ownedChar = charactersAttachment.getCharacterByUUID(uuid);
@@ -228,18 +238,20 @@ public class ScreenCharacterSelect extends Screen {
                             selectedCharacter.set(ownedChar);
                             selectedUUID.set(uuid);
 
+                            List<Integer> partyUUIDs = charactersAttachment.getPartyCharacterUUIDs();
+                            boolean inParty = partyUUIDs.contains(uuid);
+                            boolean isCurrentSlotChar = index >= 0 && uuid == partyUUIDs.get(index);
+
+                            deployButton.setDisplay(false);
+                            switchCharacterButton.setDisplay(false);
+                            removeCharacterButton.setDisplay(false);
+
                             if (index == -1) {
-                                deployButton.setDisplay(true);
-                            } else {
-                                List<Integer> partyUUIDs = charactersAttachment.getPartyCharacterUUIDs();
-                                Integer currentPartyUUID = partyUUIDs.get(index);
-                                if (uuid == currentPartyUUID) {
-                                    removeCharacterButton.setDisplay(true);
-                                    switchCharacterButton.setDisplay(false);
-                                } else {
-                                    switchCharacterButton.setDisplay(true);
-                                    removeCharacterButton.setDisplay(false);
-                                }
+                                deployButton.setDisplay(!inParty);
+                            } else if (isCurrentSlotChar) {
+                                removeCharacterButton.setDisplay(charactersAttachment.canRemovePartyCharacter(index));
+                            } else if (!inParty) {
+                                switchCharacterButton.setDisplay(true);
                             }
                         });
                 characterList.addChild(characterButton);

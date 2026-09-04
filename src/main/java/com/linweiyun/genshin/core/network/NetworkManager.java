@@ -67,14 +67,31 @@ public class NetworkManager {
   }
 
   // ========== 游戏模式同步 ==========
+  //AI genshinModeRPCPacket 服务端增加开启校验：party 里没有 currentHP > 0 的角色则拒绝开启
   @RPCPacket("genshinModeRPCPacket")
   public static void genshinModeRPCPacket(RPCSender sender, boolean isGenshinMode) {
     if (sender.isServer()) {
       ClientHandler.genshinModeClientHandler(isGenshinMode);
     } else {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      if (isGenshinMode && !hasAlivePartyCharacter(player)) { //AI 开启校验
+        player.sendSystemMessage(Component.literal("队伍中没有生命值大于0的角色，无法开启原神模式"));
+        setGenshinModeToPlayer(player, false);
+        return;
+      }
       player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT.get(), isGenshinMode);
     }
+  }
+
+  //AI 检查 party 中是否存在至少一个 currentHP > 0 的角色
+  private static boolean hasAlivePartyCharacter(ServerPlayer player) {
+    PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    for (int uuid : attachment.getPartyCharacterUUIDs()) {
+      if (uuid == 0) continue;
+      PGCharacter c = attachment.getCharacterByUUID(uuid);
+      if (c != null && c.getData().getCurrentHP() > 0) return true;
+    }
+    return false;
   }
 
   public static void setGenshinModeToPlayer(ServerPlayer player, boolean isGenshinMode) {
@@ -96,6 +113,7 @@ public class NetworkManager {
       attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
 
       attachment.fixCharacterTypes();
+      attachment.bindAllOwners(player); //AI 反序列化后重新绑定所有角色的 ownerPlayer
     }
   }
   public static void setPlayerCharactersToServer(CompoundTag data) {
@@ -198,7 +216,7 @@ public class NetworkManager {
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter character = new PGCharacter();
       character.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), characterData));
-      attachment.addCharacter(character);
+      attachment.addCharacter(character, player); //AI 绑定 Player
     }
   }
 
@@ -307,7 +325,7 @@ public class NetworkManager {
                         characterName,
                         Component.literal(String.valueOf(compensation)).withStyle(ChatFormatting.AQUA)));
       } else {
-        charactersAttachment.addCharacter(rolledCharacter);
+        charactersAttachment.addCharacter(rolledCharacter, serverPlayer); //AI 绑定 Player
 
 
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, serverPlayer.registryAccess());

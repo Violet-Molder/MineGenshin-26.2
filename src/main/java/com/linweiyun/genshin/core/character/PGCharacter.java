@@ -140,17 +140,30 @@ public class PGCharacter implements IPersistedSerializable {
         return data.getCurrentHP() <= 0 && before > 0;
     }
 
-    public void incapacitate(PlayerCharactersAttachment attachment) {
+    //AI 改为无参，从 data 里获取所属 Player；不操作血量（hurt() 已将 currentHP 置 0），只处理切换和全队阵亡时关闭原神模式
+    public void incapacitate() {
+        Player player = data.getOwnerPlayer();
+        if (player == null) return;
+        PlayerCharactersAttachment attachment = player.getData(com.linweiyun.genshin.core.attachment.AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         if (attachment == null) return;
-        data.hurtHP((float) data.getCurrentHP());
+
+        //AI 找 party 中下一个 currentHP > 0 的角色
         int currentIndex = attachment.getCurrentCharacterIndex();
-        for (int offset = 1; offset < 4; offset++) {
+        for (int offset = 1; offset <= 4; offset++) {
             int nextIndex = (currentIndex + offset) % 4;
-            if (attachment.getPartyCharacter(nextIndex) != null) {
+            PGCharacter nextChar = attachment.getPartyCharacter(nextIndex);
+            if (nextChar != null && nextChar.getData().getCurrentHP() > 0) {
                 attachment.setCurrentCharacterIndex(nextIndex);
-                break;
+                com.linweiyun.genshin.core.network.NetworkManager.setCharacterSelectionToPlayer(
+                        (net.minecraft.server.level.ServerPlayer) player, nextIndex);
+                return;
             }
         }
+
+        //AI 全部阵亡则关闭原神模式并同步客户端
+        player.setData(com.linweiyun.genshin.core.attachment.AttachmentRegistration.GENSHIN_MODE_ATTACHMENT, false);
+        com.linweiyun.genshin.core.network.NetworkManager.setGenshinModeToPlayer(
+                (net.minecraft.server.level.ServerPlayer) player, false);
     }
 
     public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {

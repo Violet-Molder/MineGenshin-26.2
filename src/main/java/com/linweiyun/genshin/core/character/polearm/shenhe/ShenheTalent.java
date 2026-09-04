@@ -5,6 +5,7 @@ import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
 import com.linweiyun.genshin.content.skill_node.AreaEntityCollector;
 import com.linweiyun.genshin.content.skill_node.RushesForward;
+import com.linweiyun.genshin.content.skill_node.SkillHelper;
 import com.linweiyun.genshin.content.skill_node.math.HorizonEndVec3;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
@@ -74,7 +75,7 @@ public class ShenheTalent {
                     }
                 }
             }
-
+            SkillHelper.addStun(player, 40);
         } else {
             player.sendSystemMessage(Component.literal("长按"));
         }

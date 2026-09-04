@@ -10,9 +10,11 @@ import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class PGCharacterData implements IPersistedSerializable {
     @Persisted(key = "character_level")
@@ -51,6 +53,11 @@ public class PGCharacterData implements IPersistedSerializable {
     protected List<Integer> skillCoolList;
     @Persisted(key = "status_container")
     private StatusContainer statusContainer = new StatusContainer();
+    //AI 序列化保存所属玩家的 UUID，重启后可通过它找回归属关系
+    @Persisted(key = "owner_uuid")
+    private UUID ownerUUID;
+    //AI 运行时直接持有 Player 实体引用，供 incapacitate() 无参调用
+    private transient Player ownerPlayer;
     // 效果容器的缓存引用，延迟加载，避免每次操作都重新反序列化
     private CharacterEffectContainer effectContainer;
 
@@ -135,6 +142,17 @@ public class PGCharacterData implements IPersistedSerializable {
     public void healHP(double amount) {this.currentHP = Math.min(this.currentHP + amount, getAttributeTotalValue(ModAttributes.MAX_HP.value()));markDirty();}
     public void hurtHP(float amount) {this.currentHP = Math.max(0, this.currentHP - amount);markDirty();}
 
+    //AI 所属玩家的序列化 UUID
+    public UUID getOwnerUUID() { return ownerUUID; }
+    public void setOwnerUUID(UUID ownerUUID) { this.ownerUUID = ownerUUID; markDirty(); }
+    //AI 运行时 Player 引用，设置时自动同步 UUID
+    public Player getOwnerPlayer() { return ownerPlayer; }
+    public void setOwnerPlayer(Player ownerPlayer) {
+        this.ownerPlayer = ownerPlayer;
+        if (ownerPlayer != null) this.ownerUUID = ownerPlayer.getUUID();
+        markDirty();
+    }
+
     /**
      * 获取角色的效果容器
      * 采用延迟加载模式：首次调用时从NBT标签反序列化，后续直接返回缓存
@@ -202,6 +220,7 @@ public class PGCharacterData implements IPersistedSerializable {
         copy.elementalSkillStacks = this.elementalSkillStacks;
         copy.skillCoolList = this.skillCoolList;
         copy.effectDataList = this.effectDataList.copy();                  // 深拷贝效果NBT数据
+        copy.ownerUUID = this.ownerUUID; //AI 序列化的 UUID 一起拷贝
         if (this.effectContainer != null) {                                // 如果容器已加载
             copy.effectContainer = this.effectContainer.copy();            // 也深拷贝容器缓存
         }

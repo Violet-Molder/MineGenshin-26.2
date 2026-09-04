@@ -11,6 +11,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -26,33 +27,38 @@ public class ModCharacters {
     public static final DeferredHolder<PGCharacter, Columbina> COLUMBINA = CHARACTERS.register("columbina",
             Columbina::new);
 
+    private static final Map<Integer, Supplier<PGCharacter>> FACTORIES = new LinkedHashMap<>();
+
+    static {
+        FACTORIES.put(135001, Shenhe::new);
+        FACTORIES.put(135002, Arlecchino::new);
+        FACTORIES.put(145001, Columbina::new);
+    }
+
     public static PGCharacter getByUUID(int uuid) {
-        for (PGCharacter prototype : CHARACTERS.getRegistry().get()) {
-            if (prototype.getCharacterUUID() == uuid) {
-                PGCharacter instance = prototype;
-                // 从 statGrowthMap 中提取 1 级基础属性初始化 data
-                Double baseHP = null, baseATK = null, baseDEF = null;
-                for (Map.Entry<Identifier, Supplier<List<? extends Integer>>> entry : instance.getStatGrowthMap().entrySet()) {
-                    List<? extends Integer> list = entry.getValue().get();
-                    if (list != null && !list.isEmpty()) {
-                        double first = list.get(0);
-                        if (entry.getKey().equals(ModAttributes.MAX_HP.getId())) baseHP = first;
-                        else if (entry.getKey().equals(ModAttributes.ATK.getId())) baseATK = first;
-                        else if (entry.getKey().equals(ModAttributes.DEF.getId())) baseDEF = first;
-                    }
-                }
-                if (baseHP != null && baseATK != null && baseDEF != null) {
-                    instance.getData().initBaseStats(baseHP, baseATK, baseDEF);
-                }
-                return instance;
+        Supplier<PGCharacter> factory = FACTORIES.get(uuid);
+        if (factory == null) return null;
+        PGCharacter instance = factory.get();
+        Double baseHP = null, baseATK = null, baseDEF = null;
+        for (Map.Entry<Identifier, Supplier<List<? extends Integer>>> entry : instance.getStatGrowthMap().entrySet()) {
+            List<? extends Integer> list = entry.getValue().get();
+            if (list != null && !list.isEmpty()) {
+                double first = list.get(0);
+                if (entry.getKey().equals(ModAttributes.MAX_HP.getId())) baseHP = first;
+                else if (entry.getKey().equals(ModAttributes.ATK.getId())) baseATK = first;
+                else if (entry.getKey().equals(ModAttributes.DEF.getId())) baseDEF = first;
             }
         }
-        return null;
+        if (baseHP != null && baseATK != null && baseDEF != null) {
+            instance.getData().initBaseStats(baseHP, baseATK, baseDEF);
+        }
+        return instance;
     }
 
     public static Collection<PGCharacter> getAllCharacters() {
         return CHARACTERS.getRegistry().get().stream().toList();
     }
+
     public static void register(IEventBus bus) {
         CHARACTERS.register(bus);
     }

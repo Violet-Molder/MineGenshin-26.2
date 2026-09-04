@@ -2,7 +2,9 @@ package com.linweiyun.genshin.event.server;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
@@ -21,8 +23,15 @@ public class CharacterDataSyncEventHandler {
             adventurerInfo.syncToPlayer(player);
             //角色数据同步
             PlayerCharactersAttachment playerData = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-            playerData.syncToPlayer(player);
             playerData.fixCharacterTypes();
+
+            PGCharacter shenhe = ModCharacters.getByUUID(135001);
+            if (shenhe != null && !playerData.hasCharacter(135001)) {
+                playerData.addCharacterToPlayer(player, shenhe);
+                playerData.setPartyCharacterToPlayer(player, 0, 135001);
+            }
+
+            playerData.syncToPlayer(player);
 
         }
     }

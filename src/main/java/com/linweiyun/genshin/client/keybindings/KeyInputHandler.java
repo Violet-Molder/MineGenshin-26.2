@@ -11,6 +11,7 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 @EventBusSubscriber(value = Dist.CLIENT)
@@ -19,6 +20,7 @@ public class KeyInputHandler {
 
   private static boolean wasXKeyDown = false;
   private static long longPressStartTick = 0;
+
   @SubscribeEvent
   public static void onKeyInput(ClientTickEvent.Post event) {
     Minecraft mc = Minecraft.getInstance();
@@ -43,12 +45,11 @@ public class KeyInputHandler {
       player.sendSystemMessage(Component.literal(newMode ? "已进入原神模式" : "已退出原神模式"));
     }
 
+    //AI O_KEY 移到后面，取消原神模式限制（退出原神模式也能开配队面板）
     if (!isInGenshinMode) {
       KeyMappingRegistry.V_KEY.get().consumeClick();
       KeyMappingRegistry.X_KEY.get().consumeClick();
       KeyMappingRegistry.C_KEY.get().consumeClick();
-      KeyMappingRegistry.O_KEY.get().consumeClick();
-      return;
     }
 
     if (KeyMappingRegistry.V_KEY.get().consumeClick()) {
