@@ -1,10 +1,32 @@
 {
-  "itemGroup.minegenshin.item_tab": "Genshin Impact Item",
-
   "config.exp.character": "Character Upgrade Experience",
+
+  "artifact.type.flower": "Flower of Life",
+  "artifact.type.plume": "Plume of Death",
+  "artifact.type.sands": "Sands of Eon",
+  "artifact.type.goblet": "Goblet of Eonothem",
+  "artifact.type.circlet": "Circlet of Logos",
+
+  "artifact_set.effect.2pc": "2-Piece Set",
+  "artifact_set.effect.4pc": "4-Piece Set",
+  "artifact_set.crimson_witch": "Crimson Witch of Flames",
+  "artifact.effect.crimsonwitch2.desc": "Pyro DMG Bonus +15%.",
+  "artifact.effect.crimsonwitch4.desc": "Increases \nOverloaded,Burning,and \nBurgeon DMG by 40%.Increases\nVaporize and Melt DMG by 15%.\nUsing Elemental Skill increases\nthe 2-Piece Set Bonus by 50% of\nits starting value for 10s. Max 3\n stacks.",
+  "artifact.desc.crimson_witch.flower": "A flower touched by the witch who\nonce dreamt of burning away all \nthe demons in the world.The \nanonymous flames affectionately \ncaress the hands of whose who \n touch it.",
+  "artifact.desc.crimson_witch.plume": "A bird feather touched by the \nwitch who once dreamt of burning\naway all the demons in the world. \nIts eternal flame burns hot.",
+  "artifact.desc.crimson_witch.sands": "A timepiece worn by the witch \nwho dreamt of burning away all \nthe demons in the world. The years\nthe witch dedicated to the flames \nflow within.",
+  "artifact.desc.crimson_witch.goblet": "A flame-spitting urn left behind by\nthe Crimson Witch of Flames, who \nonce dreamt of burning away all \nthe demons in the world. The fire \nin the urn burns eternally, as did \nits former master.",
+  "artifact.desc.crimson_witch.circlet": "A hat worn by the witch \nwho dreamt of burning away all of the \ndemons in the world. The large \nbrim blocked her sight.",
 
   "item.minegenshin.primogem": "Primogem",
   "item.minegenshin.sweet_madame": "Sweet Madame",
+  "item.minegenshin.crimson_flower": "Witch's Flower of Blaze",
+  "item.minegenshin.crimson_plume": "Witch's Ever-Burning Plume",
+  "item.minegenshin.crimson_sands": "Witch's End Time",
+  "item.minegenshin.crimson_goblet": "Witch's Heart Flames",
+  "item.minegenshin.crimson_circlet": "Witch's Scorching Hat",
+
+
 
   "itemGroup.minegenshin.foodGroup": "Minegenshin-Foods",
   "itemGroup.minegenshin.regularItemGroup": "Minegenshin-Regular Item",
@@ -15,6 +37,35 @@
   "item.minegenshin.columbina": "Columbina",
 
   "attribute.minegenshin.max_hp": "Max HP",
+  "attribute.minegenshin.atk": "ATK",
+  "attribute.minegenshin.def": "DEF",
+  "attribute.minegenshin.elemental_mastery": "Elemental Mastery",
+  "attribute.minegenshin.max_stamina": "Max Stamina",
+  "attribute.minegenshin.crit_rate": "Crit Rate",
+  "attribute.minegenshin.crit_dmg": "Crit DMG",
+  "attribute.minegenshin.healing_bonus": "Healing Bonus",
+  "attribute.minegenshin.ihb": "Incoming Healing Bonus",
+  "attribute.minegenshin.energy_recharge": "Energy Recharge",
+  "attribute.minegenshin.cd_reduction": "CD Reduction",
+  "attribute.minegenshin.shield_strength": "Shield Strength",
+  "attribute.minegenshin.pyro_bonus": "Pyro Bonus",
+  "attribute.minegenshin.pyro_res": "Pyro RES",
+  "attribute.minegenshin.hydro_bonus": "Hydro Bonus",
+  "attribute.minegenshin.hydro_res": "Hydro RES",
+  "attribute.minegenshin.dendro_bonus": "Dendro Bonus",
+  "attribute.minegenshin.dendro_res": "Dendro RES",
+  "attribute.minegenshin.electro_bonus": "Electro Bonus",
+  "attribute.minegenshin.electro_res": "Electro RES",
+  "attribute.minegenshin.anemo_bonus": "Anemo Bonus",
+  "attribute.minegenshin.anemo_res": "Anemo RES",
+  "attribute.minegenshin.cyro_bonus": "Cyro Bonus",
+  "attribute.minegenshin.cyro_res": "Cyro RES",
+  "attribute.minegenshin.geo_bonus": "Geo Bonus",
+  "attribute.minegenshin.geo_res": "Geo RES",
+  "attribute.minegenshin.physical_bonus": "Physical Bonus",
+  "attribute.minegenshin.physical_res": "Physical RES",
+  "attribute.minegenshin.bond_of_life": "Bond of Life",
+
 
 
   "character.name.arlecchino": "Arlecchino",

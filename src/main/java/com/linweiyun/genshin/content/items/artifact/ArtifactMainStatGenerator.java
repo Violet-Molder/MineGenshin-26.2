@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.content.items.artifact;
 
+import com.linweiyun.genshin.config.ArtifactMainStatConfig;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import org.slf4j.Logger;
@@ -20,17 +21,8 @@ public class ArtifactMainStatGenerator {
             new TeyvatItemStat(ModAttributes.ER.get(), 0, TeyvatItemStat.StatKind.PERCENT)
     );
 
-    // CIRCLET 可选池：暴击率 / 暴击伤害 / 治疗加成 / HP% / ATK% / DEF% / 元素精通
-    private static final List<TeyvatItemStat> CIRCLET_POOL = List.of(
-            new TeyvatItemStat(ModAttributes.CR.get(), 0, TeyvatItemStat.StatKind.PERCENT),
-            new TeyvatItemStat(ModAttributes.CDG.get(), 0, TeyvatItemStat.StatKind.PERCENT),
-            new TeyvatItemStat(ModAttributes.HB.get(), 0, TeyvatItemStat.StatKind.PERCENT),
-            new TeyvatItemStat(ModAttributes.MAX_HP.get(), 0, TeyvatItemStat.StatKind.PERCENT),
-            new TeyvatItemStat(ModAttributes.ATK.get(), 0, TeyvatItemStat.StatKind.PERCENT),
-            new TeyvatItemStat(ModAttributes.DEF.get(), 0, TeyvatItemStat.StatKind.PERCENT),
-            new TeyvatItemStat(ModAttributes.ELEMENTAL_MASTERY.get(), 0, TeyvatItemStat.StatKind.FLAT)
-    );
-    static List<TeyvatItemStat> GOBLET_POOL = List.of(
+    // GOBLET 可选池：8种元素伤害加成 + 物理伤害加成 + ATK% / HP% / DEF% / 元素精通
+    private static final List<TeyvatItemStat> GOBLET_POOL = List.of(
             new TeyvatItemStat(ModAttributes.PYRO_BONUS.get(), 0, TeyvatItemStat.StatKind.PERCENT),
             new TeyvatItemStat(ModAttributes.HYDRO_BONUS.get(), 0, TeyvatItemStat.StatKind.PERCENT),
             new TeyvatItemStat(ModAttributes.CYRO_BONUS.get(), 0, TeyvatItemStat.StatKind.PERCENT),
@@ -41,18 +33,30 @@ public class ArtifactMainStatGenerator {
             new TeyvatItemStat(ModAttributes.PHYSICAL_BONUS.get(), 0, TeyvatItemStat.StatKind.PERCENT),
             new TeyvatItemStat(ModAttributes.ATK.get(), 0, TeyvatItemStat.StatKind.PERCENT),
             new TeyvatItemStat(ModAttributes.MAX_HP.get(), 0, TeyvatItemStat.StatKind.PERCENT),
-            new TeyvatItemStat(ModAttributes.DEF.get(), 0, TeyvatItemStat.StatKind.PERCENT)
+            new TeyvatItemStat(ModAttributes.DEF.get(), 0, TeyvatItemStat.StatKind.PERCENT),
+            new TeyvatItemStat(ModAttributes.ELEMENTAL_MASTERY.get(), 0, TeyvatItemStat.StatKind.FLAT)
+    );
+
+    // CIRCLET 可选池：暴击率 / 暴击伤害 / 治疗加成 / HP% / ATK% / DEF% / 元素精通
+    private static final List<TeyvatItemStat> CIRCLET_POOL = List.of(
+            new TeyvatItemStat(ModAttributes.CR.get(), 0, TeyvatItemStat.StatKind.PERCENT),
+            new TeyvatItemStat(ModAttributes.CDG.get(), 0, TeyvatItemStat.StatKind.PERCENT),
+            new TeyvatItemStat(ModAttributes.HB.get(), 0, TeyvatItemStat.StatKind.PERCENT),
+            new TeyvatItemStat(ModAttributes.MAX_HP.get(), 0, TeyvatItemStat.StatKind.PERCENT),
+            new TeyvatItemStat(ModAttributes.ATK.get(), 0, TeyvatItemStat.StatKind.PERCENT),
+            new TeyvatItemStat(ModAttributes.DEF.get(), 0, TeyvatItemStat.StatKind.PERCENT),
+            new TeyvatItemStat(ModAttributes.ELEMENTAL_MASTERY.get(), 0, TeyvatItemStat.StatKind.FLAT)
     );
 
     public static TeyvatItemStat generate(ArtifactType type, int star, Random random) {
         LOGGER.info("[ArtifactMainStatGenerator] generate called | type={} | star={}", type, star);
         TeyvatItemStat result = switch (type) {
             case FLOWER -> {
-                double initialValue = ArtifactStatData.getMainStatInitialValue(ModAttributes.MAX_HP.get(), TeyvatItemStat.StatKind.FLAT, star);
+                double initialValue = ArtifactStatData.getMainStatBase(ModAttributes.MAX_HP.get(), TeyvatItemStat.StatKind.FLAT, star);
                 yield new TeyvatItemStat(ModAttributes.MAX_HP.get(), initialValue, TeyvatItemStat.StatKind.FLAT);
             }
             case PLUME -> {
-                double initialValue = ArtifactStatData.getMainStatInitialValue(ModAttributes.ATK.get(), TeyvatItemStat.StatKind.FLAT, star);
+                double initialValue = ArtifactStatData.getMainStatBase(ModAttributes.ATK.get(), TeyvatItemStat.StatKind.FLAT, star);
                 yield new TeyvatItemStat(ModAttributes.ATK.get(), initialValue, TeyvatItemStat.StatKind.FLAT);
             }
             case SANDS -> generateSands(star, random);
@@ -67,22 +71,49 @@ public class ArtifactMainStatGenerator {
     }
 
     private static TeyvatItemStat generateSands(int star, Random random) {
-        TeyvatItemStat template = SANDS_POOL.get(random.nextInt(SANDS_POOL.size()));
+        List<Double> weights = List.of(
+                ArtifactMainStatConfig.WEIGHT_SANDS_HP_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_SANDS_ATK_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_SANDS_DEF_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_SANDS_EM_FLAT.get(),
+                ArtifactMainStatConfig.WEIGHT_SANDS_ER_PERCENT.get()
+        );
+        TeyvatItemStat template = weightedPick(SANDS_POOL, weights, random);
         LOGGER.info("[ArtifactMainStatGenerator] generateSands picked | attr={}", template.getAttribute());
         return buildFromTemplate(template, star);
     }
 
     private static TeyvatItemStat generateGoblet(int star, Random random) {
-        // 元素伤害加成池：PYRO/HYDRO/ELECTRO/ANEMO/GEO/DENDRO/CRYOBONUS + 物理 + ATK%/HP%/DEF%
-        // 简化：先从已注册的元素伤害加成属性里随机，后续补全
-
-        TeyvatItemStat template = GOBLET_POOL.get(random.nextInt(GOBLET_POOL.size()));
+        List<Double> weights = List.of(
+                ArtifactMainStatConfig.WEIGHT_GOBLET_PYRO_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_HYDRO_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_CYRO_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_ELECTRO_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_ANEMO_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_GEO_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_DENDRO_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_PHYSICAL_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_ATK_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_HP_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_DEF_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_GOBLET_EM_FLAT.get()
+        );
+        TeyvatItemStat template = weightedPick(GOBLET_POOL, weights, random);
         LOGGER.info("[ArtifactMainStatGenerator] generateGoblet picked | attr={}", template.getAttribute());
         return buildFromTemplate(template, star);
     }
 
     private static TeyvatItemStat generateCirclet(int star, Random random) {
-        TeyvatItemStat template = CIRCLET_POOL.get(random.nextInt(CIRCLET_POOL.size()));
+        List<Double> weights = List.of(
+                ArtifactMainStatConfig.WEIGHT_CIRCLET_CR_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_CIRCLET_CDG_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_CIRCLET_HB_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_CIRCLET_HP_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_CIRCLET_ATK_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_CIRCLET_DEF_PERCENT.get(),
+                ArtifactMainStatConfig.WEIGHT_CIRCLET_EM_FLAT.get()
+        );
+        TeyvatItemStat template = weightedPick(CIRCLET_POOL, weights, random);
         LOGGER.info("[ArtifactMainStatGenerator] generateCirclet picked | attr={}", template.getAttribute());
         return buildFromTemplate(template, star);
     }
@@ -92,5 +123,24 @@ public class ArtifactMainStatGenerator {
         LOGGER.info("[ArtifactMainStatGenerator] buildFromTemplate | attr={} | kind={} | star={} | base={}",
                 template.getAttribute(), template.getKind(), star, base);
         return new TeyvatItemStat(template.getAttribute(), base, template.getKind());
+    }
+
+    private static <T> T weightedPick(List<T> items, List<Double> weights, Random random) {
+        double totalWeight = 0;
+        for (double w : weights) {
+            totalWeight += w;
+        }
+        if (totalWeight <= 0) {
+            return items.get(random.nextInt(items.size()));
+        }
+        double r = random.nextDouble() * totalWeight;
+        double cumulative = 0;
+        for (int i = 0; i < items.size(); i++) {
+            cumulative += weights.get(i);
+            if (r < cumulative) {
+                return items.get(i);
+            }
+        }
+        return items.get(items.size() - 1);
     }
 }

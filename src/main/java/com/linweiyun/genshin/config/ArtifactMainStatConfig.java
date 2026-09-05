@@ -68,6 +68,34 @@ public class ArtifactMainStatConfig {
     public static ModConfigSpec.ConfigValue<List<? extends Number>> MAIN_3_GEO_PERCENT;
     public static ModConfigSpec.ConfigValue<List<? extends Number>> MAIN_3_DENDRO_PERCENT;
 
+    // ====== 主词条抽取权重 (时之沙/空之杯/理之冠) ======
+    public static ModConfigSpec.DoubleValue WEIGHT_SANDS_HP_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_SANDS_ATK_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_SANDS_DEF_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_SANDS_EM_FLAT;
+    public static ModConfigSpec.DoubleValue WEIGHT_SANDS_ER_PERCENT;
+
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_HP_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_ATK_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_DEF_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_PYRO_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_HYDRO_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_CYRO_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_ELECTRO_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_ANEMO_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_GEO_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_DENDRO_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_PHYSICAL_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_GOBLET_EM_FLAT;
+
+    public static ModConfigSpec.DoubleValue WEIGHT_CIRCLET_HP_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_CIRCLET_ATK_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_CIRCLET_DEF_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_CIRCLET_CR_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_CIRCLET_CDG_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_CIRCLET_HB_PERCENT;
+    public static ModConfigSpec.DoubleValue WEIGHT_CIRCLET_EM_FLAT;
+
     //TEMP 由 ArtifactConfig 主入口在共享 builder 上调用
     public static void register(ModConfigSpec.Builder builder) {
         builder
@@ -111,7 +139,7 @@ public class ArtifactMainStatConfig {
                 null, obj -> obj instanceof Number);
         MAIN_5_CR_PERCENT = builder.defineList(
                 List.of("crit_rate", "percent"),
-                () -> List.of(4.7, 1.32),
+                () -> List.of(4.7, 1.3),
                 null, obj -> obj instanceof Number);
         MAIN_5_CDG_PERCENT = builder.defineList(
                 List.of("crit_dmg", "percent"),
@@ -304,6 +332,47 @@ public class ArtifactMainStatConfig {
                 () -> List.of(6.3, 1.78125),
                 null, obj -> obj instanceof Number);
         builder.pop();
+
+        // ====== 主词条抽取权重 (时之沙/空之杯/理之冠) ======
+        builder.push("mainStatWeight").translation("config.genshin.artifact.mainStatWeight");
+
+        // --- 时之沙 ---
+        builder.push("sands").translation("config.genshin.artifact.mainStatWeight.sands");
+        WEIGHT_SANDS_HP_PERCENT = builder.defineInRange("hp_percent", 26.68, 0.0, 100.0);
+        WEIGHT_SANDS_ATK_PERCENT = builder.defineInRange("atk_percent", 26.66, 0.0, 100.0);
+        WEIGHT_SANDS_DEF_PERCENT = builder.defineInRange("def_percent", 26.66, 0.0, 100.0);
+        WEIGHT_SANDS_EM_FLAT = builder.defineInRange("elemental_mastery", 10.0, 0.0, 100.0);
+        WEIGHT_SANDS_ER_PERCENT = builder.defineInRange("energy_recharge", 10.0, 0.0, 100.0);
+        builder.pop();
+
+        // --- 空之杯 ---
+        builder.push("goblet").translation("config.genshin.artifact.mainStatWeight.goblet");
+        WEIGHT_GOBLET_HP_PERCENT = builder.defineInRange("hp_percent", 21.25, 0.0, 100.0);
+        WEIGHT_GOBLET_ATK_PERCENT = builder.defineInRange("atk_percent", 21.25, 0.0, 100.0);
+        WEIGHT_GOBLET_DEF_PERCENT = builder.defineInRange("def_percent", 20.0, 0.0, 100.0);
+        WEIGHT_GOBLET_PYRO_PERCENT = builder.defineInRange("pyro_bonus", 5.0, 0.0, 100.0);
+        WEIGHT_GOBLET_HYDRO_PERCENT = builder.defineInRange("hydro_bonus", 5.0, 0.0, 100.0);
+        WEIGHT_GOBLET_CYRO_PERCENT = builder.defineInRange("cyro_bonus", 5.0, 0.0, 100.0);
+        WEIGHT_GOBLET_ELECTRO_PERCENT = builder.defineInRange("electro_bonus", 5.0, 0.0, 100.0);
+        WEIGHT_GOBLET_ANEMO_PERCENT = builder.defineInRange("anemo_bonus", 5.0, 0.0, 100.0);
+        WEIGHT_GOBLET_GEO_PERCENT = builder.defineInRange("geo_bonus", 5.0, 0.0, 100.0);
+        WEIGHT_GOBLET_DENDRO_PERCENT = builder.defineInRange("dendro_bonus", 5.0, 0.0, 100.0);
+        WEIGHT_GOBLET_PHYSICAL_PERCENT = builder.defineInRange("physical_bonus", 5.0, 0.0, 100.0);
+        WEIGHT_GOBLET_EM_FLAT = builder.defineInRange("elemental_mastery", 2.5, 0.0, 100.0);
+        builder.pop();
+
+        // --- 理之冠 ---
+        builder.push("circlet").translation("config.genshin.artifact.mainStatWeight.circlet");
+        WEIGHT_CIRCLET_HP_PERCENT = builder.defineInRange("hp_percent", 22.0, 0.0, 100.0);
+        WEIGHT_CIRCLET_ATK_PERCENT = builder.defineInRange("atk_percent", 22.0, 0.0, 100.0);
+        WEIGHT_CIRCLET_DEF_PERCENT = builder.defineInRange("def_percent", 22.0, 0.0, 100.0);
+        WEIGHT_CIRCLET_CR_PERCENT = builder.defineInRange("crit_rate", 10.0, 0.0, 100.0);
+        WEIGHT_CIRCLET_CDG_PERCENT = builder.defineInRange("crit_dmg", 10.0, 0.0, 100.0);
+        WEIGHT_CIRCLET_HB_PERCENT = builder.defineInRange("healing_bonus", 10.0, 0.0, 100.0);
+        WEIGHT_CIRCLET_EM_FLAT = builder.defineInRange("elemental_mastery", 4.0, 0.0, 100.0);
+        builder.pop();
+
+        builder.pop(); // mainStatWeight pop
 
         builder.pop(); // mainStat pop
     }

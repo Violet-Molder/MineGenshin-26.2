@@ -26,7 +26,7 @@ public class ArtifactSubStatGenerator {
             new TeyvatItemStat.SubStatOption(ModAttributes.DEF.get(), TeyvatItemStat.StatKind.PERCENT),
             new TeyvatItemStat.SubStatOption(ModAttributes.ER.get(), TeyvatItemStat.StatKind.PERCENT),
             new TeyvatItemStat.SubStatOption(ModAttributes.CR.get(), TeyvatItemStat.StatKind.PERCENT),
-            new TeyvatItemStat.SubStatOption(ModAttributes.CDG.get(), TeyvatItemStat.StatKind.PERCENT)
+            new TeyvatItemStat.SubStatOption(ModAttributes.CDG .get(), TeyvatItemStat.StatKind.PERCENT)
     );
 
     /**
@@ -62,22 +62,18 @@ public class ArtifactSubStatGenerator {
 
         for (int i = 0; i < count; i++) {
             TeyvatItemStat.SubStatOption picked = pool.remove(random.nextInt(pool.size()));
-            double[] range = ArtifactStatData.getSubStatRange(picked.attribute, picked.kind, star);
-            double value = range.length >= 2
-                    ? range[0] + random.nextDouble() * (range[1] - range[0])
-                    : range.length == 1 ? range[0] : 0;
-            LOGGER.info("[ArtifactSubStatGenerator] subStat[{}] | attr={} | kind={} | value={}", i, picked.attribute, picked.kind, value);
-            result.add(new TeyvatItemStat(picked.attribute, value, picked.kind, true));
+            int tier = random.nextInt(4) + 1;
+            double value = ArtifactStatData.getSubStatTierValue(picked.attribute, picked.kind, star, tier);
+            LOGGER.info("[ArtifactSubStatGenerator] subStat[{}] | attr={} | kind={} | tier={} | value={}", i, picked.attribute, picked.kind, tier, value);
+            result.add(new TeyvatItemStat(picked.attribute, value, picked.kind, true, tier));
         }
 
-        // 初始解锁数量（后续靠 checkUnlockSubStats 处理，这里先按 star 设好）
-        int initialUnlock = switch (star) {
-            case 1, 2 -> 1;
-            case 3 -> 2;
-            case 4 -> 3;
-            case 5 -> 3;
-            default -> 1;
-        };
+        // 初始解锁数量：有概率全解锁（约25%），否则少一个
+        // 原神机制：五星初始3词条概率约75%，4词条约25%
+        int maxUnlock = count;
+        int minUnlock = Math.max(1, count - 1);
+        boolean fullUnlock = random.nextDouble() < 0.25;
+        int initialUnlock = fullUnlock ? maxUnlock : minUnlock;
         for (int i = 0; i < result.size(); i++) {
             result.get(i).setUnlocked(i < initialUnlock);
         }

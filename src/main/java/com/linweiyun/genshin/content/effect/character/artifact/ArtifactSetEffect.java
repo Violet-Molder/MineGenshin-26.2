@@ -6,6 +6,6 @@ import net.minecraft.network.chat.Component;
 public abstract class ArtifactSetEffect implements ICharacterEffect {
 
     public Component getDescription() {
-        return Component.translatable("effect." + getClass().getSimpleName().toLowerCase() + ".desc");
+        return Component.translatable("artifact.effect." + getClass().getSimpleName().toLowerCase() + ".desc");
     }
 }

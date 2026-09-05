@@ -14,6 +14,7 @@ import net.minecraft.network.codec.StreamCodec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 
 public class ArtifactStatsComponent implements IPersistedSerializable {
     public static final Codec<ArtifactStatsComponent> CODEC = PersistedParser.createCodec(ArtifactStatsComponent::new);
@@ -87,7 +88,7 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
             exp -= getExpToNextLevel(star);
             level++;
             updateMainStatValue(star);
-            checkUnlockSubStats(star);
+            upgradeSubStats(star);
         }
         return added;
     }
@@ -98,18 +99,26 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
         mainStat.setValue(value);
     }
 
-    private void checkUnlockSubStats(int star) {
-        int initialUnlock = switch (star) {
-            case 1, 2 -> 1;
-            case 3 -> 2;
-            case 4 -> 3;
-            case 5 -> 3;
-            default -> 1;
-        };
-        int unlockedCountByLevel = level / 4;
-        int totalUnlocked = Math.min(initialUnlock + unlockedCountByLevel, subStats.size());
-        for (int i = 0; i < subStats.size(); i++) {
-            subStats.get(i).setUnlocked(i < totalUnlocked);
+    private static final Random RANDOM = new Random();
+
+    private void upgradeSubStats(int star) {
+        if (level <= 0 || level % 4 != 0 || subStats.isEmpty()) return;
+
+        List<TeyvatItemStat> locked = new ArrayList<>();
+        List<TeyvatItemStat> unlocked = new ArrayList<>();
+        for (TeyvatItemStat s : subStats) {
+            if (s.isUnlocked()) unlocked.add(s);
+            else locked.add(s);
+        }
+
+        if (!locked.isEmpty()) {
+            locked.get(0).setUnlocked(true);
+        } else {
+            TeyvatItemStat target = unlocked.get(RANDOM.nextInt(unlocked.size()));
+            target.setUpgradeCount(target.getUpgradeCount() + 1);
+            double baseValue = ArtifactStatData.getSubStatTierValue(
+                    target.getAttribute(), target.getKind(), star, target.getTier());
+            target.setValue(baseValue * (target.getUpgradeCount() + 1));
         }
     }
 }

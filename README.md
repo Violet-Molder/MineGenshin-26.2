@@ -23,6 +23,7 @@
     - 4.10 [元素附着系统](#410-元素附着系统)
     - 4.11 [元素反应系统](#411-元素反应系统)
     - 4.12 [怪物等级与防御系统](#412-怪物等级与防御系统)
+    - 4.13 [圣遗物系统](#413-圣遗物系统)
 5. [扩展开发指南](#5-扩展开发指南)
     - 5.1 [添加新角色](#51-添加新角色)
     - 5.2 [添加新角色效果](#52-添加新角色效果)
@@ -2069,6 +2070,222 @@ FinalizeSpawnEvent 触发
 
 `TeyvatMonster` 是本 Mod 自定义怪物的基类，具有独立的等级体系。`MonsterLevelSpawnHandler` 在第 23 行通过 `instanceof TeyvatMonster` 跳过，确保 Mixin 注入的 `IMonsterLevel` 逻辑只作用于外部怪物。
 
+### 4.13 圣遗物系统
+
+#### 概述
+
+圣遗物系统是配置驱动的装备系统，还原原神圣遗物的主词条/副词条生成机制。所有数值均可通过 `./config/minegenshin/artifact.toml` 配置文件修改。
+
+**配置架构**：
+
+```
+ArtifactConfig（主入口，管理共享 Builder）
+    ├── ArtifactLevelConfig      —— 升级经验值（3/4/5星）
+    ├── ArtifactMainStatConfig   —— 主词条 base+growth（3/4/5星，18种属性）
+    │     └── mainStatWeight     —— 主词条抽取权重（时之沙/空之杯/理之冠）
+    └── ArtifactSubStatConfig    —— 副词条4档数值（5星，10种属性）
+```
+
+#### 圣遗物类型
+
+| 类型 | 英文 | 固定主词条 | 可变主词条 |
+|------|------|-----------|-----------|
+| 生之花 | FLOWER | 数值生命值 | — |
+| 死之羽 | PLUME | 数值攻击力 | — |
+| 时之沙 | SANDS | — | HP%/ATK%/DEF%/元素精通/元素充能 |
+| 空之杯 | GOBLET | — | HP%/ATK%/DEF%/8种元素伤害/元素精通 |
+| 理之冠 | CIRCLET | — | HP%/ATK%/DEF%/暴击率/暴击伤害/治疗加成/元素精通 |
+
+#### 主词条数值公式
+
+```
+value = base + level × growth
+```
+
+每个主词条配置项为 `[base, growth]`，如 5星暴击率主词条 `[4.7, 1.3]`：
+
+| 等级 | 计算 | 值 |
+|------|------|-----|
+| 0 | 4.7 + 0 × 1.3 | 4.7% |
+| 1 | 4.7 + 1 × 1.3 | 6.0% |
+| 20 | 4.7 + 20 × 1.3 | 30.7% |
+
+**生之花/死之羽**固定主词条从 level=0 开始（使用 `getMainStatBase()`），而非 level=1。
+
+#### 主词条抽取权重
+
+时之沙/空之杯/理之冠的主词条不是等概率抽取，而是按配置权重加权随机：
+
+**时之沙**：
+
+| 属性 | 权重 |
+|------|------|
+| HP% | 26.68 |
+| ATK% | 26.66 |
+| DEF% | 26.66 |
+| 元素精通 | 10.0 |
+| 元素充能 | 10.0 |
+
+**空之杯**：
+
+| 属性 | 权重 |
+|------|------|
+| HP% | 21.25 |
+| ATK% | 21.25 |
+| DEF% | 20.0 |
+| 7元素+物理伤害加成 | 各 5.0 |
+| 元素精通 | 2.5 |
+
+**理之冠**：
+
+| 属性 | 权重 |
+|------|------|
+| HP% | 22.0 |
+| ATK% | 22.0 |
+| DEF% | 22.0 |
+| 暴击率 | 10.0 |
+| 暴击伤害 | 10.0 |
+| 治疗加成 | 10.0 |
+| 元素精通 | 4.0 |
+
+**加权随机算法**（`ArtifactMainStatGenerator.weightedPick`）：
+
+```java
+private static <T> T weightedPick(List<T> items, List<Double> weights, Random random) {
+    double totalWeight = weights.stream().mapToDouble(Double::doubleValue).sum();
+    double r = random.nextDouble() * totalWeight;
+    double cumulative = 0;
+    for (int i = 0; i < items.size(); i++) {
+        cumulative += weights.get(i);
+        if (r < cumulative) {
+            return items.get(i);
+        }
+    }
+    return items.get(items.size() - 1);
+}
+```
+
+权重值不需要精确求和到 100%，算法会自动按比例归一化。
+
+#### 副词条生成机制
+
+**档位系统**：每个副词条有4个档位（1-4档），初始值 = 档位值，后续升级每次增加的量 = 档位值。
+
+| 属性 | 1档 | 2档 | 3档 | 4档 |
+|------|------|------|------|------|
+| 数值攻击力 | 14 | 16 | 18 | 19 |
+| 数值生命值 | 209 | 239 | 269 | 299 |
+| 数值防御力 | 16 | 19 | 21 | 23 |
+| 百分比攻击力 | 4.1% | 4.7% | 5.3% | 5.8% |
+| 百分比生命值 | 4.1% | 4.7% | 5.3% | 5.8% |
+| 百分比防御力 | 5.1% | 5.8% | 6.6% | 7.3% |
+| 元素精通 | 16 | 19 | 21 | 23 |
+| 元素充能 | 4.5% | 5.2% | 5.8% | 6.5% |
+| 暴击率 | 2.7% | 3.1% | 3.5% | 3.9% |
+| 暴击伤害 | 5.4% | 6.2% | 7.0% | 7.8% |
+
+**生成流程**（`ArtifactSubStatGenerator.generateAll`）：
+
+```
+1. 构建副词条候选池（10种属性，等概率）
+2. 根据星级确定生成数量（1-2星:2个, 3星:3个, 4-5星:4个）
+3. 从候选池中不放回随机抽取 count 个
+4. 每个副词条随机 1-4 档，取档位值作为初始值
+5. 25%概率全部解锁，75%概率最后一个锁定
+```
+
+**解锁机制**：圣遗物每升到4的倍数级时，解锁/提升一次副词条。如果有未解锁的副词条，优先解锁；如果全部已解锁，则随机提升一个副词条（将其档位值加到当前值上）。
+
+**档位存储**：`TeyvatItemStat.tier` 字段持久化存储档位（1-4），用于后续升级时计算提升幅度。
+
+#### ArtifactStatData —— 属性数据管理
+
+配置驱动的属性数据管理器，负责从配置文件读取主词条和副词条数据，并提供统一的查询接口。
+
+**核心方法**：
+
+| 方法 | 说明 |
+|------|------|
+| `getMainStatBase(attr, kind, star)` | 获取主词条0级基础值 |
+| `getMainStatValue(attr, kind, star, level)` | 获取主词条指定等级值（base + level × growth） |
+| `getMainStatGrowth(attr, kind, star)` | 获取主词条每级成长值 |
+| `getSubStatTierValue(attr, kind, star, tier)` | 获取副词条指定档位值（tier=1-4） |
+| `reloadFromConfig()` | 从配置文件重新加载所有数据（支持热重载） |
+
+**延迟加载机制**：`ensureLoaded()` 确保配置文件只在首次访问时加载一次，后续直接使用缓存数据。
+
+**键名格式**：
+- 主词条：`"{star}#{attrPath}#{kind}"` → 如 `"5#crit_rate#PERCENT"`
+- 副词条：`"{attrPath}#{kind}"` → 如 `"crit_rate#PERCENT"`
+
+#### TeyvatItemStat 扩展
+
+圣遗物系统中的 `TeyvatItemStat` 新增了以下字段和方法：
+
+```java
+@Persisted(key = "stat_tier")
+private int tier = 1;  // 副词条档位（1-4），主词条不使用
+
+// 新构造函数：指定档位
+public TeyvatItemStat(AttributeType attribute, double value, StatKind kind, boolean unlocked, int tier);
+
+// 新增方法
+public int getTier();
+public void setTier(int tier);
+```
+
+#### 配置文件结构
+
+`./config/minegenshin/artifact.toml`：
+
+```toml
+[artifact]
+    [artifact.level]
+        # 升级经验值
+        levelExp_5 = [1000, 1200, 1400, ...]
+        levelExp_4 = [800, 960, 1120, ...]
+        levelExp_3 = [600, 720, 840, ...]
+    
+    [artifact.mainStat]
+        [artifact.mainStat.5star]
+            max_hp_flat = [717.0, 203.15]
+            atk_flat = [47.0, 13.2]
+            crit_rate_percent = [4.7, 1.3]
+            # ... 共18种属性
+        
+        [artifact.mainStat.mainStatWeight]
+            [artifact.mainStat.mainStatWeight.sands]
+                hp_percent = 26.68
+                atk_percent = 26.66
+                # ...
+            
+            [artifact.mainStat.mainStatWeight.goblet]
+                # ...
+            
+            [artifact.mainStat.mainStatWeight.circlet]
+                # ...
+    
+    [artifact.subStat]
+        [artifact.subStat.5star]
+            atk_flat = [14, 16, 18, 19]
+            max_hp_flat = [209, 239, 269, 299]
+            crit_rate_percent = [2.7, 3.1, 3.5, 3.9]
+            # ... 共10种属性
+```
+
+#### 关键文件索引
+
+| 类 | 路径 |
+|----|------|
+| 圣遗物配置主入口 | `config/ArtifactConfig.java` |
+| 升级经验配置 | `config/ArtifactLevelConfig.java` |
+| 主词条数值+权重 | `config/ArtifactMainStatConfig.java` |
+| 副词条档位配置 | `config/ArtifactSubStatConfig.java` |
+| 属性数据管理 | `content/items/artifact/ArtifactStatData.java` |
+| 主词条生成器 | `content/items/artifact/ArtifactMainStatGenerator.java` |
+| 副词条生成器 | `content/items/artifact/ArtifactSubStatGenerator.java` |
+| 物品属性统计 | `content/stat/TeyvatItemStat.java` |
+
 ---
 
 ## 5. 扩展开发指南
@@ -2540,6 +2757,13 @@ UUID 是纯数字 (int)，在 Attachment 的持久化和 RPC 传输中更轻量�
 | Mixin 注入 | `mixin/mixins/LivingEntityDecayMixin.java` |
 | Mixin 攻击拦截 | `mixin/mixins/PlayerAttackInterceptor.java` |
 | 配置文件 | `Config.java` |
+| 圣遗物配置 | `config/ArtifactConfig.java` |
+| 主词条配置 | `config/ArtifactMainStatConfig.java` |
+| 副词条配置 | `config/ArtifactSubStatConfig.java` |
+| 属性数据 | `content/items/artifact/ArtifactStatData.java` |
+| 主词条生成 | `content/items/artifact/ArtifactMainStatGenerator.java` |
+| 副词条生成 | `content/items/artifact/ArtifactSubStatGenerator.java` |
+| 物品属性 | `content/stat/TeyvatItemStat.java` |
 | 元素枚举 | `enums/ElementalsGIM.java` |
 | 攻击类型 | `enums/AttackType.java` |
 | 突破属性 | `enums/CharacterAscendAttribute.java` |

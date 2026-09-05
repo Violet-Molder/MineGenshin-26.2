@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.content.items.artifact;
 
 import com.linweiyun.genshin.config.ArtifactMainStatConfig;
+import com.linweiyun.genshin.config.ArtifactSubStatConfig;
 import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -16,7 +17,7 @@ public class ArtifactStatData {
     private static final Map<String, double[]> MAIN_STAT = new HashMap<>();
     private static volatile boolean loaded = false;
 
-    //TEMP 运行时从配置文件读取，支持热重载
+    //TEMP 从配置文件读取，支持热重载
     private static synchronized void ensureLoaded() {
         if (loaded) return;
         loaded = true;
@@ -53,6 +54,39 @@ public class ArtifactStatData {
                 ArtifactMainStatConfig.MAIN_3_HYDRO_PERCENT, ArtifactMainStatConfig.MAIN_3_CYRO_PERCENT,
                 ArtifactMainStatConfig.MAIN_3_ELECTRO_PERCENT, ArtifactMainStatConfig.MAIN_3_ANEMO_PERCENT,
                 ArtifactMainStatConfig.MAIN_3_GEO_PERCENT, ArtifactMainStatConfig.MAIN_3_DENDRO_PERCENT);
+
+        //TEMP 从 ArtifactSubStatConfig 读取五星副词条数据
+        readSubStat5();
+    }
+
+    //TEMP 从 ArtifactSubStatConfig 读取五星副词条4档数值
+    private static void readSubStat5() {
+        SUB_STAT_TIERS_5.clear();
+        tryReadSubStat("atk#FLAT", ArtifactSubStatConfig.SUB_5_ATK_FLAT);
+        tryReadSubStat("max_hp#FLAT", ArtifactSubStatConfig.SUB_5_MAX_HP_FLAT);
+        tryReadSubStat("def#FLAT", ArtifactSubStatConfig.SUB_5_DEF_FLAT);
+        tryReadSubStat("atk#PERCENT", ArtifactSubStatConfig.SUB_5_ATK_PERCENT);
+        tryReadSubStat("max_hp#PERCENT", ArtifactSubStatConfig.SUB_5_MAX_HP_PERCENT);
+        tryReadSubStat("def#PERCENT", ArtifactSubStatConfig.SUB_5_DEF_PERCENT);
+        tryReadSubStat("elemental_mastery#FLAT", ArtifactSubStatConfig.SUB_5_EM_FLAT);
+        tryReadSubStat("energy_recharge#PERCENT", ArtifactSubStatConfig.SUB_5_ER_PERCENT);
+        tryReadSubStat("crit_rate#PERCENT", ArtifactSubStatConfig.SUB_5_CR_PERCENT);
+        tryReadSubStat("crit_dmg#PERCENT", ArtifactSubStatConfig.SUB_5_CDG_PERCENT);
+    }
+
+    private static void tryReadSubStat(String key, ModConfigSpec.ConfigValue<List<? extends Number>> config) {
+        try {
+            List<? extends Number> list = config.get();
+            if (list != null && list.size() == 4) {
+                SUB_STAT_TIERS_5.put(key, new double[]{
+                        list.get(0).doubleValue(),
+                        list.get(1).doubleValue(),
+                        list.get(2).doubleValue(),
+                        list.get(3).doubleValue()
+                });
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     //TEMP 从 ConfigValue 读取 base+growth，key = "star#attrKey#kind"

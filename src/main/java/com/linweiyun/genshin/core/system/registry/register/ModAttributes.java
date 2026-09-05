@@ -23,19 +23,19 @@ public class ModAttributes {
 
     // Advanced Stats
     public static final DeferredHolder<AttributeType, AttributeType> CR =
-            ATTRIBUTES.register("crit_rate", () -> new AttributeType("cr", "attribute.minegenshin.cr", 0.05f));
+            ATTRIBUTES.register("crit_rate", () -> new AttributeType("crit_rate", "attribute.minegenshin.crit_rate", 0.05f));
     public static final DeferredHolder<AttributeType, AttributeType> CDG =
-            ATTRIBUTES.register("crit_dmg", () -> new AttributeType("crit_dmg", "attribute.minegenshin.cdg", 0.5f));
+            ATTRIBUTES.register("crit_dmg", () -> new AttributeType("crit_dmg", "attribute.minegenshin.crit_dmg", 0.5f));
     public static final DeferredHolder<AttributeType, AttributeType> HB =
-            ATTRIBUTES.register("healing_bonus", () -> new AttributeType("cdg", "attribute.minegenshin.hb", 0));
+            ATTRIBUTES.register("healing_bonus", () -> new AttributeType("healing_bonus", "attribute.minegenshin.healing_bonus", 0));
     public static final DeferredHolder<AttributeType, AttributeType> IHB =
-            ATTRIBUTES.register("incoming_healing_bonus", () -> new AttributeType("ihb", "attribute.minegenshin.ihb", 0));
+            ATTRIBUTES.register("ihb", () -> new AttributeType("ihb", "attribute.minegenshin.ihb", 0));
     public static final DeferredHolder<AttributeType, AttributeType> ER =
-            ATTRIBUTES.register("energy_recharge", () -> new AttributeType("er", "attribute.minegenshin.er", 1.0f));
+            ATTRIBUTES.register("energy_recharge", () -> new AttributeType("energy_recharge", "attribute.minegenshin.energy_recharge", 1.0f));
     public static final DeferredHolder<AttributeType, AttributeType> CDR =
-            ATTRIBUTES.register("cd_reduction", () -> new AttributeType("cdr", "attribute.minegenshin.cdr", 0));
+            ATTRIBUTES.register("cd_reduction", () -> new AttributeType("cd_reduction", "attribute.minegenshin.cd_reduction", 0));
     public static final DeferredHolder<AttributeType, AttributeType> SS =
-            ATTRIBUTES.register("shield_strength", () -> new AttributeType("ss", "attribute.minegenshin.ss", 0));
+            ATTRIBUTES.register("shield_strength", () -> new AttributeType("shield_strength", "attribute.minegenshin.ss", 0));
 
     // Elemental Type
     public static final DeferredHolder<AttributeType, AttributeType> PYRO_BONUS =

@@ -1,9 +1,14 @@
 package com.linweiyun.genshin.client.gui.screens;
 
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUIClientAccess;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.ItemSlot;
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -28,10 +33,34 @@ public class ScreenCharacterInfo extends Screen {
                 Identifier.parse("minegenshin:lss/character_info.lss"));
         var backGround = new UIElement();
         var character_list_container = new UIElement();
+        var flower = new ItemSlot();
+        var plume = new ItemSlot();
+        var sands = new ItemSlot();
+        var goblet = new ItemSlot();
+        var circlet = new ItemSlot();
+        PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        PGCharacter character = attachment.getCurrentCharacter();
+        if (character != null) {
+            PGCharacterData data = character.getData();
+            if (data != null) {
+                flower.setItem(data.getFlower());
+                plume.setItem(data.getPlume());
+                sands.setItem(data.getSands());
+                goblet.setItem(data.getGoblet());
+                circlet.setItem(data.getCirclet());
+            }
+        }
+
 
         root.addChildren(
                 backGround.addChildren(
-                        character_list_container
+                        character_list_container.addChildren(
+                                flower,
+                                plume,
+                                sands,
+                                goblet,
+                                circlet
+                        )
                 )
         );
 

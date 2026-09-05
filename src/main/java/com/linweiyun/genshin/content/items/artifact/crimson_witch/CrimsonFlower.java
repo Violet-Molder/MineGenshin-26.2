@@ -23,19 +23,4 @@ public class CrimsonFlower extends FlowerArtifact {
         this.set = ArtifactSets.CRIMSON_WITCH;
         this.star = 5;
     }
-    @Override
-    public InteractionResult use(Level level, Player player, InteractionHand hand) {
-        ItemStack artifactStack = player.getItemInHand(hand);
-        ArtifactItem.initializeArtifactStackIfNeeded(artifactStack);
-        LOGGER.info(artifactStack.toString());
-        boolean isGenshin = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
-        if(isGenshin){
-            PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-            PGCharacter character = attachment.getCurrentCharacter();
-            if (character != null) {
-                character.equipArtifact(this.type, new ItemStack(this));
-            }
-        }
-        return super.use(level, player, hand);
-    }
 }

@@ -4,15 +4,22 @@ import com.linweiyun.genshin.content.effect.character.artifact.ArtifactSetEffect
 import com.linweiyun.genshin.content.items.TeyvatItem;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import org.slf4j.Logger;
 
@@ -28,6 +35,21 @@ public class ArtifactItem extends TeyvatItem {
 
     public ArtifactItem(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
+        ItemStack artifactStack = player.getItemInHand(hand);
+        ArtifactItem.initializeArtifactStackIfNeeded(artifactStack);
+        boolean isGenshin = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+        if(isGenshin){
+            PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            PGCharacter character = attachment.getCurrentCharacter();
+            if (character != null) {
+                character.equipArtifact(this.type, artifactStack);
+            }
+        }
+        return super.use(level, player, hand);
     }
 
     public static void initializeArtifactStackIfNeeded(ItemStack stack) {
@@ -47,7 +69,7 @@ public class ArtifactItem extends TeyvatItem {
         Random random = new Random();
         TeyvatItemStat mainStat = ArtifactMainStatGenerator.generate(type, star, random);
         List<TeyvatItemStat> subStats = ArtifactSubStatGenerator.generateAll(star, type, mainStat.getAttribute(), mainStat.getKind(), random);
-        return new ArtifactStatsComponent(1, 0, mainStat, subStats);
+        return new ArtifactStatsComponent(0, 0, mainStat, subStats);
     }
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display, Consumer<Component> builder, TooltipFlag flag) {
@@ -55,7 +77,8 @@ public class ArtifactItem extends TeyvatItem {
 
         // 第一行：小字，圣遗物类型
         builder.accept(Component.translatable("artifact.type." + type.name().toLowerCase()).withStyle(ChatFormatting.GRAY));
-        builder.accept(Component.empty());
+        builder.accept(Component.literal("★".repeat(star)).withStyle(ChatFormatting.GOLD));
+        builder.accept(Component.literal("+" + stats.level).withStyle(ChatFormatting.GRAY));
 
         // 主词条（大字 + 星级颜色）
         //TEMP mainStat.getAttribute() 为 null 说明未初始化（创造栏默认组件），跳过不显示
@@ -89,19 +112,24 @@ public class ArtifactItem extends TeyvatItem {
             builder.accept(Component.empty());
             var setKey = ModRegistries.ARTIFACT_SET_REGISTRY.getKey(artifactSet);
             String setNameKey = setKey != null ? "artifact_set." + setKey.getPath() : "artifact_set.unknown";
-            builder.accept(Component.translatable(setNameKey).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+            builder.accept(Component.translatable(setNameKey).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
 
             var twoPc = artifactSet.twoPcEffect().get();
             if (twoPc instanceof ArtifactSetEffect setEffect) {
-                builder.accept(Component.literal("2  ").withStyle(ChatFormatting.YELLOW).append(setEffect.getDescription()));
+                builder.accept(Component.translatable("artifact_set.effect.2pc").withStyle(ChatFormatting.YELLOW).append(": ").append(setEffect.getDescription()));
             }
             if (star >= 4 && artifactSet.hasFourPcEffect()) {
                 var fourPc = artifactSet.fourPcEffect().get();
                 if (fourPc instanceof ArtifactSetEffect setEffect) {
-                    builder.accept(Component.literal("4  ").withStyle(ChatFormatting.YELLOW).append(setEffect.getDescription()));
+                    builder.accept(Component.translatable("artifact_set.effect.4pc").withStyle(ChatFormatting.YELLOW).append(": ").append(setEffect.getDescription()));
                 }
             }
+            // 圣遗物文本
+            if (setKey != null) {
+                builder.accept(Component.translatable("artifact.desc."+ setKey.getPath() +"." + type.name().toLowerCase()).withStyle(ChatFormatting.WHITE));
+            }
         }
+
     }
     private String buildStatText(TeyvatItemStat stat) {
         if (!stat.isInitialized()) return "";
@@ -115,7 +143,7 @@ public class ArtifactItem extends TeyvatItem {
 
     private ChatFormatting getStarColor() {
         return switch (star) {
-            case 5 -> ChatFormatting.GOLD;
+            case 5 -> ChatFormatting.YELLOW;
             case 4 -> ChatFormatting.LIGHT_PURPLE;
             case 3 -> ChatFormatting.AQUA;
             case 2 -> ChatFormatting.WHITE;

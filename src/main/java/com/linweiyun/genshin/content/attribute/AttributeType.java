@@ -43,8 +43,6 @@ public class AttributeType implements IPersistedSerializable {
     public String translationKey() { return translationKey; }
     public float defaultValue() { return defaultValue; }
 
-    //TEMP 通过注册表按 Identifier 反查已注册的 AttributeType 单例（避免重复实例）
-    //TEMP 通过注册表按 Identifier 反查已注册的 AttributeType 单例
     public static AttributeType byId(Identifier id) {
         return ModRegistries.ATTRIBUTE_TYPE_REGISTRY.getValue(id);
     }
