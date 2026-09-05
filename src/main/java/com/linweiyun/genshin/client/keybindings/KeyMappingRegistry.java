@@ -53,6 +53,13 @@ public class KeyMappingRegistry {
                   InputConstants.Type.KEYSYM,
                   GLFW.GLFW_KEY_F,
                   KeyMapping.Category.MISC));
+
+  public static final Lazy<KeyMapping> CHARACTER_INFO_SCREEN_KEY = Lazy.of(() ->
+          new KeyMapping(
+                  "key.minegenshin.character_info_screen_key",
+                  InputConstants.Type.KEYSYM,
+                  GLFW.GLFW_KEY_U,
+                  KeyMapping.Category.MISC));
   @SubscribeEvent // on the mod event bus only on the physical client
   public static void registerBindings(RegisterKeyMappingsEvent event) {
     event.registerCategory(CATEGORY);
@@ -63,5 +70,6 @@ public class KeyMappingRegistry {
     event.register(O_KEY.get());
     event.register(R_KEY.get());
     event.register(F_KEY.get());
+    event.register(CHARACTER_INFO_SCREEN_KEY.get());
   }
 }

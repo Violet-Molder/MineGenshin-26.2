@@ -1,5 +1,6 @@
 package com.linweiyun.genshin;
 
+import com.linweiyun.genshin.config.ArtifactConfig;
 import com.linweiyun.genshin.config.Config;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
@@ -33,6 +34,7 @@ public class Minegenshin {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_ATTRIBUTE_SPEC, "minegenshin/attribute.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, ElementalReactionConfig.REACTION_SPEC, "minegenshin/genshin_reaction.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, MonsterLevelConfig.MONSTER_LEVEL_SPEC, "minegenshin/monster_level.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, ArtifactConfig.ARTIFACT_SPEC, "minegenshin/artifact.toml");
 
         ModItems.register(modEventBus);
         ModItemGroups.register(modEventBus);
@@ -42,6 +44,7 @@ public class Minegenshin {
         ModStatusDataComponents.register(modEventBus);
         ModElementalReactions.register(modEventBus);
         ArtifactSets.register(modEventBus);
+        ModDataComponents.register(modEventBus);
 
         ModAttributes.ATTRIBUTES.register(modEventBus);
         ModCharacters.CHARACTERS.register(modEventBus);

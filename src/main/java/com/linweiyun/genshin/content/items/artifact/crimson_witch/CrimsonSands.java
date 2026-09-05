@@ -1,10 +1,12 @@
 package com.linweiyun.genshin.content.items.artifact.crimson_witch;
 
+import com.linweiyun.genshin.content.items.artifact.ArtifactType;
 import com.linweiyun.genshin.content.items.artifact.SandsArtifact;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.registry.register.ArtifactSets;
+import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -13,7 +15,9 @@ import net.minecraft.world.level.Level;
 
 public class CrimsonSands extends SandsArtifact {
     public CrimsonSands(Properties properties) {
-        super(properties);
+        super(properties
+                .delayedComponent(ModDataComponents.ARTIFACT_STATS.get(), ctx -> buildInitialStats(5, ArtifactType.SANDS))
+        );
         this.set = ArtifactSets.CRIMSON_WITCH;
     }
 

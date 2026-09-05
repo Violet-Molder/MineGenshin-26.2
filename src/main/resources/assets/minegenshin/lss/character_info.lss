@@ -1,0 +1,9 @@
+#root {
+  background: sdf(#dd2c2c34, 5);
+  width: 100%;
+  height: 100%;
+  flex-direction: row;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

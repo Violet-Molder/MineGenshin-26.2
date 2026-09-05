@@ -1,15 +1,19 @@
 package com.linweiyun.genshin.core.network;
 
+import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
+import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -85,7 +89,7 @@ public class NetworkManager {
     }
   }
 
-  //AI 检查 party 中是否存在至少一个 currentHP > 0 的角色
+  // 检查 party 中是否存在至少一个 currentHP > 0 的角色
   private static boolean hasAlivePartyCharacter(ServerPlayer player) {
     PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     for (int uuid : attachment.getPartyCharacterUUIDs()) {
@@ -284,6 +288,31 @@ public class NetworkManager {
   }
   public static void triggerCharacterBurst() {
     RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket");
+  }
+
+  // ========== 圣遗物升级 ==========
+  @RPCPacket("artifactLevelUpRPCPacket")
+  public static void artifactLevelUpRPCPacket(RPCSender sender, ItemStack stack, int expAmount) {
+    if (sender.isServer()) {
+      // S→C：把服务器处理后的 ItemStack 同步给客户端 Screen
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem art)) return;
+      ArtifactStatsComponent stats = stack.getOrDefault(ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
+      int star = art.getStar();  // star 还在 Item 单例上
+      long added = stats.addExp(expAmount, star, art.getType());
+      if (added <= 0) return;
+      stack.set(ModDataComponents.ARTIFACT_STATS.get(), stats);
+      RPCPacketDistributor.rpcToPlayer(player, "artifactLevelUpRPCPacket", stack, 0);
+    }
+  }
+
+  public static void sendArtifactLevelUpToServer(ItemStack artifact, int expAmount) {
+    RPCPacketDistributor.rpcToServer("artifactLevelUpRPCPacket", artifact, expAmount);
+  }
+
+  public static void sendArtifactLevelUpToPlayer(ServerPlayer player, ItemStack artifact) {
+    RPCPacketDistributor.rpcToPlayer(player, "artifactLevelUpRPCPacket", artifact, 0);
   }
 
   // ========== 祈愿系统 ==========

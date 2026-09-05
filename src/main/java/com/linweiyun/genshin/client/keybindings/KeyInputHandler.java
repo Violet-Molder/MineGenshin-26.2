@@ -87,6 +87,9 @@ public class KeyInputHandler {
     if (KeyMappingRegistry.O_KEY.get().consumeClick()) {
       GUIServerHelperGIM.openCharacterPartyScreen(player);
     }
+    if (KeyMappingRegistry.CHARACTER_INFO_SCREEN_KEY.get().consumeClick()) {
+      GUIServerHelperGIM.openCharacterInfoScreen(player);
+    }
   }
 
   private static void switchToNextAvailableCharacter(Player player, PlayerCharactersAttachment attachment) {
