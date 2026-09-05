@@ -15,13 +15,15 @@ public class TeyvatItemStat implements IPersistedSerializable {
     public enum StatKind { FLAT, PERCENT }
 
     @Persisted(key = "stat_attribute")
-    private AttributeType attribute;
+    private AttributeType attribute = new AttributeType();
     @Persisted(key = "stat_value")
     private double value;
     @Persisted(key = "stat_kind")
-    private StatKind kind;
+    private StatKind kind = StatKind.FLAT;
     @Persisted(key = "stat_unlocked")
     private boolean unlocked = true;
+    @Persisted(key = "stat_initialized")
+    private boolean initialized = false;
 
     public TeyvatItemStat() {}
 
@@ -29,6 +31,7 @@ public class TeyvatItemStat implements IPersistedSerializable {
         this.attribute = attribute;
         this.value = value;
         this.kind = kind;
+        this.initialized = true;
     }
 
     public TeyvatItemStat(AttributeType attribute, double value, StatKind kind, boolean unlocked) {
@@ -36,12 +39,15 @@ public class TeyvatItemStat implements IPersistedSerializable {
         this.value = value;
         this.kind = kind;
         this.unlocked = unlocked;
+        this.initialized = true;
     }
 
     public AttributeType getAttribute() { return attribute; }
     public double getValue() { return value; }
     public StatKind getKind() { return kind; }
     public boolean isUnlocked() { return unlocked; }
+    public boolean isInitialized() { return initialized; }
+
     public void setValue(double value) { this.value = value; }
     public void setUnlocked(boolean unlocked) { this.unlocked = unlocked; }
     public void setKind(StatKind kind) { this.kind = kind; }

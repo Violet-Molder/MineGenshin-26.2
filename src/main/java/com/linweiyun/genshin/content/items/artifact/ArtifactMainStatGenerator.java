@@ -48,12 +48,12 @@ public class ArtifactMainStatGenerator {
         LOGGER.info("[ArtifactMainStatGenerator] generate called | type={} | star={}", type, star);
         TeyvatItemStat result = switch (type) {
             case FLOWER -> {
-                double base = ArtifactStatData.getMainStatBase(ModAttributes.MAX_HP.get(), TeyvatItemStat.StatKind.FLAT, star);
-                yield new TeyvatItemStat(ModAttributes.MAX_HP.get(), base, TeyvatItemStat.StatKind.FLAT);
+                double initialValue = ArtifactStatData.getMainStatInitialValue(ModAttributes.MAX_HP.get(), TeyvatItemStat.StatKind.FLAT, star);
+                yield new TeyvatItemStat(ModAttributes.MAX_HP.get(), initialValue, TeyvatItemStat.StatKind.FLAT);
             }
             case PLUME -> {
-                double base = ArtifactStatData.getMainStatBase(ModAttributes.ATK.get(), TeyvatItemStat.StatKind.FLAT, star);
-                yield new TeyvatItemStat(ModAttributes.ATK.get(), base, TeyvatItemStat.StatKind.FLAT);
+                double initialValue = ArtifactStatData.getMainStatInitialValue(ModAttributes.ATK.get(), TeyvatItemStat.StatKind.FLAT, star);
+                yield new TeyvatItemStat(ModAttributes.ATK.get(), initialValue, TeyvatItemStat.StatKind.FLAT);
             }
             case SANDS -> generateSands(star, random);
             case GOBLET -> generateGoblet(star, random);

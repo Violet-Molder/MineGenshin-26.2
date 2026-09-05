@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Consumer;
 
 public class ArtifactItem extends TeyvatItem {
@@ -31,25 +32,21 @@ public class ArtifactItem extends TeyvatItem {
 
     public static void initializeArtifactStackIfNeeded(ItemStack stack) {
         if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem artifact)) return;
-
         ArtifactStatsComponent stats = stack.getOrDefault(
                 ModDataComponents.ARTIFACT_STATS.get(),
                 ArtifactStatsComponent.DEFAULT
         );
-        //TEMP mainStat为null说明是未初始化的默认空值，才生成随机属性
-        if (stats.mainStat == null) {
-
+        //TEMP mainStat 为 null 说明是未初始化的默认值，才生成随机属性
+        if (!stats.mainStat.isInitialized()) {
             ArtifactStatsComponent generated = buildInitialStats(artifact.getStar(), artifact.getType());
             stack.set(ModDataComponents.ARTIFACT_STATS.get(), generated);
-            LOGGER.info("Initializing artifact stack for {}", artifact);
-        }
+            LOGGER.info("Initialized artifact stats for stack: {}", stack);
+                   }
     }
     protected static ArtifactStatsComponent buildInitialStats(int star, ArtifactType type) {
-        java.util.Random random = new java.util.Random();
+        Random random = new Random();
         TeyvatItemStat mainStat = ArtifactMainStatGenerator.generate(type, star, random);
-        java.util.List<TeyvatItemStat> subStats = mainStat != null
-                ? ArtifactSubStatGenerator.generateAll(star, type, mainStat.getAttribute(), mainStat.getKind(), random)
-                : java.util.List.of();
+        List<TeyvatItemStat> subStats = ArtifactSubStatGenerator.generateAll(star, type, mainStat.getAttribute(), mainStat.getKind(), random);
         return new ArtifactStatsComponent(1, 0, mainStat, subStats);
     }
     @Override
@@ -61,15 +58,22 @@ public class ArtifactItem extends TeyvatItem {
         builder.accept(Component.empty());
 
         // 主词条（大字 + 星级颜色）
-        if (stats.mainStat != null) {
+        //TEMP mainStat.getAttribute() 为 null 说明未初始化（创造栏默认组件），跳过不显示
+        if (stats.mainStat != null && stats.mainStat.isInitialized()) {
             ChatFormatting starColor = getStarColor();
             builder.accept(Component.literal(buildStatText(stats.mainStat)).withStyle(starColor, ChatFormatting.BOLD));
         }
 
         // 副词条
         if (stats.subStats != null && !stats.subStats.isEmpty()) {
-            builder.accept(Component.empty());
+            boolean hasUnlocked = false;
             for (var stat : stats.subStats) {
+                //TEMP attribute 为 null 跳过这个空壳子属性
+                if (!stat.isInitialized()) continue;
+                if (!hasUnlocked) {
+                    builder.accept(Component.empty());
+                    hasUnlocked = true;
+                }
                 String text = buildStatText(stat);
                 if (stat.isUnlocked()) {
                     builder.accept(Component.literal(text).withStyle(ChatFormatting.GRAY));
@@ -100,6 +104,7 @@ public class ArtifactItem extends TeyvatItem {
         }
     }
     private String buildStatText(TeyvatItemStat stat) {
+        if (!stat.isInitialized()) return "";
         String attrName = Component.translatable(stat.getAttribute().translationKey()).getString();
         if (stat.getKind() == TeyvatItemStat.StatKind.PERCENT) {
             return attrName + " +" + String.format("%.1f%%", stat.getValue());

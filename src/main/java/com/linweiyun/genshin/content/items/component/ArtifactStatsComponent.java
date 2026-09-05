@@ -19,7 +19,7 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
     public static final Codec<ArtifactStatsComponent> CODEC = PersistedParser.createCodec(ArtifactStatsComponent::new);
     public static final StreamCodec<ByteBuf, ArtifactStatsComponent> STREAM_CODEC = PersistedParser.createStreamCodec(ArtifactStatsComponent::new);
 
-    public static final ArtifactStatsComponent DEFAULT = new ArtifactStatsComponent(0, 0, null, List.of());
+    public static final ArtifactStatsComponent DEFAULT = new ArtifactStatsComponent(0, 0, new TeyvatItemStat(), new ArrayList<>());
 
     @Persisted(key = "level")
     public int level;
@@ -28,24 +28,31 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
     public int exp;
 
     @Persisted(key = "main_stat")
-    public TeyvatItemStat mainStat;
+    public TeyvatItemStat mainStat = new TeyvatItemStat();
 
     @Persisted(key = "sub_stats")
-    public List<TeyvatItemStat> subStats;
+    public List<TeyvatItemStat> subStats = new ArrayList<>();
 
-    public ArtifactStatsComponent() {}
+    public ArtifactStatsComponent() {
+        this.mainStat = new TeyvatItemStat();
+        this.subStats = new ArrayList<>();
+    }
 
     public ArtifactStatsComponent(int level, int exp, TeyvatItemStat mainStat, List<TeyvatItemStat> subStats) {
         this.level = level;
         this.exp = exp;
-        this.mainStat = mainStat;
+        //TEMP 防御：也确保非 null，避免调用方误传 null
+        this.mainStat = mainStat != null ? mainStat : new TeyvatItemStat();
         this.subStats = subStats != null ? subStats : new ArrayList<>();
     }
+
 
     public ArtifactStatsComponent copy() {
         TeyvatItemStat mainCopy = mainStat != null ? mainStat.copy() : null;
         List<TeyvatItemStat> subsCopy = new ArrayList<>();
-        for (TeyvatItemStat s : subStats) subsCopy.add(s.copy());
+        if (subStats != null) {
+            for (TeyvatItemStat s : subStats) subsCopy.add(s.copy());
+        }
         return new ArtifactStatsComponent(level, exp, mainCopy, subsCopy);
     }
 
@@ -87,9 +94,8 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
 
     private void updateMainStatValue(int star) {
         if (mainStat == null) return;
-        double base = ArtifactStatData.getMainStatBase(mainStat.getAttribute(), mainStat.getKind(), star);
-        double growth = ArtifactStatData.getMainStatGrowth(mainStat.getAttribute(), mainStat.getKind(), star);
-        mainStat.setValue(base + growth * (level - 1));
+        double value = ArtifactStatData.getMainStatValue(mainStat.getAttribute(), mainStat.getKind(), star, level);
+        mainStat.setValue(value);
     }
 
     private void checkUnlockSubStats(int star) {

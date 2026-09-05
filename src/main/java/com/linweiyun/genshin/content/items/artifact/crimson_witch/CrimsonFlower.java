@@ -21,6 +21,7 @@ public class CrimsonFlower extends FlowerArtifact {
     public CrimsonFlower(Properties properties) {
         super(properties);
         this.set = ArtifactSets.CRIMSON_WITCH;
+        this.star = 5;
     }
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
