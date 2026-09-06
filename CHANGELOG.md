@@ -2,6 +2,139 @@
 
 ---
 
+## v0.3.0 — 2026-09-06
+
+### 圣遗物系统（全新）
+
+从 v0.2.0 到 v0.3.0 最大的更新是引入了完整的圣遗物系统，还原原神圣遗物的生成、升级和装备机制。
+
+#### 配置驱动架构
+
+圣遗物所有数值均可通过 `./config/minegenshin/artifact.toml` 修改，无需改代码。
+
+| 配置类 | 管理内容 |
+|--------|----------|
+| `ArtifactConfig` | 主入口，管理共享 Builder |
+| `ArtifactLevelConfig` | 3/4/5 星升级经验值 |
+| `ArtifactMainStatConfig` | 主词条 base+growth（3/4/5 星，18 种属性） |
+| `ArtifactMainStatConfig.mainStatWeight` | 时之沙/空之杯/理之冠主词条抽取权重 |
+| `ArtifactSubStatConfig` | 副词条 4 档数值（5 星，10 种属性） |
+
+#### 五种圣遗物类型
+
+| 类型 | 英文 | 主词条 |
+|------|------|--------|
+| 生之花 | FLOWER | 固定数值生命值 |
+| 死之羽 | PLUME | 固定数值攻击力 |
+| 时之沙 | SANDS | 随机 HP%/ATK%/DEF%/元素精通/元素充能 |
+| 空之杯 | GOBLET | 随机 HP%/ATK%/DEF%/8 种元素伤害/元素精通 |
+| 理之冠 | CIRCLET | 随机 HP%/ATK%/DEF%/暴击率/暴击伤害/治疗加成/元素精通 |
+
+#### 主词条系统
+
+- **数值公式**：`value = base + level × growth`，从 0 级开始随等级线性增长
+- **加权随机抽取**：时之沙/空之杯/理之冠的主词条按配置权重抽取（如 HP% 权重 26.68、元素精通 10.0），而非等概率
+- 生之花/死之羽主词条固定，无需抽取
+
+#### 副词条系统
+
+- **档位机制**：10 种副词条属性 × 4 个档位，初始随机 1-4 档
+- **生成流程**：从候选池不放回随机抽取 2-4 个副词条（1-2星:2个, 3星:3个, 4-5星:4个），排除与主词条冲突的属性
+- **初始解锁概率**：25% 全部解锁，75% 锁定最后一个（还原原神 3 词条/4 词条掉落机制）
+
+#### 副词条升级机制
+
+每 4 级触发一次（4/8/12/16/20 级）：
+
+1. 存在未解锁副词条 → 优先解锁（4 级时触发）
+2. 全部已解锁 → 随机选一条升级
+
+**升级公式**：`value = 档位基础值 × (upgradeCount + 1)`
+
+| 档位 | 小攻击基础值 | 升级 1 次 | 升级 2 次 |
+|------|-------------|-----------|-----------|
+| 1 档 | 14 | 14×2 = 28 | 14×3 = 42 |
+| 3 档 | 18 | 18×2 = 36 | 18×3 = 54 |
+
+升级次数通过 `TeyvatItemStat.upgradeCount` 持久化存储。
+
+#### 圣遗物套装
+
+首套实装 **炽烈的炎之魔女（Crimson Witch of Flames）**，包含 5 件。
+
+#### 圣遗物升级
+
+- 使用原石右键圣遗物可喂 1000 经验
+- 经验累积到阈值自动升级，同时更新主词条数值和触发副词条提升
+- 升级经验值按星级区分（3/4/5 星各自独立配置）
+
+#### 角色装备
+
+- `PGCharacterData` 新增 5 个圣遗物槽位（flower/plume/sands/goblet/circlet）
+- 角色信息界面（`ScreenCharacterInfo`）显示已装备圣遗物
+
+#### 悬停文本
+
+圣遗物物品悬浮提示显示：类型、星级（★）、等级、主词条、副词条（含锁定/解锁状态）。
+
+### TeyvatItemStat 扩展
+
+| 新增字段 | 用途 |
+|----------|------|
+| `tier` | 副词条档位（1-4），持久化存储 |
+| `upgradeCount` | 升级次数，用于计算当前值 = 档位值 × (upgradeCount + 1) |
+| `unlocked` | 副词条是否解锁 |
+
+### Bug 修复
+
+| 问题 | 修复 |
+|------|------|
+| 创造模式物品栏查看圣遗物崩溃 | `ArtifactItem.appendHoverText` 改用 `getOrDefault` 安全取值 |
+| 原石喂圣遗物时组件为 null 崩溃 | `ItemPrimogem.use` 增加组件 null 检查 |
+| 暴击率/暴击伤害/充能/治疗加成属性值显示为 0 | `ModAttributes` 修正 AttributeType ID 与注册表一致 |
+
+### 文件变动
+
+**新增**：
+
+| 文件 | 说明 |
+|------|------|
+| `config/ArtifactConfig.java` | 圣遗物配置主入口 |
+| `config/ArtifactLevelConfig.java` | 升级经验配置 |
+| `config/ArtifactMainStatConfig.java` | 主词条数值 + 权重配置 |
+| `config/ArtifactSubStatConfig.java` | 副词条档位配置 |
+| `content/items/artifact/ArtifactType.java` | 圣遗物类型枚举 |
+| `content/items/artifact/ArtifactSet.java` | 套装枚举 |
+| `content/items/artifact/ArtifactStatData.java` | 属性数据管理器 |
+| `content/items/artifact/ArtifactLevelData.java` | 等级数据管理 |
+| `content/items/artifact/ArtifactMainStatGenerator.java` | 主词条生成器（加权随机） |
+| `content/items/artifact/ArtifactSubStatGenerator.java` | 副词条生成器（档位抽取） |
+| `content/items/artifact/ArtifactItem.java` | 圣遗物物品基类 |
+| `content/items/component/ArtifactStatsComponent.java` | 圣遗物数据组件 |
+| `content/items/artifact/FlowerArtifact.java` | 生之花 |
+| `content/items/artifact/PlumeArtifact.java` | 死之羽 |
+| `content/items/artifact/SandsArtifact.java` | 时之沙 |
+| `content/items/artifact/GobletArtifact.java` | 空之杯 |
+| `content/items/artifact/CircletArtifact.java` | 理之冠 |
+| `content/items/artifact/crimson_witch/CrimsonFlower.java` | 魔女之花 |
+| `content/items/artifact/crimson_witch/CrimsonPlume.java` | 魔女之羽 |
+| `content/items/artifact/crimson_witch/CrimsonSands.java` | 魔女之时 |
+| `content/items/artifact/crimson_witch/CrimsonGoblet.java` | 魔女之心 |
+| `content/items/artifact/crimson_witch/CrimsonCirclet.java` | 魔女之帽 |
+
+**修改**：
+
+| 文件 | 改动 |
+|------|------|
+| `content/stat/TeyvatItemStat.java` | 新增 tier/upgradeCount/unlocked 字段及方法 |
+| `content/items/custom/ItemPrimogem.java` | 新增圣遗物喂经验功能 |
+| `core/system/registry/register/ModDataComponents.java` | 注册 ARTIFACT_STATS 组件 |
+| `core/system/registry/register/ModAttributes.java` | 修正 CR/ER/CDG/HB 属性 ID |
+| `core/character/PGCharacterData.java` | 新增 5 个圣遗物槽位 |
+| `client/gui/screens/ScreenCharacterInfo.java` | 新增圣遗物槽位显示 |
+
+---
+
 ## v0.2.0 — 2026-09-04
 
 ### 架构重构

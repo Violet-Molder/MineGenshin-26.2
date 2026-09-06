@@ -2194,7 +2194,19 @@ private static <T> T weightedPick(List<T> items, List<Double> weights, Random ra
 5. 25%概率全部解锁，75%概率最后一个锁定
 ```
 
-**解锁机制**：圣遗物每升到4的倍数级时，解锁/提升一次副词条。如果有未解锁的副词条，优先解锁；如果全部已解锁，则随机提升一个副词条（将其档位值加到当前值上）。
+**升级机制**：圣遗物每升到4的倍数级时（4/8/12/16/20级），触发一次副词条提升：
+
+1. 如果存在未解锁的副词条 → 优先解锁该词条（4级时触发）
+2. 如果全部已解锁 → 随机选择一条已解锁副词条进行升级
+
+**升级公式**：`value = tier基础值 × (upgradeCount + 1)`
+
+| 档位 | 基础值 | 升级1次 (upgradeCount=1) | 升级2次 (upgradeCount=2) |
+|------|--------|--------------------------|--------------------------|
+| 1档 小攻击 | 14 | 14 × 2 = **28** | 14 × 3 = **42** |
+| 3档 小攻击 | 18 | 18 × 2 = **36** | 18 × 3 = **54** |
+
+升级次数通过 `TeyvatItemStat.upgradeCount` 字段持久化存储，随 `ArtifactStatsComponent` 同步。
 
 **档位存储**：`TeyvatItemStat.tier` 字段持久化存储档位（1-4），用于后续升级时计算提升幅度。
 
@@ -2226,12 +2238,17 @@ private static <T> T weightedPick(List<T> items, List<Double> weights, Random ra
 @Persisted(key = "stat_tier")
 private int tier = 1;  // 副词条档位（1-4），主词条不使用
 
+@Persisted(key = "stat_upgrade_count")
+private int upgradeCount = 0;  // 副词条升级次数，当前值 = tier基础值 × (upgradeCount + 1)
+
 // 新构造函数：指定档位
 public TeyvatItemStat(AttributeType attribute, double value, StatKind kind, boolean unlocked, int tier);
 
 // 新增方法
 public int getTier();
 public void setTier(int tier);
+public int getUpgradeCount();
+public void setUpgradeCount(int count);
 ```
 
 #### 配置文件结构
@@ -2284,6 +2301,8 @@ public void setTier(int tier);
 | 属性数据管理 | `content/items/artifact/ArtifactStatData.java` |
 | 主词条生成器 | `content/items/artifact/ArtifactMainStatGenerator.java` |
 | 副词条生成器 | `content/items/artifact/ArtifactSubStatGenerator.java` |
+| 圣遗物组件数据 | `content/items/component/ArtifactStatsComponent.java` |
+| 圣遗物物品类 | `content/items/artifact/ArtifactItem.java` |
 | 物品属性统计 | `content/stat/TeyvatItemStat.java` |
 
 ---
@@ -2763,6 +2782,8 @@ UUID 是纯数字 (int)，在 Attachment 的持久化和 RPC 传输中更轻量�
 | 属性数据 | `content/items/artifact/ArtifactStatData.java` |
 | 主词条生成 | `content/items/artifact/ArtifactMainStatGenerator.java` |
 | 副词条生成 | `content/items/artifact/ArtifactSubStatGenerator.java` |
+| 圣遗物组件 | `content/items/component/ArtifactStatsComponent.java` |
+| 圣遗物物品 | `content/items/artifact/ArtifactItem.java` |
 | 物品属性 | `content/stat/TeyvatItemStat.java` |
 | 元素枚举 | `enums/ElementalsGIM.java` |
 | 攻击类型 | `enums/AttackType.java` |
