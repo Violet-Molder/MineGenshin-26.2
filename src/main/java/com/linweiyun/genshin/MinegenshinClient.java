@@ -2,7 +2,9 @@ package com.linweiyun.genshin;
 
 import com.geckolib.renderer.GeoEntityRenderer;
 import com.linweiyun.genshin.client.render.entity.FieldTalismanSpiritRender;
+import com.linweiyun.genshin.client.gui.screens.ScreenCharacterInfo;
 import com.linweiyun.genshin.core.system.registry.register.ModEntities;
+import com.linweiyun.genshin.core.system.registry.register.ModMenus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -11,6 +13,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterDebugEntriesEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
@@ -26,6 +29,11 @@ public class MinegenshinClient {
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
+    }
+
+    @SubscribeEvent
+    public static void registerMenuScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenus.CHARACTER_INFO_MENU.get(), ScreenCharacterInfo::new);
     }
 
     @SubscribeEvent

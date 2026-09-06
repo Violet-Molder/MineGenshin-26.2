@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.client.gui.screens;
 
+import com.linweiyun.genshin.core.network.NetworkManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 
@@ -14,12 +15,6 @@ public class GUIServerHelperGIM {
     Minecraft.getInstance().setScreenAndShow(new ScreenCharacterParty(modularUI));
   }
   public static void openCharacterInfoScreen(Player player) {
-    var modularUI = ScreenCharacterInfo.createModularUI(player);
-    Minecraft.getInstance().setScreenAndShow(new ScreenCharacterInfo(modularUI));
+    NetworkManager.openCharacterInfoScreenToServer();
   }
-
-//  public static void openTestGraphScreen(Player player) {
-//    var modularUI = TestGraphScreen.createModularUI(player);
-//    Minecraft.getInstance().setScreenAndShow(new TestGraphScreen(modularUI));
-//  }
 }

@@ -38,11 +38,11 @@ public class ItemPrimogem extends Item {
         ItemStack sands = data.getSands();
         ItemStack goblet = data.getGoblet();
         ItemStack circlet = data.getCirclet();
-        if (flower != null) {flower.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.FLOWER);}
-        if (plume != null) {plume.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.PLUME);}
-        if (sands != null) {sands.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.SANDS);}
-        if (goblet != null) {goblet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.GOBLET);}
-        if (circlet != null) {circlet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.CIRCLET);}
+        if (!flower.isEmpty()) {flower.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.FLOWER);}
+        if (!plume.isEmpty()) {plume.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.PLUME);}
+        if (!sands.isEmpty()) {sands.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.SANDS);}
+        if (!goblet.isEmpty()) {goblet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.GOBLET);}
+        if (!circlet.isEmpty()) {circlet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.CIRCLET);}
       }
     }
     if (!level.isClientSide()) {

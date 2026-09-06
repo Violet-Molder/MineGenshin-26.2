@@ -373,6 +373,29 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("primogemWish");
   }
 
+  // ========== 打开角色信息菜单 ==========
+  @RPCPacket("openCharacterInfoRPCPacket")
+  public static void openCharacterInfoRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer serverPlayer = sender.asPlayer();
+      if (serverPlayer == null) return;
+      serverPlayer.openMenu(new net.minecraft.world.MenuProvider() {
+        @Override
+        public Component getDisplayName() {
+          return Component.literal("Character Info");
+        }
+        @Override
+        public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId, net.minecraft.world.entity.player.Inventory inventory, net.minecraft.world.entity.player.Player p) {
+          return new com.linweiyun.genshin.client.gui.menu.CharacterInfoMenu(containerId, inventory);
+        }
+      });
+    }
+  }
+
+  public static void openCharacterInfoScreenToServer() {
+    RPCPacketDistributor.rpcToServer("openCharacterInfoRPCPacket");
+  }
+
   public static void giveItemToPlayer(ServerPlayer player, ItemStack stack) {
     int remaining = stack.getCount();
 

@@ -13,7 +13,9 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class PGCharacterData implements IPersistedSerializable {
     @Persisted(key = "character_level")
@@ -55,18 +57,8 @@ public class PGCharacterData implements IPersistedSerializable {
     @Persisted(key = "owner_uuid")
     private UUID ownerUUID;
 
-    @Persisted(key = "flower")
-    private ItemStack flower;
-    @Persisted(key = "plume")
-    private ItemStack plume;
-    @Persisted(key = "sands")
-    private ItemStack sands;
-    @Persisted(key = "goblet")
-    private ItemStack goblet;
-    @Persisted(key = "circle")
-    private ItemStack circlet;
-    @Persisted(key = "artifacts")
-    private Map<String, ItemStack> artifacts = new HashMap<>();
+    @Persisted(key = "artifact_inventory")
+    private ArtifactInventory artifactInventory = new ArtifactInventory();
 
     private Player ownerPlayer;
     // 效果容器的缓存引用，延迟加载，避免每次操作都重新反序列化
@@ -91,11 +83,7 @@ public class PGCharacterData implements IPersistedSerializable {
         this.attributes = new AttributeContainer();
         this.effectDataList = new ListTag();
         this.skillCoolList = new ArrayList<>();
-        this.flower = ItemStack.EMPTY;
-        this.plume = ItemStack.EMPTY;
-        this.sands = ItemStack.EMPTY;
-        this.goblet = ItemStack.EMPTY;
-        this.circlet = ItemStack.EMPTY;
+        this.artifactInventory = new ArtifactInventory();
         initAllAttributes();
 
     }
@@ -125,6 +113,8 @@ public class PGCharacterData implements IPersistedSerializable {
     public void setAttributeBaseValue(AttributeType type, double value) { attributes.setBaseValue(type, value);markDirty();}
     public void addAttributeFlatModifier(AttributeType type, String source, double value) { attributes.addFlatModifier(type, source, value);markDirty();}
     public void addAttributePercentModifier(AttributeType type, String source, double value) { attributes.addPercentModifier(type, source, value);markDirty();}
+    public void setAttributeFlatModifier(AttributeType type, String source, double value) { attributes.setFlatModifier(type, source, value);markDirty();}
+    public void setAttributePercentModifier(AttributeType type, String source, double value) { attributes.setPercentModifier(type, source, value);markDirty();}
     public void addAttributeTempFlatModifier(AttributeType type, String source, double value) { attributes.addTempFlatModifier(type, source, value);markDirty();}
     public void addAttributeTempPercentModifier(AttributeType type, String source, double value) { attributes.addTempPercentModifier(type, source, value);markDirty();}
     public void removeAttributeModifier(AttributeType type, String source) { attributes.removeModifier(type, source);markDirty();}
@@ -144,16 +134,16 @@ public class PGCharacterData implements IPersistedSerializable {
     public int getElementalSkillLevel() { return elementalSkillLevel; }
     public int getElementalBurstLevel() { return elementalBurstLevel; }
 
-    public ItemStack getFlower() { return flower; }
-    public ItemStack getPlume() { return plume; }
-    public ItemStack getSands() { return sands; }
-    public ItemStack getGoblet() { return goblet; }
-    public ItemStack getCirclet() { return circlet; }
+    public ArtifactInventory getArtifactInventory() { return artifactInventory; }
 
-    public Map<String, ItemStack> getArtifacts() {return artifacts;}
+    public ItemStack getFlower() { return artifactInventory.getItem(ArtifactInventory.SLOT_FLOWER); }
+    public ItemStack getPlume() { return artifactInventory.getItem(ArtifactInventory.SLOT_PLUME); }
+    public ItemStack getSands() { return artifactInventory.getItem(ArtifactInventory.SLOT_SANDS); }
+    public ItemStack getGoblet() { return artifactInventory.getItem(ArtifactInventory.SLOT_GOBLET); }
+    public ItemStack getCirclet() { return artifactInventory.getItem(ArtifactInventory.SLOT_CIRCLET); }
 
     public List<ItemStack> getAllArtifactsAsList() {
-        return List.of(flower, plume, sands, goblet, circlet);
+        return artifactInventory.getAllArtifactsAsList();
     }
 
 
@@ -172,11 +162,11 @@ public class PGCharacterData implements IPersistedSerializable {
     public void setElementalSkillMaxStacks(int stacks) { this.elementalSkillMaxStacks = stacks;markDirty();}
     public void setElementalSkillStacks(int stacks) { this.elementalSkillStacks = stacks;markDirty();}
 
-    public void setFlower(ItemStack stack) { this.flower = stack; artifacts.put("flower", stack);markDirty(); }
-    public void setPlume(ItemStack stack) { this.plume = stack; artifacts.put("plume", stack);markDirty(); }
-    public void setSands(ItemStack stack) { this.sands = stack; artifacts.put("sands", stack);markDirty(); }
-    public void setGoblet(ItemStack stack) { this.goblet = stack; artifacts.put("goblet", stack);markDirty(); }
-    public void setCirclet(ItemStack stack) { this.circlet = stack; artifacts.put("circle", stack);markDirty(); }
+    public void setFlower(ItemStack stack) { artifactInventory.setItem(ArtifactInventory.SLOT_FLOWER, stack); markDirty(); }
+    public void setPlume(ItemStack stack) { artifactInventory.setItem(ArtifactInventory.SLOT_PLUME, stack); markDirty(); }
+    public void setSands(ItemStack stack) { artifactInventory.setItem(ArtifactInventory.SLOT_SANDS, stack); markDirty(); }
+    public void setGoblet(ItemStack stack) { artifactInventory.setItem(ArtifactInventory.SLOT_GOBLET, stack); markDirty(); }
+    public void setCirclet(ItemStack stack) { artifactInventory.setItem(ArtifactInventory.SLOT_CIRCLET, stack); markDirty(); }
 
 
     public void addLevel(int levels) {this.characterLevel = Math.max(1, Math.min(this.characterLevel + levels, 90));markDirty();}
@@ -265,11 +255,7 @@ public class PGCharacterData implements IPersistedSerializable {
         if (this.effectContainer != null) {                                // 如果容器已加载
             copy.effectContainer = this.effectContainer.copy();            // 也深拷贝容器缓存
         }
-        copy.flower = this.flower.copy();
-        copy.plume = this.plume.copy();
-        copy.sands = this.sands.copy();
-        copy.goblet = this.goblet.copy();
-        copy.circlet = this.circlet.copy();
+        copy.artifactInventory = this.artifactInventory.copy();
         return copy;
     }
 

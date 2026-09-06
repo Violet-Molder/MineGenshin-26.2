@@ -145,41 +145,77 @@ public class PGCharacter implements IPersistedSerializable {
 
     public void tick(Player player) {
         data.tick();
+        recalculateDirtyArtifactSlots();
         frontTick(player);
         backTick(player);
     }
 
     public void equipArtifact(ArtifactType type, ItemStack artifactStack) {
         if (artifactStack.getItem() instanceof ArtifactItem artifactItem) {
-            removeArtifactStats(type);
             if (artifactItem.getType() != type) return;
-            switch (type) {
-                case FLOWER -> data.setFlower(artifactStack.copy());
-                case PLUME -> data.setPlume(artifactStack.copy());
-                case SANDS -> data.setSands(artifactStack.copy());
-                case GOBLET -> data.setGoblet(artifactStack.copy());
-                case CIRCLET -> data.setCirclet(artifactStack.copy());
-            }
-            applyArtifactStats(type);
+            int slot = ArtifactInventory.typeToSlot(type);
+            data.getArtifactInventory().setItem(slot, artifactStack.copy());
         }
-
-        refreshArtifactSetEffects();
     }
     public void unequipArtifact(ArtifactType type) {
-        switch (type) {
-            case FLOWER -> data.setFlower(ItemStack.EMPTY);
-            case PLUME -> data.setPlume(ItemStack.EMPTY);
-            case SANDS -> data.setSands(ItemStack.EMPTY);
-            case GOBLET -> data.setGoblet(ItemStack.EMPTY);
-            case CIRCLET -> data.setCirclet(ItemStack.EMPTY);
+        int slot = ArtifactInventory.typeToSlot(type);
+        data.getArtifactInventory().setItem(slot, ItemStack.EMPTY);
+    }
+
+    private void recalculateDirtyArtifactSlots() {
+        ArtifactInventory inv = data.getArtifactInventory();
+        if (!inv.hasDirtySlots()) return;
+        for (int i = 0; i < ArtifactInventory.SLOT_COUNT; i++) {
+            if (inv.isDirty(i)) {
+                recalculateArtifactSlot(i);
+                inv.clearDirty(i);
+            }
         }
         refreshArtifactSetEffects();
     }
 
-    private void removeArtifactStats(ArtifactType type) {
+    private void recalculateArtifactSlot(int slotIndex) {
+        ArtifactType type = ArtifactInventory.slotToType(slotIndex);
         String source = type.name().toLowerCase();
+        LOGGER.info("PGCharacter.recalculateArtifactSlot: slot={}, type={}, source={}", slotIndex, type, source);
+
         for (AttributeType attrType : ModRegistries.ATTRIBUTE_TYPE_REGISTRY) {
             data.removeAttributeModifier(attrType, source);
+        }
+
+        ItemStack stack = data.getArtifactInventory().getItem(slotIndex);
+        if (!stack.isEmpty() && stack.getItem() instanceof ArtifactItem) {
+            ArtifactStatsComponent stats = stack.getOrDefault(
+                    ModDataComponents.ARTIFACT_STATS.get(),
+                    ArtifactStatsComponent.DEFAULT
+            );
+            applyStatWithSet(stats.mainStat, source);
+            for (TeyvatItemStat subStat : stats.subStats) {
+                if (subStat.isUnlocked()) {
+                    applyStatWithSet(subStat, source);
+                }
+            }
+        }
+    }
+
+    private void applyStatWithSet(TeyvatItemStat stat, String source) {
+        if (!stat.isInitialized()) return;
+        AttributeType attr = stat.getAttribute();
+        double value = stat.getValue();
+        if (stat.getKind() == TeyvatItemStat.StatKind.PERCENT) {
+            value /= 100.0;
+        }
+        boolean isBaseAttr = attr == ModAttributes.ATK.get()
+                || attr == ModAttributes.DEF.get()
+                || attr == ModAttributes.MAX_HP.get();
+        if (isBaseAttr) {
+            if (stat.getKind() == TeyvatItemStat.StatKind.FLAT) {
+                data.setAttributeFlatModifier(attr, source, value);
+            } else {
+                data.setAttributePercentModifier(attr, source, value);
+            }
+        } else {
+            data.setAttributeFlatModifier(attr, source, value);
         }
     }
 
@@ -216,41 +252,6 @@ public class PGCharacter implements IPersistedSerializable {
             data.syncEffectsToTag();
         });
 
-    }
-    private void applyArtifactStats(ArtifactType type) {
-        List<ItemStack> artifacts = data.getArtifacts().values().stream().toList();
-        for (ItemStack artifact :artifacts) {
-            if (artifact.isEmpty()) return;
-            ArtifactStatsComponent stats = artifact.getOrDefault(
-                    ModDataComponents.ARTIFACT_STATS.get(),
-                    ArtifactStatsComponent.DEFAULT
-            );
-            String source = type.name().toLowerCase();
-            applyStat(stats.mainStat, source);
-            for (TeyvatItemStat subStat : stats.subStats) {
-                if (subStat.isUnlocked()) {
-                    applyStat(subStat, source);
-                }
-            }
-
-        }
-    }
-    private void applyStat(TeyvatItemStat stat, String source) {
-        if (!stat.isInitialized()) return;
-        AttributeType attr = stat.getAttribute();
-        double value = stat.getValue();
-        if (stat.getKind() == TeyvatItemStat.StatKind.PERCENT) {
-            value /= 100.0;
-        }
-        if (attr == ModAttributes.ATK.get() || attr == ModAttributes.DEF.get() || attr == ModAttributes.MAX_HP.get()) {
-            if (stat.getKind() == TeyvatItemStat.StatKind.FLAT) {
-                data.addAttributeFlatModifier(attr, source, value);
-            } else {
-                data.addAttributePercentModifier(attr, source, value);
-            }
-        } else {
-            data.addAttributeFlatModifier(attr, source, value);
-        }
     }
 
 

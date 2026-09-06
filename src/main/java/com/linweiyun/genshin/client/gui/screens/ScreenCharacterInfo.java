@@ -1,76 +1,40 @@
 package com.linweiyun.genshin.client.gui.screens;
 
-import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
-import com.lowdragmc.lowdraglib2.gui.ui.ModularUIClientAccess;
-import com.lowdragmc.lowdraglib2.gui.ui.UI;
-import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.ItemSlot;
-import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
-import net.minecraft.client.gui.screens.Screen;
+import com.linweiyun.genshin.client.gui.menu.CharacterInfoMenu;
+import com.linweiyun.genshin.core.character.ArtifactInventory;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class ScreenCharacterInfo extends Screen {
-    final ModularUI modularUI;
-    protected ScreenCharacterInfo(ModularUI modularUI) {
-        super(Component.empty());
-        this.modularUI = modularUI;
+public class ScreenCharacterInfo extends AbstractContainerScreen<CharacterInfoMenu> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("MineGenshin/ScreenCharacterInfo");
+
+    public ScreenCharacterInfo(CharacterInfoMenu menu, Inventory playerInventory, Component title) {
+        super(menu, playerInventory, title);
     }
 
-    public void init() {
-        super.init();
-        ModularUIClientAccess.setScreenAndInit(this.modularUI, this);
-        this.addRenderableWidget(ModularUIClientAccess.getWidget(modularUI));
-    }
-    public static ModularUI createModularUI(Player player) {
-        var root = new UIElement();
-        var stylesheet = StylesheetManager.INSTANCE.getStylesheetSafe(
-                Identifier.parse("minegenshin:lss/character_info.lss"));
-        var backGround = new UIElement();
-        var character_list_container = new UIElement();
-        var flower = new ItemSlot();
-        var plume = new ItemSlot();
-        var sands = new ItemSlot();
-        var goblet = new ItemSlot();
-        var circlet = new ItemSlot();
-        PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-        PGCharacter character = attachment.getCurrentCharacter();
-        if (character != null) {
-            PGCharacterData data = character.getData();
-            if (data != null) {
-                flower.setItem(data.getFlower());
-                plume.setItem(data.getPlume());
-                sands.setItem(data.getSands());
-                goblet.setItem(data.getGoblet());
-                circlet.setItem(data.getCirclet());
-            }
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        LOGGER.info("Screen.mouseClicked: event={}, doubleClick={}, hoveredSlot={}",
+                event, doubleClick,
+                this.hoveredSlot != null
+                        ? "index=" + this.hoveredSlot.index
+                        + " class=" + this.hoveredSlot.getClass().getSimpleName()
+                        + " x=" + this.hoveredSlot.x
+                        + " y=" + this.hoveredSlot.y
+                        + " item=" + this.hoveredSlot.getItem()
+                        : "null");
+        for (int i = 0; i < ArtifactInventory.SLOT_COUNT; i++) {
+            Slot slot = this.menu.getSlot(i);
+            LOGGER.info("Screen.mouseClicked [ARTIFACT slot {}]: slotX={}, slotY={}, slotClass={}, isActive={}, item={}",
+                    i, slot.x, slot.y, slot.getClass().getSimpleName(), slot.isActive(), slot.getItem());
         }
-
-
-
-        root.addChildren(
-                backGround.addChildren(
-                        character_list_container.addChildren(
-                                flower,
-                                plume,
-                                sands,
-                                goblet,
-                                circlet
-                        )
-                )
-        );
-
-        var ui = UI.of(root, stylesheet);
-        return ModularUI.of(ui, player);
-    }
-
-    private void openArtifactInfo(ItemStack artifact) {
-
+        LOGGER.info("Screen.mouseClicked: totalMenuSlots={}", this.menu.slots.size());
+        return super.mouseClicked(event, doubleClick);
     }
 }

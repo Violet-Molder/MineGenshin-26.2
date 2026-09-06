@@ -61,6 +61,14 @@ public class AttributeContainer implements IPersistedSerializable {
         getOrCreate(type).addPercentModifier(source, value);
     }
 
+    public void setFlatModifier(AttributeType type, String source, double value) {
+        getOrCreate(type).setFlatModifier(source, value);
+    }
+
+    public void setPercentModifier(AttributeType type, String source, double value) {
+        getOrCreate(type).setPercentModifier(source, value);
+    }
+
     public void addTempFlatModifier(AttributeType type, String source, double value) {
         getOrCreate(type).addTempFlatModifier(source, value);
     }

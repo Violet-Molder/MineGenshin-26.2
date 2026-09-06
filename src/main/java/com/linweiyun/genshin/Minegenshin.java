@@ -50,6 +50,7 @@ public class Minegenshin {
         ModCharacters.CHARACTERS.register(modEventBus);
         AttachmentRegistration.register(modEventBus);
         ModCharacterEffects.register(modEventBus);
+        ModMenus.register(modEventBus);
 
 
     }

@@ -4,12 +4,8 @@ import com.linweiyun.genshin.content.effect.character.artifact.ArtifactSetEffect
 import com.linweiyun.genshin.content.items.TeyvatItem;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
-import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
-import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -34,21 +30,13 @@ public class ArtifactItem extends TeyvatItem {
     protected DeferredHolder<ArtifactSet, ArtifactSet> set;
 
     public ArtifactItem(Properties properties) {
-        super(properties);
+        super(properties.stacksTo(1));
     }
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack artifactStack = player.getItemInHand(hand);
         ArtifactItem.initializeArtifactStackIfNeeded(artifactStack);
-        boolean isGenshin = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
-        if(isGenshin){
-            PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-            PGCharacter character = attachment.getCurrentCharacter();
-            if (character != null) {
-                character.equipArtifact(this.type, artifactStack);
-            }
-        }
         return super.use(level, player, hand);
     }
 
