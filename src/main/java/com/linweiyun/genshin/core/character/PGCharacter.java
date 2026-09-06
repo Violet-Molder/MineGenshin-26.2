@@ -10,10 +10,14 @@ import com.linweiyun.genshin.content.effect.character.artifact.ArtifactSetEffect
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.content.items.artifact.ArtifactType;
+import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
+import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
+import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
@@ -147,15 +151,18 @@ public class PGCharacter implements IPersistedSerializable {
 
     public void equipArtifact(ArtifactType type, ItemStack artifactStack) {
         if (artifactStack.getItem() instanceof ArtifactItem artifactItem) {
+            removeArtifactStats(type);
             if (artifactItem.getType() != type) return;
             switch (type) {
-                case FLOWER -> data.setFlower(artifactStack);
-                case PLUME -> data.setPlume(artifactStack);
-                case SANDS -> data.setSands(artifactStack);
-                case GOBLET -> data.setGoblet(artifactStack);
-                case CIRCLET -> data.setCirclet(artifactStack);
+                case FLOWER -> data.setFlower(artifactStack.copy());
+                case PLUME -> data.setPlume(artifactStack.copy());
+                case SANDS -> data.setSands(artifactStack.copy());
+                case GOBLET -> data.setGoblet(artifactStack.copy());
+                case CIRCLET -> data.setCirclet(artifactStack.copy());
             }
+            applyArtifactStats(type);
         }
+
         refreshArtifactSetEffects();
     }
     public void unequipArtifact(ArtifactType type) {
@@ -167,6 +174,13 @@ public class PGCharacter implements IPersistedSerializable {
             case CIRCLET -> data.setCirclet(ItemStack.EMPTY);
         }
         refreshArtifactSetEffects();
+    }
+
+    private void removeArtifactStats(ArtifactType type) {
+        String source = type.name().toLowerCase();
+        for (AttributeType attrType : ModRegistries.ATTRIBUTE_TYPE_REGISTRY) {
+            data.removeAttributeModifier(attrType, source);
+        }
     }
 
     private void refreshArtifactSetEffects() {
@@ -201,6 +215,42 @@ public class PGCharacter implements IPersistedSerializable {
             }
             data.syncEffectsToTag();
         });
+
+    }
+    private void applyArtifactStats(ArtifactType type) {
+        List<ItemStack> artifacts = data.getArtifacts().values().stream().toList();
+        for (ItemStack artifact :artifacts) {
+            if (artifact.isEmpty()) return;
+            ArtifactStatsComponent stats = artifact.getOrDefault(
+                    ModDataComponents.ARTIFACT_STATS.get(),
+                    ArtifactStatsComponent.DEFAULT
+            );
+            String source = type.name().toLowerCase();
+            applyStat(stats.mainStat, source);
+            for (TeyvatItemStat subStat : stats.subStats) {
+                if (subStat.isUnlocked()) {
+                    applyStat(subStat, source);
+                }
+            }
+
+        }
+    }
+    private void applyStat(TeyvatItemStat stat, String source) {
+        if (!stat.isInitialized()) return;
+        AttributeType attr = stat.getAttribute();
+        double value = stat.getValue();
+        if (stat.getKind() == TeyvatItemStat.StatKind.PERCENT) {
+            value /= 100.0;
+        }
+        if (attr == ModAttributes.ATK.get() || attr == ModAttributes.DEF.get() || attr == ModAttributes.MAX_HP.get()) {
+            if (stat.getKind() == TeyvatItemStat.StatKind.FLAT) {
+                data.addAttributeFlatModifier(attr, source, value);
+            } else {
+                data.addAttributePercentModifier(attr, source, value);
+            }
+        } else {
+            data.addAttributeFlatModifier(attr, source, value);
+        }
     }
 
 

@@ -13,9 +13,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class PGCharacterData implements IPersistedSerializable {
     @Persisted(key = "character_level")
@@ -67,6 +65,8 @@ public class PGCharacterData implements IPersistedSerializable {
     private ItemStack goblet;
     @Persisted(key = "circle")
     private ItemStack circlet;
+    @Persisted(key = "artifacts")
+    private Map<String, ItemStack> artifacts = new HashMap<>();
 
     private Player ownerPlayer;
     // 效果容器的缓存引用，延迟加载，避免每次操作都重新反序列化
@@ -149,6 +149,9 @@ public class PGCharacterData implements IPersistedSerializable {
     public ItemStack getSands() { return sands; }
     public ItemStack getGoblet() { return goblet; }
     public ItemStack getCirclet() { return circlet; }
+
+    public Map<String, ItemStack> getArtifacts() {return artifacts;}
+
     public List<ItemStack> getAllArtifactsAsList() {
         return List.of(flower, plume, sands, goblet, circlet);
     }
@@ -169,11 +172,11 @@ public class PGCharacterData implements IPersistedSerializable {
     public void setElementalSkillMaxStacks(int stacks) { this.elementalSkillMaxStacks = stacks;markDirty();}
     public void setElementalSkillStacks(int stacks) { this.elementalSkillStacks = stacks;markDirty();}
 
-    public void setFlower(ItemStack stack) { this.flower = stack; markDirty(); }
-    public void setPlume(ItemStack stack) { this.plume = stack; markDirty(); }
-    public void setSands(ItemStack stack) { this.sands = stack; markDirty(); }
-    public void setGoblet(ItemStack stack) { this.goblet = stack; markDirty(); }
-    public void setCirclet(ItemStack stack) { this.circlet = stack; markDirty(); }
+    public void setFlower(ItemStack stack) { this.flower = stack; artifacts.put("flower", stack);markDirty(); }
+    public void setPlume(ItemStack stack) { this.plume = stack; artifacts.put("plume", stack);markDirty(); }
+    public void setSands(ItemStack stack) { this.sands = stack; artifacts.put("sands", stack);markDirty(); }
+    public void setGoblet(ItemStack stack) { this.goblet = stack; artifacts.put("goblet", stack);markDirty(); }
+    public void setCirclet(ItemStack stack) { this.circlet = stack; artifacts.put("circle", stack);markDirty(); }
 
 
     public void addLevel(int levels) {this.characterLevel = Math.max(1, Math.min(this.characterLevel + levels, 90));markDirty();}
