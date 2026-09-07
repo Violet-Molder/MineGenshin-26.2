@@ -1,8 +1,8 @@
 package com.linweiyun.genshin;
 
 import com.geckolib.renderer.GeoEntityRenderer;
-import com.linweiyun.genshin.client.render.entity.FieldTalismanSpiritRender;
-import com.linweiyun.genshin.client.gui.screens.ScreenCharacterInfo;
+import com.linweiyun.genshin.render.render.entity.FieldTalismanSpiritRender;
+import com.linweiyun.genshin.render.gui.screens.ScreenArtifaceInfo;
 import com.linweiyun.genshin.core.system.registry.register.ModEntities;
 import com.linweiyun.genshin.core.system.registry.register.ModMenus;
 import net.neoforged.api.distmarker.Dist;
@@ -33,7 +33,7 @@ public class MinegenshinClient {
 
     @SubscribeEvent
     public static void registerMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenus.CHARACTER_INFO_MENU.get(), ScreenCharacterInfo::new);
+        event.register(ModMenus.CHARACTER_INFO_MENU.get(), ScreenArtifaceInfo::new);
     }
 
     @SubscribeEvent

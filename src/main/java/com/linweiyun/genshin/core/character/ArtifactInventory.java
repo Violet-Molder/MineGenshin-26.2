@@ -4,20 +4,21 @@ import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.content.items.artifact.ArtifactType;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.mojang.logging.LogUtils;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class ArtifactInventory implements Container, IPersistedSerializable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("MineGenshin/ArtifactInventory");
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final int SLOT_COUNT = 5;
     public static final int SLOT_FLOWER = 0;
@@ -81,7 +82,6 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
     public void markDirty(int slot) {
         if (slot >= 0 && slot < SLOT_COUNT) {
             dirtyFlags[slot] = true;
-            LOGGER.info("ArtifactInventory.markDirty: slot={}", slot);
         }
     }
 
@@ -109,7 +109,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
             case SLOT_SANDS -> sands;
             case SLOT_GOBLET -> goblet;
             case SLOT_CIRCLET -> circlet;
-            default -> throw new IndexOutOfBoundsException("Invalid artifact slot: " + slot);
+            default -> throw new IllegalStateException("Unexpected value: " + slot);
         };
     }
 
@@ -120,7 +120,6 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
             case SLOT_SANDS -> sands = stack;
             case SLOT_GOBLET -> goblet = stack;
             case SLOT_CIRCLET -> circlet = stack;
-            default -> throw new IndexOutOfBoundsException("Invalid artifact slot: " + slot);
         }
     }
 
@@ -135,12 +134,12 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
     }
 
     @Override
-    public ItemStack getItem(int slot) {
+    public @NonNull ItemStack getItem(int slot) {
         return getStackBySlot(slot);
     }
 
     @Override
-    public ItemStack removeItem(int slot, int amount) {
+    public @NonNull ItemStack removeItem(int slot, int amount) {
         ItemStack existing = getStackBySlot(slot);
         if (existing.isEmpty()) return ItemStack.EMPTY;
         int toRemove = Math.min(amount, existing.getCount());
@@ -156,7 +155,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
     }
 
     @Override
-    public ItemStack removeItemNoUpdate(int slot) {
+    public @NonNull ItemStack removeItemNoUpdate(int slot) {
         ItemStack existing = getStackBySlot(slot);
         if (existing.isEmpty()) return ItemStack.EMPTY;
         setStackBySlot(slot, ItemStack.EMPTY);

@@ -13,12 +13,10 @@ public class ArtifactLevelConfig {
 
     //TEMP 由 ArtifactConfig 主入口在共享 builder 上调用，不自己 build spec
     public static void register(ModConfigSpec.Builder builder) {
-        builder
-                .push("levelUpExp")
-                .translation("config.genshin.artifact.levelUpExp");
+        builder.push("levelUpExp");
 
         EXP_3_STAR = builder
-                .translation("config.genshin.artifact.levelUpExp.3star")
+                .translation("minegenshin.configuration.levelUpExp.3star")
                 .defineList(
                         List.of("3_star_exp_per_level"),
                         () -> List.of(
@@ -29,7 +27,7 @@ public class ArtifactLevelConfig {
                 );
 
         EXP_4_STAR = builder
-                .translation("config.genshin.artifact.levelUpExp.4star")
+                .translation("minegenshin.configuration.levelUpExp.4star")
                 .defineList(
                         List.of("4_star_exp_per_level"),
                         () -> List.of(
@@ -41,7 +39,7 @@ public class ArtifactLevelConfig {
                 );
 
         EXP_5_STAR = builder
-                .translation("config.genshin.artifact.levelUpExp.5star")
+                .translation("minegenshin.configuration.levelUpExp.5star")
                 .defineList(
                         List.of("5_star_exp_per_level"),
                         () -> List.of(

@@ -1,5 +1,84 @@
 {
-  "config.exp.character": "Character Upgrade Experience",
+  "minegenshin.config.exp.character": "Character Upgrade Experience",
+
+  "minegenshin.configuration.title": "Genshin Impact in Minecraft Configs",
+  "minegenshin.configuration.section.minegenshin.exp.toml": "Character Experience Config",
+  "minegenshin.configuration.section.minegenshin.exp.toml.title": "Character Experience Config",
+  "minegenshin.configuration.section.minegenshin.attribute.toml": "Character Base Attributes Config",
+  "minegenshin.configuration.section.minegenshin.attribute.toml.title": "Character Base Attributes Config",
+  "minegenshin.configuration.section.minegenshin.genshin.reaction.toml": "Elemental Reaction Config",
+  "minegenshin.configuration.section.minegenshin.genshin.reaction.toml.title": "Elemental Reaction Config",
+  "minegenshin.configuration.section.minegenshin.monster.level.toml": "Monster Spawn Logic Config",
+  "minegenshin.configuration.section.minegenshin.monster.level.toml.title": "Monster Spawn Logic Config",
+  "minegenshin.configuration.section.minegenshin.artifact.toml": "Artifact Config",
+  "minegenshin.configuration.section.minegenshin.artifact.toml.title": "Artifact Config",
+
+  "minegenshin.configuration.shenhe": "Shenhe",
+  "minegenshin.configuration.columbina": "Columbina",
+
+  "minegenshin.configuration.reaction-amplifying": "Amplifying Reaction",
+  "minegenshin.configuration.reaction-fusion": "Fusion Reaction",
+
+  "minegenshin.config.reaction.coefficient.vaporize.positive": "Vaporize-Positive",
+  "minegenshin.config.reaction.coefficient.vaporize.negative": "Vaporize-Negative",
+  "minegenshin.config.reaction.coefficient.melt.positive": "Melt-Positive",
+  "minegenshin.config.reaction.coefficient.melt.negative": "Melt-Positive",
+
+  "minegenshin.config.reaction.coefficient.level": "Level Coefficient",
+  "minegenshin.config.reaction.coefficient.superconduct": "Superconduct Coefficient",
+  "minegenshin.config.reaction.coefficient.swirl": "Swirl Coefficient",
+  "minegenshin.config.reaction.coefficient.elector-charged": "Elector-Charged Coefficient",
+  "minegenshin.config.reaction.coefficient.ice-breaking": "Ice-Breaking Coefficient",
+  "minegenshin.config.reaction.coefficient.overloaded": "Overloaded Coefficient",
+  "minegenshin.config.reaction.coefficient.burning": "Burning Coefficient",
+  "minegenshin.config.reaction.coefficient.bloom": "Bloom Coefficient",
+  "minegenshin.config.reaction.coefficient.burgeon": "Burgeon Coefficient",
+  "minegenshin.config.reaction.coefficient.hyperbloom": "Hyperbloom Coefficient",
+
+  "minegenshin.configuration.monster-level": "Monster Level",
+  "minegenshin.configuration.calculation-mode": "Level Calculation Mode",
+  "minegenshin.configuration.calculation-radius": "Level Calculation Radius",
+
+  "minegenshin.configuration.levelUpExp": "Level Up Exp",
+  "minegenshin.configuration.levelUpExp.3star": "3 Star",
+  "minegenshin.configuration.levelUpExp.4star": "4 Star",
+  "minegenshin.configuration.levelUpExp.5star": "5 Star",
+
+  "minegenshin.configuration.mainStat": "Main Stat",
+  "minegenshin.configuration.mainStatWeight": "Stat Generate Weight",
+  "minegenshin.configuration.weightSands": "Sands of Eon",
+  "minegenshin.configuration.weightGoblet": "Goblet of Eonothem",
+  "minegenshin.configuration.weightCirclet": "Circlet of Logos",
+
+  "minegenshin.configuration.subStat": "Sub Stat",
+
+  "minegenshin.configuration.5star": "5 Star",
+  "minegenshin.configuration.4star": "4 Star",
+  "minegenshin.configuration.3star": "3 Star",
+
+  "minegenshin.configuration.flat": "Flat",
+  "minegenshin.configuration.percent": "Percent",
+
+  "minegenshin.configuration.max-hp": "Max HP",
+  "minegenshin.configuration.atk": "ATK",
+  "minegenshin.configuration.def": "DEF",
+  "minegenshin.configuration.elemental-mastery": "Elemental Mastery",
+  "minegenshin.configuration.crit-rate": "Crit Rate",
+  "minegenshin.configuration.crit-dmg": "Crit DMG",
+  "minegenshin.configuration.healing-bonus": "Healing Bonus",
+  "minegenshin.configuration.energy-recharge": "Energy Recharge",
+  "minegenshin.configuration.pyro-bonus": "Pyro Bonus",
+  "minegenshin.configuration.hydro-bonus": "Hydro Bonus",
+  "minegenshin.configuration.dendro-bonus": "Dendro Bonus",
+  "minegenshin.configuration.electro-bonus": "Electro Bonus",
+  "minegenshin.configuration.anemo-bonus": "Anemo Bonus",
+  "minegenshin.configuration.cyro-bonus": "Cyro Bonus",
+  "minegenshin.configuration.geo-bonus": "Geo Bonus",
+  "minegenshin.configuration.physical-bonus": "Physical Bonus",
+
+  "minegenshin.configuration.attribute.hp": "HP",
+  "minegenshin.configuration.attribute.def": "DEF",
+  "minegenshin.configuration.attribute.atk": "ATK",
 
   "artifact.type.flower": "Flower of Life",
   "artifact.type.plume": "Plume of Death",
@@ -97,8 +176,6 @@
   "effect.minegenshin.geo_about": "About Geo",
 
   "effect.minegenshin.frozen": "Elemental Reaction: Frozen",
-
-  "minegenshin.configuration.title": "Genshin Impact in Minecraft Configs",
 
   "key.categories.minegenshin" : "Minegenshin",
 

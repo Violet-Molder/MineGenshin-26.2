@@ -107,7 +107,9 @@ public class PGCharacterData implements IPersistedSerializable {
     public double getAttributeFlatModifier(AttributeType type) {return attributes.getFlatModifier(type);}
     public double getAttributeTempFlatModifier(AttributeType type) {return attributes.getTempFlatModifier(type);}
     public double getAttributePercentModifier(AttributeType type) {return attributes.getPercentModifier(type);}
+    public double getAttributePercentModifierDisplay(AttributeType type) {return attributes.getPercentModifierDisplay(type);}
     public double getAttributeTempPercentModifier(AttributeType type) {return attributes.getTempPercentModifier(type);}
+    public double getAttributeTempPercentModifierDisplay(AttributeType type) {return attributes.getTempPercentModifierDisplay(type);}
 
     // ==== 属性数据修改 ====
     public void setAttributeBaseValue(AttributeType type, double value) { attributes.setBaseValue(type, value);markDirty();}

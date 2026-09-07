@@ -44,9 +44,17 @@ public class AttributeContainer implements IPersistedSerializable {
         AttributeInstance instance = get(type);
         return instance != null ? instance.getTotalPercentModifier() : 0;
     }
+    public double getPercentModifierDisplay(AttributeType type) {
+        AttributeInstance instance = get(type);
+        return instance != null ? instance.getTotalPercentModifierDisplay() : 0;
+    }
     public double getTempPercentModifier(AttributeType type) {
         AttributeInstance instance = get(type);
         return instance != null ? instance.getTotalTempPercentModifier() : 0;
+    }
+    public double getTempPercentModifierDisplay(AttributeType type) {
+        AttributeInstance instance = get(type);
+        return instance != null ? instance.getTotalTempPercentModifierDisplay() : 0;
     }
 
     public void setBaseValue(AttributeType type, double value) {

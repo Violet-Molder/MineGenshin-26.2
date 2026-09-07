@@ -9,26 +9,48 @@ public class ElementalReactionConfig {
 
     public static final ModConfigSpec.ConfigValue<List<? extends Double>> REACTION_LEVEL_COEFFICIENT;
 
-    public static final ModConfigSpec.ConfigValue<Double> REACTION_MULTIPLIER_OVERLOAD;
-    public static final ModConfigSpec.ConfigValue<Double> REACTION_MULTIPLIER_SUPERCONDUCT;
-    public static final ModConfigSpec.ConfigValue<Double> REACTION_MULTIPLIER_ELECTRO_CHARGED;
-    public static final ModConfigSpec.ConfigValue<Double> REACTION_MULTIPLIER_SWIRL;
-    public static final ModConfigSpec.ConfigValue<Double> REACTION_MULTIPLIER_BLOOM;
-    public static final ModConfigSpec.ConfigValue<Double> REACTION_MULTIPLIER_BURNING;
+    public static final ModConfigSpec.ConfigValue<Double> VAPORIZE_COEFFICIENT_POSITIVE;
+    public static final ModConfigSpec.ConfigValue<Double> VAPORIZE_COEFFICIENT_NEGATIVE;
+    public static final ModConfigSpec.ConfigValue<Double> MELT_COEFFICIENT_POSITIVE;
+    public static final ModConfigSpec.ConfigValue<Double> MELT_COEFFICIENT_NEGATIVE;
+
+    public static final ModConfigSpec.ConfigValue<Double> SUPERCONDUCT_COEFFICIENT;
+    public static final ModConfigSpec.ConfigValue<Double> SWIRL_COEFFICIENT;
+    public static final ModConfigSpec.ConfigValue<Double> ELECTOR_CHARGED_COEFFICIENT;
+    public static final ModConfigSpec.ConfigValue<Double> ICE_BREAKING_COEFFICIENT;
+    public static final ModConfigSpec.ConfigValue<Double> OVERLOADED_COEFFICIENT;
+    public static final ModConfigSpec.ConfigValue<Double> BURNING_COEFFICIENT;
+    public static final ModConfigSpec.ConfigValue<Double> BLOOM_COEFFICIENT;
+    public static final ModConfigSpec.ConfigValue<Double> BURGEON_COEFFICIENT;
+    public static final ModConfigSpec.ConfigValue<Double> HYPERBLOOM_COEFFICIENT;
+
 
     public static final ModConfigSpec REACTION_SPEC;
 
     static {
-        REACTION_BUILDER
-                .push("fusionReactionCoefficient")
-                .translation("config.genshin.fusionReaction");
+        REACTION_BUILDER.push("reaction-amplifying");
 
-        REACTION_BUILDER
-                .push("tameReactionLevelCoefficient")
-                .translation("config.genshin.fusionReaction.levelCoefficient");
+        VAPORIZE_COEFFICIENT_POSITIVE = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.vaporize.positive")
+                .defineInRange("vaporize-positive", 2.0, 0.0, 100.0);
 
+        VAPORIZE_COEFFICIENT_NEGATIVE = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.vaporize.negative")
+                .defineInRange("vaporize-negative", 1.5, 0.0, 100.0);
+
+        MELT_COEFFICIENT_POSITIVE = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.melt.positive")
+                .defineInRange("melt-positive", 2.0, 0.0, 100.0);
+
+        MELT_COEFFICIENT_NEGATIVE = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.melt.negative")
+                .defineInRange("melt-negative", 1.5, 0.0, 100.0);
+
+        REACTION_BUILDER.pop();
+
+        REACTION_BUILDER.push("reaction-fusion");
         REACTION_LEVEL_COEFFICIENT = REACTION_BUILDER
-                .translation("config.genshin.fusionReaction.levelCoefficient.list")
+                .translation("minegenshin.config.reaction.coefficient.level")
                 .defineList(
                         List.of("reaction_level_coefficient"),
                         () -> List.of(
@@ -44,39 +66,46 @@ public class ElementalReactionConfig {
                         ),
                         null,
                         obj -> obj instanceof Double,
-                        ModConfigSpec.Range.of(90, 90)
+                        ModConfigSpec.Range.of(89, 90)
                 );
 
-        REACTION_BUILDER.pop();
-
-        REACTION_BUILDER
-                .push("tameReactionBaseMultiplier")
-                .translation("config.genshin.fusionReaction.baseMultiplier");
-
-        REACTION_MULTIPLIER_OVERLOAD = REACTION_BUILDER
-                .translation("config.genshin.fusionReaction.baseMultiplier.overload")
-                .defineInRange("overload", 2.0, 0.0, 100.0);
-
-        REACTION_MULTIPLIER_SUPERCONDUCT = REACTION_BUILDER
-                .translation("config.genshin.fusionReaction.baseMultiplier.superconduct")
+        SUPERCONDUCT_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.superconduct")
                 .defineInRange("superconduct", 1.5, 0.0, 100.0);
 
-        REACTION_MULTIPLIER_ELECTRO_CHARGED = REACTION_BUILDER
-                .translation("config.genshin.fusionReaction.baseMultiplier.electroCharged")
-                .defineInRange("electroCharged", 1.2, 0.0, 100.0);
+        SWIRL_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.swirl")
+                .defineInRange("swirl", 0.6, 0.0, 100.0);
 
-        REACTION_MULTIPLIER_SWIRL = REACTION_BUILDER
-                .translation("config.genshin.fusionReaction.baseMultiplier.swirl")
-                .defineInRange("swirl", 1.0, 0.0, 100.0);
+        ELECTOR_CHARGED_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.elector-charged")
+                .defineInRange("elector-charged", 2.0, 0.0, 100.0);
 
-        REACTION_MULTIPLIER_BLOOM = REACTION_BUILDER
-                .translation("config.genshin.fusionReaction.baseMultiplier.bloom")
+        ICE_BREAKING_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.ice-breaking")
+                .defineInRange("ice-breaking", 3, 0.0, 100.0);
+
+        OVERLOADED_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.overloaded")
+                .defineInRange("overloaded", 2.75, 0.0, 100.0);
+
+        BURNING_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.burning")
+                .defineInRange("burning", 0.25, 0.0, 100.0);
+
+        BLOOM_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.bloom")
                 .defineInRange("bloom", 1.0, 0.0, 100.0);
 
-        REACTION_MULTIPLIER_BURNING = REACTION_BUILDER
-                .translation("config.genshin.fusionReaction.baseMultiplier.burning")
-                .defineInRange("burning", 0.5, 0.0, 100.0);
+        BURGEON_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.burgeon")
+                .defineInRange("burgeon", 3, 0.0, 100.0);
 
+        HYPERBLOOM_COEFFICIENT = REACTION_BUILDER
+                .translation("minegenshin.config.reaction.coefficient.hyperbloom")
+                .defineInRange("hyperbloom", 3, 0.0, 100.0);
+
+        REACTION_BUILDER.pop();
         REACTION_SPEC = REACTION_BUILDER.build();
     }
 }

@@ -3,6 +3,7 @@ package com.linweiyun.genshin.content.items.custom;
 import com.linweiyun.genshin.content.items.artifact.ArtifactType;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.core.character.ArtifactInventory;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.network.NetworkManager;
@@ -38,11 +39,12 @@ public class ItemPrimogem extends Item {
         ItemStack sands = data.getSands();
         ItemStack goblet = data.getGoblet();
         ItemStack circlet = data.getCirclet();
-        if (!flower.isEmpty()) {flower.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.FLOWER);}
-        if (!plume.isEmpty()) {plume.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.PLUME);}
-        if (!sands.isEmpty()) {sands.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.SANDS);}
-        if (!goblet.isEmpty()) {goblet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.GOBLET);}
-        if (!circlet.isEmpty()) {circlet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.CIRCLET);}
+        ArtifactInventory inv = data.getArtifactInventory();
+        if (!flower.isEmpty()) {flower.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_FLOWER)); flower.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.FLOWER);}
+        if (!plume.isEmpty()) {plume.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_PLUME)); plume.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.PLUME);}
+        if (!sands.isEmpty()) {sands.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_SANDS)); sands.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.SANDS);}
+        if (!goblet.isEmpty()) {goblet.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_GOBLET)); goblet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.GOBLET);}
+        if (!circlet.isEmpty()) {circlet.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_CIRCLET)); circlet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.CIRCLET);}
       }
     }
     if (!level.isClientSide()) {

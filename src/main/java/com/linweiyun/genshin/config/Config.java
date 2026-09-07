@@ -11,7 +11,7 @@ public class Config {
   private static final ModConfigSpec.Builder CHARACTER_ATTRIBUTE_BUILDER = new ModConfigSpec.Builder();
 
   public static final ModConfigSpec.ConfigValue<List<? extends Integer>> CHARACTER_UP_EXP =
-		  CHARACTER_EXP_BUILDER.translation("config.exp.character")
+		  CHARACTER_EXP_BUILDER.translation("minegenshin.config.exp.character")
 				  .defineList(
 						  List.of("Character Up Exp"),
 						  () -> List.of(
@@ -30,6 +30,7 @@ public class Config {
 						  ModConfigSpec.Range.of(88, 88)
 				  );
   //申鹤
+	public static final ModConfigSpec CHARACTER_ATTRIBUTE_SPEC;
 	public static final ModConfigSpec.ConfigValue<List<? extends Integer>> SHENHE_HP;
 	public static final ModConfigSpec.ConfigValue<List<? extends Integer>> SHENHE_DEF;
 	public static final ModConfigSpec.ConfigValue<List<? extends Integer>> SHENHE_ATK;
@@ -38,16 +39,14 @@ public class Config {
 	public static final ModConfigSpec.ConfigValue<List<? extends Integer>> COLUMBINA_DEF;
 	public static final ModConfigSpec.ConfigValue<List<? extends Integer>> COLUMBINA_ATK;
 	static {
-		CHARACTER_ATTRIBUTE_BUILDER
-				.push("characterAttribute");
+
 
 		//申鹤的基础属性
 		CHARACTER_ATTRIBUTE_BUILDER
-				.push("shenhe")
-				.translation("config.attribute.shenhe");
+				.push("shenhe");
 
 		SHENHE_HP = CHARACTER_ATTRIBUTE_BUILDER
-				.translation("config.attribute.shenhe.hp")
+				.translation("minegenshin.configuration.attribute.hp")
 				.defineList(
 						List.of("hp"),
 						() -> List.of(
@@ -67,7 +66,7 @@ public class Config {
 				);
 
 		SHENHE_DEF = CHARACTER_ATTRIBUTE_BUILDER
-				.translation("config.attribute.shenhe.def")
+				.translation("minegenshin.configuration.attribute.def")
 				.defineList(
 						List.of("def"),
 						() -> List.of(
@@ -88,7 +87,7 @@ public class Config {
 				);
 
 		SHENHE_ATK = CHARACTER_ATTRIBUTE_BUILDER
-				.translation("config.attribute.shenhe.atk")
+				.translation("minegenshin.configuration.attribute.atk")
 				.comment("Shenhe ATK per level")
 				.defineList(
 						List.of("atk"),
@@ -111,11 +110,10 @@ public class Config {
 
 		//哥伦比娅的基础属性
 		CHARACTER_ATTRIBUTE_BUILDER
-				.push("columbina")
-				.translation("config.attribute.columbina");
+				.push("columbina");
 
 		COLUMBINA_HP = CHARACTER_ATTRIBUTE_BUILDER
-				.translation("config.attribute.columbina.hp")
+				.translation("minegenshin.configuration.attribute.hp")
 				.defineList(
 						List.of("hp"),
 						() -> List.of(
@@ -128,7 +126,7 @@ public class Config {
 						ModConfigSpec.Range.of(95, 95)
 				);
 		COLUMBINA_DEF = CHARACTER_ATTRIBUTE_BUILDER
-				.translation("config.attribute.columbina.def")
+				.translation("minegenshin.configuration.attribute.def")
 				.defineList(
 						List.of("def"),
 						() -> List.of(
@@ -140,7 +138,7 @@ public class Config {
 						ModConfigSpec.Range.of(88, 88)
 				);
 		COLUMBINA_ATK = CHARACTER_ATTRIBUTE_BUILDER
-				.translation("config.attribute.columbina.atk")
+				.translation("minegenshin.configuration.attribute.atk")
 				.defineList(
 						List.of("atk"),
 						() -> List.of(
@@ -155,5 +153,4 @@ public class Config {
 	}
 
   public static final ModConfigSpec CHARACTER_EXP_SPEC = CHARACTER_EXP_BUILDER.build();
-  public static final ModConfigSpec CHARACTER_ATTRIBUTE_SPEC;
 }

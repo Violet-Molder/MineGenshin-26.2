@@ -10,16 +10,10 @@ public class ArtifactConfig {
     public static final ModConfigSpec ARTIFACT_SPEC;
 
     static {
-        ARTIFACT_BUILDER
-                .push("artifact")
-                .translation("config.genshin.artifact");
-
         //TEMP 依次让三个子配置类在共享 builder 上注册各自的节点
         ArtifactLevelConfig.register(ARTIFACT_BUILDER);
         ArtifactMainStatConfig.register(ARTIFACT_BUILDER);
         ArtifactSubStatConfig.register(ARTIFACT_BUILDER);
-
-        ARTIFACT_BUILDER.pop(); // artifact pop
 
         ARTIFACT_SPEC = ARTIFACT_BUILDER.build();
     }

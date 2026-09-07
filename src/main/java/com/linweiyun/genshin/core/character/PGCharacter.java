@@ -177,7 +177,10 @@ public class PGCharacter implements IPersistedSerializable {
     private void recalculateArtifactSlot(int slotIndex) {
         ArtifactType type = ArtifactInventory.slotToType(slotIndex);
         String source = type.name().toLowerCase();
-        LOGGER.info("PGCharacter.recalculateArtifactSlot: slot={}, type={}, source={}", slotIndex, type, source);
+
+        double oldMaxHP = data.getAttributeTotalValue(ModAttributes.MAX_HP.get());
+        double oldCurrentHP = data.getCurrentHP();
+        double hpRatio = oldMaxHP > 0 ? oldCurrentHP / oldMaxHP : 1.0;
 
         for (AttributeType attrType : ModRegistries.ATTRIBUTE_TYPE_REGISTRY) {
             data.removeAttributeModifier(attrType, source);
@@ -196,18 +199,17 @@ public class PGCharacter implements IPersistedSerializable {
                 }
             }
         }
+
+        double newMaxHP = data.getAttributeTotalValue(ModAttributes.MAX_HP.get());
+        double newCurrentHP = newMaxHP * hpRatio;
+        data.setCurrentHP(newCurrentHP);
     }
 
     private void applyStatWithSet(TeyvatItemStat stat, String source) {
         if (!stat.isInitialized()) return;
         AttributeType attr = stat.getAttribute();
         double value = stat.getValue();
-        if (stat.getKind() == TeyvatItemStat.StatKind.PERCENT) {
-            value /= 100.0;
-        }
-        boolean isBaseAttr = attr == ModAttributes.ATK.get()
-                || attr == ModAttributes.DEF.get()
-                || attr == ModAttributes.MAX_HP.get();
+        boolean isBaseAttr = isBaseAttribute(attr);
         if (isBaseAttr) {
             if (stat.getKind() == TeyvatItemStat.StatKind.FLAT) {
                 data.setAttributeFlatModifier(attr, source, value);
@@ -217,6 +219,14 @@ public class PGCharacter implements IPersistedSerializable {
         } else {
             data.setAttributeFlatModifier(attr, source, value);
         }
+    }
+
+    private static boolean isBaseAttribute(AttributeType attr) {
+        if (attr == null || attr.id() == null) return false;
+        AttributeType registryAttr = ModRegistries.ATTRIBUTE_TYPE_REGISTRY.getValue(attr.id());
+        return registryAttr == ModAttributes.MAX_HP.get()
+                || registryAttr == ModAttributes.ATK.get()
+                || registryAttr == ModAttributes.DEF.get();
     }
 
     private void refreshArtifactSetEffects() {

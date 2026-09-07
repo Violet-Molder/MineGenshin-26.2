@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.client.gui.menu.CharacterInfoMenu;
+import com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
 import net.neoforged.bus.api.IEventBus;

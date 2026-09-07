@@ -123,7 +123,7 @@ public class ArtifactItem extends TeyvatItem {
         if (!stat.isInitialized()) return "";
         String attrName = Component.translatable(stat.getAttribute().translationKey()).getString();
         if (stat.getKind() == TeyvatItemStat.StatKind.PERCENT) {
-            return attrName + " +" + String.format("%.1f%%", stat.getValue());
+            return attrName + " +" + String.format("%.1f%%", stat.getValue() * 100);
         } else {
             return attrName + " +" + String.format("%.0f", stat.getValue());
         }

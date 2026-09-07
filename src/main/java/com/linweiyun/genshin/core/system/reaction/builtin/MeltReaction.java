@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
+import com.linweiyun.genshin.config.ElementalReactionConfig;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
@@ -20,8 +21,8 @@ import net.minecraft.world.entity.LivingEntity;
  */
 public class MeltReaction extends ElementalReaction {
 
-    private static final float DOMINANT_MULTIPLIER = 2.0f;
-    private static final float SUBMISSIVE_MULTIPLIER = 1.5f;
+    private static float getDominantMultiplier() { return ElementalReactionConfig.MELT_COEFFICIENT_POSITIVE.get().floatValue(); }
+    private static float getSubmissiveMultiplier() { return ElementalReactionConfig.MELT_COEFFICIENT_NEGATIVE.get().floatValue(); }
 
     public MeltReaction(ElementalReactionType type,
                         ElementalsGIM elementA, ElementalsGIM elementB,
@@ -59,7 +60,7 @@ public class MeltReaction extends ElementalReaction {
         consumeElementUnit(ctx.targetContainer(), elementA, consumedA);
         // 倍率
         boolean dominant = attackerIsA;
-        float multiplier = dominant ? DOMINANT_MULTIPLIER : SUBMISSIVE_MULTIPLIER;
+        float multiplier = dominant ? getDominantMultiplier() : getSubmissiveMultiplier();
         float consumedAttacker = attackerIsA ? consumedA : consumedB;
 
         return ReactionResult.builder(reactionType)

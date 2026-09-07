@@ -34,6 +34,8 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
     @Persisted(key = "sub_stats")
     public List<TeyvatItemStat> subStats = new ArrayList<>();
 
+    private Runnable onStatsChanged = () -> {};
+
     public ArtifactStatsComponent() {
         this.mainStat = new TeyvatItemStat();
         this.subStats = new ArrayList<>();
@@ -45,6 +47,10 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
         //TEMP 防御：也确保非 null，避免调用方误传 null
         this.mainStat = mainStat != null ? mainStat : new TeyvatItemStat();
         this.subStats = subStats != null ? subStats : new ArrayList<>();
+    }
+
+    public void setOnStatsChanged(Runnable onStatsChanged) {
+        this.onStatsChanged = onStatsChanged != null ? onStatsChanged : () -> {};
     }
 
 
@@ -83,6 +89,7 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
     public long addExp(int amount, int star, ArtifactType type) {
         if (level >= getMaxLevel(star)) return 0;
         long added = Math.min(amount, getExpToNextLevel(star) - exp);
+        if (added <= 0) return 0;
         exp += added;
         while (level < getMaxLevel(star) && exp >= getExpToNextLevel(star)) {
             exp -= getExpToNextLevel(star);
@@ -90,6 +97,7 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
             updateMainStatValue(star);
             upgradeSubStats(star);
         }
+        onStatsChanged.run();
         return added;
     }
 

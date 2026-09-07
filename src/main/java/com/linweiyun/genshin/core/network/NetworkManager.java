@@ -1,19 +1,21 @@
 package com.linweiyun.genshin.core.network;
 
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
+import com.linweiyun.genshin.content.items.artifact.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
+import com.linweiyun.genshin.core.character.ArtifactInventory;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -300,6 +302,16 @@ public class NetworkManager {
       if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem art)) return;
       ArtifactStatsComponent stats = stack.getOrDefault(ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
       int star = art.getStar();  // star 还在 Item 单例上
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter currentChar = attachment.getCurrentCharacter();
+      if (currentChar != null) {
+          PGCharacterData charData = currentChar.getData();
+          if (charData != null) {
+              ArtifactInventory inv = charData.getArtifactInventory();
+              int slot = ArtifactInventory.typeToSlot(art.getType());
+              stats.setOnStatsChanged(() -> inv.markDirty(slot));
+          }
+      }
       long added = stats.addExp(expAmount, star, art.getType());
       if (added <= 0) return;
       stack.set(ModDataComponents.ARTIFACT_STATS.get(), stats);
@@ -386,7 +398,7 @@ public class NetworkManager {
         }
         @Override
         public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId, net.minecraft.world.entity.player.Inventory inventory, net.minecraft.world.entity.player.Player p) {
-          return new com.linweiyun.genshin.client.gui.menu.CharacterInfoMenu(containerId, inventory);
+          return new com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu(containerId, inventory);
         }
       });
     }

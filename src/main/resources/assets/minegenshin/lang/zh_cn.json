@@ -1,5 +1,86 @@
 {
-  "config.exp.character": "角色升级经验",
+  "minegenshin.config.exp.character": "角色升级经验",
+
+  "minegenshin.configuration.title": "像素原神配置",
+  "minegenshin.configuration.section.minegenshin.exp.toml": "角色经验配置",
+  "minegenshin.configuration.section.minegenshin.exp.toml.title": "角色经验配置",
+  "minegenshin.configuration.section.minegenshin.attribute.toml": "角色基础属性配置",
+  "minegenshin.configuration.section.minegenshin.attribute.toml.title": "角色基础属性配置",
+  "minegenshin.configuration.section.minegenshin.genshin.reaction.toml": "元素反应系数配置",
+  "minegenshin.configuration.section.minegenshin.genshin.reaction.toml.title": "元素反应系数配置",
+  "minegenshin.configuration.section.minegenshin.monster.level.toml": "怪物生成逻辑配置",
+  "minegenshin.configuration.section.minegenshin.monster.level.toml.title": "怪物生成逻辑配置",
+  "minegenshin.configuration.section.minegenshin.artifact.toml": "圣遗物配置",
+  "minegenshin.configuration.section.minegenshin.artifact.toml.title": "圣遗物配置",
+
+  "minegenshin.configuration.shenhe": "申鹤",
+  "minegenshin.configuration.columbina": "哥伦比娅",
+
+  "minegenshin.configuration.reaction-amplifying": "增幅反应",
+  "minegenshin.configuration.reaction-fusion": "剧变反应",
+
+  "minegenshin.config.reaction.coefficient.vaporize.positive": "蒸发-正",
+  "minegenshin.config.reaction.coefficient.vaporize.negative": "蒸发-逆",
+  "minegenshin.config.reaction.coefficient.melt.positive": "融化-正",
+  "minegenshin.config.reaction.coefficient.melt.negative": "融化-逆",
+
+  "minegenshin.config.reaction.coefficient.level": "等级系数",
+  "minegenshin.config.reaction.coefficient.superconduct": "超导系数",
+  "minegenshin.config.reaction.coefficient.swirl": "扩散系数",
+  "minegenshin.config.reaction.coefficient.elector-charged": "感电系数",
+  "minegenshin.config.reaction.coefficient.ice-breaking": "碎冰系数",
+  "minegenshin.config.reaction.coefficient.overloaded": "超载系数",
+  "minegenshin.config.reaction.coefficient.burning": "燃烧系数",
+  "minegenshin.config.reaction.coefficient.bloom": "绽放系数",
+  "minegenshin.config.reaction.coefficient.burgeon": "烈绽放系数",
+  "minegenshin.config.reaction.coefficient.hyperbloom": "超绽放系数",
+
+  "minegenshin.configuration.monster-level": "怪物等级",
+  "minegenshin.configuration.calculation-mode": "等级计算模式",
+  "minegenshin.configuration.calculation-radius": "等级计算距离",
+
+  "minegenshin.configuration.levelUpExp": "升级经验",
+  "minegenshin.configuration.levelUpExp.3star": "三星",
+  "minegenshin.configuration.levelUpExp.4star": "四星",
+  "minegenshin.configuration.levelUpExp.5star": "五星",
+
+  "minegenshin.configuration.mainStat": "主词条",
+  "minegenshin.configuration.mainStatWeight": "词条生成权重",
+  "minegenshin.configuration.weightSands": "时之沙",
+  "minegenshin.configuration.weightGoblet": "空之杯",
+  "minegenshin.configuration.weightCirclet": "理之冠",
+
+  "minegenshin.configuration.subStat": "副词条",
+
+  "minegenshin.configuration.5star": "五星",
+  "minegenshin.configuration.4star": "四星",
+  "minegenshin.configuration.3star": "三星",
+
+  "minegenshin.configuration.flat": "固定值",
+  "minegenshin.configuration.percent": "百分比",
+
+  "minegenshin.configuration.max-hp": "生命值上限",
+  "minegenshin.configuration.atk": "攻击力",
+  "minegenshin.configuration.def": "防御力",
+  "minegenshin.configuration.elemental-mastery": "元素精通",
+  "minegenshin.configuration.crit-rate": "暴击率",
+  "minegenshin.configuration.crit-dmg": "暴击伤害",
+  "minegenshin.configuration.healing-bonus": "治疗加成",
+  "minegenshin.configuration.energy-recharge": "元素充能效率",
+  "minegenshin.configuration.pyro-bonus": "火元素伤害加成",
+  "minegenshin.configuration.hydro-bonus": "水元素伤害加成",
+  "minegenshin.configuration.dendro-bonus": "草元素伤害加成",
+  "minegenshin.configuration.electro-bonus": "雷元素伤害加成",
+  "minegenshin.configuration.anemo-bonus": "风元素伤害加成",
+  "minegenshin.configuration.cyro-bonus": "冰元素伤害加成",
+  "minegenshin.configuration.geo-bonus": "岩元素伤害加成",
+  "minegenshin.configuration.physical-bonus": "物理伤害加成",
+
+  "minegenshin.configuration.attribute.hp": "生命值上限",
+  "minegenshin.configuration.attribute.def": "防御力",
+  "minegenshin.configuration.attribute.atk": "攻击力",
+
+
 
   "artifact.type.flower": "生之花",
   "artifact.type.plume": "死之羽",

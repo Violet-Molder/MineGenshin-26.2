@@ -172,23 +172,23 @@ public class ArtifactStatData {
         putSubStat_5("max_hp",            TeyvatItemStat.StatKind.FLAT,    new double[]{209, 239, 269, 299});
         putSubStat_5("def",               TeyvatItemStat.StatKind.FLAT,    new double[]{16, 19, 21, 23});
         putSubStat_5("elemental_mastery", TeyvatItemStat.StatKind.FLAT,    new double[]{16, 19, 21, 23});
-        putSubStat_5("atk",               TeyvatItemStat.StatKind.PERCENT, new double[]{4.1, 4.7, 5.3, 5.8});
-        putSubStat_5("max_hp",            TeyvatItemStat.StatKind.PERCENT, new double[]{4.1, 4.7, 5.3, 5.8});
-        putSubStat_5("def",               TeyvatItemStat.StatKind.PERCENT, new double[]{5.1, 5.8, 6.6, 7.3});
-        putSubStat_5("energy_recharge",   TeyvatItemStat.StatKind.PERCENT, new double[]{4.5, 5.2, 5.8, 6.5});
-        putSubStat_5("crit_rate",         TeyvatItemStat.StatKind.PERCENT, new double[]{2.7, 3.1, 3.5, 3.9});
-        putSubStat_5("crit_dmg",          TeyvatItemStat.StatKind.PERCENT, new double[]{5.4, 6.2, 7.0, 7.8});
+        putSubStat_5("atk",               TeyvatItemStat.StatKind.PERCENT, new double[]{0.041, 0.047, 0.053, 0.058});
+        putSubStat_5("max_hp",            TeyvatItemStat.StatKind.PERCENT, new double[]{0.041, 0.047, 0.053, 0.058});
+        putSubStat_5("def",               TeyvatItemStat.StatKind.PERCENT, new double[]{0.051, 0.058, 0.066, 0.073});
+        putSubStat_5("energy_recharge",   TeyvatItemStat.StatKind.PERCENT, new double[]{0.045, 0.052, 0.058, 0.065});
+        putSubStat_5("crit_rate",         TeyvatItemStat.StatKind.PERCENT, new double[]{0.027, 0.031, 0.035, 0.039});
+        putSubStat_5("crit_dmg",          TeyvatItemStat.StatKind.PERCENT, new double[]{0.054, 0.062, 0.07, 0.078});
 
         putSubStat_4("max_hp",            TeyvatItemStat.StatKind.FLAT,    new double[]{167, 191, 215, 239});
         putSubStat_4("atk",               TeyvatItemStat.StatKind.FLAT,    new double[]{11, 12, 14, 16});
         putSubStat_4("def",               TeyvatItemStat.StatKind.FLAT,    new double[]{13, 15, 17, 19});
         putSubStat_4("elemental_mastery", TeyvatItemStat.StatKind.FLAT,    new double[]{13, 15, 17, 19});
-        putSubStat_4("energy_recharge",   TeyvatItemStat.StatKind.PERCENT, new double[]{3.6, 4.1, 4.7, 5.2});
-        putSubStat_4("def",               TeyvatItemStat.StatKind.PERCENT, new double[]{4.1, 4.7, 5.3, 5.8});
-        putSubStat_4("max_hp",            TeyvatItemStat.StatKind.PERCENT, new double[]{3.3, 3.7, 4.2, 4.7});
-        putSubStat_4("atk",               TeyvatItemStat.StatKind.PERCENT, new double[]{3.3, 3.7, 4.2, 4.7});
-        putSubStat_4("crit_rate",         TeyvatItemStat.StatKind.PERCENT, new double[]{2.2, 2.5, 2.8, 3.1});
-        putSubStat_4("crit_dmg",          TeyvatItemStat.StatKind.PERCENT, new double[]{4.4, 5.0, 5.6, 6.2});
+        putSubStat_4("energy_recharge",   TeyvatItemStat.StatKind.PERCENT, new double[]{0.036, 0.041, 0.047, 0.052});
+        putSubStat_4("def",               TeyvatItemStat.StatKind.PERCENT, new double[]{0.041, 0.047, 0.053, 0.058});
+        putSubStat_4("max_hp",            TeyvatItemStat.StatKind.PERCENT, new double[]{0.033, 0.037, 0.042, 0.047});
+        putSubStat_4("atk",               TeyvatItemStat.StatKind.PERCENT, new double[]{0.033, 0.037, 0.042, 0.047});
+        putSubStat_4("crit_rate",         TeyvatItemStat.StatKind.PERCENT, new double[]{0.022, 0.025, 0.028, 0.031});
+        putSubStat_4("crit_dmg",          TeyvatItemStat.StatKind.PERCENT, new double[]{0.044, 0.05, 0.056, 0.062});
     }
 
     private static void putSubStat_5(String attrKey, TeyvatItemStat.StatKind kind, double[] tiers) {

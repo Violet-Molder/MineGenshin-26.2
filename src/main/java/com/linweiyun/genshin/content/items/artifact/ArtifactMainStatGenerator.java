@@ -49,8 +49,7 @@ public class ArtifactMainStatGenerator {
     );
 
     public static TeyvatItemStat generate(ArtifactType type, int star, Random random) {
-        LOGGER.info("[ArtifactMainStatGenerator] generate called | type={} | star={}", type, star);
-        TeyvatItemStat result = switch (type) {
+        return switch (type) {
             case FLOWER -> {
                 double initialValue = ArtifactStatData.getMainStatBase(ModAttributes.MAX_HP.get(), TeyvatItemStat.StatKind.FLAT, star);
                 yield new TeyvatItemStat(ModAttributes.MAX_HP.get(), initialValue, TeyvatItemStat.StatKind.FLAT);
@@ -63,11 +62,6 @@ public class ArtifactMainStatGenerator {
             case GOBLET -> generateGoblet(star, random);
             case CIRCLET -> generateCirclet(star, random);
         };
-        LOGGER.info("[ArtifactMainStatGenerator] generated | attr={} | value={} | kind={}",
-                result.getAttribute(),
-                result.getValue(),
-                result.getKind());
-        return result;
     }
 
     private static TeyvatItemStat generateSands(int star, Random random) {
@@ -141,6 +135,6 @@ public class ArtifactMainStatGenerator {
                 return items.get(i);
             }
         }
-        return items.get(items.size() - 1);
+        return items.getLast();
     }
 }

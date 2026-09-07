@@ -60,30 +60,17 @@ public class AttributeInstance implements IPersistedSerializable {
     }
 
     // ========== 常驻百分比加成 ==========
-    public void setPercentModifier(String source, double value) {
-        percentModifiers.put(source, roundTo4(value));
-    }
-
-    public void addPercentModifier(String source, double value) {
-        percentModifiers.merge(source, roundTo4(value), Double::sum);
-    }
-
+    public void setPercentModifier(String source, double value) {percentModifiers.put(source, roundTo4(value));}
+    public void addPercentModifier(String source, double value) {percentModifiers.merge(source, roundTo4(value), Double::sum);}
     public void removePercentModifier(String source) {
         percentModifiers.remove(source);
     }
-
-    public double getTotalPercentModifier() {
-        return percentModifiers.values().stream().mapToDouble(Double::doubleValue).sum();
-    }
+    public double getTotalPercentModifier() {return percentModifiers.values().stream().mapToDouble(Double::doubleValue).sum();}
+    public double getTotalPercentModifierDisplay() {return percentModifiers.values().stream().mapToDouble(Double::doubleValue).sum() * 100.0;}
 
     // ========== 临时固定值加成 ==========
-    public void setTempFlatModifier(String source, double value) {
-        tempFlatModifiers.put(source, roundTo4(value));
-    }
-
-    public void addTempFlatModifier(String source, double value) {
-        tempFlatModifiers.merge(source, roundTo4(value), Double::sum);
-    }
+    public void setTempFlatModifier(String source, double value) {tempFlatModifiers.put(source, roundTo4(value));}
+    public void addTempFlatModifier(String source, double value) {tempFlatModifiers.merge(source, roundTo4(value), Double::sum);}
 
     public void removeTempFlatModifier(String source) {
         tempFlatModifiers.remove(source);
@@ -94,21 +81,11 @@ public class AttributeInstance implements IPersistedSerializable {
     }
 
     // ========== 临时百分比加成 ==========
-    public void setTempPercentModifier(String source, double value) {
-        tempPercentModifiers.put(source, roundTo4(value));
-    }
-
-    public void addTempPercentModifier(String source, double value) {
-        tempPercentModifiers.merge(source, roundTo4(value), Double::sum);
-    }
-
-    public void removeTempPercentModifier(String source) {
-        tempPercentModifiers.remove(source);
-    }
-
-    public double getTotalTempPercentModifier() {
-        return tempPercentModifiers.values().stream().mapToDouble(Double::doubleValue).sum();
-    }
+    public void setTempPercentModifier(String source, double value) {tempPercentModifiers.put(source, roundTo4(value));}
+    public void addTempPercentModifier(String source, double value) {tempPercentModifiers.merge(source, roundTo4(value), Double::sum);}
+    public void removeTempPercentModifier(String source) {tempPercentModifiers.remove(source);}
+    public double getTotalTempPercentModifier() {return tempPercentModifiers.values().stream().mapToDouble(Double::doubleValue).sum();}
+    public double getTotalTempPercentModifierDisplay() {return tempPercentModifiers.values().stream().mapToDouble(Double::doubleValue).sum() * 100.0;}
 
     // ========== 计算总值 ==========
     // 公式: 总值 = 基础值 × (1 + 常驻百分比 + 临时百分比) + 常驻固定值 + 临时固定值
