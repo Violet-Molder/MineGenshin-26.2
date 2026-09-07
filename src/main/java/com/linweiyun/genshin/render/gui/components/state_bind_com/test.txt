@@ -1,0 +1,481 @@
+package com.linweiyun.genshin.render.gui.hud;
+
+import com.google.common.base.Suppliers;
+import com.linweiyun.genshin.Minegenshin;
+import com.linweiyun.genshin.render.gui.components.state_bind_com.BooleanDisplayBindUIElement;
+import com.linweiyun.genshin.render.gui.components.state_bind_com.HPProgressBar;
+import com.linweiyun.genshin.render.gui.components.state_bind_com.SkillProgressBar;
+import com.linweiyun.genshin.render.gui.components.state_bind_com.StackBindUIElement;
+import com.linweiyun.genshin.content.entities.attachments.AttachmentRegistration;
+import com.linweiyun.genshin.content.entities.attachments.attachment.CharacterParty;
+import com.linweiyun.genshin.content.entities.attachments.attachment.PlayerGenshinModeAttachment;
+import com.linweiyun.genshin.content.items.character.player_character.PlayerCharacter;
+import com.linweiyun.genshin.core.combat.CombatHelper;
+import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;
+import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
+import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
+import com.lowdragmc.lowdraglib2.gui.ui.UI;
+import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
+import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
+import dev.vfyjxf.taffy.style.FlexDirection;
+import dev.vfyjxf.taffy.style.TaffyDisplay;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+
+@EventBusSubscriber(value = Dist.CLIENT)
+@OnlyIn(Dist.CLIENT)
+public class MGHud {
+  private static final boolean needsRefresh = false;
+
+  @SubscribeEvent
+  public static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
+    var hudUICache =
+        Suppliers.memoize(
+            () -> {
+              var stylesheet =
+                  StylesheetManager.INSTANCE.getStylesheetSafe(
+                      ResourceLocation.parse("minegenshin:lss/hud/character_party.lss"));
+              var ui = UI.of(buildCharacterPartyHud(), stylesheet);
+              return ModularUI.of(ui);
+            });
+    event.registerAboveAll(Minegenshin.id("simple_hud"), (MyModularHudLayer) hudUICache::get);
+  }
+
+  private static UIElement buildCharacterPartyHud() {
+    var root =
+        new BooleanDisplayBindUIElement()
+            .bindDataSource(
+                SupplierDataSource.of(
+                    () -> {
+                      Minecraft minecraft = Minecraft.getInstance();
+                      var player = minecraft.player;
+                      PlayerGenshinModeAttachment genshinModeAttachment =
+                          player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+                      return genshinModeAttachment.isGenshinMode();
+                    }))
+            .setId("root")
+            .layout(l -> l.widthPercent(100).heightPercent(100))
+            .lss("position", "absolute");
+    var characterList = new UIElement();
+    var currentContent =
+        (BooleanDisplayBindUIElement)
+            new BooleanDisplayBindUIElement().setId("current-content").addClass("__unselected__");
+    var characterLevel = new Label();
+    var currentCharacterHP = new HPProgressBar();
+    var characterSkillIcon = new SkillProgressBar(40, 40);
+    var characterBurstIcon = new SkillProgressBar(40, 40);
+    characterList.setId("character_list");
+    for (int i = 0; i < 4; i++) {
+      int slotIndex = i;
+      var characterSate =
+          (BooleanDisplayBindUIElement)
+              new BooleanDisplayBindUIElement().setId("character_state").addClass("__unselected__");
+      var characterIcon = (StackBindUIElement) new StackBindUIElement().setId("character_icon");
+      var iconLeftUIElement = new UIElement().setId("icon-left");
+      var characterName = (Label) new Label().setId("character_name");
+      var selectedGroup =
+          (BooleanDisplayBindUIElement)
+              new BooleanDisplayBindUIElement()
+                  .setId("selected_group")
+                  .addClass("__unselected__")
+                  .addClass("display");
+      var notSelectedGroup =
+          (BooleanDisplayBindUIElement)
+              new BooleanDisplayBindUIElement()
+                  .setId("not_selected_group")
+                  .addClass("__unselected__")
+                  .addClass("display");
+      var characterHP = (HPProgressBar) new HPProgressBar().setId("character_party_hp");
+
+      characterSate
+          .bindDataSource(
+              SupplierDataSource.of(
+                  () -> {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    var player = minecraft.player;
+                    CharacterParty characterParty;
+                    if (player != null) {
+                      characterParty =
+                          player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                      return !characterParty.getStackInSlot(slotIndex).isEmpty();
+                    }
+                    return false;
+                  }))
+          .layout(
+              layout -> {
+                layout.flexDirection(FlexDirection.ROW);
+                layout.gapAll(6);
+                layout.display(TaffyDisplay.FLEX);
+              });
+
+      characterIcon.bindDataSource(
+          SupplierDataSource.of(
+              () -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                var player = minecraft.player;
+                CharacterParty characterParty;
+                if (player != null) {
+                  characterParty =
+                      player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                  return characterParty.getStackInSlot(slotIndex);
+                }
+                return ItemStack.EMPTY;
+              }));
+      selectedGroup.bindDataSource(
+          SupplierDataSource.of(
+              () -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                var player = minecraft.player;
+                CharacterParty characterParty;
+                if (player != null) {
+                  characterParty =
+                      player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                  return characterParty.getCurrentCharacterSlot() - 1 == slotIndex;
+                }
+                return false;
+              }));
+      notSelectedGroup.bindDataSource(SupplierDataSource.of(() -> !selectedGroup.getValue()));
+      characterName.bindDataSource(
+          SupplierDataSource.of(
+              () -> {
+                ItemStack stack = characterIcon.getValue();
+                return stack.isEmpty() ? Component.literal("") : stack.getHoverName();
+              }));
+      characterHP
+          .bindDataSource(
+              SupplierDataSource.of(
+                  () -> {
+                    ItemStack stack = characterIcon.getValue();
+                    var characterData = CombatHelper.getCharacterData(stack);
+                    if (characterData != null) {
+                      return (float)
+                          (characterData.getCurrentHP() / characterData.getMaxHP().getTotalValue(true));
+                    }
+                    return 1f;
+                  }))
+          .label
+          .setText("")
+          .setId("character_party_hp");
+      characterHP.layout(
+          layout -> {
+            layout.width(80);
+            layout.height(4);
+            layout.aspectRatio(20);
+          });
+      characterHP
+          .barIcon
+          .style(
+              s ->
+                  s.background(
+                      SpriteTexture.of(
+                          Minegenshin.id("textures/gui/short_character_hp_bar_green.png"))))
+          .layout(
+              l -> {
+                l.width(80);
+                l.aspectRatio(20);
+              });
+      characterHP.barContainer(
+          c ->
+              c.style(
+                  s ->
+                      s.background(
+                          SpriteTexture.of(
+                              Minegenshin.id("textures/gui/short_character_hp_green.png")))));
+      characterList.addChild(
+          characterSate.addChildren(
+              characterIcon,
+              iconLeftUIElement.addChildren(
+                  characterName,
+                  selectedGroup.addChildren(),
+                  notSelectedGroup.addChildren(characterHP))));
+    }
+    characterSkillIcon
+        .bindDataSource(
+            SupplierDataSource.of(
+                () -> {
+                  Minecraft minecraft = Minecraft.getInstance();
+                  var player = minecraft.player;
+                  CharacterParty characterParty;
+                  if (player != null) {
+                    characterParty =
+                        player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                    var character = characterParty.getCurrentCharacter();
+                    var characterData = CombatHelper.getCharacterData(character);
+                    var item = character.getItem();
+                    if (item instanceof PlayerCharacter characterItem) {
+                      float maxSkillCD = characterItem.getSkillMaxCooldown();
+                      if (characterData != null) {
+                        float currentSkillCD = characterData.getElementalSkillCooldownTick();
+                        return currentSkillCD / maxSkillCD;
+                      }
+                    }
+                  }
+                  return 0f;
+                }))
+        .layout(
+            layout -> {
+              layout.width(40);
+              layout.height(40);
+            })
+        .setId("character_skill_icon");
+    characterSkillIcon.bindCharacterSource(
+        SupplierDataSource.of(
+            () -> {
+              Minecraft minecraft = Minecraft.getInstance();
+              var player = minecraft.player;
+              CharacterParty characterParty;
+              if (player != null) {
+                characterParty = player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                return characterParty.getCurrentCharacter();
+              }
+              return ItemStack.EMPTY;
+            }),
+        0);
+    characterSkillIcon.label.bindDataSource(
+        SupplierDataSource.of(
+            () -> {
+              characterSkillIcon.label.textStyle(style -> style.fontSize(14));
+              Minecraft minecraft = Minecraft.getInstance();
+              var player = minecraft.player;
+              CharacterParty characterParty;
+              if (player != null) {
+                characterParty = player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                var character = characterParty.getCurrentCharacter();
+                var characterData = CombatHelper.getCharacterData(character);
+                if (characterData != null) {
+                  float currentSkillCD =
+                      Math.round(characterData.getElementalSkillCooldownTick() / 20 * 10f) / 10f;
+                  if (currentSkillCD <= 0) {
+                    return Component.literal("");
+                  }
+                  return Component.literal(String.valueOf(currentSkillCD));
+                }
+              }
+              return Component.literal("");
+            }));
+
+    // 元素爆发
+    characterBurstIcon
+        .bindDataSource(
+            SupplierDataSource.of(
+                () -> {
+                  Minecraft minecraft = Minecraft.getInstance();
+                  var player = minecraft.player;
+                  CharacterParty characterParty;
+                  if (player != null) {
+                    characterParty =
+                        player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                    var character = characterParty.getCurrentCharacter();
+                    var characterData = CombatHelper.getCharacterData(character);
+                    var item = character.getItem();
+                    if (item instanceof PlayerCharacter characterItem) {
+                      float maxSkillCD = characterItem.getBurstMaxCooldown();
+                      if (characterData != null) {
+                        float currentSkillCD = characterData.getElementalBurstCooldownTick();
+                        return currentSkillCD / maxSkillCD;
+                      }
+                    }
+                  }
+                  return 0f;
+                }))
+        .layout(
+            layout -> {
+              layout.width(40);
+              layout.height(40);
+            })
+        .setId("character_burst_icon");
+    characterBurstIcon.bindCharacterSource(
+        SupplierDataSource.of(
+            () -> {
+              Minecraft minecraft = Minecraft.getInstance();
+              var player = minecraft.player;
+              CharacterParty characterParty;
+              if (player != null) {
+                characterParty = player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                return characterParty.getCurrentCharacter();
+              }
+              return ItemStack.EMPTY;
+            }),
+        0);
+
+    characterBurstIcon.label.bindDataSource(
+        SupplierDataSource.of(
+            () -> {
+              characterBurstIcon.label.textStyle(style -> style.fontSize(14));
+              Minecraft minecraft = Minecraft.getInstance();
+              var player = minecraft.player;
+              CharacterParty characterParty;
+              if (player != null) {
+                characterParty = player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                var character = characterParty.getCurrentCharacter();
+                var characterData = CombatHelper.getCharacterData(character);
+                if (characterData != null) {
+                  float currentSkillCD =
+                      Math.round(characterData.getElementalBurstCooldownTick() / 20 * 10f) / 10f;
+                  if (currentSkillCD <= 0) {
+                    return Component.literal("");
+                  }
+                  return Component.literal(String.valueOf(currentSkillCD));
+                }
+              }
+              return Component.literal("");
+            }));
+
+    currentCharacterHP
+        .bindDataSource(
+            SupplierDataSource.of(
+                () -> {
+                  Minecraft minecraft = Minecraft.getInstance();
+                  var player = minecraft.player;
+                  var characterParty =
+                      player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                  var characterData =
+                      CombatHelper.getCharacterData(characterParty.getCurrentCharacter());
+                  if (characterData != null) {
+                    return (float)
+                        (characterData.getCurrentHP() / characterData.getMaxHP().getTotalValue(true));
+                  }
+                  return 0f;
+                }))
+        .setId("current_character_hp")
+        .layout(
+            l -> {
+              l.width(210);
+              l.heightAuto();
+              l.aspectRatio(35);
+            });
+    currentCharacterHP
+        .barIcon
+        .style(
+            s ->
+                s.background(
+                    SpriteTexture.of(
+                        Minegenshin.id("textures/gui/long_character_hp_bar_green.png"))))
+        .layout(
+            l -> {
+              l.width(210);
+              l.aspectRatio(35);
+            });
+    currentCharacterHP.barContainer(
+        c ->
+            c.style(
+                s ->
+                    s.background(
+                        SpriteTexture.of(
+                            Minegenshin.id("textures/gui/long_character_hp_green.png")))));
+    currentCharacterHP.label.bindDataSource(
+        SupplierDataSource.of(
+            () -> {
+              Minecraft minecraft = Minecraft.getInstance();
+              var player = minecraft.player;
+              var characterParty =
+                  player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+              var characterData =
+                  CombatHelper.getCharacterData(characterParty.getCurrentCharacter());
+              if (characterData != null) {
+                return Component.literal(
+                    Math.round(characterData.getCurrentHP() * 10.0f) / 10.0f
+                        + "/"
+                        + characterData.getMaxHP().getTotalValue(true));
+              }
+              return Component.empty();
+            }));
+    characterLevel.bindDataSource(
+        SupplierDataSource.of(
+            () -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                var player = minecraft.player;
+                var characterParty =
+                    player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                var characterData =
+                    CombatHelper.getCharacterData(characterParty.getCurrentCharacter());
+                if (characterData != null) {
+                    return Component.literal(
+                        "Lv." + characterData.getLevel()
+                    );
+                }
+                return Component.empty();
+            })
+    ).setId("character-level");
+    var attributeDebug = new Label();
+    attributeDebug.bindDataSource(
+        SupplierDataSource.of(
+            () -> {
+                Minecraft minecraft = Minecraft.getInstance();
+                var player = minecraft.player;
+                var characterParty =
+                        player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                var characterData =
+                        CombatHelper.getCharacterData(characterParty.getCurrentCharacter());
+                if (characterData != null) {
+                    return Component.literal(
+                            "当前攻击力：" + (int)characterData.getATK().getTotalValue(true) + "当前基础攻击力：" + characterData.getATK().getBaseValue(true) + "当前额外攻击力百分比：" + characterData.getATK().getExtraPercent(false)+"%"
+                            + "\n当前防御力：" + characterData.getDEF().getTotalValue(true) + "当前基础防御力：" + characterData.getDEF().getBaseValue(true) + "当前额外防御力百分比：" + characterData.getDEF().getExtraPercent(false)+"%"
+                            + "\n当前生命值：" + characterData.getMaxHP().getTotalValue(true) + "当前基础生命值：" + characterData.getMaxHP().getBaseValue(true) + "当前额外生命值百分比：" + characterData.getMaxHP().getExtraPercent(false)+"%"
+                    );
+                }
+                return Component.empty();
+            })
+    ).setId("character-attribute");
+    currentContent.bindDataSource(
+        SupplierDataSource.of(
+            () -> {
+              Minecraft minecraft = Minecraft.getInstance();
+              var player = minecraft.player;
+              if (player != null) {
+                var characterParty =
+                    player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                return !characterParty.getCurrentCharacter().isEmpty();
+              }
+              return false;
+            }));
+    var energy =
+        new Label()
+            .bindDataSource(
+                SupplierDataSource.of(
+                    () -> {
+                      Minecraft minecraft = Minecraft.getInstance();
+                      var player = minecraft.player;
+                      var characterParty =
+                          player.getData(AttachmentRegistration.CHARACTER_PARTY_ATTACHMENT);
+                      var characterData =
+                          CombatHelper.getCharacterData(characterParty.getCurrentCharacter());
+                      if (characterData != null) {
+                        if (characterParty.getCurrentCharacter().getItem()
+                            instanceof PlayerCharacter playerCharacter) {
+                          return Component.literal(
+                              Math.round(characterData.getCurrentObtainingEnergy() * 10f) / 10f
+                                  + "/"
+                                  + playerCharacter.getMaxObtainingEnergy());
+                        }
+                      }
+                      return Component.literal("");
+                    }));
+
+    root.addChildren(
+        characterList,
+        currentContent
+            .addChildren(
+                attributeDebug,
+                characterLevel,
+                currentCharacterHP,
+                new UIElement()
+                    .setId("skill-content")
+                    .addChildren(characterSkillIcon, characterBurstIcon, energy))
+            .layout(
+                l -> {
+                  l.widthPercent(100);
+                  l.heightPercent(100);
+                }));
+
+    return root;
+  }
+}
