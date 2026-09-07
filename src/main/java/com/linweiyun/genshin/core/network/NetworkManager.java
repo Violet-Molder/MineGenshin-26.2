@@ -5,12 +5,14 @@ import com.linweiyun.genshin.content.items.artifact.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.GenshinBackpack;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.ArtifactInventory;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
+import com.linweiyun.genshin.render.gui.menu.GenshinBackpackMenu;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
@@ -33,7 +35,7 @@ import java.util.Random;
 public class NetworkManager {
   private static final Random RANDOM = new Random();
   private static final Logger LOGGER = LogUtils.getLogger();
-  // ========== 原石同步 ==========
+
   @RPCPacket("primogemRPCPacket")
   public static void primogemRPCPacket(RPCSender sender, int amount) {
     if (sender.isServer()) {
@@ -52,7 +54,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "primogemRPCPacket", amount);
   }
 
-  // ========== 冒险者信息同步 ==========
   @RPCPacket("adventurerInfoRPCPacket")
   public static void adventurerInfoRPCPacket(RPCSender sender, CompoundTag data) {
     if (sender.isServer()) {
@@ -72,8 +73,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "adventurerInfoRPCPacket", data);
   }
 
-  // ========== 游戏模式同步 ==========
-  //AI genshinModeRPCPacket 服务端增加开启校验：party 里没有 currentHP > 0 的角色则拒绝开启
   @RPCPacket("genshinModeRPCPacket")
   public static void genshinModeRPCPacket(RPCSender sender, boolean isGenshinMode) {
     if (sender.isServer()) {
@@ -86,12 +85,10 @@ public class NetworkManager {
         return;
       }
       player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT.get(), isGenshinMode);
-      //test 统一由服务端发消息，防止客户端先发成功消息再收到拒绝提示的乱序问题
       player.sendSystemMessage(Component.literal(isGenshinMode ? "已进入原神模式" : "已退出原神模式"));
     }
   }
 
-  // 检查 party 中是否存在至少一个 currentHP > 0 的角色
   private static boolean hasAlivePartyCharacter(ServerPlayer player) {
     PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     for (int uuid : attachment.getPartyCharacterUUIDs()) {
@@ -110,7 +107,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("genshinModeRPCPacket", isGenshinMode);
   }
 
-  // ========== 角色整体同步（替代旧的 party + sheet + characterData） ==========
   @RPCPacket("playerCharactersRPCPacket")
   public static void playerCharactersRPCPacket(RPCSender sender, CompoundTag data) {
     if (sender.isServer()) {
@@ -119,9 +115,8 @@ public class NetworkManager {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       attachment.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), data));
-
       attachment.fixCharacterTypes();
-      attachment.bindAllOwners(player); //AI 反序列化后重新绑定所有角色的 ownerPlayer
+      attachment.bindAllOwners(player);
     }
   }
   public static void setPlayerCharactersToServer(CompoundTag data) {
@@ -131,7 +126,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "playerCharactersRPCPacket", data);
   }
 
-  // ========== 角色数据同步（单个角色） ==========
   @RPCPacket("characterDataRPCPacket")
   public static void characterDataRPCPacket(RPCSender sender, int uuid, CompoundTag data) {
     if (sender.isServer()) {
@@ -154,7 +148,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "characterDataRPCPacket", uuid, data);
   }
 
-  // ========== 角色编队 - 设置队伍角色 ==========
   @RPCPacket("setPartyCharacterRPCPacket")
   public static void setPartyCharacterRPCPacket(RPCSender sender, int index, int characterUUID) {
     if (sender.isServer()) {
@@ -174,7 +167,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "setPartyCharacterRPCPacket", index, characterUUID);
   }
 
-  // ========== 角色选择同步 ==========
   @RPCPacket("characterSelectionRPCPacket")
   public static void characterSelectionRPCPacket(RPCSender sender, int index) {
     if (sender.isServer()) {
@@ -194,7 +186,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("characterSelectionRPCPacket", index);
   }
 
-  // ========== 角色编队 - 移除队伍角色 ==========
   @RPCPacket("removePartyCharacterRPCPacket")
   public static void removePartyCharacterRPCPacket(RPCSender sender, int index) {
     if (sender.isServer()) {
@@ -214,7 +205,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "removePartyCharacterRPCPacket", index);
   }
 
-  // ========== 角色库存 - 添加角色 ==========
   @RPCPacket("addCharacterRPCPacket")
   public static void addCharacterRPCPacket(RPCSender sender, CompoundTag characterData) {
     if (sender.isServer()) {
@@ -224,7 +214,7 @@ public class NetworkManager {
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter character = new PGCharacter();
       character.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), characterData));
-      attachment.addCharacter(character, player); //AI 绑定 Player
+      attachment.addCharacter(character, player);
     }
   }
 
@@ -236,7 +226,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "addCharacterRPCPacket", characterData);
   }
 
-  // ========== 角色库存 - 移除角色 ==========
   @RPCPacket("removeCharacterRPCPacket")
   public static void removeCharacterRPCPacket(RPCSender sender, int uuid) {
     if (sender.isServer()) {
@@ -256,7 +245,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "removeCharacterRPCPacket", uuid);
   }
 
-  // ==== 元素战技 ====
   @RPCPacket("characterActiveSkillRPCPacket")
   public static void characterActiveSkillRPCPacket(RPCSender sender, int isLong) {
     if (!sender.isServer()) {
@@ -265,8 +253,7 @@ public class NetworkManager {
               serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter currentChar = attachment.getCurrentCharacter();
       if (currentChar != null) {
-            currentChar.performElementalSkill(serverPlayer, isLong);
-
+        currentChar.performElementalSkill(serverPlayer, isLong);
       }
     }
   }
@@ -274,17 +261,15 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("characterActiveSkillRPCPacket", isLong);
   }
 
-  // ==== 元素爆发 ====
   @RPCPacket("characterActiveBurstRPCPacket")
   public static void characterActiveBurstRPCPacket(RPCSender sender) {
     if (!sender.isServer()) {
       ServerPlayer serverPlayer = sender.asPlayer();
-
       PlayerCharactersAttachment attachment =
               serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter currentChar = attachment.getCurrentCharacter();
       if (currentChar != null) {
-          currentChar.performElementalBurst(serverPlayer);
+        currentChar.performElementalBurst(serverPlayer);
       }
     }
   }
@@ -292,25 +277,23 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket");
   }
 
-  // ========== 圣遗物升级 ==========
   @RPCPacket("artifactLevelUpRPCPacket")
   public static void artifactLevelUpRPCPacket(RPCSender sender, ItemStack stack, int expAmount) {
     if (sender.isServer()) {
-      // S→C：把服务器处理后的 ItemStack 同步给客户端 Screen
     } else {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem art)) return;
       ArtifactStatsComponent stats = stack.getOrDefault(ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
-      int star = art.getStar();  // star 还在 Item 单例上
+      int star = art.getStar();
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter currentChar = attachment.getCurrentCharacter();
       if (currentChar != null) {
-          PGCharacterData charData = currentChar.getData();
-          if (charData != null) {
-              ArtifactInventory inv = charData.getArtifactInventory();
-              int slot = ArtifactInventory.typeToSlot(art.getType());
-              stats.setOnStatsChanged(() -> inv.markDirty(slot));
-          }
+        PGCharacterData charData = currentChar.getData();
+        if (charData != null) {
+          ArtifactInventory inv = charData.getArtifactInventory();
+          int slot = ArtifactInventory.typeToSlot(art.getType());
+          stats.setOnStatsChanged(() -> inv.markDirty(slot));
+        }
       }
       long added = stats.addExp(expAmount, star, art.getType());
       if (added <= 0) return;
@@ -327,7 +310,114 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "artifactLevelUpRPCPacket", artifact, 0);
   }
 
-  // ========== 祈愿系统 ==========
+  @RPCPacket("equipOrSwapArtifactRPCPacket")
+  public static void equipOrSwapArtifactRPCPacket(RPCSender sender, int artifactSlotIndex, int inventorySlotIndex) {
+    if (sender.isServer()) {
+      ClientHandler.equipOrSwapArtifactClientHandler(artifactSlotIndex, inventorySlotIndex);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter currentChar = attachment.getCurrentCharacter();
+      if (currentChar == null || currentChar.getData() == null) return;
+      PGCharacterData charData = currentChar.getData();
+      ArtifactInventory artifactInv = charData.getArtifactInventory();
+
+      GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+      ItemStack[] artifactArr = backpack.getCategoryArray(GenshinBackpack.Category.ARTIFACTS);
+      if (inventorySlotIndex < 0 || inventorySlotIndex >= artifactArr.length) return;
+      ItemStack newArtifact = artifactArr[inventorySlotIndex];
+      if (newArtifact.isEmpty() || !(newArtifact.getItem() instanceof ArtifactItem)) return;
+      if (artifactSlotIndex < 0 || artifactSlotIndex >= ArtifactInventory.SLOT_COUNT) return;
+      if (!ArtifactInventory.isValidForSlot(artifactSlotIndex, newArtifact)) return;
+
+      ItemStack oldArtifact = artifactInv.getItem(artifactSlotIndex);
+
+      artifactArr[inventorySlotIndex] = ItemStack.EMPTY;
+      artifactInv.setItem(artifactSlotIndex, newArtifact.copy());
+
+      if (!oldArtifact.isEmpty()) {
+        backpack.addItemToCategory(GenshinBackpack.Category.ARTIFACTS, oldArtifact.copy());
+      }
+
+      currentChar.recalculateDirtyArtifactSlots();
+      attachment.syncToPlayer(player);
+    }
+  }
+
+  public static void sendEquipOrSwapArtifactToServer(int artifactSlotIndex, int inventorySlotIndex) {
+    RPCPacketDistributor.rpcToServer("equipOrSwapArtifactRPCPacket", artifactSlotIndex, inventorySlotIndex);
+  }
+
+  @RPCPacket("unequipArtifactRPCPacket")
+  public static void unequipArtifactRPCPacket(RPCSender sender, int artifactSlotIndex) {
+    if (sender.isServer()) {
+      ClientHandler.unequipArtifactClientHandler(artifactSlotIndex);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter currentChar = attachment.getCurrentCharacter();
+      if (currentChar == null || currentChar.getData() == null) return;
+      PGCharacterData charData = currentChar.getData();
+      ArtifactInventory artifactInv = charData.getArtifactInventory();
+
+      if (artifactSlotIndex < 0 || artifactSlotIndex >= ArtifactInventory.SLOT_COUNT) return;
+      ItemStack oldArtifact = artifactInv.getItem(artifactSlotIndex);
+      if (oldArtifact.isEmpty()) return;
+
+      artifactInv.setItem(artifactSlotIndex, ItemStack.EMPTY);
+
+      GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+      backpack.addItemToCategory(GenshinBackpack.Category.ARTIFACTS, oldArtifact.copy());
+
+      currentChar.recalculateDirtyArtifactSlots();
+      attachment.syncToPlayer(player);
+    }
+  }
+
+  public static void sendUnequipArtifactToServer(int artifactSlotIndex) {
+    RPCPacketDistributor.rpcToServer("unequipArtifactRPCPacket", artifactSlotIndex);
+  }
+
+  @RPCPacket("backpackTakeOutRPCPacket")
+  public static void backpackTakeOutRPCPacket(RPCSender sender, int categoryOrdinal, int indexInCategory) {
+    if (sender.isServer()) {
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      if (categoryOrdinal < 0 || categoryOrdinal >= GenshinBackpack.Category.values().length) return;
+      GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+      GenshinBackpack.Category category = GenshinBackpack.Category.values()[categoryOrdinal];
+      ItemStack removed = backpack.removeItemFromCategory(category, indexInCategory);
+      if (removed.isEmpty()) return;
+      giveItemToPlayer(player, removed);
+    }
+  }
+
+  public static void sendBackpackTakeOutToServer(int categoryOrdinal, int indexInCategory) {
+    RPCPacketDistributor.rpcToServer("backpackTakeOutRPCPacket", categoryOrdinal, indexInCategory);
+  }
+
+  @RPCPacket("openGenshinBackpackRPCPacket")
+  public static void openGenshinBackpackRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer serverPlayer = sender.asPlayer();
+      if (serverPlayer == null) return;
+      serverPlayer.openMenu(new net.minecraft.world.MenuProvider() {
+        @Override
+        public Component getDisplayName() {
+          return Component.literal("Genshin Backpack");
+        }
+        @Override
+        public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId, net.minecraft.world.entity.player.Inventory inventory, net.minecraft.world.entity.player.Player p) {
+          return new GenshinBackpackMenu(containerId, inventory);
+        }
+      });
+    }
+  }
+
+  public static void openGenshinBackpackMenuToServer() {
+    RPCPacketDistributor.rpcToServer("openGenshinBackpackRPCPacket");
+  }
+
   @RPCPacket("primogemWish")
   public static void primogemWish(RPCSender sender) {
     if (!sender.isServer()) {
@@ -368,8 +458,7 @@ public class NetworkManager {
                         characterName,
                         Component.literal(String.valueOf(compensation)).withStyle(ChatFormatting.AQUA)));
       } else {
-        charactersAttachment.addCharacter(rolledCharacter, serverPlayer); //AI 绑定 Player
-
+        charactersAttachment.addCharacter(rolledCharacter, serverPlayer);
 
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, serverPlayer.registryAccess());
         charactersAttachment.serialize(output);
@@ -385,7 +474,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("primogemWish");
   }
 
-  // ========== 打开角色信息菜单 ==========
   @RPCPacket("openCharacterInfoRPCPacket")
   public static void openCharacterInfoRPCPacket(RPCSender sender) {
     if (!sender.isServer()) {
@@ -411,7 +499,6 @@ public class NetworkManager {
   public static void giveItemToPlayer(ServerPlayer player, ItemStack stack) {
     int remaining = stack.getCount();
 
-    // 1. 先尝试堆叠到已有的相同物品
     net.minecraft.world.entity.player.Inventory inventory = player.getInventory();
     for (int i = 0; i < inventory.getContainerSize(); i++) {
       if (remaining <= 0) break;
@@ -420,14 +507,13 @@ public class NetworkManager {
       if (existing.isEmpty()) continue;
 
       if (ItemStack.isSameItemSameComponents(existing, stack)
-          && existing.getCount() < existing.getMaxStackSize()) {
+              && existing.getCount() < existing.getMaxStackSize()) {
         int canAdd = Math.min(remaining, existing.getMaxStackSize() - existing.getCount());
         existing.grow(canAdd);
         remaining -= canAdd;
       }
     }
 
-    // 2. 如果还有剩余，找空槽位放入
     if (remaining > 0) {
       for (int i = 0; i < inventory.getContainerSize(); i++) {
         if (remaining <= 0) break;
@@ -441,12 +527,11 @@ public class NetworkManager {
       }
     }
 
-    // 3. 如果还有剩余，掉落在玩家附近
     if (remaining > 0) {
       ItemStack dropStack = stack.copyWithCount(remaining);
       net.minecraft.world.entity.item.ItemEntity itemEntity =
-          new net.minecraft.world.entity.item.ItemEntity(
-              player.level(), player.getX(), player.getY() + 0.5, player.getZ(), dropStack);
+              new net.minecraft.world.entity.item.ItemEntity(
+                      player.level(), player.getX(), player.getY() + 0.5, player.getZ(), dropStack);
       player.level().addFreshEntity(itemEntity);
     }
   }

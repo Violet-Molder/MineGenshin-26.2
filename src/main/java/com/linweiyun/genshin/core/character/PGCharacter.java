@@ -162,7 +162,7 @@ public class PGCharacter implements IPersistedSerializable {
         data.getArtifactInventory().setItem(slot, ItemStack.EMPTY);
     }
 
-    private void recalculateDirtyArtifactSlots() {
+    public void recalculateDirtyArtifactSlots() {
         ArtifactInventory inv = data.getArtifactInventory();
         if (!inv.hasDirtySlots()) return;
         for (int i = 0; i < ArtifactInventory.SLOT_COUNT; i++) {

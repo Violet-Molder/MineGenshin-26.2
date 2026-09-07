@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.render.gui.screens;
 
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.render.gui.screens.atrifact.ScreenArtifactEquip;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 
@@ -16,5 +17,13 @@ public class GUIServerHelperGIM {
   }
   public static void openCharacterInfoScreen(Player player) {
     NetworkManager.openCharacterInfoScreenToServer();
+  }
+
+  public static void openArtifactEquipScreen(Player player, int slotIndex) {
+    var modularUI = ScreenArtifactEquip.createModularUI(player, slotIndex);
+    Minecraft.getInstance().setScreenAndShow(new ScreenArtifactEquip(modularUI));
+  }
+  public static void openGenshinBackpackScreen(Player player) {
+    NetworkManager.openGenshinBackpackMenuToServer();
   }
 }

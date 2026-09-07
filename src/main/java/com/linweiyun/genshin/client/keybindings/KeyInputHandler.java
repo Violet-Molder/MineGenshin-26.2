@@ -1,4 +1,4 @@
-package com.linweiyun.genshin.render.keybindings;
+package com.linweiyun.genshin.client.keybindings;
 
 import com.linweiyun.genshin.render.gui.screens.GUIServerHelperGIM;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
@@ -87,6 +87,12 @@ public class KeyInputHandler {
       GUIServerHelperGIM.openCharacterPartyScreen(player);
     }
     if (KeyMappingRegistry.CHARACTER_INFO_SCREEN_KEY.get().consumeClick()) {
+      GUIServerHelperGIM.openArtifactEquipScreen(player, -1);
+    }
+    if (KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY.get().consumeClick()) {
+      GUIServerHelperGIM.openGenshinBackpackScreen(player);
+    }
+    if (KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY_2.get().consumeClick()) {
       GUIServerHelperGIM.openCharacterInfoScreen(player);
     }
   }

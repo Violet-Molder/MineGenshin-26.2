@@ -1,4 +1,4 @@
-package com.linweiyun.genshin.render.keybindings;
+package com.linweiyun.genshin.client.keybindings;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -60,6 +60,18 @@ public class KeyMappingRegistry {
                   InputConstants.Type.KEYSYM,
                   GLFW.GLFW_KEY_U,
                   KeyMapping.Category.MISC));
+  public static final Lazy<KeyMapping> ARTIFACT_EQUIP_SCREEN_KEY = Lazy.of(() ->
+          new KeyMapping(
+                  "key.minegenshin.artifact_equip_screen_key",
+                  InputConstants.Type.KEYSYM,
+                  GLFW.GLFW_KEY_B,
+                  KeyMapping.Category.MISC));
+  public static final Lazy<KeyMapping> ARTIFACT_EQUIP_SCREEN_KEY_2 = Lazy.of(() ->
+          new KeyMapping(
+                  "key.minegenshin.artifact_equip_screen_key",
+                  InputConstants.Type.KEYSYM,
+                  GLFW.GLFW_KEY_N,
+                  KeyMapping.Category.MISC));
   @SubscribeEvent // on the mod event bus only on the physical client
   public static void registerBindings(RegisterKeyMappingsEvent event) {
     event.registerCategory(CATEGORY);
@@ -71,5 +83,7 @@ public class KeyMappingRegistry {
     event.register(R_KEY.get());
     event.register(F_KEY.get());
     event.register(CHARACTER_INFO_SCREEN_KEY.get());
+    event.register(ARTIFACT_EQUIP_SCREEN_KEY.get());
+    event.register(ARTIFACT_EQUIP_SCREEN_KEY_2.get());
   }
 }

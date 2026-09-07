@@ -107,4 +107,14 @@ public class ClientHandler {
             attachment.removeCharacter(uuid);
         }
     }
+
+    // ========== 圣遗物穿戴/更换 ==========
+    public static void equipOrSwapArtifactClientHandler(int artifactSlotIndex, int inventorySlotIndex) {
+        // 客户端不需要额外处理，数据通过 PlayerCharactersAttachment 同步回来
+    }
+
+    // ========== 圣遗物卸下 ==========
+    public static void unequipArtifactClientHandler(int artifactSlotIndex) {
+        // 客户端不需要额外处理，数据通过 PlayerCharactersAttachment 同步回来
+    }
 }
