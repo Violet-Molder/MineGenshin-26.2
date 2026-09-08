@@ -87,9 +87,9 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
 
     private Runnable onChange = () -> {};
 
-    private transient boolean dirty = false;
-    private transient boolean suppressDirty = false;
-    private transient IntSet dirtySlots = new IntOpenHashSet();
+//    private transient boolean dirty = false;
+//    private transient boolean suppressDirty = false;
+//    private transient IntSet dirtySlots = new IntOpenHashSet();
 
     public GenshinBackpack() {
         weapons = initArray(WEAPONS_SIZE);
@@ -280,9 +280,9 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
         Category cat = getCategoryFromFlatIndex(flatIndex);
         int idx = getIndexInCategoryFromFlatIndex(flatIndex);
         setItemInCategory(cat, idx, stack);
-        if (!suppressDirty) {
-            dirtySlots.add(flatIndex);
-        }
+//        if (!suppressDirty) {
+//            dirtySlots.add(flatIndex);
+//        }
     }
 
     @Override
@@ -298,60 +298,60 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
 
     @Override
     public void setChanged() {
-        if (!suppressDirty) {
-            dirty = true;
-        }
+//        if (!suppressDirty) {
+//            dirty = true;
+//        }
         onChange.run();
     }
 
-    public boolean isDirty() {
-        return dirty;
-    }
-
-    public void clearDirty() {
-        dirty = false;
-    }
-    public void setSuppressDirty(boolean suppress) {
-        this.suppressDirty = suppress;
-    }
-
-    public void syncToServer(Player player) {
-        CompoundTag backpackData = new CompoundTag();
-        var registries = player.registryAccess();
-        var nbtOps = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
-
-        for (int flatIndex : dirtySlots) {
-            ItemStack stack = getItem(flatIndex);
-            if (!stack.isEmpty()) {
-                CompoundTag slotTag = (CompoundTag) ItemStack.CODEC
-                        .encodeStart(nbtOps, stack).getOrThrow();
-                backpackData.put(String.valueOf(flatIndex), slotTag);
-            } else {
-                backpackData.putBoolean(String.valueOf(flatIndex) + "_empty", true);
-            }
-        }
-
-        CompoundTag inventoryData = new CompoundTag();
-        var inv = player.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (!stack.isEmpty()) {
-                CompoundTag slotTag = (CompoundTag) ItemStack.CODEC
-                        .encodeStart(nbtOps, stack).getOrThrow();
-                inventoryData.put(String.valueOf(i), slotTag);
-            }
-        }
-
-        NetworkManager.sendGenshinBackpackToServer(backpackData, inventoryData);
-        dirty = false;
-        dirtySlots.clear();
-    }
-
-    public void syncToPlayer(ServerPlayer player) {
-        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
-        serialize(output);
-        NetworkManager.sendGenshinBackpackToPlayer(player, output.buildResult());
-    }
+//    public boolean isDirty() {
+//        return dirty;
+//    }
+//
+//    public void clearDirty() {
+//        dirty = false;
+//    }
+//    public void setSuppressDirty(boolean suppress) {
+//        this.suppressDirty = suppress;
+//    }
+//
+//    public void syncToServer(Player player) {
+//        CompoundTag backpackData = new CompoundTag();
+//        var registries = player.registryAccess();
+//        var nbtOps = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
+//
+//        for (int flatIndex : dirtySlots) {
+//            ItemStack stack = getItem(flatIndex);
+//            if (!stack.isEmpty()) {
+//                CompoundTag slotTag = (CompoundTag) ItemStack.CODEC
+//                        .encodeStart(nbtOps, stack).getOrThrow();
+//                backpackData.put(String.valueOf(flatIndex), slotTag);
+//            } else {
+//                backpackData.putBoolean(String.valueOf(flatIndex) + "_empty", true);
+//            }
+//        }
+//
+//        CompoundTag inventoryData = new CompoundTag();
+//        var inv = player.getInventory();
+//        for (int i = 0; i < inv.getContainerSize(); i++) {
+//            ItemStack stack = inv.getItem(i);
+//            if (!stack.isEmpty()) {
+//                CompoundTag slotTag = (CompoundTag) ItemStack.CODEC
+//                        .encodeStart(nbtOps, stack).getOrThrow();
+//                inventoryData.put(String.valueOf(i), slotTag);
+//            }
+//        }
+//
+//        NetworkManager.sendGenshinBackpackToServer(backpackData, inventoryData);
+//        dirty = false;
+//        dirtySlots.clear();
+//    }
+//
+//    public void syncToPlayer(ServerPlayer player) {
+//        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
+//        serialize(output);
+//        NetworkManager.sendGenshinBackpackToPlayer(player, output.buildResult());
+//    }
 
     @Override
     public boolean stillValid(Player player) {

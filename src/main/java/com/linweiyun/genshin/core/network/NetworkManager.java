@@ -379,23 +379,7 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("unequipArtifactRPCPacket", artifactSlotIndex);
   }
 
-  @RPCPacket("backpackTakeOutRPCPacket")
-  public static void backpackTakeOutRPCPacket(RPCSender sender, int categoryOrdinal, int indexInCategory) {
-    if (sender.isServer()) {
-    } else {
-      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
-      if (categoryOrdinal < 0 || categoryOrdinal >= GenshinBackpack.Category.values().length) return;
-      GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
-      GenshinBackpack.Category category = GenshinBackpack.Category.values()[categoryOrdinal];
-      ItemStack removed = backpack.removeItemFromCategory(category, indexInCategory);
-      if (removed.isEmpty()) return;
-      giveItemToPlayer(player, removed);
-    }
-  }
-
-  public static void sendBackpackTakeOutToServer(int categoryOrdinal, int indexInCategory) {
-    RPCPacketDistributor.rpcToServer("backpackTakeOutRPCPacket", categoryOrdinal, indexInCategory);
-  }
+//
 
   @RPCPacket("openGenshinBackpackRPCPacket")
   public static void openGenshinBackpackRPCPacket(RPCSender sender) {
@@ -497,53 +481,70 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("openCharacterInfoRPCPacket");
   }
 
-  @RPCPacket("genshinBackpackSyncRPCPacket")
-  public static void genshinBackpackSyncRPCPacket(RPCSender sender, CompoundTag backpackData, CompoundTag inventoryData) {
+//  @RPCPacket("genshinBackpackSyncRPCPacket")
+//  public static void genshinBackpackSyncRPCPacket(RPCSender sender, CompoundTag backpackData, CompoundTag inventoryData) {
+//    if (sender.isServer()) {
+//      ClientHandler.genshinBackpackClientHandler(backpackData);
+//    } else {
+//      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+//      GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+//      var registries = player.registryAccess();
+//      var nbtOps = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
+//      backpack.setSuppressDirty(true);
+//      for (String key : backpackData.keySet()) {
+//        if (key.endsWith("_empty")) {
+//          int flatIndex = Integer.parseInt(key.substring(0, key.length() - 6));
+//          backpack.setItem(flatIndex, ItemStack.EMPTY);
+//        } else {
+//          int flatIndex = Integer.parseInt(key);
+//          var slotTag = backpackData.get(key);
+//          ItemStack stack = ItemStack.CODEC.parse(nbtOps, slotTag).getOrThrow();
+//          backpack.setItem(flatIndex, stack);
+//        }
+//      }
+//      backpack.setSuppressDirty(false);
+//      var inv = player.getInventory();
+//      for (int i = 0; i < inv.getContainerSize(); i++) {
+//        String key = String.valueOf(i);
+//        if (inventoryData.contains(key)) {
+//          var slotTag = inventoryData.get(key);
+//          ItemStack stack = ItemStack.CODEC.parse(nbtOps, slotTag).getOrThrow();
+//          inv.setItem(i, stack);
+//        } else {
+//          inv.setItem(i, ItemStack.EMPTY);
+//        }
+//      }
+//      inv.setChanged();
+//    }
+//  }
+//
+//  public static void sendGenshinBackpackToServer(CompoundTag backpackData, CompoundTag inventoryData) {
+//    LOGGER.info("sendGenshinBackpackToServer");
+//    RPCPacketDistributor.rpcToServer("genshinBackpackSyncRPCPacket", backpackData, inventoryData);
+//  }
+//
+//  public static void sendGenshinBackpackToPlayer(ServerPlayer player, CompoundTag data) {
+//    LOGGER.info("sendGenshinBackpackToPlayer");
+//    RPCPacketDistributor.rpcToPlayer(player, "genshinBackpackSyncRPCPacket", data, new CompoundTag());
+//  }
+//
+
+  public static void backpackTakeOutRPCPacket(RPCSender sender, int categoryOrdinal, int indexInCategory) {
     if (sender.isServer()) {
-      ClientHandler.genshinBackpackClientHandler(backpackData);
     } else {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      if (categoryOrdinal < 0 || categoryOrdinal >= GenshinBackpack.Category.values().length) return;
       GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
-      var registries = player.registryAccess();
-      var nbtOps = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
-      backpack.setSuppressDirty(true);
-      for (String key : backpackData.keySet()) {
-        if (key.endsWith("_empty")) {
-          int flatIndex = Integer.parseInt(key.substring(0, key.length() - 6));
-          backpack.setItem(flatIndex, ItemStack.EMPTY);
-        } else {
-          int flatIndex = Integer.parseInt(key);
-          var slotTag = backpackData.get(key);
-          ItemStack stack = ItemStack.CODEC.parse(nbtOps, slotTag).getOrThrow();
-          backpack.setItem(flatIndex, stack);
-        }
-      }
-      backpack.setSuppressDirty(false);
-      var inv = player.getInventory();
-      for (int i = 0; i < inv.getContainerSize(); i++) {
-        String key = String.valueOf(i);
-        if (inventoryData.contains(key)) {
-          var slotTag = inventoryData.get(key);
-          ItemStack stack = ItemStack.CODEC.parse(nbtOps, slotTag).getOrThrow();
-          inv.setItem(i, stack);
-        } else {
-          inv.setItem(i, ItemStack.EMPTY);
-        }
-      }
-      inv.setChanged();
+      GenshinBackpack.Category category = GenshinBackpack.Category.values()[categoryOrdinal];
+      ItemStack removed = backpack.removeItemFromCategory(category, indexInCategory);
+      if (removed.isEmpty()) return;
+      giveItemToPlayer(player, removed);
     }
   }
 
-  public static void sendGenshinBackpackToServer(CompoundTag backpackData, CompoundTag inventoryData) {
-    LOGGER.info("sendGenshinBackpackToServer");
-    RPCPacketDistributor.rpcToServer("genshinBackpackSyncRPCPacket", backpackData, inventoryData);
+  public static void sendBackpackTakeOutToServer(int categoryOrdinal, int indexInCategory) {
+    RPCPacketDistributor.rpcToServer("backpackTakeOutRPCPacket", categoryOrdinal, indexInCategory);
   }
-
-  public static void sendGenshinBackpackToPlayer(ServerPlayer player, CompoundTag data) {
-    LOGGER.info("sendGenshinBackpackToPlayer");
-    RPCPacketDistributor.rpcToPlayer(player, "genshinBackpackSyncRPCPacket", data, new CompoundTag());
-  }
-
   public static void giveItemToPlayer(ServerPlayer player, ItemStack stack) {
     int remaining = stack.getCount();
 

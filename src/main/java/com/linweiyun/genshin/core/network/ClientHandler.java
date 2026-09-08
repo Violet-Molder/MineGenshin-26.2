@@ -119,17 +119,17 @@ public class ClientHandler {
         // 客户端不需要额外处理，数据通过 PlayerCharactersAttachment 同步回来
     }
 
-    // ========== 原神背包同步（服务端→客户端） ==========
-    public static void genshinBackpackClientHandler(CompoundTag data) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null && !mc.player.isRemoved()) {
-            GenshinBackpack backpack =
-                    mc.player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
-            backpack.setSuppressDirty(true);
-            backpack.deserialize(TagValueInput.create(
-                    ProblemReporter.DISCARDING, mc.player.registryAccess(), data));
-            backpack.setSuppressDirty(false);
-            backpack.clearDirty();
-        }
-    }
+//    // ========== 原神背包同步（服务端→客户端） ==========
+//    public static void genshinBackpackClientHandler(CompoundTag data) {
+//        Minecraft mc = Minecraft.getInstance();
+//        if (mc.player != null && !mc.player.isRemoved()) {
+//            GenshinBackpack backpack =
+//                    mc.player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+//            backpack.setSuppressDirty(true);
+//            backpack.deserialize(TagValueInput.create(
+//                    ProblemReporter.DISCARDING, mc.player.registryAccess(), data));
+//            backpack.setSuppressDirty(false);
+//            backpack.clearDirty();
+//        }
+//    }
 }

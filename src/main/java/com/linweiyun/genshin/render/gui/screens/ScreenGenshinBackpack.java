@@ -45,406 +45,405 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
         this.inventoryLabelX = -9999;
         this.inventoryLabelY = -9999;
         if (this.menu instanceof com.lowdragmc.lowdraglib2.gui.holder.IModularUIHolderMenu holder) {
-            var modularUI = createModularUI(minecraft.player);
-            holder.setModularUI(modularUI);
+            var modularUI = holder.getModularUI();
             ModularUIClientAccess.setScreenAndInit(modularUI, this);
             this.clearWidgets();
             this.addRenderableWidget(ModularUIClientAccess.getWidget(modularUI));
         }
     }
-
-    @Override
-    protected void containerTick() {
-        super.containerTick();
-    }
-
-    @Override
-    public void onClose() {
-        syncBackpackIfDirty();
-        super.onClose();
-    }
-
-    private void syncBackpackIfDirty() {
-        GenshinBackpack backpack = minecraft.player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
-        if (backpack.isDirty()) {
-            backpack.syncToServer(minecraft.player);
-        }
-    }
-
-    private GenshinBackpack.Category lastCategory = GenshinBackpack.Category.WEAPONS;
-    private boolean lastSlotMode = false;
-    private static final float SCROLL_COEFFICIENT = 20f;
-    private static final int SLOT_MODE_VISIBLE_SLOTS = 100;
-    private static final GenshinBackpack.Category[] CATEGORIES = GenshinBackpack.Category.values();
-
-    private ModularUI createModularUI(Player player) {
-        var stylesheet = StylesheetManager.INSTANCE.getStylesheetSafe(
-                Identifier.parse("minegenshin:lss/genshin_backpack.lss"));
-
-        GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
-
-        var root = new UIElement().setId("root");
-        root.layout(layout -> {
-            layout.widthPercent(100);
-            layout.heightPercent(100);
-        });
-
-        var window = new UIElement().setId("window");
-
-        AtomicReference<GenshinBackpack.Category> currentCategory =
-                new AtomicReference<>(lastCategory);
-        AtomicReference<Integer> selectedIndex = new AtomicReference<>(-1);
-        AtomicReference<UIElement> selectedListElement = new AtomicReference<>();
-        AtomicReference<Float> scrollValue = new AtomicReference<>(0.0f);
-        AtomicReference<Boolean> slotMode = new AtomicReference<>(lastSlotMode);
-
-        var topToggleContainer = new UIElement().setId("top-toggle-container");
-
-        var iconModeSection = new UIElement().setId("icon-mode-section");
-
-        var listScrollerContainer = new UIElement().setId("list-scroller-container");
-        var verticalScroller = new Scroller.Vertical();
-        var itemListContainer = new UIElement().setId("item-list-container");
-
-        verticalScroller.bindObserver(value -> {
-            scrollValue.set(value);
-            itemListContainer.layout(l -> l.bottom(value * SCROLL_COEFFICIENT));
-            itemListContainer.markAsInternal();
-        });
-
-        listScrollerContainer.addChild(verticalScroller);
-        listScrollerContainer.addChild(itemListContainer);
-
-        var detailPanel = new UIElement().setId("detail-panel");
-
-        iconModeSection.addChildren(listScrollerContainer, detailPanel);
-
-        var slotModeSection = new UIElement().setId("slot-mode-section");
-        slotModeSection.setDisplay(false);
-
-        var slotModeLeft = new UIElement().setId("slot-mode-left");
-        var slotModeRight = new UIElement().setId("slot-mode-right");
-        slotModeSection.addChildren(slotModeLeft, slotModeRight);
-
-        var modeSwitchBtn = new Button();
-        modeSwitchBtn.setId("mode-switch-btn");
-        modeSwitchBtn.setText("槽位模式");
-        modeSwitchBtn.setOnClick(e -> {
-            if (slotMode.get()) {
-                syncBackpackIfDirty();
-            }
-            boolean newMode = !slotMode.get();
-            slotMode.set(newMode);
-            lastSlotMode = newMode;
-            iconModeSection.setDisplay(!newMode);
-            slotModeSection.setDisplay(newMode);
-            modeSwitchBtn.setText(newMode ? "图标模式" : "槽位模式");
-            if (newMode) {
-                refreshSlotMode(slotModeLeft, slotModeRight, backpack, currentCategory, this.menu);
-            } else {
-                refreshItemList(itemListContainer, backpack, player, currentCategory,
-                        selectedIndex, selectedListElement, detailPanel);
-                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
-            }
-            modeSwitchBtn.markAsInternal();
-        });
-
-        window.addChildren(topToggleContainer, iconModeSection, slotModeSection, modeSwitchBtn);
-        root.addChild(window);
-
-        refreshTopToggle(topToggleContainer, currentCategory, backpack, player,
-                selectedIndex, selectedListElement, itemListContainer, detailPanel,
-                slotModeLeft, slotModeRight, slotMode, this);
-
-        refreshItemList(itemListContainer, backpack, player, currentCategory,
-                selectedIndex, selectedListElement, detailPanel);
-
-        refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
-
-        var ui = UI.of(root, stylesheet);
-        return ModularUI.of(ui, player);
-    }
-
-    private static void refreshTopToggle(
-            UIElement topToggleContainer,
-            AtomicReference<GenshinBackpack.Category> currentCategory,
-            GenshinBackpack backpack,
-            Player player,
-            AtomicReference<Integer> selectedIndex,
-            AtomicReference<UIElement> selectedListElement,
-            UIElement itemListContainer,
-            UIElement detailPanel,
-            UIElement slotModeLeft,
-            UIElement slotModeRight,
-            AtomicReference<Boolean> slotMode,
-            ScreenGenshinBackpack screen) {
-
-        topToggleContainer.clearAllChildren();
-
-        for (GenshinBackpack.Category cat : CATEGORIES) {
-            var btn = new Button();
-            btn.setText(cat.displayName);
-            btn.setOnClick(e -> {
-                if (slotMode.get()) {
-                    screen.syncBackpackIfDirty();
-                }
-
-                currentCategory.set(cat);
-                screen.lastCategory = cat;
-                selectedIndex.set(-1);
-                selectedListElement.set(null);
-                refreshTopToggle(topToggleContainer, currentCategory, backpack, player,
-                        selectedIndex, selectedListElement, itemListContainer, detailPanel,
-                        slotModeLeft, slotModeRight, slotMode, screen);
-                refreshItemList(itemListContainer, backpack, player, currentCategory,
-                        selectedIndex, selectedListElement, detailPanel);
-                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
-                if (slotMode.get()) {
-                    refreshSlotMode(slotModeLeft, slotModeRight, backpack, currentCategory, null);
-                }
-                topToggleContainer.markAsInternal();
-            });
-            btn.addClass("category-toggle-btn");
-            if (cat == currentCategory.get()) {
-                btn.addClass("category-toggle-active");
-            }
-
-            topToggleContainer.addChild(btn);
-        }
-        topToggleContainer.markAsInternal();
-    }
-
-    private static void refreshItemList(
-            UIElement itemListContainer,
-            GenshinBackpack backpack,
-            Player player,
-            AtomicReference<GenshinBackpack.Category> currentCategory,
-            AtomicReference<Integer> selectedIndex,
-            AtomicReference<UIElement> selectedListElement,
-            UIElement detailPanel) {
-
-        itemListContainer.clearAllChildren();
-
-        GenshinBackpack.Category cat = currentCategory.get();
-        ItemStack[] items = backpack.getCategoryArray(cat);
-
-        int firstNonEmpty = -1;
-        for (int i = 0; i < items.length; i++) {
-            ItemStack stack = items[i];
-            if (stack.isEmpty()) continue;
-            if (firstNonEmpty < 0) firstNonEmpty = i;
-
-            int idx = i;
-            var itemElement = new UIElement().addClass("backpack-item");
-
-            String texturePath = getItemTexturePath(stack);
-            itemElement.style(style -> style.background(SpriteTexture.of(texturePath)));
-
-            if (selectedIndex.get() == idx) {
-                itemElement.style(style -> style.overlay(
-                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
-                itemElement.transform(transform -> transform.scale(1.1f));
-                selectedListElement.set(itemElement);
-            }
-
-            itemElement.addEventListener(UIEvents.MOUSE_ENTER, e -> {
-                if (selectedListElement.get() != itemElement) {
-                    itemElement.style(style -> style.overlay(
-                            SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
-                    itemElement.transform(transform -> transform.scale(1.1f));
-                }
-            });
-            itemElement.addEventListener(UIEvents.MOUSE_LEAVE, e -> {
-                if (selectedListElement.get() != itemElement) {
-                    itemElement.style(style -> style.overlay(null));
-                    itemElement.transform(transform -> transform.scale(1f));
-                }
-            });
-            itemElement.addEventListener(UIEvents.CLICK, e -> {
-                if (selectedListElement.get() != null && selectedListElement.get() != itemElement) {
-                    selectedListElement.get().style(style -> style.overlay(null));
-                    selectedListElement.get().transform(transform -> transform.scale(1f));
-                }
-                selectedListElement.set(itemElement);
-                itemElement.style(style -> style.overlay(
-                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
-                itemElement.transform(transform -> transform.scale(1.1f));
-                selectedIndex.set(idx);
-
-                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
-            });
-
-            itemListContainer.addChild(itemElement);
-        }
-
-        if (selectedIndex.get() < 0 && firstNonEmpty >= 0) {
-            selectedIndex.set(firstNonEmpty);
-            refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
-        }
-
-        itemListContainer.markAsInternal();
-    }
-
-    private static void refreshDetailPanel(
-            UIElement detailPanel,
-            UIElement itemListContainer,
-            GenshinBackpack backpack,
-            Player player,
-            AtomicReference<GenshinBackpack.Category> currentCategory,
-            AtomicReference<Integer> selectedIndex) {
-
-        detailPanel.clearAllChildren();
-
-        GenshinBackpack.Category cat = currentCategory.get();
-        int idx = selectedIndex.get();
-        ItemStack stack = backpack.getItemInCategory(cat, idx);
-
-        if (stack.isEmpty()) {
-            var emptyLabel = new Label().setText("未选中物品").setId("detail-empty");
-            detailPanel.addChild(emptyLabel);
-            detailPanel.markAsInternal();
-            return;
-        }
-
-        var infoContainer = new UIElement().setId("detail-info-container");
-
-        var nameLabel = new Label()
-                .setText(stack.getHoverName())
-                .addClass("detail-name");
-        infoContainer.addChild(nameLabel);
-
-        if (stack.getItem() instanceof TeyvatItem teyvatItem) {
-            int star = teyvatItem.getStar();
-            if (star > 0) {
-                var starLabel = new Label()
-                        .setText(Component.literal("★".repeat(star)).withStyle(ChatFormatting.GOLD))
-                        .addClass("detail-star");
-                infoContainer.addChild(starLabel);
-            }
-        }
-
-        var countLabel = new Label()
-                .setText(Component.literal("数量: " + stack.getCount()).withStyle(ChatFormatting.GRAY))
-                .addClass("detail-count");
-        infoContainer.addChild(countLabel);
-
-        var buttonContainer = new UIElement().setId("detail-button-container");
-
-        var takeOutBtn = new Button();
-        takeOutBtn.setText("取出");
-        takeOutBtn.addClass("detail-takeout-btn");
-        int catOrdinal = cat.ordinal();
-        takeOutBtn.setOnClick(e -> {
-            NetworkManager.sendBackpackTakeOutToServer(catOrdinal, idx);
-            backpack.removeItemFromCategory(cat, idx);
-            selectedIndex.set(-1);
-            refreshItemList(itemListContainer, backpack, player, currentCategory,
-                    selectedIndex, new AtomicReference<>(), detailPanel);
-            refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
-        });
-
-        var detailBtn = new Button();
-        detailBtn.setText("详情");
-        detailBtn.addClass("detail-info-btn");
-
-        buttonContainer.addChildren(takeOutBtn, detailBtn);
-        infoContainer.addChild(buttonContainer);
-
-        detailPanel.addChild(infoContainer);
-        detailPanel.markAsInternal();
-    }
-
-    private static void refreshSlotMode(
-            UIElement slotModeLeft,
-            UIElement slotModeRight,
-            GenshinBackpack backpack,
-            AtomicReference<GenshinBackpack.Category> currentCategory,
-            GenshinBackpackMenu menu) {
-
-        slotModeLeft.clearAllChildren();
-        slotModeRight.clearAllChildren();
-
-        GenshinBackpack.Category cat = currentCategory.get();
-
-        var leftLabel = new Label().setText(cat.displayName).addClass("slot-mode-label");
-        slotModeLeft.addChild(leftLabel);
-
-        var leftScrollerContainer = new UIElement().setId("left-scroller-container");
-        var leftScroller = new Scroller.Vertical();
-        var slotGridLeft = new UIElement().setId("slot-grid-left");
-
-        leftScroller.bindObserver(value -> {
-            slotGridLeft.layout(l -> l.bottom(value * SCROLL_COEFFICIENT));
-            slotGridLeft.markAsInternal();
-        });
-
-        leftScrollerContainer.addChild(leftScroller);
-        leftScrollerContainer.addChild(slotGridLeft);
-
-        int categoryOffset = getCategoryOffset(cat);
-        int cols = 10;
-        int totalSlots = Math.min(cat.maxCapacity, SLOT_MODE_VISIBLE_SLOTS);
-        int rows = (int) Math.ceil((double) totalSlots / cols);
-
-        ResourceHandler<ItemResource> handler = backpack.asResourceHandler();
-
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                int localIdx = row * cols + col;
-                if (localIdx >= totalSlots) break;
-                int flatIndex = categoryOffset + localIdx;
-                var slot = new ItemSlot();
-                slot.bind(handler, flatIndex);
-                slotGridLeft.addChild(slot);
-            }
-        }
-
-        slotModeLeft.addChild(leftScrollerContainer);
-
-        var rightLabel = new Label().setText("玩家背包").addClass("slot-mode-label");
-        slotModeRight.addChild(rightLabel);
-
-        var inventorySlots = new InventorySlots();
-        slotModeRight.addChild(inventorySlots);
-        slotModeLeft.addEventListener(UIEvents.MOUSE_DOWN, e -> {
-            // 如果玩家手持物品，且点击的不是ItemSlot，阻止事件被容器消费
-            // 让事件继续传播到screen层级处理（丢弃或放回原位）
-            var mc = net.minecraft.client.Minecraft.getInstance();
-            if (mc.player != null && !mc.player.containerMenu.getCarried().isEmpty()) {
-                e.stopPropagation();
-            }
-        });
-        slotModeLeft.markAsInternal();
-        slotModeRight.markAsInternal();
-
-    }
-
-    private static UIElement findParentById(UIElement start, String targetId) {
-        UIElement found = findChildById(start, targetId);
-        return found;
-    }
-
-    private static UIElement findChildById(UIElement parent, String id) {
-        if (id.equals(parent.getId())) return parent;
-        for (var child : parent.getChildren()) {
-            var found = findChildById(child, id);
-            if (found != null) return found;
-        }
-        return null;
-    }
-
-    private static int getCategoryOffset(GenshinBackpack.Category category) {
-        int offset = 0;
-        for (GenshinBackpack.Category cat : GenshinBackpack.Category.values()) {
-            if (cat == category) return offset;
-            offset += cat.maxCapacity;
-        }
-        return offset;
-    }
-
-    private static String getItemTexturePath(ItemStack stack) {
-        if (stack.isEmpty()) return "minegenshin:textures/empty.png";
-        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return id.getNamespace() + ":textures/item/" + id.getPath() + ".png";
-    }
+//
+//    @Override
+//    protected void containerTick() {
+//        super.containerTick();
+//    }
+//
+//    @Override
+//    public void onClose() {
+//        syncBackpackIfDirty();
+//        super.onClose();
+//    }
+//
+//    private void syncBackpackIfDirty() {
+//        GenshinBackpack backpack = minecraft.player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+//        if (backpack.isDirty()) {
+//            backpack.syncToServer(minecraft.player);
+//        }
+//    }
+//
+//    private GenshinBackpack.Category lastCategory = GenshinBackpack.Category.WEAPONS;
+//    private boolean lastSlotMode = false;
+//    private static final float SCROLL_COEFFICIENT = 20f;
+//    private static final int SLOT_MODE_VISIBLE_SLOTS = 100;
+//    private static final GenshinBackpack.Category[] CATEGORIES = GenshinBackpack.Category.values();
+//
+//    private ModularUI createModularUI(Player player) {
+//        var stylesheet = StylesheetManager.INSTANCE.getStylesheetSafe(
+//                Identifier.parse("minegenshin:lss/genshin_backpack.lss"));
+//
+//        GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+//
+//        var root = new UIElement().setId("root");
+//        root.layout(layout -> {
+//            layout.widthPercent(100);
+//            layout.heightPercent(100);
+//        });
+//
+//        var window = new UIElement().setId("window");
+//
+//        AtomicReference<GenshinBackpack.Category> currentCategory =
+//                new AtomicReference<>(lastCategory);
+//        AtomicReference<Integer> selectedIndex = new AtomicReference<>(-1);
+//        AtomicReference<UIElement> selectedListElement = new AtomicReference<>();
+//        AtomicReference<Float> scrollValue = new AtomicReference<>(0.0f);
+//        AtomicReference<Boolean> slotMode = new AtomicReference<>(lastSlotMode);
+//
+//        var topToggleContainer = new UIElement().setId("top-toggle-container");
+//
+//        var iconModeSection = new UIElement().setId("icon-mode-section");
+//
+//        var listScrollerContainer = new UIElement().setId("list-scroller-container");
+//        var verticalScroller = new Scroller.Vertical();
+//        var itemListContainer = new UIElement().setId("item-list-container");
+//
+//        verticalScroller.bindObserver(value -> {
+//            scrollValue.set(value);
+//            itemListContainer.layout(l -> l.bottom(value * SCROLL_COEFFICIENT));
+//            itemListContainer.markAsInternal();
+//        });
+//
+//        listScrollerContainer.addChild(verticalScroller);
+//        listScrollerContainer.addChild(itemListContainer);
+//
+//        var detailPanel = new UIElement().setId("detail-panel");
+//
+//        iconModeSection.addChildren(listScrollerContainer, detailPanel);
+//
+//        var slotModeSection = new UIElement().setId("slot-mode-section");
+//        slotModeSection.setDisplay(false);
+//
+//        var slotModeLeft = new UIElement().setId("slot-mode-left");
+//        var slotModeRight = new UIElement().setId("slot-mode-right");
+//        slotModeSection.addChildren(slotModeLeft, slotModeRight);
+//
+//        var modeSwitchBtn = new Button();
+//        modeSwitchBtn.setId("mode-switch-btn");
+//        modeSwitchBtn.setText("槽位模式");
+//        modeSwitchBtn.setOnClick(e -> {
+//            if (slotMode.get()) {
+//                syncBackpackIfDirty();
+//            }
+//            boolean newMode = !slotMode.get();
+//            slotMode.set(newMode);
+//            lastSlotMode = newMode;
+//            iconModeSection.setDisplay(!newMode);
+//            slotModeSection.setDisplay(newMode);
+//            modeSwitchBtn.setText(newMode ? "图标模式" : "槽位模式");
+//            if (newMode) {
+//                refreshSlotMode(slotModeLeft, slotModeRight, backpack, currentCategory, this.menu);
+//            } else {
+//                refreshItemList(itemListContainer, backpack, player, currentCategory,
+//                        selectedIndex, selectedListElement, detailPanel);
+//                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
+//            }
+//            modeSwitchBtn.markAsInternal();
+//        });
+//
+//        window.addChildren(topToggleContainer, iconModeSection, slotModeSection, modeSwitchBtn);
+//        root.addChild(window);
+//
+//        refreshTopToggle(topToggleContainer, currentCategory, backpack, player,
+//                selectedIndex, selectedListElement, itemListContainer, detailPanel,
+//                slotModeLeft, slotModeRight, slotMode, this);
+//
+//        refreshItemList(itemListContainer, backpack, player, currentCategory,
+//                selectedIndex, selectedListElement, detailPanel);
+//
+//        refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
+//
+//        var ui = UI.of(root, stylesheet);
+//        return ModularUI.of(ui, player);
+//    }
+//
+//    private static void refreshTopToggle(
+//            UIElement topToggleContainer,
+//            AtomicReference<GenshinBackpack.Category> currentCategory,
+//            GenshinBackpack backpack,
+//            Player player,
+//            AtomicReference<Integer> selectedIndex,
+//            AtomicReference<UIElement> selectedListElement,
+//            UIElement itemListContainer,
+//            UIElement detailPanel,
+//            UIElement slotModeLeft,
+//            UIElement slotModeRight,
+//            AtomicReference<Boolean> slotMode,
+//            ScreenGenshinBackpack screen) {
+//
+//        topToggleContainer.clearAllChildren();
+//
+//        for (GenshinBackpack.Category cat : CATEGORIES) {
+//            var btn = new Button();
+//            btn.setText(cat.displayName);
+//            btn.setOnClick(e -> {
+//                if (slotMode.get()) {
+//                    screen.syncBackpackIfDirty();
+//                }
+//
+//                currentCategory.set(cat);
+//                screen.lastCategory = cat;
+//                selectedIndex.set(-1);
+//                selectedListElement.set(null);
+//                refreshTopToggle(topToggleContainer, currentCategory, backpack, player,
+//                        selectedIndex, selectedListElement, itemListContainer, detailPanel,
+//                        slotModeLeft, slotModeRight, slotMode, screen);
+//                refreshItemList(itemListContainer, backpack, player, currentCategory,
+//                        selectedIndex, selectedListElement, detailPanel);
+//                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
+//                if (slotMode.get()) {
+//                    refreshSlotMode(slotModeLeft, slotModeRight, backpack, currentCategory, null);
+//                }
+//                topToggleContainer.markAsInternal();
+//            });
+//            btn.addClass("category-toggle-btn");
+//            if (cat == currentCategory.get()) {
+//                btn.addClass("category-toggle-active");
+//            }
+//
+//            topToggleContainer.addChild(btn);
+//        }
+//        topToggleContainer.markAsInternal();
+//    }
+//
+//    private static void refreshItemList(
+//            UIElement itemListContainer,
+//            GenshinBackpack backpack,
+//            Player player,
+//            AtomicReference<GenshinBackpack.Category> currentCategory,
+//            AtomicReference<Integer> selectedIndex,
+//            AtomicReference<UIElement> selectedListElement,
+//            UIElement detailPanel) {
+//
+//        itemListContainer.clearAllChildren();
+//
+//        GenshinBackpack.Category cat = currentCategory.get();
+//        ItemStack[] items = backpack.getCategoryArray(cat);
+//
+//        int firstNonEmpty = -1;
+//        for (int i = 0; i < items.length; i++) {
+//            ItemStack stack = items[i];
+//            if (stack.isEmpty()) continue;
+//            if (firstNonEmpty < 0) firstNonEmpty = i;
+//
+//            int idx = i;
+//            var itemElement = new UIElement().addClass("backpack-item");
+//
+//            String texturePath = getItemTexturePath(stack);
+//            itemElement.style(style -> style.background(SpriteTexture.of(texturePath)));
+//
+//            if (selectedIndex.get() == idx) {
+//                itemElement.style(style -> style.overlay(
+//                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+//                itemElement.transform(transform -> transform.scale(1.1f));
+//                selectedListElement.set(itemElement);
+//            }
+//
+//            itemElement.addEventListener(UIEvents.MOUSE_ENTER, e -> {
+//                if (selectedListElement.get() != itemElement) {
+//                    itemElement.style(style -> style.overlay(
+//                            SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+//                    itemElement.transform(transform -> transform.scale(1.1f));
+//                }
+//            });
+//            itemElement.addEventListener(UIEvents.MOUSE_LEAVE, e -> {
+//                if (selectedListElement.get() != itemElement) {
+//                    itemElement.style(style -> style.overlay(null));
+//                    itemElement.transform(transform -> transform.scale(1f));
+//                }
+//            });
+//            itemElement.addEventListener(UIEvents.CLICK, e -> {
+//                if (selectedListElement.get() != null && selectedListElement.get() != itemElement) {
+//                    selectedListElement.get().style(style -> style.overlay(null));
+//                    selectedListElement.get().transform(transform -> transform.scale(1f));
+//                }
+//                selectedListElement.set(itemElement);
+//                itemElement.style(style -> style.overlay(
+//                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+//                itemElement.transform(transform -> transform.scale(1.1f));
+//                selectedIndex.set(idx);
+//
+//                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
+//            });
+//
+//            itemListContainer.addChild(itemElement);
+//        }
+//
+//        if (selectedIndex.get() < 0 && firstNonEmpty >= 0) {
+//            selectedIndex.set(firstNonEmpty);
+//            refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
+//        }
+//
+//        itemListContainer.markAsInternal();
+//    }
+//
+//    private static void refreshDetailPanel(
+//            UIElement detailPanel,
+//            UIElement itemListContainer,
+//            GenshinBackpack backpack,
+//            Player player,
+//            AtomicReference<GenshinBackpack.Category> currentCategory,
+//            AtomicReference<Integer> selectedIndex) {
+//
+//        detailPanel.clearAllChildren();
+//
+//        GenshinBackpack.Category cat = currentCategory.get();
+//        int idx = selectedIndex.get();
+//        ItemStack stack = backpack.getItemInCategory(cat, idx);
+//
+//        if (stack.isEmpty()) {
+//            var emptyLabel = new Label().setText("未选中物品").setId("detail-empty");
+//            detailPanel.addChild(emptyLabel);
+//            detailPanel.markAsInternal();
+//            return;
+//        }
+//
+//        var infoContainer = new UIElement().setId("detail-info-container");
+//
+//        var nameLabel = new Label()
+//                .setText(stack.getHoverName())
+//                .addClass("detail-name");
+//        infoContainer.addChild(nameLabel);
+//
+//        if (stack.getItem() instanceof TeyvatItem teyvatItem) {
+//            int star = teyvatItem.getStar();
+//            if (star > 0) {
+//                var starLabel = new Label()
+//                        .setText(Component.literal("★".repeat(star)).withStyle(ChatFormatting.GOLD))
+//                        .addClass("detail-star");
+//                infoContainer.addChild(starLabel);
+//            }
+//        }
+//
+//        var countLabel = new Label()
+//                .setText(Component.literal("数量: " + stack.getCount()).withStyle(ChatFormatting.GRAY))
+//                .addClass("detail-count");
+//        infoContainer.addChild(countLabel);
+//
+//        var buttonContainer = new UIElement().setId("detail-button-container");
+//
+//        var takeOutBtn = new Button();
+//        takeOutBtn.setText("取出");
+//        takeOutBtn.addClass("detail-takeout-btn");
+//        int catOrdinal = cat.ordinal();
+//        takeOutBtn.setOnClick(e -> {
+//            NetworkManager.sendBackpackTakeOutToServer(catOrdinal, idx);
+//            backpack.removeItemFromCategory(cat, idx);
+//            selectedIndex.set(-1);
+//            refreshItemList(itemListContainer, backpack, player, currentCategory,
+//                    selectedIndex, new AtomicReference<>(), detailPanel);
+//            refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
+//        });
+//
+//        var detailBtn = new Button();
+//        detailBtn.setText("详情");
+//        detailBtn.addClass("detail-info-btn");
+//
+//        buttonContainer.addChildren(takeOutBtn, detailBtn);
+//        infoContainer.addChild(buttonContainer);
+//
+//        detailPanel.addChild(infoContainer);
+//        detailPanel.markAsInternal();
+//    }
+//
+//    private static void refreshSlotMode(
+//            UIElement slotModeLeft,
+//            UIElement slotModeRight,
+//            GenshinBackpack backpack,
+//            AtomicReference<GenshinBackpack.Category> currentCategory,
+//            GenshinBackpackMenu menu) {
+//
+//        slotModeLeft.clearAllChildren();
+//        slotModeRight.clearAllChildren();
+//
+//        GenshinBackpack.Category cat = currentCategory.get();
+//
+//        var leftLabel = new Label().setText(cat.displayName).addClass("slot-mode-label");
+//        slotModeLeft.addChild(leftLabel);
+//
+//        var leftScrollerContainer = new UIElement().setId("left-scroller-container");
+//        var leftScroller = new Scroller.Vertical();
+//        var slotGridLeft = new UIElement().setId("slot-grid-left");
+//
+//        leftScroller.bindObserver(value -> {
+//            slotGridLeft.layout(l -> l.bottom(value * SCROLL_COEFFICIENT));
+//            slotGridLeft.markAsInternal();
+//        });
+//
+//        leftScrollerContainer.addChild(leftScroller);
+//        leftScrollerContainer.addChild(slotGridLeft);
+//
+//        int categoryOffset = getCategoryOffset(cat);
+//        int cols = 10;
+//        int totalSlots = Math.min(cat.maxCapacity, SLOT_MODE_VISIBLE_SLOTS);
+//        int rows = (int) Math.ceil((double) totalSlots / cols);
+//
+//        ResourceHandler<ItemResource> handler = backpack.asResourceHandler();
+//
+//        for (int row = 0; row < rows; row++) {
+//            for (int col = 0; col < cols; col++) {
+//                int localIdx = row * cols + col;
+//                if (localIdx >= totalSlots) break;
+//                int flatIndex = categoryOffset + localIdx;
+//                var slot = new ItemSlot();
+//                slot.bind(handler, flatIndex);
+//                slotGridLeft.addChild(slot);
+//            }
+//        }
+//
+//        slotModeLeft.addChild(leftScrollerContainer);
+//
+//        var rightLabel = new Label().setText("玩家背包").addClass("slot-mode-label");
+//        slotModeRight.addChild(rightLabel);
+//
+//        var inventorySlots = new InventorySlots();
+//        slotModeRight.addChild(inventorySlots);
+//        slotModeLeft.addEventListener(UIEvents.MOUSE_DOWN, e -> {
+//            // 如果玩家手持物品，且点击的不是ItemSlot，阻止事件被容器消费
+//            // 让事件继续传播到screen层级处理（丢弃或放回原位）
+//            var mc = net.minecraft.client.Minecraft.getInstance();
+//            if (mc.player != null && !mc.player.containerMenu.getCarried().isEmpty()) {
+//                e.stopPropagation();
+//            }
+//        });
+//        slotModeLeft.markAsInternal();
+//        slotModeRight.markAsInternal();
+//
+//    }
+//
+//    private static UIElement findParentById(UIElement start, String targetId) {
+//        UIElement found = findChildById(start, targetId);
+//        return found;
+//    }
+//
+//    private static UIElement findChildById(UIElement parent, String id) {
+//        if (id.equals(parent.getId())) return parent;
+//        for (var child : parent.getChildren()) {
+//            var found = findChildById(child, id);
+//            if (found != null) return found;
+//        }
+//        return null;
+//    }
+//
+//    private static int getCategoryOffset(GenshinBackpack.Category category) {
+//        int offset = 0;
+//        for (GenshinBackpack.Category cat : GenshinBackpack.Category.values()) {
+//            if (cat == category) return offset;
+//            offset += cat.maxCapacity;
+//        }
+//        return offset;
+//    }
+//
+//    private static String getItemTexturePath(ItemStack stack) {
+//        if (stack.isEmpty()) return "minegenshin:textures/empty.png";
+//        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+//        return id.getNamespace() + ":textures/item/" + id.getPath() + ".png";
+//    }
 }
