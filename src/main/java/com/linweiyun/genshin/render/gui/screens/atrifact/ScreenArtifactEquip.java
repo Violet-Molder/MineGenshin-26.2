@@ -22,6 +22,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Scroller;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
+import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -29,6 +30,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import org.slf4j.Logger;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ScreenArtifactEquip extends Screen {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
     final ModularUI modularUI;
 
     public ScreenArtifactEquip(ModularUI modularUI) {
@@ -521,6 +525,7 @@ public class ScreenArtifactEquip extends Screen {
                 actionButton.setOnClick(e -> {
                     NetworkManager.sendUnequipArtifactToServer(slotIdx);
                     artifactInv.setItem(slotIdx, ItemStack.EMPTY);
+                    LOGGER.info("NetSetItem5");
                     genshinBackpack.addItemToCategory(GenshinBackpack.Category.ARTIFACTS, toUnequip);
                     selectedInventoryArtifact.set(ItemStack.EMPTY);
                     selectedInventorySlotIndex.set(-1);
@@ -550,6 +555,7 @@ public class ScreenArtifactEquip extends Screen {
                 ItemStack old = artifactInv.getItem(slotIdx);
                 genshinBackpack.removeItemFromCategory(GenshinBackpack.Category.ARTIFACTS, invSlotIdx);
                 artifactInv.setItem(slotIdx, toEquip);
+                LOGGER.info("NetSetItem6");
                 if (!old.isEmpty()) {
                     genshinBackpack.addItemToCategory(GenshinBackpack.Category.ARTIFACTS, old.copy());
                 }

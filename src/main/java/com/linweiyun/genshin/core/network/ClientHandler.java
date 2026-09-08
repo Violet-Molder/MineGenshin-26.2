@@ -2,6 +2,7 @@ package com.linweiyun.genshin.core.network;
 
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.GenshinBackpack;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import net.minecraft.client.Minecraft;
@@ -116,5 +117,19 @@ public class ClientHandler {
     // ========== 圣遗物卸下 ==========
     public static void unequipArtifactClientHandler(int artifactSlotIndex) {
         // 客户端不需要额外处理，数据通过 PlayerCharactersAttachment 同步回来
+    }
+
+    // ========== 原神背包同步（服务端→客户端） ==========
+    public static void genshinBackpackClientHandler(CompoundTag data) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && !mc.player.isRemoved()) {
+            GenshinBackpack backpack =
+                    mc.player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+            backpack.setSuppressDirty(true);
+            backpack.deserialize(TagValueInput.create(
+                    ProblemReporter.DISCARDING, mc.player.registryAccess(), data));
+            backpack.setSuppressDirty(false);
+            backpack.clearDirty();
+        }
     }
 }

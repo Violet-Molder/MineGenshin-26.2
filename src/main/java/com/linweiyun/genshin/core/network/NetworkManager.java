@@ -365,6 +365,7 @@ public class NetworkManager {
       if (oldArtifact.isEmpty()) return;
 
       artifactInv.setItem(artifactSlotIndex, ItemStack.EMPTY);
+      LOGGER.info("NetSetItem");
 
       GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
       backpack.addItemToCategory(GenshinBackpack.Category.ARTIFACTS, oldArtifact.copy());
@@ -496,6 +497,51 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("openCharacterInfoRPCPacket");
   }
 
+  @RPCPacket("genshinBackpackSyncRPCPacket")
+  public static void genshinBackpackSyncRPCPacket(RPCSender sender, CompoundTag backpackData, CompoundTag inventoryData) {
+    if (sender.isServer()) {
+      ClientHandler.genshinBackpackClientHandler(backpackData);
+    } else {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      GenshinBackpack backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+      var registries = player.registryAccess();
+      var nbtOps = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
+      backpack.setSuppressDirty(true);
+      for (String key : backpackData.keySet()) {
+        if (key.endsWith("_empty")) {
+          int flatIndex = Integer.parseInt(key.substring(0, key.length() - 6));
+          backpack.setItem(flatIndex, ItemStack.EMPTY);
+        } else {
+          int flatIndex = Integer.parseInt(key);
+          var slotTag = backpackData.get(key);
+          ItemStack stack = ItemStack.CODEC.parse(nbtOps, slotTag).getOrThrow();
+          backpack.setItem(flatIndex, stack);
+        }
+      }
+      backpack.setSuppressDirty(false);
+      var inv = player.getInventory();
+      for (int i = 0; i < inv.getContainerSize(); i++) {
+        String key = String.valueOf(i);
+        if (inventoryData.contains(key)) {
+          var slotTag = inventoryData.get(key);
+          ItemStack stack = ItemStack.CODEC.parse(nbtOps, slotTag).getOrThrow();
+          inv.setItem(i, stack);
+        } else {
+          inv.setItem(i, ItemStack.EMPTY);
+        }
+      }
+      inv.setChanged();
+    }
+  }
+
+  public static void sendGenshinBackpackToServer(CompoundTag backpackData, CompoundTag inventoryData) {
+    RPCPacketDistributor.rpcToServer("genshinBackpackSyncRPCPacket", backpackData, inventoryData);
+  }
+
+  public static void sendGenshinBackpackToPlayer(ServerPlayer player, CompoundTag data) {
+    RPCPacketDistributor.rpcToPlayer(player, "genshinBackpackSyncRPCPacket", data, new CompoundTag());
+  }
+
   public static void giveItemToPlayer(ServerPlayer player, ItemStack stack) {
     int remaining = stack.getCount();
 
@@ -522,6 +568,7 @@ public class NetworkManager {
         if (existing.isEmpty()) {
           int toAdd = Math.min(remaining, stack.getMaxStackSize());
           inventory.setItem(i, stack.copyWithCount(toAdd));
+          LOGGER.info("NetSetItem4");
           remaining -= toAdd;
         }
       }

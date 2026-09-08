@@ -151,6 +151,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
             existing.shrink(toRemove);
         }
         setChanged();
+        LOGGER.info("ARTIFACTremoveItem");
         return result;
     }
 
@@ -169,6 +170,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
         setStackBySlot(slot, stack);
         markDirty(slot);
         setChanged();
+        LOGGER.info("ARTIFACTsetItem");
     }
 
     @Override
@@ -202,6 +204,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
             markDirty(i);
         }
         setChanged();
+        LOGGER.info("ARTIFACTclearContent");
     }
 
     public List<ItemStack> getAllArtifactsAsList() {

@@ -10,28 +10,40 @@ import com.linweiyun.genshin.content.items.material.MaterialItem;
 import com.linweiyun.genshin.content.items.preicous.PreciousItem;
 import com.linweiyun.genshin.content.items.quest.QuestItem;
 import com.linweiyun.genshin.content.items.weapon.WeaponItem;
+import com.linweiyun.genshin.core.network.NetworkManager;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.mojang.logging.LogUtils;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+
+import java.util.Arrays;
 
 public class GenshinBackpack implements Container, IPersistedSerializable {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
     public enum Category {
-        WEAPONS("武器", 2000, WeaponItem.class),
-        ARTIFACTS("圣遗物", 2700, ArtifactItem.class),
-        DEVELOPMENT("养成道具", 1000, CharacterDevelopmentItem.class),
-        FOOD("食物", 1000, FoodItem.class),
-        MATERIALS("材料", 1000, MaterialItem.class),
-        GADGET("小道具", 500, GadgetItem.class),
-        QUEST("任务", 200, QuestItem.class),
-        PRECIOUS("贵重道具", 300, PreciousItem.class),
-        FURNISHINGS("摆设", 2700, FurnishingItem.class);
+        WEAPONS("武器", 100, WeaponItem.class),
+        ARTIFACTS("圣遗物", 100, ArtifactItem.class),
+        DEVELOPMENT("养成道具", 100, CharacterDevelopmentItem.class),
+        FOOD("食物", 100, FoodItem.class),
+        MATERIALS("材料", 100, MaterialItem.class),
+        GADGET("小道具", 100, GadgetItem.class),
+        QUEST("任务", 100, QuestItem.class),
+        PRECIOUS("贵重道具", 100, PreciousItem.class),
+        FURNISHINGS("摆设", 100, FurnishingItem.class);
 
         public final String displayName;
         public final int maxCapacity;
@@ -44,15 +56,15 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
         }
     }
 
-    public static final int WEAPONS_SIZE = 2000;
-    public static final int ARTIFACTS_SIZE = 2700;
-    public static final int DEVELOPMENT_SIZE = 1000;
-    public static final int FOOD_SIZE = 1000;
-    public static final int MATERIALS_SIZE = 1000;
-    public static final int GADGET_SIZE = 500;
-    public static final int QUEST_SIZE = 200;
-    public static final int PRECIOUS_SIZE = 300;
-    public static final int FURNISHINGS_SIZE = 2700;
+    public static final int WEAPONS_SIZE = 100;
+    public static final int ARTIFACTS_SIZE = 100;
+    public static final int DEVELOPMENT_SIZE = 100;
+    public static final int FOOD_SIZE = 100;
+    public static final int MATERIALS_SIZE = 100;
+    public static final int GADGET_SIZE = 100;
+    public static final int QUEST_SIZE = 100;
+    public static final int PRECIOUS_SIZE = 100;
+    public static final int FURNISHINGS_SIZE = 100;
 
     @Persisted(key = "weapons")
     private ItemStack[] weapons;
@@ -75,19 +87,26 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
 
     private Runnable onChange = () -> {};
 
-    public GenshinBackpack() {
-        weapons = new ItemStack[WEAPONS_SIZE];
-        artifacts = new ItemStack[ARTIFACTS_SIZE];
-        development = new ItemStack[DEVELOPMENT_SIZE];
-        food = new ItemStack[FOOD_SIZE];
-        materials = new ItemStack[MATERIALS_SIZE];
-        gadget = new ItemStack[GADGET_SIZE];
-        quest = new ItemStack[QUEST_SIZE];
-        precious = new ItemStack[PRECIOUS_SIZE];
-        furnishings = new ItemStack[FURNISHINGS_SIZE];
-        clearContent();
-    }
+    private transient boolean dirty = false;
+    private transient boolean suppressDirty = false;
+    private transient IntSet dirtySlots = new IntOpenHashSet();
 
+    public GenshinBackpack() {
+        weapons = initArray(WEAPONS_SIZE);
+        artifacts = initArray(ARTIFACTS_SIZE);
+        development = initArray(DEVELOPMENT_SIZE);
+        food = initArray(FOOD_SIZE);
+        materials = initArray(MATERIALS_SIZE);
+        gadget = initArray(GADGET_SIZE);
+        quest = initArray(QUEST_SIZE);
+        precious = initArray(PRECIOUS_SIZE);
+        furnishings = initArray(FURNISHINGS_SIZE);
+    }
+    private static ItemStack[] initArray(int size) {
+        ItemStack[] arr = new ItemStack[size];
+        Arrays.fill(arr, ItemStack.EMPTY);
+        return arr;
+    }
     public void setOnChange(Runnable onChange) {
         this.onChange = onChange;
     }
@@ -144,6 +163,7 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
         ItemStack[] arr = getCategoryArray(category);
         arr[slot] = stack.copy();
         setChanged();
+        LOGGER.info("addItemToCategory");
         return true;
     }
 
@@ -154,6 +174,7 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
         if (existing.isEmpty()) return ItemStack.EMPTY;
         arr[index] = ItemStack.EMPTY;
         setChanged();
+        LOGGER.info("removeItemFromCategory");
         return existing;
     }
 
@@ -168,6 +189,7 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
         if (index < 0 || index >= arr.length) return;
         if (!stack.isEmpty() && !isValidForCategory(category, stack)) return;
         arr[index] = stack;
+        LOGGER.info("setItemInCategory");
         setChanged();
     }
 
@@ -238,6 +260,7 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
             existing.shrink(toRemove);
         }
         setChanged();
+        LOGGER.info("removeItem");
         return result;
     }
 
@@ -258,6 +281,9 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
         Category cat = getCategoryFromFlatIndex(flatIndex);
         int idx = getIndexInCategoryFromFlatIndex(flatIndex);
         setItemInCategory(cat, idx, stack);
+        if (!suppressDirty) {
+            dirtySlots.add(flatIndex);
+        }
     }
 
     @Override
@@ -273,7 +299,59 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
 
     @Override
     public void setChanged() {
+        if (!suppressDirty) {
+            dirty = true;
+        }
         onChange.run();
+    }
+
+    public boolean isDirty() {
+        return dirty;
+    }
+
+    public void clearDirty() {
+        dirty = false;
+    }
+    public void setSuppressDirty(boolean suppress) {
+        this.suppressDirty = suppress;
+    }
+
+    public void syncToServer(Player player) {
+        CompoundTag backpackData = new CompoundTag();
+        var registries = player.registryAccess();
+        var nbtOps = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
+
+        for (int flatIndex : dirtySlots) {
+            ItemStack stack = getItem(flatIndex);
+            if (!stack.isEmpty()) {
+                CompoundTag slotTag = (CompoundTag) ItemStack.CODEC
+                        .encodeStart(nbtOps, stack).getOrThrow();
+                backpackData.put(String.valueOf(flatIndex), slotTag);
+            } else {
+                backpackData.putBoolean(String.valueOf(flatIndex) + "_empty", true);
+            }
+        }
+
+        CompoundTag inventoryData = new CompoundTag();
+        var inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.isEmpty()) {
+                CompoundTag slotTag = (CompoundTag) ItemStack.CODEC
+                        .encodeStart(nbtOps, stack).getOrThrow();
+                inventoryData.put(String.valueOf(i), slotTag);
+            }
+        }
+
+        NetworkManager.sendGenshinBackpackToServer(backpackData, inventoryData);
+        dirty = false;
+        dirtySlots.clear();
+    }
+
+    public void syncToPlayer(ServerPlayer player) {
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
+        serialize(output);
+        NetworkManager.sendGenshinBackpackToPlayer(player, output.buildResult());
     }
 
     @Override
@@ -283,21 +361,15 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
 
     @Override
     public void clearContent() {
-        weapons = new ItemStack[WEAPONS_SIZE];
-        artifacts = new ItemStack[ARTIFACTS_SIZE];
-        development = new ItemStack[DEVELOPMENT_SIZE];
-        food = new ItemStack[FOOD_SIZE];
-        materials = new ItemStack[MATERIALS_SIZE];
-        gadget = new ItemStack[GADGET_SIZE];
-        quest = new ItemStack[QUEST_SIZE];
-        precious = new ItemStack[PRECIOUS_SIZE];
-        furnishings = new ItemStack[FURNISHINGS_SIZE];
-        for (Category cat : Category.values()) {
-            ItemStack[] arr = getCategoryArray(cat);
-            for (int i = 0; i < arr.length; i++) {
-                arr[i] = ItemStack.EMPTY;
-            }
-        }
+        weapons = initArray(WEAPONS_SIZE);
+        artifacts = initArray(ARTIFACTS_SIZE);
+        development = initArray(DEVELOPMENT_SIZE);
+        food = initArray(FOOD_SIZE);
+        materials = initArray(MATERIALS_SIZE);
+        gadget = initArray(GADGET_SIZE);
+        quest = initArray(QUEST_SIZE);
+        precious = initArray(PRECIOUS_SIZE);
+        furnishings = initArray(FURNISHINGS_SIZE);
         setChanged();
     }
 }

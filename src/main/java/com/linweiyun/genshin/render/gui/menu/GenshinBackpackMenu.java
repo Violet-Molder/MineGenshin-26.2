@@ -100,5 +100,17 @@ public class GenshinBackpackMenu extends AbstractContainerMenu {
             GenshinBackpack.Category cat = GenshinBackpack.getCategoryFromFlatIndex(flatIndex);
             return GenshinBackpack.isValidForCategory(cat, stack);
         }
+        @Override
+        public void set(ItemStack stack) {
+            backpack.setSuppressDirty(true);
+            super.set(stack);
+            backpack.setSuppressDirty(false);
+        }
+        @Override
+        public void setByPlayer(ItemStack stack) {
+            backpack.setSuppressDirty(true);
+            super.setByPlayer(stack);
+            backpack.setSuppressDirty(false);
+        }
     }
 }

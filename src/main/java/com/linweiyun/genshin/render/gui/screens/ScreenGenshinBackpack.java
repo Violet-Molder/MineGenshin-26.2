@@ -53,6 +53,15 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
         }
     }
 
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        GenshinBackpack backpack = minecraft.player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
+        if (backpack.isDirty()) {
+            backpack.syncToServer(minecraft.player);
+        }
+    }
+
     private static final float SCROLL_COEFFICIENT = 20f;
     private static final int SLOT_MODE_VISIBLE_SLOTS = 100;
     private static final GenshinBackpack.Category[] CATEGORIES = GenshinBackpack.Category.values();
