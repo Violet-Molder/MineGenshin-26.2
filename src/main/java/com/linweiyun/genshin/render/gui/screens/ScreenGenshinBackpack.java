@@ -56,6 +56,15 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
     @Override
     protected void containerTick() {
         super.containerTick();
+    }
+
+    @Override
+    public void onClose() {
+        syncBackpackIfDirty();
+        super.onClose();
+    }
+
+    private void syncBackpackIfDirty() {
         GenshinBackpack backpack = minecraft.player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
         if (backpack.isDirty()) {
             backpack.syncToServer(minecraft.player);
@@ -121,6 +130,9 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
         modeSwitchBtn.setId("mode-switch-btn");
         modeSwitchBtn.setText("槽位模式");
         modeSwitchBtn.setOnClick(e -> {
+            if (slotMode.get()) {
+                syncBackpackIfDirty();
+            }
             boolean newMode = !slotMode.get();
             slotMode.set(newMode);
             lastSlotMode = newMode;
@@ -173,6 +185,10 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
             var btn = new Button();
             btn.setText(cat.displayName);
             btn.setOnClick(e -> {
+                if (slotMode.get()) {
+                    screen.syncBackpackIfDirty();
+                }
+
                 currentCategory.set(cat);
                 screen.lastCategory = cat;
                 selectedIndex.set(-1);
@@ -390,9 +406,17 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
 
         var inventorySlots = new InventorySlots();
         slotModeRight.addChild(inventorySlots);
-
+        slotModeLeft.addEventListener(UIEvents.MOUSE_DOWN, e -> {
+            // 如果玩家手持物品，且点击的不是ItemSlot，阻止事件被容器消费
+            // 让事件继续传播到screen层级处理（丢弃或放回原位）
+            var mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.player != null && !mc.player.containerMenu.getCarried().isEmpty()) {
+                e.stopPropagation();
+            }
+        });
         slotModeLeft.markAsInternal();
         slotModeRight.markAsInternal();
+
     }
 
     private static UIElement findParentById(UIElement start, String targetId) {

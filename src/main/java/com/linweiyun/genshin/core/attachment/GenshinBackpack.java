@@ -189,7 +189,6 @@ public class GenshinBackpack implements Container, IPersistedSerializable {
         if (index < 0 || index >= arr.length) return;
         if (!stack.isEmpty() && !isValidForCategory(category, stack)) return;
         arr[index] = stack;
-        LOGGER.info("setItemInCategory");
         setChanged();
     }
 

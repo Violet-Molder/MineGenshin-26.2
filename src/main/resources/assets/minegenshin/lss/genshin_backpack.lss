@@ -184,8 +184,8 @@
   flex-direction: row;
   display: flex;
   flex-wrap: wrap;
-  gap-all: 2;
-  padding-all: 2;
+  gap-all: 0;
+  padding-all: 0;
   width: 100%;
   align-content: flex-start;
 }

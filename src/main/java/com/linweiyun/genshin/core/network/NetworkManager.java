@@ -535,10 +535,12 @@ public class NetworkManager {
   }
 
   public static void sendGenshinBackpackToServer(CompoundTag backpackData, CompoundTag inventoryData) {
+    LOGGER.info("sendGenshinBackpackToServer");
     RPCPacketDistributor.rpcToServer("genshinBackpackSyncRPCPacket", backpackData, inventoryData);
   }
 
   public static void sendGenshinBackpackToPlayer(ServerPlayer player, CompoundTag data) {
+    LOGGER.info("sendGenshinBackpackToPlayer");
     RPCPacketDistributor.rpcToPlayer(player, "genshinBackpackSyncRPCPacket", data, new CompoundTag());
   }
 

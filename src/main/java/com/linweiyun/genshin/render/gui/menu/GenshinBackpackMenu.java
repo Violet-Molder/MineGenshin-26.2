@@ -18,7 +18,7 @@ import net.minecraft.world.item.ItemStack;
 public class GenshinBackpackMenu extends AbstractContainerMenu {
 
     private final GenshinBackpack backpack;
-
+    private final int backpackSlotCount;
     public GenshinBackpackMenu(int containerId, Inventory playerInventory) {
         super(ModMenus.GENSHIN_BACKPACK_MENU.get(), containerId);
         Player player = playerInventory.player;
@@ -39,6 +39,7 @@ public class GenshinBackpackMenu extends AbstractContainerMenu {
         for (int col = 0; col < 9; col++) {
             this.addSlot(new Slot(playerInventory, col, -9999, -9999));
         }
+        this.backpackSlotCount = GenshinBackpack.Category.values().length * 100;
 
         var modularUI = createModularUI(player);
         if (this instanceof IModularUIHolderMenu holder) {
@@ -64,6 +65,22 @@ public class GenshinBackpackMenu extends AbstractContainerMenu {
         if (!slot.hasItem()) return ItemStack.EMPTY;
         ItemStack slotStack = slot.getItem();
         ItemStack result = slotStack.copy();
+
+        int backpackSlots = backpackSlotCount;
+        int totalSlots = this.slots.size();
+
+        if (index < backpackSlots) {
+            // 从原神背包 → 玩家背包
+            if (!this.moveItemStackTo(slotStack, backpackSlots, totalSlots, true)) {
+                return ItemStack.EMPTY;
+            }
+        } else {
+            // 从玩家背包 → 原神背包（需要找到匹配分类的空槽位）
+            if (!this.moveItemStackTo(slotStack, 0, backpackSlots, false)) {
+                return ItemStack.EMPTY;
+            }
+        }
+
         if (slotStack.isEmpty()) {
             slot.setByPlayer(ItemStack.EMPTY);
         } else {
@@ -71,7 +88,6 @@ public class GenshinBackpackMenu extends AbstractContainerMenu {
         }
         return result;
     }
-
     @Override
     public boolean stillValid(Player player) {
         return true;
