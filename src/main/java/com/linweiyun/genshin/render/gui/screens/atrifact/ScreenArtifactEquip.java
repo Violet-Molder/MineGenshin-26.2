@@ -119,8 +119,9 @@ public class ScreenArtifactEquip extends Screen {
                         SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
                 slotElement.transform(transform -> transform.scale(1.1f));
             });
+            int finalI = i;
             slotElement.addEventListener(UIEvents.MOUSE_LEAVE, e -> {
-                boolean isSelectedEquipped = selectedSlotIndex.get() == slotIdx
+                boolean isSelectedEquipped = selectedSlotIndex.get() == finalI
                         && selectedInventoryArtifact.get().isEmpty()
                         && topSectionVisible.get();
                 if (!isSelectedEquipped) {
@@ -370,25 +371,34 @@ public class ScreenArtifactEquip extends Screen {
             }
 
             if (shouldBeSelected) {
-                itemElement.addClass("artifact-list-selected");
+                itemElement.style(style -> style.overlay(
+                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+                itemElement.transform(transform -> transform.scale(1.1f));
                 selectedListElement.set(itemElement);
             }
 
             itemElement.addEventListener(UIEvents.MOUSE_ENTER, e -> {
-                if (!itemElement.hasClass("artifact-list-selected")) {
-                    itemElement.addClass("artifact-list-hover");
+                if (selectedListElement.get() != itemElement) {
+                    itemElement.style(style -> style.overlay(
+                            SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+                    itemElement.transform(transform -> transform.scale(1.1f));
                 }
             });
             itemElement.addEventListener(UIEvents.MOUSE_LEAVE, e -> {
-                itemElement.removeClass("artifact-list-hover");
+                if (selectedListElement.get() != itemElement) {
+                    itemElement.style(style -> style.overlay(null));
+                    itemElement.transform(transform -> transform.scale(1f));
+                }
             });
             itemElement.addEventListener(UIEvents.CLICK, e -> {
-                if (selectedListElement.get() != null) {
-                    selectedListElement.get().removeClass("artifact-list-selected");
+                if (selectedListElement.get() != null && selectedListElement.get() != itemElement) {
+                    selectedListElement.get().style(style -> style.overlay(null));
+                    selectedListElement.get().transform(transform -> transform.scale(1f));
                 }
                 selectedListElement.set(itemElement);
-                itemElement.removeClass("artifact-list-hover");
-                itemElement.addClass("artifact-list-selected");
+                itemElement.style(style -> style.overlay(
+                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+                itemElement.transform(transform -> transform.scale(1.1f));
 
                 if (entry.isEquipped) {
                     selectedInventoryArtifact.set(entry.stack.copy());
@@ -406,7 +416,6 @@ public class ScreenArtifactEquip extends Screen {
 
             artifactListContainer.addChild(itemElement);
         }
-
         artifactListContainer.markAsInternal();
     }
 
@@ -460,6 +469,7 @@ public class ScreenArtifactEquip extends Screen {
         var iconElement = new UIElement().addClass("artifact-detail-icon");
         String detailTexturePath = getArtifactDetailTexturePath(displayStack);
         iconElement.style(style -> style.background(SpriteTexture.of(detailTexturePath)));
+        iconElement.markAsInternal();
         middlePanel.addChild(iconElement);
         middlePanel.markAsInternal();
 

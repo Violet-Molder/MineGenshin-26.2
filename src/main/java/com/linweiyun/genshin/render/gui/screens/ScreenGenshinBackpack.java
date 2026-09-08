@@ -62,6 +62,8 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
         }
     }
 
+    private GenshinBackpack.Category lastCategory = GenshinBackpack.Category.WEAPONS;
+    private boolean lastSlotMode = false;
     private static final float SCROLL_COEFFICIENT = 20f;
     private static final int SLOT_MODE_VISIBLE_SLOTS = 100;
     private static final GenshinBackpack.Category[] CATEGORIES = GenshinBackpack.Category.values();
@@ -81,11 +83,11 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
         var window = new UIElement().setId("window");
 
         AtomicReference<GenshinBackpack.Category> currentCategory =
-                new AtomicReference<>(GenshinBackpack.Category.WEAPONS);
+                new AtomicReference<>(lastCategory);
         AtomicReference<Integer> selectedIndex = new AtomicReference<>(-1);
         AtomicReference<UIElement> selectedListElement = new AtomicReference<>();
         AtomicReference<Float> scrollValue = new AtomicReference<>(0.0f);
-        AtomicReference<Boolean> slotMode = new AtomicReference<>(false);
+        AtomicReference<Boolean> slotMode = new AtomicReference<>(lastSlotMode);
 
         var topToggleContainer = new UIElement().setId("top-toggle-container");
 
@@ -121,11 +123,16 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
         modeSwitchBtn.setOnClick(e -> {
             boolean newMode = !slotMode.get();
             slotMode.set(newMode);
+            lastSlotMode = newMode;
             iconModeSection.setDisplay(!newMode);
             slotModeSection.setDisplay(newMode);
             modeSwitchBtn.setText(newMode ? "图标模式" : "槽位模式");
             if (newMode) {
                 refreshSlotMode(slotModeLeft, slotModeRight, backpack, currentCategory, this.menu);
+            } else {
+                refreshItemList(itemListContainer, backpack, player, currentCategory,
+                        selectedIndex, selectedListElement, detailPanel);
+                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
             }
             modeSwitchBtn.markAsInternal();
         });
@@ -135,12 +142,12 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
 
         refreshTopToggle(topToggleContainer, currentCategory, backpack, player,
                 selectedIndex, selectedListElement, itemListContainer, detailPanel,
-                slotModeLeft, slotModeRight, slotMode);
+                slotModeLeft, slotModeRight, slotMode, this);
 
         refreshItemList(itemListContainer, backpack, player, currentCategory,
                 selectedIndex, selectedListElement, detailPanel);
 
-        refreshDetailPanel(detailPanel, backpack, player, currentCategory, selectedIndex);
+        refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
 
         var ui = UI.of(root, stylesheet);
         return ModularUI.of(ui, player);
@@ -157,7 +164,8 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
             UIElement detailPanel,
             UIElement slotModeLeft,
             UIElement slotModeRight,
-            AtomicReference<Boolean> slotMode) {
+            AtomicReference<Boolean> slotMode,
+            ScreenGenshinBackpack screen) {
 
         topToggleContainer.clearAllChildren();
 
@@ -166,14 +174,15 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
             btn.setText(cat.displayName);
             btn.setOnClick(e -> {
                 currentCategory.set(cat);
+                screen.lastCategory = cat;
                 selectedIndex.set(-1);
                 selectedListElement.set(null);
                 refreshTopToggle(topToggleContainer, currentCategory, backpack, player,
                         selectedIndex, selectedListElement, itemListContainer, detailPanel,
-                        slotModeLeft, slotModeRight, slotMode);
+                        slotModeLeft, slotModeRight, slotMode, screen);
                 refreshItemList(itemListContainer, backpack, player, currentCategory,
                         selectedIndex, selectedListElement, detailPanel);
-                refreshDetailPanel(detailPanel, backpack, player, currentCategory, selectedIndex);
+                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
                 if (slotMode.get()) {
                     refreshSlotMode(slotModeLeft, slotModeRight, backpack, currentCategory, null);
                 }
@@ -216,28 +225,37 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
             itemElement.style(style -> style.background(SpriteTexture.of(texturePath)));
 
             if (selectedIndex.get() == idx) {
-                itemElement.addClass("backpack-item-selected");
+                itemElement.style(style -> style.overlay(
+                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+                itemElement.transform(transform -> transform.scale(1.1f));
                 selectedListElement.set(itemElement);
             }
 
             itemElement.addEventListener(UIEvents.MOUSE_ENTER, e -> {
-                if (!itemElement.hasClass("backpack-item-selected")) {
-                    itemElement.addClass("backpack-item-hover");
+                if (selectedListElement.get() != itemElement) {
+                    itemElement.style(style -> style.overlay(
+                            SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+                    itemElement.transform(transform -> transform.scale(1.1f));
                 }
             });
             itemElement.addEventListener(UIEvents.MOUSE_LEAVE, e -> {
-                itemElement.removeClass("backpack-item-hover");
+                if (selectedListElement.get() != itemElement) {
+                    itemElement.style(style -> style.overlay(null));
+                    itemElement.transform(transform -> transform.scale(1f));
+                }
             });
             itemElement.addEventListener(UIEvents.CLICK, e -> {
-                if (selectedListElement.get() != null) {
-                    selectedListElement.get().removeClass("backpack-item-selected");
+                if (selectedListElement.get() != null && selectedListElement.get() != itemElement) {
+                    selectedListElement.get().style(style -> style.overlay(null));
+                    selectedListElement.get().transform(transform -> transform.scale(1f));
                 }
                 selectedListElement.set(itemElement);
-                itemElement.removeClass("backpack-item-hover");
-                itemElement.addClass("backpack-item-selected");
+                itemElement.style(style -> style.overlay(
+                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+                itemElement.transform(transform -> transform.scale(1.1f));
                 selectedIndex.set(idx);
 
-                refreshDetailPanel(detailPanel, backpack, player, currentCategory, selectedIndex);
+                refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
             });
 
             itemListContainer.addChild(itemElement);
@@ -245,7 +263,7 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
 
         if (selectedIndex.get() < 0 && firstNonEmpty >= 0) {
             selectedIndex.set(firstNonEmpty);
-            refreshDetailPanel(detailPanel, backpack, player, currentCategory, selectedIndex);
+            refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
         }
 
         itemListContainer.markAsInternal();
@@ -253,6 +271,7 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
 
     private static void refreshDetailPanel(
             UIElement detailPanel,
+            UIElement itemListContainer,
             GenshinBackpack backpack,
             Player player,
             AtomicReference<GenshinBackpack.Category> currentCategory,
@@ -303,12 +322,9 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
             NetworkManager.sendBackpackTakeOutToServer(catOrdinal, idx);
             backpack.removeItemFromCategory(cat, idx);
             selectedIndex.set(-1);
-            var itemListContainer = findParentById(detailPanel, "item-list-container");
-            if (itemListContainer != null) {
-                refreshItemList(itemListContainer, backpack, player, currentCategory,
-                        selectedIndex, new AtomicReference<>(), detailPanel);
-            }
-            refreshDetailPanel(detailPanel, backpack, player, currentCategory, selectedIndex);
+            refreshItemList(itemListContainer, backpack, player, currentCategory,
+                    selectedIndex, new AtomicReference<>(), detailPanel);
+            refreshDetailPanel(detailPanel, itemListContainer, backpack, player, currentCategory, selectedIndex);
         });
 
         var detailBtn = new Button();
@@ -380,6 +396,16 @@ public class ScreenGenshinBackpack extends AbstractContainerScreen<GenshinBackpa
     }
 
     private static UIElement findParentById(UIElement start, String targetId) {
+        UIElement found = findChildById(start, targetId);
+        return found;
+    }
+
+    private static UIElement findChildById(UIElement parent, String id) {
+        if (id.equals(parent.getId())) return parent;
+        for (var child : parent.getChildren()) {
+            var found = findChildById(child, id);
+            if (found != null) return found;
+        }
         return null;
     }
 

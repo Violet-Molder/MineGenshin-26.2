@@ -11,7 +11,7 @@
 #window {
   width: 85%;
   height: 88%;
-  background: sdf(#1a1a2ee0, 100);
+  background: sdf(#1a1a2ee0, 10);
   border: 1px #4a4a7a80;
   flex-direction: column;
   display: flex;
@@ -26,6 +26,7 @@
   justify-content: center;
   align-items: center;
   padding-all: 10;
+  background: sdf(#1a1a2ee0, 8);
 }
 
 #artifact-slots-row {
@@ -46,7 +47,7 @@
 }
 
 .empty-slot {
-  background: sdf(#ffffff15, 24);
+  background: sdf(#ffffff15, 8);
   width: 48;
   height: 48;
 }
@@ -125,11 +126,13 @@
 .artifact-list-hover {
   transform: scale(1.1);
   overlay: "minegenshin:textures/character_avatar/selected_border.png";
+  border: 2px #ffffffcc;
 }
 
 .artifact-list-selected {
   transform: scale(1.1);
   overlay: "minegenshin:textures/character_avatar/selected_border.png";
+  border: 2px #ffffffcc;
 }
 
 #middle-panel {
