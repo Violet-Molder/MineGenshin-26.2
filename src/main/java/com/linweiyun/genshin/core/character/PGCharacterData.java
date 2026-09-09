@@ -4,6 +4,7 @@ import com.linweiyun.genshin.content.effect.character.CharacterEffectContainer;
 import com.linweiyun.genshin.content.attribute.AttributeContainer;
 import com.linweiyun.genshin.content.attribute.AttributeInstance;
 import com.linweiyun.genshin.content.attribute.AttributeType;
+import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.attachment.StatusContainer;

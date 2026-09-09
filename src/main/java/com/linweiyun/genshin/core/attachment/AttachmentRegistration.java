@@ -52,13 +52,6 @@ public class AttachmentRegistration {
             ATTACHMENTS.register("adventurer_info",
                     () -> AttachmentType.serializable(AdventurerInfoAttachment::new).copyOnDeath().build());
 
-    public static final Supplier<AttachmentType<GenshinBackpack>> GENSHIN_BACKPACK_ATTACHMENT =
-            ATTACHMENTS.register(
-                    "genshin_backpack",
-                    () -> AttachmentType.serializable(GenshinBackpack::new)
-                            .sync(GenshinBackpack.STREAM_CODEC)
-                            .copyOnDeath().build()
-            );
     public static final Supplier<AttachmentType<Backpack>> BACKPACK_ATTACHMENT =
             ATTACHMENTS.register(
                     "backpack",

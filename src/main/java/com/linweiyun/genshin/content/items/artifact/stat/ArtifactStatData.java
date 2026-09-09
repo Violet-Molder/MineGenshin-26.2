@@ -1,8 +1,9 @@
-package com.linweiyun.genshin.content.items.artifact;
+package com.linweiyun.genshin.content.items.artifact.stat;
 
 import com.linweiyun.genshin.config.ArtifactMainStatConfig;
 import com.linweiyun.genshin.config.ArtifactSubStatConfig;
 import com.linweiyun.genshin.content.attribute.AttributeType;
+import com.linweiyun.genshin.content.items.artifact.ArtifactLevelData;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
@@ -62,19 +63,19 @@ public class ArtifactStatData {
     //TEMP 从 ArtifactSubStatConfig 读取五星副词条4档数值
     private static void readSubStat5() {
         SUB_STAT_TIERS_5.clear();
-        tryReadSubStat("atk#FLAT", ArtifactSubStatConfig.SUB_5_ATK_FLAT);
-        tryReadSubStat("max_hp#FLAT", ArtifactSubStatConfig.SUB_5_MAX_HP_FLAT);
-        tryReadSubStat("def#FLAT", ArtifactSubStatConfig.SUB_5_DEF_FLAT);
-        tryReadSubStat("atk#PERCENT", ArtifactSubStatConfig.SUB_5_ATK_PERCENT);
-        tryReadSubStat("max_hp#PERCENT", ArtifactSubStatConfig.SUB_5_MAX_HP_PERCENT);
-        tryReadSubStat("def#PERCENT", ArtifactSubStatConfig.SUB_5_DEF_PERCENT);
-        tryReadSubStat("elemental_mastery#FLAT", ArtifactSubStatConfig.SUB_5_EM_FLAT);
-        tryReadSubStat("energy_recharge#PERCENT", ArtifactSubStatConfig.SUB_5_ER_PERCENT);
-        tryReadSubStat("crit_rate#PERCENT", ArtifactSubStatConfig.SUB_5_CR_PERCENT);
-        tryReadSubStat("crit_dmg#PERCENT", ArtifactSubStatConfig.SUB_5_CDG_PERCENT);
+        tryReadFlatSubStat("atk#FLAT", ArtifactSubStatConfig.SUB_5_ATK_FLAT);
+        tryReadFlatSubStat("max_hp#FLAT", ArtifactSubStatConfig.SUB_5_MAX_HP_FLAT);
+        tryReadFlatSubStat("def#FLAT", ArtifactSubStatConfig.SUB_5_DEF_FLAT);
+        tryReadPercentSubStat("atk#PERCENT", ArtifactSubStatConfig.SUB_5_ATK_PERCENT);
+        tryReadPercentSubStat("max_hp#PERCENT", ArtifactSubStatConfig.SUB_5_MAX_HP_PERCENT);
+        tryReadPercentSubStat("def#PERCENT", ArtifactSubStatConfig.SUB_5_DEF_PERCENT);
+        tryReadFlatSubStat("elemental_mastery#FLAT", ArtifactSubStatConfig.SUB_5_EM_FLAT);
+        tryReadPercentSubStat("energy_recharge#PERCENT", ArtifactSubStatConfig.SUB_5_ER_PERCENT);
+        tryReadPercentSubStat("crit_rate#PERCENT", ArtifactSubStatConfig.SUB_5_CR_PERCENT);
+        tryReadPercentSubStat("crit_dmg#PERCENT", ArtifactSubStatConfig.SUB_5_CDG_PERCENT);
     }
 
-    private static void tryReadSubStat(String key, ModConfigSpec.ConfigValue<List<? extends Number>> config) {
+    private static void tryReadFlatSubStat(String key, ModConfigSpec.ConfigValue<List<? extends Number>> config) {
         try {
             List<? extends Number> list = config.get();
             if (list != null && list.size() == 4) {
@@ -89,9 +90,24 @@ public class ArtifactStatData {
         }
     }
 
+    private static void tryReadPercentSubStat(String key, ModConfigSpec.ConfigValue<List<? extends String>> config) {
+        try {
+            List<? extends String> list = config.get();
+            if (list != null && list.size() == 4) {
+                SUB_STAT_TIERS_5.put(key, new double[]{
+                        Double.parseDouble(list.get(0)),
+                        Double.parseDouble(list.get(1)),
+                        Double.parseDouble(list.get(2)),
+                        Double.parseDouble(list.get(3))
+                });
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     //TEMP 从 ConfigValue 读取 base+growth，key = "star#attrKey#kind"
     @SafeVarargs
-    private static void readStar(int star, ModConfigSpec.ConfigValue<List<? extends Number>>... configs) {
+    private static void readStar(int star, ModConfigSpec.ConfigValue<List<? extends String>>... configs) {
         String[] attrKeys = {"max_hp#FLAT", "atk#FLAT", "max_hp#PERCENT", "atk#PERCENT",
                 "def#PERCENT", "physical_bonus#PERCENT", "energy_recharge#PERCENT",
                 "elemental_mastery#FLAT", "crit_rate#PERCENT", "crit_dmg#PERCENT",
@@ -100,10 +116,10 @@ public class ArtifactStatData {
                 "geo_bonus#PERCENT", "dendro_bonus#PERCENT"};
         for (int i = 0; i < configs.length; i++) {
             try {
-                List<? extends Number> list = configs[i].get();
+                List<? extends String> list = configs[i].get();
                 if (list.size() >= 2) {
                     String key = star + "#" + attrKeys[i];
-                    MAIN_STAT.put(key, new double[]{list.get(0).doubleValue(), list.get(1).doubleValue()});
+                    MAIN_STAT.put(key, new double[]{Double.parseDouble(list.get(0)), Double.parseDouble(list.get(1))});
                 }
             } catch (Exception ignored) {
             }

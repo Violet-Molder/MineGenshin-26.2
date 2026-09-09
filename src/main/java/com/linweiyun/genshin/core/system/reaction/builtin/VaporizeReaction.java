@@ -24,8 +24,8 @@ import net.minecraft.world.entity.LivingEntity;
  */
 public class VaporizeReaction extends ElementalReaction {
 
-    private static float getDominantMultiplier() { return ElementalReactionConfig.VAPORIZE_COEFFICIENT_POSITIVE.get().floatValue(); }
-    private static float getSubmissiveMultiplier() { return ElementalReactionConfig.VAPORIZE_COEFFICIENT_NEGATIVE.get().floatValue(); }
+    private static float getDominantMultiplier() { return Float.parseFloat(ElementalReactionConfig.VAPORIZE_COEFFICIENT_POSITIVE.get()); }
+    private static float getSubmissiveMultiplier() { return Float.parseFloat(ElementalReactionConfig.VAPORIZE_COEFFICIENT_NEGATIVE.get()); }
 
     public VaporizeReaction(ElementalReactionType type,
                             ElementalsGIM elementA, ElementalsGIM elementB,

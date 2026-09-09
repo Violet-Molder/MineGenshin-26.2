@@ -118,7 +118,6 @@
   aspect-rate: 1.0f;
   flex-shrink: 0;
   border-radius: 6;
-  background: sdf(#2a2a4a80, 6);
   transition: transform 0.15 quad_in_out;
   transform-pivot: 0.5 0.5;
 }

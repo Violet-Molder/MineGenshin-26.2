@@ -21,8 +21,8 @@ import net.minecraft.world.entity.LivingEntity;
  */
 public class MeltReaction extends ElementalReaction {
 
-    private static float getDominantMultiplier() { return ElementalReactionConfig.MELT_COEFFICIENT_POSITIVE.get().floatValue(); }
-    private static float getSubmissiveMultiplier() { return ElementalReactionConfig.MELT_COEFFICIENT_NEGATIVE.get().floatValue(); }
+    private static float getDominantMultiplier() { return Float.parseFloat(ElementalReactionConfig.MELT_COEFFICIENT_POSITIVE.get()); }
+    private static float getSubmissiveMultiplier() { return Float.parseFloat(ElementalReactionConfig.MELT_COEFFICIENT_NEGATIVE.get()); }
 
     public MeltReaction(ElementalReactionType type,
                         ElementalsGIM elementA, ElementalsGIM elementB,

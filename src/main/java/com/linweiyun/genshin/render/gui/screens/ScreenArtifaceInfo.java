@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.render.gui.screens;
 
 import com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu;
-import com.linweiyun.genshin.core.character.ArtifactInventory;
+import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.MouseButtonEvent;

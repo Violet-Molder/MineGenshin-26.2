@@ -96,7 +96,7 @@ public class HurtEntityHelper {
         float finalDamage = calculateFinalDamage(
                 baseDamage, spec, sourceEntity, attacker, target, targetCharacter, reactionResult);
 
-        LOGGER.info("[最终伤害] base={} → final={}", baseDamage, finalDamage);
+//        LOGGER.info("[最终伤害] base={} → final={}", baseDamage, finalDamage);
         finalDamage *= decayResult.getDamageCoefficient();
         return finalDamage;
     }
@@ -109,10 +109,10 @@ public class HurtEntityHelper {
         double def = data.getAttributeTotalValue(ModAttributes.DEF.value());
         double em  = data.getAttributeTotalValue(ModAttributes.ELEMENTAL_MASTERY.value());
 
-        LOGGER.info("[属性快照] ATK={} | HP={} | DEF={} | EM={}", atk, hp, def, em);
-        LOGGER.info("[倍率快照] atkMult={} | hpMult={} | defMult={} | emMult={} | skillMultBonus={} | flatBonus={}",
-                spec.getAtkMultiplier(), spec.getHpMultiplier(), spec.getDefMultiplier(), spec.getEmMultiplier(),
-                spec.getSkillMultiplierBonus(), spec.getFlatDamageBonus());
+//        LOGGER.info("[属性快照] ATK={} | HP={} | DEF={} | EM={}", atk, hp, def, em);
+//        LOGGER.info("[倍率快照] atkMult={} | hpMult={} | defMult={} | emMult={} | skillMultBonus={} | flatBonus={}",
+//                spec.getAtkMultiplier(), spec.getHpMultiplier(), spec.getDefMultiplier(), spec.getEmMultiplier(),
+//                spec.getSkillMultiplierBonus(), spec.getFlatDamageBonus());
 
         float base = (float) ((
                 atk * spec.getAtkMultiplier() +
@@ -121,7 +121,7 @@ public class HurtEntityHelper {
                         em  * spec.getEmMultiplier()
         ) * (1 + spec.getSkillMultiplierBonus()) + spec.getFlatDamageBonus());
 
-        LOGGER.info("[基础伤害区] = {}", base);
+//        LOGGER.info("[基础伤害区] = {}", base);
         return base;
     }
 
@@ -133,7 +133,7 @@ public class HurtEntityHelper {
         float bonus = dmgBonusZone(attackerCharacter, spec);
         float def = defenseZone(attacker, attackerCharacter, target, targetCharacter);
         float res = resistanceZone(spec.getElement(), target, targetCharacter);
-        LOGGER.info("[最终伤害区] crit={} | bonus={} | def={} | res={}", crit, bonus, def, res);
+//        LOGGER.info("[最终伤害区] crit={} | bonus={} | def={} | res={}", crit, bonus, def, res);
 
         if (reaction == null || !reaction.isReacted()) {
             return baseDamage * crit * bonus * def * res;
@@ -161,16 +161,17 @@ public class HurtEntityHelper {
         int attackerLevel = CombatEntityAccessor.getAttackerLevel(attacker, attackerCharacter);
         int defenderLevel = CombatEntityAccessor.getDefenderLevel(defender, defenderCharacter);
         double defenderDef = CombatEntityAccessor.getDefenderDefense(defender, defenderCharacter);
+        // 注意这个是防御力效用，不是防御力系数，比如60%的防御力效用的意思是受到的伤害降低60%，也就是实际伤害是40%
         double atkCoef = CombatMath.levelCoefficient(attackerLevel);
-        LOGGER.info("[防御区] 攻方等级={} | 攻方等级系数={} | 被攻方等级={} | 被攻方防御={}",
-                attackerLevel, atkCoef, defenderLevel, defenderDef);
-        return CombatMath.defenseZone(attackerLevel, defenderDef);
+//        LOGGER.info("[防御区] 攻方等级={} | 攻方等级系数={} | 被攻方等级={} | 被攻方防御={}",
+//                attackerLevel, atkCoef, defenderLevel, defenderDef);
+        return 1 - CombatMath.defenseZone(attackerLevel, defenderDef);
     }
 
     private static float resistanceZone(ElementalsGIM element,
                                         LivingEntity defender, PGCharacter defenderCharacter) {
         float res = CombatEntityAccessor.getDefenderResistance(defender, defenderCharacter, element);
-        LOGGER.info("[元素抗性区] {}抗性={}", element, res);
+//        LOGGER.info("[元素抗性区] {}抗性={}", element, res);
         return CombatMath.resistanceZone(res);
     }
 

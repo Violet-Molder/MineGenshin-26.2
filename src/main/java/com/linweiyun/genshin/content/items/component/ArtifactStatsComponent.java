@@ -1,8 +1,8 @@
 package com.linweiyun.genshin.content.items.component;
 
 import com.linweiyun.genshin.content.items.artifact.ArtifactLevelData;
-import com.linweiyun.genshin.content.items.artifact.ArtifactStatData;
-import com.linweiyun.genshin.content.items.artifact.ArtifactType;
+import com.linweiyun.genshin.content.items.artifact.stat.ArtifactStatData;
+import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;

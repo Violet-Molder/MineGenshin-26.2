@@ -1,7 +1,7 @@
-package com.linweiyun.genshin.core.character;
+package com.linweiyun.genshin.content.items.artifact.inventory;
 
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
-import com.linweiyun.genshin.content.items.artifact.ArtifactType;
+import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;

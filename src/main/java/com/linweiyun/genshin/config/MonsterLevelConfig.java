@@ -14,7 +14,7 @@ public class MonsterLevelConfig {
     private static final ModConfigSpec.Builder MONSTER_BUILDER = new ModConfigSpec.Builder();
 
     public static final ModConfigSpec.ConfigValue<String> CALCULATION_MODE;
-    public static final ModConfigSpec.ConfigValue<Double> SPAWN_RADIUS;
+    public static final ModConfigSpec.ConfigValue<String> SPAWN_RADIUS;
 
     public static final ModConfigSpec MONSTER_LEVEL_SPEC;
 
@@ -33,7 +33,7 @@ public class MonsterLevelConfig {
         SPAWN_RADIUS = MONSTER_BUILDER
                 .comment("搜索半径（方块），仅在该半径内的玩家会被纳入等级计算。\n"
                         + "默认 160.0（对应 MC spawn-distance=10 区块），可根据服务器实际配置调整")
-                .defineInRange("calculation-radius", 160.0, 1.0, 1024.0);
+                .define("calculation-radius", "160.0");
 
         MONSTER_BUILDER.pop();
         MONSTER_LEVEL_SPEC = MONSTER_BUILDER.build();
@@ -49,7 +49,7 @@ public class MonsterLevelConfig {
 
     public static double getSpawnRadius() {
         try {
-            return SPAWN_RADIUS.get();
+            return Double.parseDouble(SPAWN_RADIUS.get());
         } catch (Exception e) {
             return 160.0;
         }

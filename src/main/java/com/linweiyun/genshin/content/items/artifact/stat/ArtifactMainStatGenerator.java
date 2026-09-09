@@ -1,6 +1,7 @@
-package com.linweiyun.genshin.content.items.artifact;
+package com.linweiyun.genshin.content.items.artifact.stat;
 
 import com.linweiyun.genshin.config.ArtifactMainStatConfig;
+import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import org.slf4j.Logger;
@@ -66,56 +67,56 @@ public class ArtifactMainStatGenerator {
 
     private static TeyvatItemStat generateSands(int star, Random random) {
         List<Double> weights = List.of(
-                ArtifactMainStatConfig.WEIGHT_SANDS_HP_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_SANDS_ATK_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_SANDS_DEF_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_SANDS_EM_FLAT.get(),
-                ArtifactMainStatConfig.WEIGHT_SANDS_ER_PERCENT.get()
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_SANDS_HP_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_SANDS_ATK_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_SANDS_DEF_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_SANDS_EM_FLAT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_SANDS_ER_PERCENT.get())
         );
         TeyvatItemStat template = weightedPick(SANDS_POOL, weights, random);
-        LOGGER.info("[ArtifactMainStatGenerator] generateSands picked | attr={}", template.getAttribute());
+//        LOGGER.info("[ArtifactMainStatGenerator] generateSands picked | attr={}", template.getAttribute());
         return buildFromTemplate(template, star);
     }
 
     private static TeyvatItemStat generateGoblet(int star, Random random) {
         List<Double> weights = List.of(
-                ArtifactMainStatConfig.WEIGHT_GOBLET_PYRO_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_HYDRO_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_CYRO_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_ELECTRO_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_ANEMO_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_GEO_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_DENDRO_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_PHYSICAL_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_ATK_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_HP_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_DEF_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_GOBLET_EM_FLAT.get()
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_PYRO_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_HYDRO_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_CYRO_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_ELECTRO_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_ANEMO_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_GEO_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_DENDRO_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_PHYSICAL_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_ATK_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_HP_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_DEF_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_GOBLET_EM_FLAT.get())
         );
         TeyvatItemStat template = weightedPick(GOBLET_POOL, weights, random);
-        LOGGER.info("[ArtifactMainStatGenerator] generateGoblet picked | attr={}", template.getAttribute());
+//        LOGGER.info("[ArtifactMainStatGenerator] generateGoblet picked | attr={}", template.getAttribute());
         return buildFromTemplate(template, star);
     }
 
     private static TeyvatItemStat generateCirclet(int star, Random random) {
         List<Double> weights = List.of(
-                ArtifactMainStatConfig.WEIGHT_CIRCLET_CR_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_CIRCLET_CDG_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_CIRCLET_HB_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_CIRCLET_HP_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_CIRCLET_ATK_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_CIRCLET_DEF_PERCENT.get(),
-                ArtifactMainStatConfig.WEIGHT_CIRCLET_EM_FLAT.get()
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_CIRCLET_CR_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_CIRCLET_CDG_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_CIRCLET_HB_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_CIRCLET_HP_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_CIRCLET_ATK_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_CIRCLET_DEF_PERCENT.get()),
+                Double.parseDouble(ArtifactMainStatConfig.WEIGHT_CIRCLET_EM_FLAT.get())
         );
         TeyvatItemStat template = weightedPick(CIRCLET_POOL, weights, random);
-        LOGGER.info("[ArtifactMainStatGenerator] generateCirclet picked | attr={}", template.getAttribute());
+//        LOGGER.info("[ArtifactMainStatGenerator] generateCirclet picked | attr={}", template.getAttribute());
         return buildFromTemplate(template, star);
     }
 
     private static TeyvatItemStat buildFromTemplate(TeyvatItemStat template, int star) {
         double base = ArtifactStatData.getMainStatBase(template.getAttribute(), template.getKind(), star);
-        LOGGER.info("[ArtifactMainStatGenerator] buildFromTemplate | attr={} | kind={} | star={} | base={}",
-                template.getAttribute(), template.getKind(), star, base);
+//        LOGGER.info("[ArtifactMainStatGenerator] buildFromTemplate | attr={} | kind={} | star={} | base={}",
+//                template.getAttribute(), template.getKind(), star, base);
         return new TeyvatItemStat(template.getAttribute(), base, template.getKind());
     }
 

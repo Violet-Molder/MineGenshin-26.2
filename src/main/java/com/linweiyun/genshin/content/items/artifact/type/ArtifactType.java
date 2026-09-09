@@ -1,4 +1,4 @@
-package com.linweiyun.genshin.content.items.artifact;
+package com.linweiyun.genshin.content.items.artifact.type;
 
 public enum ArtifactType {
     FLOWER("artifact.minegenshin.type.flower"),

@@ -1,5 +1,6 @@
-package com.linweiyun.genshin.content.items.artifact;
+package com.linweiyun.genshin.content.items.artifact.stat;
 
+import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import org.slf4j.Logger;
@@ -39,8 +40,8 @@ public class ArtifactSubStatGenerator {
                                                    com.linweiyun.genshin.content.attribute.AttributeType mainStatAttribute,
                                                    TeyvatItemStat.StatKind mainStatKind,
                                                    Random random) {
-        LOGGER.info("[ArtifactSubStatGenerator] generateAll | star={} | type={} | mainAttr={} | mainKind={}",
-                star, type, mainStatAttribute, mainStatKind);
+//        LOGGER.info("[ArtifactSubStatGenerator] generateAll | star={} | type={} | mainAttr={} | mainKind={}",
+//                star, type, mainStatAttribute, mainStatKind);
 
         List<TeyvatItemStat> result = new ArrayList<>();
         // 最多4条副词条
@@ -64,7 +65,7 @@ public class ArtifactSubStatGenerator {
             TeyvatItemStat.SubStatOption picked = pool.remove(random.nextInt(pool.size()));
             int tier = random.nextInt(4) + 1;
             double value = ArtifactStatData.getSubStatTierValue(picked.attribute, picked.kind, star, tier);
-            LOGGER.info("[ArtifactSubStatGenerator] subStat[{}] | attr={} | kind={} | tier={} | value={}", i, picked.attribute, picked.kind, tier, value);
+//            LOGGER.info("[ArtifactSubStatGenerator] subStat[{}] | attr={} | kind={} | tier={} | value={}", i, picked.attribute, picked.kind, tier, value);
             result.add(new TeyvatItemStat(picked.attribute, value, picked.kind, true, tier));
         }
 
@@ -78,7 +79,7 @@ public class ArtifactSubStatGenerator {
             result.get(i).setUnlocked(i < initialUnlock);
         }
 
-        LOGGER.info("[ArtifactSubStatGenerator] done | totalGenerated={} | initialUnlock={}", result.size(), initialUnlock);
+//        LOGGER.info("[ArtifactSubStatGenerator] done | totalGenerated={} | initialUnlock={}", result.size(), initialUnlock);
         return result;
     }
 

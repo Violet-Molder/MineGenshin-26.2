@@ -28,7 +28,7 @@ public class MonsterLevelSpawnHandler {
             int lv = MonsterLevelCalculator.getMonsterLevelNatural(serverLevel, pos, seed);
             monsterLevel.genshin$setMonsterLevel(lv);
         } catch (Exception e) {
-            LOGGER.warn("MonsterLevelSpawnHandler failed for {}: {}", monster.getType(), e.getMessage());
+
         }
     }
 }

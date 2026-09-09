@@ -15,12 +15,12 @@ public class ModElementalReactions {
 
     public static final DeferredRegister<ElementalReaction> ELEMENTAL_REACTIONS = ModRegistries.ELEMENTAL_REACTIONS;
 
-    // 蒸发：火:水 = 1:2，火克水
+    // 蒸发：水:火 = 1:2，水克火
     public static final DeferredHolder<ElementalReaction, VaporizeReaction> VAPORIZE = ELEMENTAL_REACTIONS.register(
             "vaporize",
             () -> new VaporizeReaction(
                     ElementalReactionType.VAPORIZE,
-                    ElementalsGIM.PYRO, ElementalsGIM.HYDRO,
+                    ElementalsGIM.HYDRO, ElementalsGIM.PYRO,
                     1f, 2f,
                     0));
 

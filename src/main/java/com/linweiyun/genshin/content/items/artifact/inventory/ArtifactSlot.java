@@ -1,4 +1,4 @@
-package com.linweiyun.genshin.core.character;
+package com.linweiyun.genshin.content.items.artifact.inventory;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.Container;

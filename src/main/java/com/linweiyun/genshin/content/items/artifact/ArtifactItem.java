@@ -2,6 +2,9 @@ package com.linweiyun.genshin.content.items.artifact;
 
 import com.linweiyun.genshin.content.effect.character.artifact.ArtifactSetEffect;
 import com.linweiyun.genshin.content.items.TeyvatItem;
+import com.linweiyun.genshin.content.items.artifact.stat.ArtifactMainStatGenerator;
+import com.linweiyun.genshin.content.items.artifact.stat.ArtifactSubStatGenerator;
+import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
@@ -19,7 +22,6 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
@@ -50,8 +52,8 @@ public class ArtifactItem extends TeyvatItem {
         if (!stats.mainStat.isInitialized()) {
             ArtifactStatsComponent generated = buildInitialStats(artifact.getStar(), artifact.getType());
             stack.set(ModDataComponents.ARTIFACT_STATS.get(), generated);
-            LOGGER.info("Initialized artifact stats for stack: {}", stack);
-                   }
+//            LOGGER.info("Initialized artifact stats for stack: {}", stack);
+        }
     }
     protected static ArtifactStatsComponent buildInitialStats(int star, ArtifactType type) {
         Random random = new Random();

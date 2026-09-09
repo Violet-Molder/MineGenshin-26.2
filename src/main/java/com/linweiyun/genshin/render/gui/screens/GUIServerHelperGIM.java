@@ -23,9 +23,6 @@ public class GUIServerHelperGIM {
     var modularUI = ScreenArtifactEquip.createModularUI(player, slotIndex);
     Minecraft.getInstance().setScreenAndShow(new ScreenArtifactEquip(modularUI));
   }
-  public static void openGenshinBackpackScreen(Player player) {
-    NetworkManager.openGenshinBackpackMenuToServer();
-  }
   public static void openBackpackScreen(Player player) {
     NetworkManager.openBackpackMenuToServer();
   }

@@ -1,4 +1,6 @@
-package com.linweiyun.genshin.content.items.artifact;
+package com.linweiyun.genshin.content.items.artifact.type;
+
+import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 
 public class CircletArtifact extends ArtifactItem {
     public CircletArtifact(Properties properties) {

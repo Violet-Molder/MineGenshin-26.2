@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 
 public class SuperConductReaction extends ElementalReaction {
     public static final Logger LOGGER = LogUtils.getLogger();
-    private static float getReactionMultiplier() { return ElementalReactionConfig.SUPERCONDUCT_COEFFICIENT.get().floatValue(); }
+    private static float getReactionMultiplier() { return Float.parseFloat(ElementalReactionConfig.SUPERCONDUCT_COEFFICIENT.get()); }
     /**
      * @param reactionType 反应类型枚举
      * @param elementA     元素1（消耗 ratioA 份）

@@ -195,7 +195,6 @@ public class Backpack implements IPersistedSerializable, Container, IContainerUI
 
     @Override
     public void setItem(int slot, ItemStack itemStack) {
-        System.out.println(slot);
         var list = getCategoryList(slot);
         int localIndex = getLocalIndex(slot);
         itemStack.limitSize(this.getMaxStackSize(itemStack));
@@ -249,5 +248,42 @@ public class Backpack implements IPersistedSerializable, Container, IContainerUI
     @Override
     public boolean isStillValid(Player player) {
         return true;
+    }
+
+    // ==================== 分类辅助方法（兼容旧 GenshinBackpack API） ====================
+
+    public ArrayList<ItemStack> getCategoryList(Category category) {
+        return switch (category) {
+            case WEAPONS -> weapons;
+            case ARTIFACTS -> artifacts;
+            case DEVELOPMENT -> development;
+            case FOOD -> food;
+            case MATERIALS -> materials;
+            case GADGET -> gadgets;
+            case QUEST -> quests;
+            case PRECIOUS -> precious;
+            case FURNISHINGS -> furnishings;
+        };
+    }
+
+    public void addItemToCategory(Category category, ItemStack stack) {
+        ArrayList<ItemStack> list = getCategoryList(category);
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).isEmpty()) {
+                list.set(i, stack);
+                this.setChanged();
+                return;
+            }
+        }
+    }
+
+    public ItemStack removeItemFromCategory(Category category, int localIndex) {
+        ArrayList<ItemStack> list = getCategoryList(category);
+        if (localIndex < 0 || localIndex >= list.size()) return ItemStack.EMPTY;
+        ItemStack stack = list.get(localIndex);
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+        list.set(localIndex, ItemStack.EMPTY);
+        this.setChanged();
+        return stack;
     }
 }

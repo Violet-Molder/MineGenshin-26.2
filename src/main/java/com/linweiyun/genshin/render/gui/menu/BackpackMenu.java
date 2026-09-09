@@ -1,7 +1,9 @@
 package com.linweiyun.genshin.render.gui.menu;
 
 import com.linweiyun.genshin.core.attachment.Backpack;
+import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.render.gui.components.CustomToggle;
+import com.linweiyun.genshin.render.gui.components.state_bind_com.CustomItemSlot;
 import com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
@@ -32,6 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class BackpackMenu {
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final int SLOTS_PER_ROW = 14;
 
     public static ModularUI createUI(Player player, Backpack backpack) {
         var root = new UIElement().setId("root");
@@ -41,13 +44,12 @@ public class BackpackMenu {
         // ========== Window ==========
         var window = new UIElement().setId("window");
 
-        // ========== Panel（上下分栏） ==========
+        // ========== Panel ==========
         var sidebarPanel = new UIElement().setId("sidebar-panel");
         var contentPanel = new UIElement().setId("content-panel");
 
         // ========== Section（分类切换区） ==========
         var categorySection = new UIElement().setId("category-section");
-        // ========== ToggleGroup ==========
         var categoryGroup = new ToggleGroupElement();
         for (var category : Backpack.Category.values()) {
             String toggleId = category.name().toLowerCase() + "-toggle";
@@ -62,61 +64,59 @@ public class BackpackMenu {
         }
         var backpackContainer = new UIElement().setId("backpack_container");
 
-
         AtomicReference<Backpack.Category> currentCategoryRef =
                 new AtomicReference<>(Backpack.Category.WEAPONS);
         categoryGroup.setId("category_group");
         categoryGroup.toggleGroup.setAllowEmpty(false);
 
         // ========== 模式容器 ==========
-        // 图标模式容器（默认显示，先空着）
         var iconModeSection = new UIElement().setId("icon-mode-section");
-        // 图标模式的左侧（图标列表区，对应槽位模式的 genshinBackpackWindow）
         var iconGenshinBackpackWindow = new ScrollerView();
         iconGenshinBackpackWindow.setId("icon-genshin-backpack-window");
-
-        // 改为
-        var detailPanel = new UIElement().setId("detail-panel-container");
-        AtomicReference<UIElement> iconGrid = new AtomicReference<>(
-                refreshIconList(backpack, Backpack.Category.WEAPONS, detailPanel));
-        iconGrid.get().setId("icon-grid-container");
-
-        // 图标模式的右侧（详情面板区，对应槽位模式的 playerInventoryWindow）
         var iconPlayerInventoryWindow = new UIElement().setId("icon-player-inventory-window");
 
+        var detailPanel = new UIElement().setId("detail-panel-container");
 
-        // 槽位模式容器（默认隐藏，包裹原来的槽位网格 + 玩家背包）
+        // 持久化追踪当前选中的槽位索引（全局 slot）
+        AtomicReference<Integer> selectedSlotRef = new AtomicReference<>(-1);
+
+        AtomicReference<UIElement> iconGrid = new AtomicReference<>(null);
+        UIElement initialGrid = refreshIconList(backpack, Backpack.Category.WEAPONS, detailPanel,
+                player, iconGenshinBackpackWindow, iconGrid, currentCategoryRef, selectedSlotRef);
+        iconGrid.set(initialGrid);
+        iconGrid.get().setId("icon-grid-container");
+
         var slotModeSection = new UIElement().setId("slot-mode-section");
+        slotModeSection.setDisplay(false);
+
         var modeSwitch = new Switch();
-
-        // ========== 玩家背包 ==========
-        var playerInventoryWindow = new UIElement().setId("player_inventory_window");
-
-        var itemInfoPanel = new UIElement().setId("item_info_panel");
         modeSwitch.setId("mode-switch");
         modeSwitch.setOnSwitchChanged(isOn -> {
             slotModeSection.setDisplay(isOn);
             iconModeSection.setDisplay(!isOn);
             if (!isOn) {
                 iconGenshinBackpackWindow.clearAllScrollViewChildren();
-                iconGrid.set(refreshIconList(backpack, currentCategoryRef.get(), detailPanel));
+                iconGrid.set(refreshIconList(backpack, currentCategoryRef.get(), detailPanel,
+                        player, iconGenshinBackpackWindow, iconGrid, currentCategoryRef, selectedSlotRef));
                 iconGenshinBackpackWindow.addScrollViewChild(iconGrid.get());
             }
         });
+
+        // ========== 玩家背包 ==========
+        var playerInventoryWindow = new UIElement().setId("player_inventory_window");
 
         // ========== 槽位网格 ==========
         ResourceHandler<ItemResource> handler = backpack.asResourceHandler();
         var genshinBackpackWindow = new ScrollerView();
         genshinBackpackWindow.setId("genshin_backpack_window");
-        // 遍历所有分类，为每个分类创建槽位网格
+
         for (var category : Backpack.Category.values()) {
-            var grid = buildGridForCategory(category, handler, genshinBackpackWindow);
+            var grid = buildGridForCategory(category, handler);
             grid.setId(category.name().toLowerCase() + "_grid");
             grid.setDisplay(false);
             genshinBackpackWindow.addScrollViewChild(grid);
         }
 
-        // 默认显示第一个分类的网格
         String firstGridId = Backpack.Category.values()[0].name().toLowerCase() + "_grid";
         for (var child : genshinBackpackWindow.viewContainer.getChildren()) {
             if (child.getId().equals(firstGridId)) {
@@ -125,48 +125,7 @@ public class BackpackMenu {
             }
         }
 
-        // ========== 窗口大小变化后稳定再重建 ==========
-        final long[] lastResizeTime = {0};
-        final long DEBOUNCE_MS = 50;
-        int[] currentSlotsPerRow = {0};
-
-        // LAYOUT_CHANGED：只记录时间，不重建
-        genshinBackpackWindow.viewContainer.addEventListener(UIEvents.LAYOUT_CHANGED, e -> {
-            lastResizeTime[0] = System.currentTimeMillis();
-        });
-
-        // TICK：每 tick 检查是否已稳定 500ms
-        genshinBackpackWindow.viewContainer.addEventListener(UIEvents.TICK, e -> {
-            if (lastResizeTime[0] == 0) return;
-            if (System.currentTimeMillis() - lastResizeTime[0] < DEBOUNCE_MS) return;
-            lastResizeTime[0] = 0; // 重置，防止重复触发
-
-            int slotSize = 18;
-            int newSlotsPerRow = (int) (genshinBackpackWindow.getContainerWidth() / slotSize);
-            if (newSlotsPerRow <= 0) newSlotsPerRow = 8;
-            if (newSlotsPerRow == currentSlotsPerRow[0]) return;
-            currentSlotsPerRow[0] = newSlotsPerRow;
-
-            // 记住当前显示的网格
-            String visibleGridId = null;
-            for (var child : genshinBackpackWindow.viewContainer.getChildren()) {
-                if (child.isDisplayed()) {
-                    visibleGridId = child.getId();
-                    break;
-                }
-            }
-
-            // 清空并重建所有网格
-            genshinBackpackWindow.clearAllScrollViewChildren();
-            for (var category : Backpack.Category.values()) {
-                var grid = buildGridForCategory(category, handler, genshinBackpackWindow);
-                grid.setId(category.name().toLowerCase() + "_grid");
-                grid.setDisplay(grid.getId().equals(visibleGridId));
-                genshinBackpackWindow.addScrollViewChild(grid);
-            }
-        });
-
-        // 监听分类切换，显示/隐藏对应网格
+        // 监听分类切换
         Map<String, Backpack.Category> toggleCategoryMap = new HashMap<>();
         for (var category : Backpack.Category.values()) {
             toggleCategoryMap.put(category.name().toLowerCase() + "-toggle", category);
@@ -182,22 +141,21 @@ public class BackpackMenu {
                     currentCategoryRef.set(cat);
 
                     for (var grid : genshinBackpackWindow.viewContainer.getChildren()) {
-                        grid.setDisplay(grid.getId().equals(
-                                toggleCategoryMap.get(current.getId()).name().toLowerCase() + "_grid"));
+                        grid.setDisplay(grid.getId().equals(cat.name().toLowerCase() + "_grid"));
                     }
                     iconGenshinBackpackWindow.clearAllScrollViewChildren();
-                    iconGrid.set(refreshIconList(backpack, toggleCategoryMap.get(current.getId()), detailPanel));
+                    iconGrid.set(refreshIconList(backpack, cat, detailPanel,
+                            player, iconGenshinBackpackWindow, iconGrid, currentCategoryRef, selectedSlotRef));
                     iconGenshinBackpackWindow.addScrollViewChild(iconGrid.get());
                 });
             }
         }
 
-
-
         root.layout(layout -> {
             layout.widthPercent(100f);
             layout.heightPercent(100f);
         });
+
         // ========== 组装 UI 树 ==========
         root.addChildren(
                 window.addChildren(
@@ -207,15 +165,13 @@ public class BackpackMenu {
                         contentPanel.addChildren(
                                 backpackContainer.addChildren(
                                         iconModeSection.addChildren(
-                                                iconGenshinBackpackWindow.addScrollViewChildren(iconGrid.get()),
+                                                iconGenshinBackpackWindow.addScrollViewChild(iconGrid.get()),
                                                 iconPlayerInventoryWindow.addChildren(detailPanel)
-                                        ),                              // ← 新增
-                                        slotModeSection.addChildren(                   // ← 新增包裹
+                                        ),
+                                        slotModeSection.addChildren(
                                                 genshinBackpackWindow,
-                                                playerInventoryWindow.addChildren(
-                                                        new InventorySlots()
-                                                )
-                                        ).setDisplay(false),
+                                                playerInventoryWindow.addChildren(new InventorySlots())
+                                        ),
                                         modeSwitch
                                 )
                         )
@@ -226,9 +182,10 @@ public class BackpackMenu {
         return ModularUI.of(ui, player);
     }
 
-    /**
-     * 计算指定分类的全局偏移量（前面所有分类容量之和）
-     */
+    // ========================================================================
+    //  辅助方法
+    // ========================================================================
+
     private static int getCategoryOffset(Backpack.Category target) {
         int offset = 0;
         for (var category : Backpack.Category.values()) {
@@ -239,80 +196,105 @@ public class BackpackMenu {
     }
 
     // ========================================================================
-    //  图标模式 - 渲染物品图标列表
+    //  图标模式
     // ========================================================================
 
-    private static UIElement refreshIconList(Backpack backpack, Backpack.Category category,
-                                             UIElement detailPanel) {
+    private static UIElement refreshIconList(
+            Backpack backpack, Backpack.Category category,
+            UIElement detailPanel,
+            Player player,
+            ScrollerView iconGenshinBackpackWindow,
+            AtomicReference<UIElement> iconGrid,
+            AtomicReference<Backpack.Category> currentCategoryRef,
+            AtomicReference<Integer> selectedSlotRef) {
+
         var gridContainer = new UIElement().setId("icon-grid-container");
-        AtomicReference<UIElement> selectedRef = new AtomicReference<>();
+        AtomicReference<UIElement> selectedElementRef = new AtomicReference<>();
 
         int offset = getCategoryOffset(category);
         int totalSlots = category.maxCapacity;
-        UIElement firstNonEmpty = null;
 
+        // 如果当前选中的 slot 已空或不在本分类内，清除选中
+        int curSlot = selectedSlotRef.get();
+        if (curSlot < offset || curSlot >= offset + totalSlots || backpack.getItem(curSlot).isEmpty()) {
+            curSlot = -1;
+        }
+
+        // 遍历构建图标
         for (int i = 0; i < totalSlots; i++) {
             ItemStack stack = backpack.getItem(offset + i);
             if (stack.isEmpty()) continue;
 
+            int globalSlot = offset + i;
+
+            // 如果还没选中任何物品，就选第一个非空的
+            if (curSlot < 0) {
+                curSlot = globalSlot;
+            }
+
             var itemElement = new UIElement().addClass("backpack-icon-item");
             itemElement.style(s -> s.background(SpriteTexture.of(getItemTexturePath(stack))));
 
-            // 默认选中第一个
-            if (firstNonEmpty == null) {
-                firstNonEmpty = itemElement;
+            // 高亮当前选中的
+            if (globalSlot == curSlot) {
                 itemElement.transform(t -> t.scale(1.1f));
                 itemElement.style(s -> s.overlay(new ColorBorderTexture(1, 0xFFFFFFFF)));
-                selectedRef.set(itemElement);
-                refreshDetailPanel(detailPanel, stack);
+                selectedElementRef.set(itemElement);
             }
 
-            // 悬停放大 + 白色边框（未选中时）
-            int finalI = i;
             itemElement.addEventListener(UIEvents.MOUSE_ENTER, e -> {
-                if (selectedRef.get() != itemElement) {
+                if (selectedElementRef.get() != itemElement) {
                     itemElement.transform(t -> t.scale(1.1f));
                     itemElement.style(s -> s.overlay(new ColorBorderTexture(1, 0xFFFFFFFF)));
                 }
             });
             itemElement.addEventListener(UIEvents.MOUSE_LEAVE, e -> {
-                if (selectedRef.get() != itemElement) {
+                if (selectedElementRef.get() != itemElement) {
                     itemElement.transform(t -> t.scale(1f));
                     itemElement.style(s -> s.overlay(null));
                 }
             });
-
-            // 按下时回缩到 1.0
             itemElement.addEventListener(UIEvents.MOUSE_DOWN, e -> {
                 itemElement.transform(t -> t.scale(1f));
             });
-
-            // 点击选中：放大 + 白色边框 + 更新详情
             itemElement.addEventListener(UIEvents.CLICK, e -> {
-                UIElement prev = selectedRef.getAndSet(itemElement);
+                UIElement prev = selectedElementRef.getAndSet(itemElement);
                 if (prev != null && prev != itemElement) {
                     prev.transform(t -> t.scale(1f));
                     prev.style(s -> s.overlay(null));
                 }
                 itemElement.transform(t -> t.scale(1.1f));
                 itemElement.style(s -> s.overlay(new ColorBorderTexture(1, 0xFFFFFFFF)));
-
-                int globalSlot = offset + finalI;
-                refreshDetailPanel(detailPanel, backpack.getItem(globalSlot));
+                selectedSlotRef.set(globalSlot);
+                refreshDetailPanelWithButtons(detailPanel, backpack.getItem(globalSlot), globalSlot,
+                        backpack, player, iconGenshinBackpackWindow, iconGrid, currentCategoryRef, selectedSlotRef);
             });
 
             gridContainer.addChild(itemElement);
         }
 
+        // 更新选中状态
+        selectedSlotRef.set(curSlot);
+        if (curSlot >= 0) {
+            refreshDetailPanelWithButtons(detailPanel, backpack.getItem(curSlot), curSlot,
+                    backpack, player, iconGenshinBackpackWindow, iconGrid, currentCategoryRef, selectedSlotRef);
+        } else {
+            detailPanel.clearAllChildren();
+            detailPanel.addChild(new Label().setText("未选中物品"));
+            detailPanel.markAsInternal();
+        }
+
         return gridContainer;
     }
-    private static String getItemTexturePath(ItemStack stack) {
-        if (stack.isEmpty()) return "minegenshin:textures/empty.png";
-        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return id.getNamespace() + ":textures/item/" + id.getPath() + ".png";
-    }
 
-    private static void refreshDetailPanel(UIElement container, ItemStack stack) {
+    private static void refreshDetailPanelWithButtons(
+            UIElement container, ItemStack stack, int globalSlotIndex,
+            Backpack backpack, Player player,
+            ScrollerView iconGenshinBackpackWindow,
+            AtomicReference<UIElement> iconGrid,
+            AtomicReference<Backpack.Category> currentCategoryRef,
+            AtomicReference<Integer> selectedSlotRef) {
+
         container.clearAllChildren();
 
         if (stack.isEmpty()) {
@@ -320,17 +302,17 @@ public class BackpackMenu {
             return;
         }
 
-        // 收集物品的 tooltip 文本
-        List<Component> tooltipLines = new ArrayList<>();
-        // 第一行：物品名称
-        tooltipLines.add(stack.getHoverName());
-        // 用 appendHoverText 收集其余信息
-        stack.getItem().appendHoverText(stack, Item.TooltipContext.EMPTY, TooltipDisplay.DEFAULT,
-                tooltipLines::add, TooltipFlag.NORMAL);
-
-        // 创建 ScrollerView 使详情可滚动
+        // 物品信息
         var scroller = new ScrollerView();
         scroller.setId("detail-scroller");
+
+        var nameLabel = new Label().setText(stack.getHoverName());
+        nameLabel.addClass("detail-line");
+        scroller.addScrollViewChild(nameLabel);
+
+        List<Component> tooltipLines = new ArrayList<>();
+        stack.getItem().appendHoverText(stack, Item.TooltipContext.EMPTY, TooltipDisplay.DEFAULT,
+                tooltipLines::add, TooltipFlag.NORMAL);
 
         for (Component line : tooltipLines) {
             String text = line.getString();
@@ -343,33 +325,58 @@ public class BackpackMenu {
         }
 
         container.addChild(scroller);
+
+        // ========== 按钮区 ==========
+        var buttonContainer = new UIElement().setId("button-container");
+
+        var takeOutBtn = new Button();
+        takeOutBtn.setText("取出");
+        takeOutBtn.addClass("item-action-btn");
+        takeOutBtn.addEventListener(UIEvents.MOUSE_DOWN, e -> {
+            NetworkManager.sendBackpackTakeOutFromSlotToServer(globalSlotIndex);
+            backpack.setItem(globalSlotIndex, ItemStack.EMPTY);
+            iconGenshinBackpackWindow.clearAllScrollViewChildren();
+            iconGrid.set(refreshIconList(backpack, currentCategoryRef.get(), container,
+                    player, iconGenshinBackpackWindow, iconGrid, currentCategoryRef, selectedSlotRef));
+            iconGenshinBackpackWindow.addScrollViewChild(iconGrid.get());
+        });
+
+        var detailBtn = new Button();
+        detailBtn.setText("详情");
+        detailBtn.addClass("item-action-btn");
+
+        buttonContainer.addChildren(takeOutBtn, detailBtn);
+        container.addChild(buttonContainer);
     }
 
-    /**
-     * 为指定分类生成槽位网格
-     */
-    private static UIElement buildGridForCategory(
-            Backpack.Category category,
-            ResourceHandler<ItemResource> handler,
-            ScrollerView scrollerView) {                       // ← 新增参数
 
+    private static String getItemTexturePath(ItemStack stack) {
+        if (stack.isEmpty()) return "minegenshin:textures/empty.png";
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return id.getNamespace() + ":textures/item/" + id.getPath() + ".png";
+    }
+
+    // ========================================================================
+    //  槽位网格
+    // ========================================================================
+
+    private static UIElement buildGridForCategory(Backpack.Category category,
+                                                  ResourceHandler<ItemResource> handler) {
         var gridContainer = new UIElement().setId("grid_container");
         int offset = getCategoryOffset(category);
         int totalSlots = category.maxCapacity;
-
-        // 动态计算每行槽位数：容器宽度 / 18
-        int slotSize = 18;
-        int slotsPerRow = (int) (scrollerView.getContainerWidth() / slotSize);
-        if (slotsPerRow <= 0) slotsPerRow = 8;                 // fallback 默认值
-
-        int rowCount = (totalSlots + slotsPerRow - 1) / slotsPerRow;
+        int rowCount = (totalSlots + SLOTS_PER_ROW - 1) / SLOTS_PER_ROW;
 
         for (int row = 0; row < rowCount; row++) {
             var rowContainer = new UIElement().setId("row_" + row + "_container").addClass("row_container");
-            for (int col = 0; col < slotsPerRow; col++) {      // ← 用动态值
-                int slotId = row * slotsPerRow + col;           // ← 用动态值
+            for (int col = 0; col < SLOTS_PER_ROW; col++) {
+                int slotId = row * SLOTS_PER_ROW + col;
                 if (slotId >= totalSlots) break;
-                rowContainer.addChild(new ItemSlot().bind(handler, offset + slotId));
+                var wrapper = new UIElement().addClass("backpack-slot").setId("backpack_slot");
+                var slot = new CustomItemSlot().bind(handler, offset + slotId);
+                slot.layout(l -> l.widthPercent(100).heightPercent(100));
+                wrapper.addChild(slot);
+                rowContainer.addChild(wrapper);
             }
             gridContainer.addChild(rowContainer);
         }

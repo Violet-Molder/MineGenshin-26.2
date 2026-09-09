@@ -253,12 +253,12 @@ public class FreezeReaction extends ElementalReaction {
         // 反应后冻元素总量 = 反应前已有的冻 + 新生成的冻
         float frozenAfter = frozenBefore + (totalConsumed > 0f ? totalConsumed * FROZEN_MULTIPLIER : 0f);
 
-        LOGGER.info("冻结反应触发 | 总消耗={}U | 后手={} {}U | 先手={} {}U | 残余先手={} {}U | 反应后冻={}U",
-                totalConsumed,
-                ctx.attackerElement(), consumedAttacker,
-                defenderElementConsumed, defenderConsumedQty,
-                defenderElementConsumed, defenderResidual,
-                frozenAfter);
+//        LOGGER.info("冻结反应触发 | 总消耗={}U | 后手={} {}U | 先手={} {}U | 残余先手={} {}U | 反应后冻={}U",
+//                totalConsumed,
+//                ctx.attackerElement(), consumedAttacker,
+//                defenderElementConsumed, defenderConsumedQty,
+//                defenderElementConsumed, defenderResidual,
+//                frozenAfter);
 
         // 构建返回结果
         // reacted() 标记成功触发

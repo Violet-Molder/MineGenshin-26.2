@@ -2,8 +2,8 @@ package com.linweiyun.genshin.render.gui.menu;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
-import com.linweiyun.genshin.core.character.ArtifactInventory;
-import com.linweiyun.genshin.core.character.ArtifactSlot;
+import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
+import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactSlot;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.registry.register.ModMenus;
 import com.lowdragmc.lowdraglib2.gui.holder.IModularUIHolderMenu;

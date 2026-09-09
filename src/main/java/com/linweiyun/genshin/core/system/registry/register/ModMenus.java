@@ -2,7 +2,6 @@ package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu;
-import com.linweiyun.genshin.render.gui.menu.GenshinBackpackMenu;
 import com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerMenu;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -17,8 +16,6 @@ public class ModMenus {
 
     public static final Supplier<MenuType<CharacterInfoMenu>> CHARACTER_INFO_MENU =
             MENUS.register("character_info", () -> new MenuType<>(CharacterInfoMenu::new, FeatureFlags.DEFAULT_FLAGS));
-    public static final Supplier<MenuType<GenshinBackpackMenu>> GENSHIN_BACKPACK_MENU =
-            MENUS.register("genshin_backpack", () -> new MenuType<>(GenshinBackpackMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
     public static final Supplier<MenuType<ModularUIContainerMenu>> BACKPACK_UI_MENU =
             MENUS.register("backpack_ui", () -> new MenuType<>(

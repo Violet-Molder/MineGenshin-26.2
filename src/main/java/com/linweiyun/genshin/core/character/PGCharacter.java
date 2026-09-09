@@ -9,7 +9,8 @@ import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.content.effect.character.artifact.ArtifactSetEffect;
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
-import com.linweiyun.genshin.content.items.artifact.ArtifactType;
+import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
+import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
@@ -351,7 +352,6 @@ public class PGCharacter implements IPersistedSerializable {
         data.addLevel(levelsToGain);
         // ========== 通过 AttributeType 设置基础值 ==========
         int statIndex = data.getLevel() - 1 + data.getAscensionPhase();
-        System.out.println(statIndex);
         updateBaseStatsFromConfig(statIndex);
         // 升级回满血
         data.setCurrentHP(data.getAttributeTotalValue(ModAttributes.MAX_HP.value()));
@@ -425,7 +425,6 @@ public class PGCharacter implements IPersistedSerializable {
     private void updateBaseStatsFromConfig(int statIndex) {
         for (AttributeType type : this.getStatGrowthTypes()) {
             int value = this.getStatAtLevel(type, statIndex);
-            System.out.println(value);
             data.setAttributeBaseValue(type, value);
         }
     }
