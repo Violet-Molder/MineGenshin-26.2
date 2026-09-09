@@ -26,4 +26,7 @@ public class GUIServerHelperGIM {
   public static void openGenshinBackpackScreen(Player player) {
     NetworkManager.openGenshinBackpackMenuToServer();
   }
+  public static void openBackpackScreen(Player player) {
+    NetworkManager.openBackpackMenuToServer();
+  }
 }

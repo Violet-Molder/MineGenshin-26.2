@@ -13,6 +13,7 @@ import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.linweiyun.genshin.render.gui.menu.GenshinBackpackMenu;
+import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
@@ -20,8 +21,11 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -386,13 +390,13 @@ public class NetworkManager {
     if (!sender.isServer()) {
       ServerPlayer serverPlayer = sender.asPlayer();
       if (serverPlayer == null) return;
-      serverPlayer.openMenu(new net.minecraft.world.MenuProvider() {
+      serverPlayer.openMenu(new MenuProvider() {
         @Override
         public Component getDisplayName() {
           return Component.literal("Genshin Backpack");
         }
         @Override
-        public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId, net.minecraft.world.entity.player.Inventory inventory, net.minecraft.world.entity.player.Player p) {
+        public AbstractContainerMenu createMenu(int containerId, net.minecraft.world.entity.player.Inventory inventory, net.minecraft.world.entity.player.Player p) {
           return new GenshinBackpackMenu(containerId, inventory);
         }
       });
@@ -401,6 +405,19 @@ public class NetworkManager {
 
   public static void openGenshinBackpackMenuToServer() {
     RPCPacketDistributor.rpcToServer("openGenshinBackpackRPCPacket");
+  }
+
+  @RPCPacket("openBackpackRPCPacket")
+  public static void openBackpackRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer serverPlayer = sender.asPlayer();
+      if (serverPlayer == null) return;
+      PlayerUIMenuType.openUI(serverPlayer,
+              Identifier.fromNamespaceAndPath("minegenshin", "backpack"));
+    }
+  }
+  public static void openBackpackMenuToServer() {
+    RPCPacketDistributor.rpcToServer("openBackpackRPCPacket");
   }
 
   @RPCPacket("primogemWish")

@@ -35,13 +35,12 @@ import java.util.concurrent.atomic.AtomicReference;
 public class GenshinBackpackMenu extends AbstractContainerMenu {
 
     private final GenshinBackpack backpack;
-    private final Player player;
     private static final float SCROLL_COEFFICIENT = 20f;
     private static final GenshinBackpack.Category[] CATEGORIES = GenshinBackpack.Category.values();
 
     public GenshinBackpackMenu(int containerId, Inventory playerInventory) {
         super(ModMenus.GENSHIN_BACKPACK_MENU.get(), containerId);
-        this.player = playerInventory.player;
+        Player player = playerInventory.player;
         this.backpack = player.getData(AttachmentRegistration.GENSHIN_BACKPACK_ATTACHMENT);
 
         for (int row = 0; row < 3; row++) {

@@ -24,14 +24,15 @@
     - 4.11 [元素反应系统](#411-元素反应系统)
     - 4.12 [怪物等级与防御系统](#412-怪物等级与防御系统)
     - 4.13 [圣遗物系统](#413-圣遗物系统)
-5. [扩展开发指南](#5-扩展开发指南)
-    - 5.1 [添加新角色](#51-添加新角色)
-    - 5.2 [添加新角色效果](#52-添加新角色效果)
-    - 5.3 [添加新实体](#53-添加新实体)
-    - 5.4 [添加新伤害类型](#54-添加新伤害类型)
-6. [Mixin 系统](#6-mixin-系统)
-7. [常见问题与设计决策](#7-常见问题与设计决策)
-8. [关键文件索引](#8-关键文件索引)
+5. [UI 层级命名规范](#5-ui-层级命名规范)
+6. [扩展开发指南](#6-扩展开发指南)
+    - 6.1 [添加新角色](#61-添加新角色)
+    - 6.2 [添加新角色效果](#62-添加新角色效果)
+    - 6.3 [添加新实体](#63-添加新实体)
+    - 6.4 [添加新伤害类型](#64-添加新伤害类型)
+7. [Mixin 系统](#7-mixin-系统)
+8. [常见问题与设计决策](#8-常见问题与设计决策)
+9. [关键文件索引](#9-关键文件索引)
 
 ---
 
@@ -2307,9 +2308,335 @@ public void setUpgradeCount(int count);
 
 ---
 
-## 5. 扩展开发指南
+## 5. UI 层级命名规范
 
-### 5.1 添加新角色
+### 5.1 概述
+
+本规范定义了 MineGenshin Mod 中所有 UI 界面的组件层级命名体系。采用 **6 级树状层级结构**，从大到小依次为：
+
+```
+Window → Panel → Section → Container → Wrapper → Group
+```
+
+每一级都有明确的职责边界，禁止跨级混用或跳级使用（如 Window 直接包含 Wrapper）。
+
+### 5.2 层级定义
+
+| 层级 | 英文 | 职责 | 类比 |
+|------|------|------|------|
+| **窗口级** | Window | 整屏界面，玩家看到的完整画面 | 浏览器窗口 |
+| **面板级** | Panel | 功能分区，Window 内的独立区域 | 侧边栏、主内容区 |
+| **区块级** | Section | Panel 内的子区域，按内容划分 | 页眉、页脚、表格区 |
+| **容器级** | Container | 包裹一组相关组件，控制布局排列 | Flex/Grid 容器 |
+| **包装级** | Wrapper | 对单个或少量组件的薄层包裹 | 带样式的 div |
+| **组级** | Group | 最细粒度的组织单元，若干同类组件的集合 | 按钮组、输入组 |
+
+### 5.3 命名规则
+
+#### 5.3.1 基本格式
+
+```
+[功能]_[层级]   或   [父级功能]_[子功能]_[层级]
+```
+
+- 全部使用 **小写 + 下划线**（snake_case）
+- 层级后缀必须放在最后
+- 禁止省略层级后缀
+
+#### 5.3.2 层级后缀强制对照表
+
+| 层级 | 合法后缀 | 非法示例 |
+|------|---------|---------|
+| Window | `_window` | `backpackScreen` ❌ |
+| Panel | `_panel` | `leftArea` ❌ |
+| Section | `_section` | `headerZone` ❌ |
+| Container | `_container` | `slotBox` ❌ |
+| Wrapper | `_wrapper` | `itemWrap` ❌ |
+| Group | `_group` | `buttonCluster` ❌ |
+
+#### 5.3.3 嵌套命名示例
+
+```
+character_info_window           // 角色信息窗口
+├── left_panel                  // 左侧面板（角色列表）
+│   ├── character_list_section  // 角色列表区块
+│   │   └── character_container // 角色卡片容器
+│   └── filter_section          // 筛选区块
+│       └── filter_group        // 筛选按钮组
+│
+├── right_panel                 // 右侧面板（详情）
+│   ├── profile_section         // 角色档案区块
+│   │   ├── avatar_wrapper      // 头像包装
+│   │   └── name_wrapper        // 名称包装
+│   ├── equipment_section       // 装备区块
+│   │   ├── artifact_container  // 圣遗物容器
+│   │   │   ├── flower_wrapper  // 生之花包装
+│   │   │   ├── plume_wrapper   // 死之羽包装
+│   │   │   └── ...
+│   │   └── weapon_wrapper      // 武器包装
+│   └── stats_section           // 属性区块
+│       ├── base_stats_container// 基础属性容器
+│       └── bonus_stats_group   // 加成属性组
+```
+
+### 5.4 各层级详细说明
+
+#### Window（窗口级）
+
+- **职责**：定义整屏界面的根节点，管理全局样式和背景
+- **子元素**：只能包含 Panel
+- **禁止**：直接包含 Section/Container/Wrapper/Group 或具体组件
+
+```java
+// ✅ 正确
+var backpack_window = new UIElement().setId("backpack_window");
+backpack_window.addChildren(left_panel, right_panel);
+
+// ❌ 错误：Window 直接包含 Container
+backpack_window.addChildren(artifact_container);
+```
+
+#### Panel（面板级）
+
+- **职责**：将 Window 划分为若干独立的功能大区
+- **子元素**：只能包含 Section
+- **典型用途**：左右分栏、上下分栏、侧边栏、主内容区
+
+```java
+// ✅ 正确
+var left_panel = new UIElement().setId("left_panel");
+left_panel.addChildren(character_list_section, filter_section);
+
+// ❌ 错误：Panel 直接包含 Wrapper
+left_panel.addChildren(avatar_wrapper);
+```
+
+#### Section（区块级）
+
+- **职责**：Panel 内的内容分区，按业务逻辑划分
+- **子元素**：只能包含 Container
+- **典型用途**：列表区、详情区、表单区、工具栏区
+
+```java
+// ✅ 正确
+var equipment_section = new UIElement().setId("equipment_section");
+equipment_section.addChildren(artifact_container, weapon_container);
+
+// ❌ 错误：Section 直接包含 Group
+equipment_section.addChildren(slot_group);
+```
+
+#### Container（容器级）
+
+- **职责**：控制一组组件的布局排列（Flex/Grid/绝对定位）
+- **子元素**：只能包含 Wrapper 或 Group
+- **典型用途**：网格布局、列表布局、弹性布局的载体
+
+```java
+// ✅ 正确
+var artifact_container = new UIElement().setId("artifact_container")
+    .layout(style -> style.flexDirection(FlexDirection.ROW));
+artifact_container.addChildren(flower_wrapper, plume_wrapper, sands_wrapper);
+
+// ❌ 错误：Container 直接包含具体组件
+artifact_container.addChildren(new ItemSlot());
+```
+
+#### Wrapper（包装级）
+
+- **职责**：对单个组件或极小组件的薄层包裹，添加样式或行为
+- **子元素**：只能包含具体 UI 组件或其他 Wrapper
+- **典型用途**：带边框的槽位、带标签的输入框、带图标的按钮
+
+```java
+// ✅ 正确
+var flower_wrapper = new UIElement().setId("flower_wrapper");
+flower_wrapper.addChildren(new ItemSlot());
+
+// 或包裹多个紧密相关的组件
+var name_wrapper = new UIElement().setId("name_wrapper");
+name_wrapper.addChildren(name_label, name_input);
+```
+
+#### Group（组级）
+
+- **职责**：最细粒度的组织，若干同类组件的集合
+- **子元素**：只能包含具体 UI 组件
+- **典型用途**：按钮组、复选框组、标签页组
+
+```java
+// ✅ 正确
+var filter_group = new UIElement().setId("filter_group");
+filter_group.addChildren(all_button, weapon_button, artifact_button);
+```
+
+### 5.5 完整演示：角色信息界面
+
+```java
+// ========== Window ==========
+var character_info_window = new UIElement().setId("character_info_window");
+var stylesheet = StylesheetManager.INSTANCE.getStylesheetSafe(
+        Identifier.parse("minegenshin:lss/character_info.lss"));
+
+// ========== Panel ==========
+var left_panel = new UIElement().setId("left_panel");
+var right_panel = new UIElement().setId("right_panel");
+
+// ========== Left Panel → Section ==========
+var character_list_section = new UIElement().setId("character_list_section");
+var filter_section = new UIElement().setId("filter_section");
+
+// Section → Container
+var character_container = new UIElement().setId("character_container")
+    .layout(style -> style.flexDirection(FlexDirection.COLUMN));
+var sort_container = new UIElement().setId("sort_container")
+    .layout(style -> style.flexDirection(FlexDirection.ROW));
+
+// Container → Wrapper
+var char_001_wrapper = new UIElement().setId("char_001_wrapper");
+var char_002_wrapper = new UIElement().setId("char_002_wrapper");
+
+// Wrapper → Component
+char_001_wrapper.addChildren(new CharacterCard("shenhe"));
+char_002_wrapper.addChildren(new CharacterCard("ayaka"));
+
+character_container.addChildren(char_001_wrapper, char_002_wrapper);
+character_list_section.addChildren(character_container, sort_container);
+
+// Section → Container → Group
+var element_filter_container = new UIElement().setId("element_filter_container")
+    .layout(style -> style.flexDirection(FlexDirection.ROW));
+var element_filter_group = new UIElement().setId("element_filter_group");
+element_filter_group.addChildren(
+    new FilterButton("pyro"),
+    new FilterButton("hydro"),
+    new FilterButton("cyro")
+);
+element_filter_container.addChildren(element_filter_group);
+filter_section.addChildren(element_filter_container);
+
+left_panel.addChildren(character_list_section, filter_section);
+
+// ========== Right Panel → Section ==========
+var profile_section = new UIElement().setId("profile_section");
+var equipment_section = new UIElement().setId("equipment_section");
+var stats_section = new UIElement().setId("stats_section");
+
+// Profile Section → Container → Wrapper
+var avatar_name_container = new UIElement().setId("avatar_name_container")
+    .layout(style -> style.flexDirection(FlexDirection.ROW));
+var avatar_wrapper = new UIElement().setId("avatar_wrapper");
+var name_level_wrapper = new UIElement().setId("name_level_wrapper");
+
+avatar_wrapper.addChildren(new CharacterAvatar());
+name_level_wrapper.addChildren(new NameLabel(), new LevelLabel());
+avatar_name_container.addChildren(avatar_wrapper, name_level_wrapper);
+profile_section.addChildren(avatar_name_container);
+
+// Equipment Section → Container → Wrapper
+var artifact_weapon_container = new UIElement().setId("artifact_weapon_container")
+    .layout(style -> style.flexDirection(FlexDirection.ROW));
+var artifact_container = new UIElement().setId("artifact_container")
+    .layout(style -> style.flexDirection(FlexDirection.COLUMN));
+var weapon_wrapper = new UIElement().setId("weapon_wrapper");
+
+// Artifact Container → Wrapper (5 slots)
+var flower_wrapper = new UIElement().setId("flower_wrapper");
+var plume_wrapper = new UIElement().setId("plume_wrapper");
+var sands_wrapper = new UIElement().setId("sands_wrapper");
+var goblet_wrapper = new UIElement().setId("goblet_wrapper");
+var circlet_wrapper = new UIElement().setId("circlet_wrapper");
+
+flower_wrapper.addChildren(new ArtifactSlot(ArtifactType.FLOWER));
+plume_wrapper.addChildren(new ArtifactSlot(ArtifactType.PLUME));
+sands_wrapper.addChildren(new ArtifactSlot(ArtifactType.SANDS));
+goblet_wrapper.addChildren(new ArtifactSlot(ArtifactType.GOBLET));
+circlet_wrapper.addChildren(new ArtifactSlot(ArtifactType.CIRCLET));
+
+artifact_container.addChildren(
+    flower_wrapper, plume_wrapper, sands_wrapper, goblet_wrapper, circlet_wrapper
+);
+weapon_wrapper.addChildren(new WeaponSlot());
+artifact_weapon_container.addChildren(artifact_container, weapon_wrapper);
+equipment_section.addChildren(artifact_weapon_container);
+
+// Stats Section → Container → Group
+var base_stats_container = new UIElement().setId("base_stats_container")
+    .layout(style -> style.flexDirection(FlexDirection.COLUMN));
+var advanced_stats_container = new UIElement().setId("advanced_stats_container")
+    .layout(style -> style.flexDirection(FlexDirection.COLUMN));
+
+var hp_group = new UIElement().setId("hp_group");
+var atk_group = new UIElement().setId("atk_group");
+var def_group = new UIElement().setId("def_group");
+
+hp_group.addChildren(new StatLabel("HP"), new StatValue());
+atk_group.addChildren(new StatLabel("ATK"), new StatValue());
+def_group.addChildren(new StatLabel("DEF"), new StatValue());
+
+base_stats_container.addChildren(hp_group, atk_group, def_group);
+stats_section.addChildren(base_stats_container, advanced_stats_container);
+
+right_panel.addChildren(profile_section, equipment_section, stats_section);
+
+// ========== Assemble Window ==========
+character_info_window.addChildren(left_panel, right_panel);
+
+var ui = UI.of(character_info_window, stylesheet);
+return ModularUI.of(ui, player);
+```
+
+### 5.6 树状结构速查表
+
+```
+character_info_window
+├── left_panel
+│   ├── character_list_section
+│   │   ├── character_container [COLUMN]
+│   │   │   ├── char_001_wrapper → CharacterCard
+│   │   │   └── char_002_wrapper → CharacterCard
+│   │   └── sort_container [ROW]
+│   └── filter_section
+│       └── element_filter_container [ROW]
+│           └── element_filter_group → FilterButton ×3
+│
+└── right_panel
+    ├── profile_section
+    │   └── avatar_name_container [ROW]
+    │       ├── avatar_wrapper → CharacterAvatar
+    │       └── name_level_wrapper → NameLabel + LevelLabel
+    ├── equipment_section
+    │   └── artifact_weapon_container [ROW]
+    │       ├── artifact_container [COLUMN]
+    │       │   ├── flower_wrapper → ArtifactSlot(FLOWER)
+    │       │   ├── plume_wrapper → ArtifactSlot(PLUME)
+    │       │   ├── sands_wrapper → ArtifactSlot(SANDS)
+    │       │   ├── goblet_wrapper → ArtifactSlot(GOBLET)
+    │       │   └── circlet_wrapper → ArtifactSlot(CIRCLET)
+    │       └── weapon_wrapper → WeaponSlot
+    └── stats_section
+        ├── base_stats_container [COLUMN]
+        │   ├── hp_group → StatLabel + StatValue
+        │   ├── atk_group → StatLabel + StatValue
+        │   └── def_group → StatLabel + StatValue
+        └── advanced_stats_container [COLUMN]
+```
+
+### 5.7 常见反模式
+
+| 反模式 | 错误示例 | 正确做法 |
+|--------|---------|---------|
+| 跳级 | `window.add(container)` | `window → panel → section → container` |
+| 省略后缀 | `leftArea` | `left_panel` |
+| 同级混用 | `panel` 内既有 `section` 又有 `wrapper` | `panel` 只能包含 `section` |
+| 过度包装 | 为单个按钮创建 `wrapper` 再包 `group` | 单个按钮直接放入 `container` |
+| 命名模糊 | `content1`, `box2` | `equipment_section`, `artifact_container` |
+
+---
+
+## 6. 扩展开发指南
+
+### 6.1 添加新角色
 
 假设要添加角色 "ExampleChar"：
 
@@ -2390,7 +2717,7 @@ public static final DeferredHolder<PGCharacter, ExampleChar> EXAMPLE_CHAR =
 }
 ```
 
-### 5.2 添加新角色效果
+### 6.2 添加新角色效果
 
 假设要添加 "ReflectEffect" —— 受击时反伤：
 
@@ -2455,7 +2782,7 @@ protected void triggerElementalSkill(Player player, int skillTime) {
 }
 ```
 
-### 5.3 添加新实体
+### 6.3 添加新实体
 
 **Step 1: 创建实体类**
 
@@ -2491,7 +2818,7 @@ private static void registerEntityAttributes(EntityAttributeCreationEvent event)
 - `assets/minegenshin/textures/entity/example_monster.png` —— 贴图
 - `assets/minegenshin/lang/zh_cn.json` —— 翻译
 
-### 5.4 添加新伤害类型
+### 6.4 添加新伤害类型
 
 ```java
 // DamageTypeRegister.java
@@ -2509,7 +2836,7 @@ ModDamageSource source = new ModDamageSource(
 
 ---
 
-## 6. Mixin 系统
+## 7. Mixin 系统
 
 ### 总览
 
@@ -2686,7 +3013,7 @@ public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
 
 ---
 
-## 7. 常见问题与设计决策
+## 8. 常见问题与设计决策
 
 ### 为什么 PGCharacter 使用原型模式？
 
@@ -2718,7 +3045,7 @@ UUID 是纯数字 (int)，在 Attachment 的持久化和 RPC 传输中更轻量�
 
 ---
 
-## 8. 关键文件索引
+## 9. 关键文件索引
 
 | 系统 | 文件路径 |
 |------|----------|

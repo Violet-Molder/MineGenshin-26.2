@@ -13,10 +13,14 @@ import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.mojang.logging.LogUtils;
+import com.mojang.serialization.Codec;
+import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.Container;
@@ -32,7 +36,8 @@ import org.slf4j.Logger;
 import java.util.Arrays;
 
 public class GenshinBackpack implements Container, IPersistedSerializable {
-
+    public static final Codec<GenshinBackpack> CODEC = PersistedParser.createCodec(GenshinBackpack::new);
+    public static final StreamCodec<ByteBuf, GenshinBackpack> STREAM_CODEC = PersistedParser.createStreamCodec(GenshinBackpack::new);
     private static final Logger LOGGER = LogUtils.getLogger();
     public enum Category {
         WEAPONS("武器", 100, WeaponItem.class),

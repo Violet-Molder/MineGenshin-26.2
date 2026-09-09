@@ -90,7 +90,7 @@ public class KeyInputHandler {
       GUIServerHelperGIM.openArtifactEquipScreen(player, -1);
     }
     if (KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY.get().consumeClick()) {
-      GUIServerHelperGIM.openGenshinBackpackScreen(player);
+      GUIServerHelperGIM.openBackpackScreen(player);
     }
     if (KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY_2.get().consumeClick()) {
       GUIServerHelperGIM.openCharacterInfoScreen(player);

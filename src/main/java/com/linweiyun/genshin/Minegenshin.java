@@ -3,11 +3,16 @@ package com.linweiyun.genshin;
 import com.linweiyun.genshin.config.ArtifactConfig;
 import com.linweiyun.genshin.config.Config;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
 import com.linweiyun.genshin.config.ElementalReactionConfig;
 import com.linweiyun.genshin.config.MonsterLevelConfig;
+import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
+import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
+import com.lowdragmc.lowdraglib2.gui.ui.UI;
+import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -51,6 +56,16 @@ public class Minegenshin {
         AttachmentRegistration.register(modEventBus);
         ModCharacterEffects.register(modEventBus);
         ModMenus.register(modEventBus);
+
+
+        PlayerUIMenuType.register(
+                Identifier.fromNamespaceAndPath("minegenshin", "backpack"),
+                player -> {
+                    Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT.get());
+                    return backpack::createUI;
+                }
+        );
+
 
 
     }
