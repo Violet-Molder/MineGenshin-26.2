@@ -211,7 +211,7 @@ public class Backpack implements IPersistedSerializable, Container, IContainerUI
 
     @Override
     public int getMaxStackSize() {
-        return 1;
+        return 64;
     }
 
     @Override

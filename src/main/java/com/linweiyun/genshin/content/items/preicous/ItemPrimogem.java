@@ -1,4 +1,4 @@
-package com.linweiyun.genshin.content.items.custom;
+package com.linweiyun.genshin.content.items.preicous;
 
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
-public class ItemPrimogem extends Item {
+public class ItemPrimogem extends PreciousItem {
 
   public ItemPrimogem(Properties properties) {
     super(properties);

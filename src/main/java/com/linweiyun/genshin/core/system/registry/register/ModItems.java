@@ -2,7 +2,7 @@ package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.items.artifact.crimson_witch.*;
-import com.linweiyun.genshin.content.items.custom.ItemPrimogem;
+import com.linweiyun.genshin.content.items.preicous.ItemPrimogem;
 import com.linweiyun.genshin.core.system.registry.RegistryHelper;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
