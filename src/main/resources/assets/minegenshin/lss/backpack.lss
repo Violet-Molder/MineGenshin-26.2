@@ -103,6 +103,7 @@ custom-item-slot {
   background: rect(#a8a8a8);
 }
 
+
 #icon-player-inventory-window {
   width: 40%;
   height: 100%;
@@ -125,7 +126,7 @@ custom-item-slot {
 .backpack-icon-item {
   width: 12.5%;
   aspect-rate: 1;
-  transition: transform 0.2 ease;  /* 平滑过渡 */
+  transition: transform 0.05 ease;  /* 平滑过渡 */
 }
 
 /* ========== 图标模式 - 详情面板 ========== */
@@ -136,6 +137,7 @@ custom-item-slot {
   flex-direction: column;
   padding: 4px;
   gap: 2px;
+  background: rect(#111111);
 }
 
 .detail-line {

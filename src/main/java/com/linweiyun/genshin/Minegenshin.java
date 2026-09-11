@@ -1,14 +1,11 @@
 package com.linweiyun.genshin;
 
-import com.linweiyun.genshin.config.ArtifactConfig;
-import com.linweiyun.genshin.config.Config;
+import com.linweiyun.genshin.config.*;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
-import com.linweiyun.genshin.config.ElementalReactionConfig;
-import com.linweiyun.genshin.config.MonsterLevelConfig;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
@@ -40,6 +37,7 @@ public class Minegenshin {
         modContainer.registerConfig(ModConfig.Type.COMMON, ElementalReactionConfig.REACTION_SPEC, "minegenshin/genshin-reaction.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, MonsterLevelConfig.MONSTER_LEVEL_SPEC, "minegenshin/monster-level.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, ArtifactConfig.ARTIFACT_SPEC, "minegenshin/artifact.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, DamageIndicatorConfig.DAMAGE_INDICATOR_SPEC, "minegenshin/damage-indicator.toml");
 
         ModItems.register(modEventBus);
         ModItemGroups.register(modEventBus);

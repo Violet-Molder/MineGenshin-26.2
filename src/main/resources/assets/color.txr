@@ -1,0 +1,9 @@
+        COLOR_PYRO = BUILDER.comment("火元素伤害颜色 (十六进制)").define("pyro", "#FB9B00");
+        COLOR_CYRO = BUILDER.comment("冰元素伤害颜色 (十六进制)").define("cyro", "#99FBFB");
+        COLOR_HYDRO = BUILDER.comment("水元素伤害颜色 (十六进制)").define("hydro", "#38CAFB");
+        COLOR_ANEMO = BUILDER.comment("风元素伤害颜色 (十六进制)").define("anemo", "#68FBCA");
+        COLOR_ELECTRO = BUILDER.comment("雷元素伤害颜色 (十六进制)").define("electro", "#DE9BFB");
+        COLOR_DENDRO = BUILDER.comment("草元素伤害颜色 (十六进制)").define("dendro", "#00E755");
+        COLOR_GEO = BUILDER.comment("岩元素伤害颜色 (十六进制)").define("geo", "#FBCA68");
+        COLOR_PHYSICAL = BUILDER.comment("物理/真实伤害颜色 (十六进制)").define("physical", "#FFFFFF");
+        COLOR_OVERLOAD = BUILDER.comment("超载伤害颜色 (十六进制)").define("overload", "#FF809B");

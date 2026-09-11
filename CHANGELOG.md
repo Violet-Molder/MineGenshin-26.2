@@ -2,6 +2,68 @@
 
 ---
 
+## v0.4.0 — 2026-09-10
+
+### 新角色：Arlecchino / Columbina
+
+#### Arlecchino（阿蕾奇诺）
+
+- 火元素长柄武器角色
+- E 技能：前冲 + 召唤火焰领域（TalismanSpiritArea）
+- Q 技能：全屏火焰伤害
+
+#### Columbina（哥伦比娅）
+
+- 法器角色，可切换冰/火双元素形态
+- E 技能触发元素切换与对应效果
+- Q 技能根据当前元素释放不同爆发
+
+### 超导反应
+
+- `SuperConductReaction`：冰+雷触发，目标物理抗性降低40%，持续12秒
+- 反应倍率配置化：`genshin-reaction.toml`（蒸发/融化正向反向倍率、超导减抗值）
+
+### Shenhe 战技重构
+
+- E 技能逻辑抽出至 `ShenheTalent.java`，分离长按/短按逻辑
+- 长按：前方攻击 + 召唤 TalismanSpiritArea
+- 短按：前方范围攻击
+
+### 冻结衰减状态
+
+- `FrozenDecayState`：冰冻状态消失时自动附加减速效果
+
+### 元素附着工具类
+
+- `ElementalAttachmentUtils` 抽取公共附着逻辑
+- `GlyphOfRadiant = true` 统一管理荧辉标记
+
+### 导入导出工具
+
+- `ImportExporter`：支持 `/genshin export/import <player>` 命令
+- 通过JSON文件导出/导入角色数据
+
+### 按键绑定
+
+- `ModKeyBindings`：技能按键映射
+
+### 伤害指示器
+
+- `DamageIndicatorManager`：客户端伤害数字显示
+- 各元素/反应伤害颜色可配置：`damage-indicator.toml`
+
+### 状态系统扩展
+
+- 侵蚀效果（`ErodeHealEffect`）：持有效果期间无法通过常规手段治疗
+- 附着攻击效果（`AttachedAttackEffect`）：状态记录附着攻击数据
+- `StatusContainer` 支持 ItemStack DataComponent 存储（武器元素附魔）
+
+### 怪物火抗 Mixin
+
+- `MagmaCubeResistanceMixin` / `BlazeResistanceMixin`：岩浆怪/烈焰人额外80%火抗
+
+---
+
 ## v0.3.0 — 2026-09-06
 
 ### 圣遗物系统（全新）
@@ -199,7 +261,7 @@
 | `content/effect/character/shenhe/IcyQuillEffect.java` | 冰凌消耗逻辑 + 快照遍历 |
 | `content/effect/character/CharacterEffectHelper.java` | removeEffect 新增 Player 参数重载 |
 | `content/entities/teyvat/monster/slime/TeyvatSlime.java` | 重写 hurtServer + dealDamage 使用 ModDamageSource |
-| `mixin/MixinConfig.java` | 跳过 TeyvatLivingEntity 的 LivingEntityHurtMixin / MonsterLevelMixin |
+| `mixin/MixinConfig.java` | 跳过 TeyvatLivingEntity 的 LivingEntityHurtMixin / MonsterMixin |
 | `resources/minegenshin.mixins.json` | 注册 LivingEntityHurtMixin、PlayerHurtInterceptor |
 
 ---
@@ -218,14 +280,14 @@
 - 冒险等阶计算模式：`NEAREST` / `HIGHEST` / `LOWEST` / `COMPREHENSIVE`（4 种）
 - 生成模式：`NATURAL` / `FIXED` / `BIAS`（3 种）
 
-**配置文件**：`./config/minegenshin/monster_level.toml`
+**配置文件**：`./config/minegenshin/monster-level.toml`
 
 **新增文件**：
 
 | 文件 | 说明 |
 |------|------|
 | `mixin/interfaces/IMonsterLevel.java` | Mixin 接口 |
-| `mixin/mixins/MonsterLevelMixin.java` | 注入 Monster.class |
+| `mixin/mixins/MonsterMixin.java` | 注入 Monster.class |
 | `config/MonsterLevelConfig.java` | 配置类 |
 | `core/monster/MonsterLevelCalculator.java` | 等级计算核心 + 三个 API 入口 |
 | `core/monster/MonsterLevelSpawnHandler.java` | FinalizeSpawnEvent 监听 |
@@ -235,4 +297,4 @@
 | 文件 | 说明 |
 |------|------|
 | `Minegenshin.java` | 注册新配置 + SpawnHandler |
-| `minegenshin.mixins.json` | 注册 MonsterLevelMixin |
+| `minegenshin.mixins.json` | 注册 MonsterMixin |

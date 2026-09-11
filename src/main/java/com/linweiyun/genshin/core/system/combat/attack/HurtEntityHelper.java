@@ -3,16 +3,13 @@ package com.linweiyun.genshin.core.system.combat.attack;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
-import com.linweiyun.genshin.core.system.combat.damage.CombatEntityAccessor;
-import com.linweiyun.genshin.core.system.combat.damage.CombatMath;
+import com.linweiyun.genshin.core.system.combat.damage.*;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.status.StatusAccessor;
 import com.linweiyun.genshin.core.system.about.AttachmentProfile;
 import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
-import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
-import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterManager;
 import com.linweiyun.genshin.core.system.combat.decay.DecayResult;
 import com.linweiyun.genshin.core.system.combat.decay.IDecayCounterHolder;
@@ -83,6 +80,8 @@ public class HurtEntityHelper {
                     AttachmentSource.NORMAL_ATTACK, profile);
         }
 
+
+
         ReactionResult reactionResult = null;
         if (canAttach) {
             StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
@@ -91,6 +90,12 @@ public class HurtEntityHelper {
                     AttachmentSource.NORMAL_ATTACK, profile, spec,
                     damageSource.getEntity(), container);
             reactionResult = ElementalReactionManager.tryReactAfterAttach(ctx);
+        }
+
+        // ★★★ 反应飘字 —— 只显示反应名 ★★★
+        if (reactionResult != null && reactionResult.isReacted()
+                && reactionResult.getReactionType() != null) {
+            DamageIndicatorFactory.reaction(target, reactionResult.getReactionType());
         }
 
         float finalDamage = calculateFinalDamage(

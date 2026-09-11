@@ -1,7 +1,21 @@
 # MineGenshin 开发者文档
 
 > Minecraft NeoForge 原神风格 Mod 开发指南
-> 版本：26.2 | Java 21
+> 版本：26.2 | Java 25 | mod_version: 0.26.2.1-beta
+
+### 许可证
+
+本项目采用 **CC BY-NC-SA 4.0** 协议。
+
+- 允许在非商业目的下使用、修改和分发
+- 修改和分发时必须保留署名，并标明修改内容
+- 禁止任何商业用途
+- 基于本项目的修改版本必须以相同协议发布
+
+完整条款请参见 [LICENSE](./LICENSE.txt) 文件。
+
+Minegenshin 的原创美术资源、音频资源和文本资源受版权保护，
+未经版权所有者明确书面许可，不得将其提取、复制或用于任何其他项目。
 
 ---
 
@@ -24,6 +38,7 @@
     - 4.11 [元素反应系统](#411-元素反应系统)
     - 4.12 [怪物等级与防御系统](#412-怪物等级与防御系统)
     - 4.13 [圣遗物系统](#413-圣遗物系统)
+    - 4.14 [伤害飘字系统](#414-伤害飘字系统)
 5. [UI 层级命名规范](#5-ui-层级命名规范)
 6. [扩展开发指南](#6-扩展开发指南)
     - 6.1 [添加新角色](#61-添加新角色)
@@ -49,14 +64,18 @@ MineGenshin 是一个将原神核心玩法机制移植到 Minecraft 的 Mod。
 | **效果系统** | Buff/Debuff 框架，支持伤害修改、前后台 Tick |
 | **伤害系统** | 带元素类型、倍率、衰减序列的伤害管线 |
 | **衰减系统** | 附着冷却机制，还原原神附着规则 |
+| **元素反应** | 蒸发/融化/冻结/超导，倍率可配置 |
+| **圣遗物系统** | 配置驱动，主/副词条生成、升级、5件套装备 |
+| **怪物等级** | 怪物等级+防御力注入，4种计算模式 |
 | **祈愿系统** | 原石抽卡，角色重复返还原石 |
 | **网络系统** | RPC 双向同步角色、编队、原石等数据 |
+| **状态系统** | 侵蚀/附着攻击，支持 LivingEntity/BlockEntity/ItemStack |
 
 ### 技术栈
 
-- **Minecraft 版本**: NeoForge 26.2
-- **Java 版本**: 21
-- **依赖库**: LowDragLib2（同步框架、RPC 网络）
+- **Minecraft 版本**: 26.2 (NeoForge 26.2.0.48-beta)
+- **Java 版本**: 25
+- **依赖库**: LowDragLib2 (ldlib2-neoforge-26.2, RPC 网络 / GUI 框架), GeckoLib 5.5.3
 - **混合器**: SpongePowered Mixin
 
 ### 目录结构
@@ -65,22 +84,37 @@ MineGenshin 是一个将原神核心玩法机制移植到 Minecraft 的 Mod。
 src/main/java/com/linweiyun/genshin/
 ├── Minegenshin.java              // Mod 主入口
 ├── MinegenshinClient.java        // 客户端入口
-├── Config.java                   // 配置文件（EXP、角色属性）
+├── config/                       // 配置文件 (Config, ArtifactConfig, ElementalReactionConfig, etc.)
 ├── core/                         // 核心系统
-│   ├── character/                // 角色系统基类
-│   ├── attribute/                // 属性系统
-│   ├── system/combat/            // 战斗系统
-│   ├── attachment/               // 玩家附件
-│   ├── network/                  // 网络同步
-│   └── ...
+│   ├── attachment/               // 玩家附件 (PlayerCharacters, AdventurerInfo, Backpack, StatusContainer)
+│   ├── character/                // 角色系统基类 + 角色实现
+│   │   ├── PGCharacter.java      // 角色基类
+│   │   ├── PGCharacterData.java  // 角色数据
+│   │   ├── catalyst/             // 法器角色 (Columbina)
+│   │   └── polearm/              // 长柄角色 (Shenhe, Arlecchino)
+│   ├── command/                  // 命令 (CharacterCommand)
+│   ├── monster/                  // 怪物等级计算 (MonsterLevelCalculator, MonsterLevelSpawnHandler)
+│   ├── network/                  // 网络同步 (NetworkManager, ClientHandler)
+│   ├── status/                   // 状态基类 (StatusInstance, StatusAccessor)
+│   └── system/                   // 各个系统
+│       ├── about/                // 元素附着实例/辅助/预设/衰减状态
+│       ├── combat/               // 战斗系统 (attack, damage, decay)
+│       ├── reaction/             // 元素反应 (基类 + builtin 实现)
+│       └── registry/             // 注册表 + register 注册入口
 ├── content/                      // 内容实现
-│   ├── effect/character/         // 角色效果
-│   ├── entities/                 // 实体
-│   └── ...
-├── registry/                     // 注册表
-├── event/                        // 事件监听
-├── mixin/                        // 混合器
-└── client/                       // 客户端 GUI
+│   ├── attribute/                // 属性系统 (AttributeType, AttributeContainer, AttributeInstance)
+│   ├── effect/                   // 效果 (character 角色效果, mob 怪物效果)
+│   │   └── character/           // 角色效果 (ICharacterEffect, Shenhe/IcyQuill, artifact/套装效果)
+│   ├── entities/                 // 实体 (area 领域, teyvat 提瓦特怪物/生物)
+│   ├── items/                    // 物品 (artifact 圣遗物, component 组件, weapon/material/food 等)
+│   ├── skill_node/               // 技能节点 (RushesForward, AreaEntityCollector, SkillHelper, math/)
+│   └── stat/                     // 物品属性统计 (TeyvatItemStat)
+├── enums/                        // 枚举 (ElementalsGIM, AttackType, DamageTypeEnum, ElementalReactionType, etc.)
+├── event/                        // 事件监听 (client 客户端, server 服务端)
+├── mixin/                        // 混合器 (interfaces + mixins + MixinConfig)
+├── render/                       // 渲染 (gui/components, gui/hud, gui/menu, gui/screens)
+├── client/                       // 客户端 (damage 伤害指示器, keybindings 按键, ClientHudRegistration)
+└── data/                         // 数据生成 (generators, loot)
 ```
 
 ---
@@ -104,6 +138,10 @@ src/main/java/com/linweiyun/genshin/
 |------|------|
 | `exp.toml` | 角色升级经验（1-90级，共88个值） |
 | `attribute.toml` | 各角色各等级 HP/ATK/DEF（95级基础，含突破跃升） |
+| `genshin-reaction.toml` | 元素反应倍率配置（蒸发/融化正向反向倍率等） |
+| `monster-level.toml` | 怪物等级系统配置（计算模式、生成模式、搜索半径等） |
+| `artifact.toml` | 圣遗物系统配置（升级经验、主词条数值/权重、副词条档位） |
+| `damage-indicator.toml` | 伤害指示器配置（各元素/反应颜色） |
 
 ---
 
@@ -208,7 +246,7 @@ PGCharacter (可序列化原型)
 
 #### 注册表定义
 
-位置：`registry/ModRegistries.java`
+位置：`core/system/registry/ModRegistries.java`
 
 本 Mod 创建了三个自定义注册表，通过 NeoForge 的 `RegistryBuilder` 构建并在 `NewRegistryEvent` 中注册：
 
@@ -249,7 +287,7 @@ public static final DeferredRegister<ICharacterEffect> CHARACTER_EFFECTS =
 
 #### 注册示例
 
-位置：`registry/register/CharacterEffectRegister.java`
+位置：`core/system/registry/register/ModCharacterEffects.java`
 
 ```java
 public class CharacterEffectRegister {
@@ -271,12 +309,12 @@ public class CharacterEffectRegister {
 
 ```java
 public Minegenshin(IEventBus modEventBus, ModContainer modContainer) {
-    CharacterRegister.CHARACTERS.register(modEventBus);
+    ModCharacters.CHARACTERS.register(modEventBus);
     AttachmentRegistration.register(modEventBus);
-    CharacterEffectRegister.register(modEventBus);
+    ModCharacterEffects.register(modEventBus);
     ModAttributes.ATTRIBUTES.register(modEventBus);
-    EntityRegister.register(modEventBus);
-    DamageTypeRegister.register(modEventBus);
+    ModEntities.register(modEventBus);
+    ModDamageTypes.register(modEventBus);
     // ...
 }
 ```
@@ -286,18 +324,29 @@ public Minegenshin(IEventBus modEventBus, ModContainer modContainer) {
 #### PGCharacter 基类构造
 
 ```java
+// 单CD构造器（短按/长按共享同一个CD）
 public PGCharacter(
     int characterUUID,                          // 唯一标识（如 135001）
-    int weaponType,                             // 武器类型
+    int starRating,                             // 星级（4/5星）
     Component name,                             // 显示名称
-    ElementalsGIM element,                      // 元素类型
+    ElementalsGIM elemental,                    // 元素类型
     CharacterAscendAttribute ascendAttribute,   // 突破属性类型
-    int skillCooldownTick,                      // E技能CD (tick)
-    int burstCooldownTick,                     // Q技能CD (tick)
-    int maxEnergy,                              // 元素能量上限
-    float defaultSkillDamage,                   // 默认技能伤害系数
-    String characterId,                         // 注册名
+    int skillMaxCooldownTick,                   // E技能CD (tick)
+    int burstMaxCooldownTick,                   // Q技能CD (tick)
+    float maxObtainingEnergy,                   // 最大元素能量
+    String textureId,                           // 纹理标识
     Map<Identifier, Supplier<List<? extends Integer>>> statGrowthMap  // 属性成长曲线
+)
+
+// 双CD构造器（短按/长按独立CD）
+public PGCharacter(
+    int characterUUID, int starRating, Component name,
+    ElementalsGIM elemental, CharacterAscendAttribute ascendAttribute,
+    int skillShortMaxCooldownTick,              // 短按CD (tick)
+    int skillLongMaxCooldownTick,               // 长按CD (tick)
+    int burstMaxCooldownTick,                   // Q技能CD (tick)
+    float maxObtainingEnergy, String textureId,
+    Map<Identifier, Supplier<List<? extends Integer>>> statGrowthMap
 )
 ```
 
@@ -338,22 +387,21 @@ CharacterTickEvent.onPlayerTick(PlayerTickEvent.Post)
 
 #### 角色实现示例
 
-位置：`core/character/polearm/Shenhe.java`
+位置：`core/character/polearm/shenhe/Shenhe.java`
 
 ```java
 public class Shenhe extends PGCharacter {
     public Shenhe() {
         super(
             135001,                              // UUID
-            5,                                    // 长柄武器
+            5,                                    // 5星角色
             Component.translatable("character.name.shenhe"),
             ElementalsGIM.CYRO,
             CharacterAscendAttribute.ATK,
             10 * 20,                              // E技能CD 10秒
             15 * 20,                              // Q技能CD 15秒
-            10 * 20,                              // 能量恢复
-            80f,                                  // 默认技能伤害系数
-            "shenhe",                             // 注册名
+            80f,                                  // 最大元素能量
+            "shenhe",                             // 纹理ID
             Map.of(
                 ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
                 ModAttributes.ATK.getId(), Config.SHENHE_ATK,
@@ -373,7 +421,7 @@ public class Shenhe extends PGCharacter {
             PGCharacter partyChar = attachment.getPartyCharacter(i);
             if (partyChar != null) {
                 CharacterEffectInstance effect = new CharacterEffectInstance(
-                    CharacterEffectRegister.ICY_QUILL_EFFECT.get(),
+                    ModCharacterEffects.ICY_QUILL_EFFECT.get(),
                     200,    // 持续 200 tick = 10秒
                     1       // amplifier
                 );
@@ -385,7 +433,7 @@ public class Shenhe extends PGCharacter {
 
     @Override
     protected void triggerElementalBurst(Player player) {
-        TalismanSpiritArea field = EntityRegister.FIELD_TALISMAN_SPIRIT.get()
+        TalismanSpiritArea field = ModEntities.FIELD_TALISMAN_SPIRIT.get()
             .create(player.level(), EntitySpawnReason.EVENT);
         field.setPos(player.position());
         player.level().addFreshEntity(field);
@@ -540,7 +588,7 @@ public class IcyQuillEffect implements ICharacterEffect {
             PlayerCharactersAttachment attachment = 
                 holder.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter shenhe = attachment.getCharacterByUUID(
-                CharacterRegister.SHENHE.get().getCharacterUUID());
+                ModCharacters.SHENHE.get().getCharacterUUID());
 
             if (shenhe != null) {
                 float bonus = (float)(
@@ -574,7 +622,7 @@ public class IcyQuillEffect implements ICharacterEffect {
 ```java
 // 创建效果实例
 CharacterEffectInstance effect = new CharacterEffectInstance(
-    CharacterEffectRegister.ICY_QUILL_EFFECT.get(),  // ICharacterEffect 实现
+    ModCharacterEffects.ICY_QUILL_EFFECT.get(),  // ICharacterEffect 实现
     200,                                              // 持续 200 tick (10秒)
     1,                                                // amplifier
     false,                                            // 是否在 HUD 隐藏
@@ -583,7 +631,7 @@ CharacterEffectInstance effect = new CharacterEffectInstance(
 
 // 快捷构造（不带额外数据）
 CharacterEffectInstance effect = new CharacterEffectInstance(
-    CharacterEffectRegister.ICY_QUILL_EFFECT.get(), 200, 1);
+    ModCharacterEffects.ICY_QUILL_EFFECT.get(), 200, 1);
 
 // 设置效果特有数据
 effect.setIntData("icy_quill_count", 7);
@@ -616,7 +664,7 @@ CharacterEffectInstance inst = CharacterEffectHelper.getEffectInstance(character
 
 #### 注册效果
 
-位置：`registry/register/CharacterEffectRegister.java`
+位置：`core/system/registry/register/ModCharacterEffects.java`
 
 ```java
 public class CharacterEffectRegister {
@@ -1112,7 +1160,7 @@ public static void characterEffectTick(PlayerTickEvent.Post event) {
 
 #### 实体注册
 
-位置：`registry/register/EntityRegister.java`
+位置：`core/system/registry/register/ModEntities.java`
 
 ```java
 public class EntityRegister {
@@ -1140,7 +1188,7 @@ public class EntityRegister {
 #### 生成实体
 
 ```java
-TalismanSpiritArea field = EntityRegister.FIELD_TALISMAN_SPIRIT.get()
+TalismanSpiritArea field = ModEntities.FIELD_TALISMAN_SPIRIT.get()
     .create(player.level(), EntitySpawnReason.EVENT);
 if (field != null) {
     field.setPos(player.position());
@@ -1173,7 +1221,7 @@ if (field != null) {
 | `LivingEntity` | NeoForge Attachment | `AttachmentRegistration.CONTAINER` |
 | `BlockEntity` | NeoForge Attachment | 同上 |
 | `PGCharacterData` | `@Persisted` 字段 | `PGCharacterData.statusContainer` |
-| `ItemStack` | DataComponent | `StatusDataComponents.CONTAINER` |
+| `ItemStack` | DataComponent | `ModStatusDataComponents.CONTAINER` |
 
 ```java
 StatusAccessor.of(livingEntity);   // LivingEntity → 自动创建/读取 Attachment
@@ -1381,7 +1429,7 @@ AttachmentType.serializable(StatusContainer::new).build()
 | AttachmentProfile | `core/system/about/AttachmentProfile.java` |
 | AttachmentSource | `core/system/about/AttachmentSource.java` |
 | AttachmentRegistration | `core/attachment/AttachmentRegistration.java` |
-| StatusDataComponents | `core/system/registry/register/StatusDataComponents.java` |
+| ModStatusDataComponents | `core/system/registry/register/ModStatusDataComponents.java` |
 | StatusTickEvent | `event/server/StatusTickEvent.java` |
 
 ### 4.11 元素反应系统
@@ -1524,7 +1572,7 @@ rounds = min(1.6/1, 0.8/2) = min(1.6, 0.4) = 0.4
 
 #### 元素反应注册表
 
-位置：`registry/ModRegistries.java`（声明）+ `registry/register/ElementalReactionRegister.java`（实例注册）
+位置：`core/system/registry/ModRegistries.java`（声明）+ `core/system/registry/register/ModElementalReactions.java`（实例注册）
 
 遵循项目标准的三层注册模式：
 
@@ -1549,21 +1597,21 @@ public static final DeferredRegister<ElementalReaction> ELEMENTAL_REACTIONS =
 event.register(ELEMENTAL_REACTION_REGISTRY);
 ```
 
-**ElementalReactionRegister.java —— 具体反应注册**：
+**ModElementalReactions.java —— 具体反应注册**：
 ```java
 public class ElementalReactionRegister {
     public static final DeferredRegister<ElementalReaction> ELEMENTAL_REACTIONS =
         ModRegistries.ELEMENTAL_REACTIONS;
 
-    // 蒸发：火:水 = 1:2，火是克制方
+    // 蒸发：水:火 = 1:2，水克火
     public static final DeferredHolder<ElementalReaction, VaporizeReaction> VAPORIZE =
         ELEMENTAL_REACTIONS.register("vaporize",
             () -> new VaporizeReaction(
                 ElementalReactionType.VAPORIZE,
-                ElementalsGIM.PYRO, ElementalsGIM.HYDRO,
+                ElementalsGIM.HYDRO, ElementalsGIM.PYRO,
                 1f, 2f, 0));
 
-    // 融化：火:冰 = 1:2，火是克制方
+    // 融化：火:冰 = 1:2，火克冰（冻通过 getMainElement 归并到 CYRO）
     public static final DeferredHolder<ElementalReaction, MeltReaction> MELT =
         ELEMENTAL_REACTIONS.register("melt",
             () -> new MeltReaction(
@@ -1861,7 +1909,7 @@ public class OverloadReaction extends ElementalReaction {
 **Step 2: 注册**
 
 ```java
-// ElementalReactionRegister.java
+// ModElementalReactions.java
 public static final DeferredHolder<ElementalReaction, OverloadReaction> OVERLOAD =
     ELEMENTAL_REACTIONS.register("overload",
         () -> new OverloadReaction(
@@ -1956,8 +2004,9 @@ LivingEntityHurtMixin (hurtServer HEAD)
 | VaporizeReaction（蒸发） | `core/system/reaction/builtin/VaporizeReaction.java` |
 | MeltReaction（融化） | `core/system/reaction/builtin/MeltReaction.java` |
 | FreezeReaction（冻结） | `core/system/reaction/builtin/FreezeReaction.java` |
-| 注册表声明 | `registry/ModRegistries.java` |
-| 反应注册入口 | `registry/register/ElementalReactionRegister.java` |
+| SuperConductReaction（超导） | `core/system/reaction/builtin/SuperConductReaction.java` |
+| 注册表声明 | `core/system/registry/ModRegistries.java` |
+| 反应注册入口 | `core/system/registry/register/ModElementalReactions.java` |
 | 主入口调用 | `Minegenshin.java` 构造函数 |
 
 ### 4.12 怪物等级与防御系统
@@ -2011,7 +2060,7 @@ LivingEntityHurtMixin (hurtServer HEAD)
 
 #### 配置文件
 
-路径：`./config/minegenshin/monster_level.toml`
+路径：`./config/minegenshin/monster-level.toml`
 
 ```toml
 [monsterSpawnLogic.spawnLevelCalculation]
@@ -2305,6 +2354,309 @@ public void setUpgradeCount(int count);
 | 圣遗物组件数据 | `content/items/component/ArtifactStatsComponent.java` |
 | 圣遗物物品类 | `content/items/artifact/ArtifactItem.java` |
 | 物品属性统计 | `content/stat/TeyvatItemStat.java` |
+
+---
+
+### 4.14 伤害飘字系统
+
+#### 概述
+
+伤害飘字系统在实体受伤时，在屏幕空间（HUD 层）显示浮动的伤害数字/反应名称/自定义文本。采用 **服务端 → 客户端 RPC 单向下发** 设计：服务端计算最终伤害后，通过 LDLib2 RPC 发给附近玩家，客户端用 LDLib2 的 `ModularHudLayer` 渲染。
+
+**两层架构**：
+
+| 层 | 包 | 职责 |
+|----|----|------|
+| **服务端** | `core/system/combat/damage` | `DamageIndicatorFactory`（工厂）、`DamageIndicatorRpc`（RPC发送） |
+| **客户端** | `client/damage` | `DamageIndicator`（动画状态）、`DamageIndicatorManager`（活跃列表）、`DamageIndicatorRenderer`（HUD 渲染） |
+
+#### 三种颜色模式 + 五种飘字类型
+
+##### 颜色模式
+
+| 模式 | 说明 | 方法后缀 |
+|------|------|---------|
+| **Default** | 按元素/反应类型从 `damage-indicator.toml` 取色 | `damage()` / `crit()` / `reaction()` |
+| **Custom** | 传入单个十六进制颜色 | `damageCustom()` / `critCustom()` / 等 |
+| **Gradient** | 传入顶部+底部两个颜色，客户端做垂直渐变 | `damageGradient()` / `critGradient()` / 等 |
+
+##### 五种类型
+
+| 类型 | Style枚举 | 用途 | 客户端class |
+|------|----------|------|------------|
+| NORMAL | `Style.NORMAL` | 普通伤害数字 | `.damage-indicator` |
+| CRIT | `Style.CRIT` | 暴击伤害数字 | `.damage-indicator.crit` |
+| REACTION | `Style.REACTION` | 元素反应名称（蒸发、融化等） | `.damage-indicator.reaction` |
+| HEAL | `Style.HEAL` | 治疗数字 | `.damage-indicator.heal` |
+| TEXT | `Style.TEXT` | 纯文本（自定义消息） | `.damage-indicator.text` |
+
+#### 关键文件
+
+| 类 | 路径 |
+|----|------|
+| 飘字工厂 | `core/system/combat/damage/DamageIndicatorFactory.java` |
+| 颜色配置 | `config/DamageIndicatorConfig.java` |
+| 网络 RPC | `core/network/DamageIndicatorRpc.java` |
+| 动画状态 | `client/damage/DamageIndicator.java` |
+| 活跃列表 | `client/damage/DamageIndicatorManager.java` |
+| HUD 渲染 | `client/damage/DamageIndicatorRenderer.java` |
+| HUD 注册 | `client/ClientHudRegistration.java` |
+| 样式表 | `resources/assets/minegenshin/lss/hud/damage_indicator.lss` |
+
+#### 完整数据流
+
+```
+服务端：目标实体受伤
+  │
+  ▼
+LivingEntityHurtMixin.hurtServer (HEAD)
+  ├─ HurtEntityHelper.calculateFinalModDamage(...)   ← 算出最终伤害
+  │
+  ├─ if (finalDamage > 0)
+  │     └─ DamageIndicatorFactory.damage(target, modSource, finalDamage, element)
+  │           ├─ 计算 origin（攻击者身体与目标之间 0.5）
+  │           ├─ 计算 finalPos（目标上方 + 随机散布 ±0.275）
+  │           ├─ DamageIndicatorConfig.getColorForElement(element)
+  │           ├─ 构建 Options（或使用默认）
+  │           └─ for 附近 48 格玩家
+  │                 └─ DamageIndicatorRpc.sendToPlayer(...)
+  │
+  ▼
+RPC：rpcToPlayer(player, "genshin:damage_indicator", origin, target, text, topColor, bottomColor, style, baseScale, startScale, durationMs)
+  │
+  ▼
+客户端：DamageIndicatorRpc 接收
+  └─ if (sender.isServer())
+        └─ new DamageIndicator(origin, target, text, topColor, bottomColor, style, baseScale, startScale, lifetimeMs)
+              → DamageIndicatorManager.add(...)
+  │
+  ▼
+客户端每帧：DamageIndicatorRenderer.onSubmitCustomGeometry
+  ├─ 遍历 DamageIndicatorManager.getActive()
+  ├─ 计算 worldPos → NDC → 屏幕坐标 → GUI 坐标
+  ├─ 应用距离缩放、动画缩放、透明度
+  └─ 更新 Label.transform（translate + scale）
+```
+
+#### 工厂方法一览
+
+```java
+// ======== 1. 普通伤害 ========
+damage(target, source, finalDamage, element)            // 默认元素色
+damage(target, source, finalDamage, element, options)
+damageCustom(target, source, finalDamage, color)         // 自定义单色
+damageCustom(target, source, finalDamage, color, options)
+damageGradient(target, source, finalDamage, topColor, bottomColor)  // 渐变
+
+// ======== 2. 暴击伤害 ========
+crit(target, source, finalDamage, element)               // 默认元素色
+crit(target, source, finalDamage, element, options)
+critCustom(target, source, finalDamage, color)
+critGradient(target, source, finalDamage, topColor, bottomColor)
+
+// ======== 3. 元素反应 ========
+reaction(target, type)                                    // type 为 ElementalReactionType
+reaction(target, type, options)
+reaction(target, attacker, type)                          // 从攻击者与目标中间飘出
+reaction(target, attacker, type, options)
+reactionCustom(target, type, color)
+reactionGradient(target, type, topColor, bottomColor)
+
+// ======== 4. 治疗 ========
+heal(target, amount)
+heal(target, amount, options)
+healCustom(target, amount, color)
+healGradient(target, amount, topColor, bottomColor)
+
+// ======== 5. 纯文本 ========
+text(target, text)                                        // 默认白色（物理色）
+text(target, text, options)
+text(target, Component)                                   // 支持 Component
+textCustom(target, text, color)
+textGradient(target, text, topColor, bottomColor)
+```
+
+#### 使用示例
+
+```java
+// 普通伤害
+DamageIndicatorFactory.damage(target, modSource, 12345, ElementalsGIM.PYRO);
+
+// 暴击 — 元素色 + crit class
+DamageIndicatorFactory.crit(target, modSource, 28462, ElementalsGIM.HYDRO);
+
+// 元素反应 — 反应名飘字
+DamageIndicatorFactory.reaction(target, ElementalReactionType.VAPORIZE);
+
+// 治疗 — 草元素色
+DamageIndicatorFactory.heal(target, 5000);
+
+// 纯文本
+DamageIndicatorFactory.text(target, "免疫");
+
+// 渐变伤害 — 顶部金色、底部红色
+DamageIndicatorFactory.damageGradient(target, source, 9999, 0xFFFFAA00, 0xFFFF3333);
+
+// 自定义外观
+DamageIndicatorFactory.damage(target, source, 12345, ElementalsGIM.PYRO,
+    DamageIndicatorFactory.Options.builder()
+        .baseScale(2.5f)
+        .durationMs(1500L)
+        .build());
+```
+
+#### Options 参数
+
+| 字段 | 类型 | 默认值 | 作用 |
+|------|------|--------|------|
+| `baseScale` | `float` | `2.2` | 稳定后基础大小倍率 |
+| `startScale` | `float` | `6.2` | 出现瞬间大小倍率（应 > baseScale，"由大变小"） |
+| `durationMs` | `long` | `950` | 总持续时间（毫秒） |
+
+```java
+Options.of(2.5f, 5.0f, 1200L)                  // 完全指定
+Options.builder().baseScale(2.5f).build()       // 只改一项
+Options.DEFAULT                                  // 全局默认
+```
+
+#### 动画时间线
+
+```
+时间轴（durationMs = 950ms 为例）
+0ms ─────────── 200ms ───────────────────── 650ms ────── 950ms
+ │                │                          │            │
+ │  飞向落点阶段  │  持续上升（线性匀速）     │  淡出阶段  │
+ │  缩放 6.2→2.2  │  整个生命周期都在上升     │  300ms    │
+ │  easeOutCubic  │  总高度 RISE_HEIGHT       │  alpha 1→0│
+```
+
+**关键常量**（`DamageIndicator.java`）：
+
+| 常量 | 值 | 说明 |
+|------|-----|------|
+| `MOVE_MS` | `200` | 飞向落点的时间（毫秒） |
+| `FADE_MS` | `300` | 结束淡出时长（毫秒） |
+| `RISE_HEIGHT` | `0.23` | 整个生命周期上升总高度（格） |
+
+**缩放曲线**：`easeOutCubic` → `1 - (1-t)³`，视觉上快速缩到目标大小再缓慢收尾。
+
+**上升**：从出生起就持续匀速上升，不与落点到达挂钩，避免"停顿再上升"的割裂感。
+
+**REACTION 额外偏移**：反应名称类飘字额外抬高 `+0.2`（Y轴），与伤害数字垂直错开避免重叠。
+
+#### 动画调节指南
+
+| 想改什么 | 改哪里 |
+|---------|--------|
+| 字整体更大 | 传更大的 `baseScale` |
+| 出场更夸张 | 传更大的 `startScale` |
+| 上升更快 | `RISE_HEIGHT` 调大（如 `0.4`） |
+| 上升更慢 | `RISE_HEIGHT` 调小（如 `0.15`） |
+| 整个动画更久 | 传更大的 `durationMs` |
+| 淡出更慢 | `FADE_MS` 调大 |
+
+#### 距离与视野
+
+`DamageIndicatorRenderer` 距离缩放常量：
+
+| 常量 | 默认 | 说明 |
+|------|------|------|
+| `NEAR_DISTANCE` | `4.0` | 距离 ≤ 此值，字保持原大小 |
+| `FAR_DISTANCE` | `32.0` | 距离 ≥ 此值，字缩到 `FAR_SCALE` |
+| `FAR_SCALE` | `0.25f` | 远端缩放下限 |
+| `MAX_RENDER_DISTANCE` | `128.0` | 超过不绘制 |
+
+`[NEAR_DISTANCE, FAR_DISTANCE]` 区间内分段线性插值，单调递减（远离只变小不变大）。
+
+`DamageIndicatorFactory.BROADCAST_RADIUS = 48.0` — RPC 只发给此半径内玩家。
+
+#### 服务端定位逻辑
+
+**originPos（出现位置）**：
+```java
+Vec3 attackerCenter = attacker.position().add(0, getBbHeight() * 0.7, 0);
+Vec3 targetCenter = target.position().add(0, getBbHeight() * 0.85, 0);
+Vec3 originPos = attackerCenter.lerp(targetCenter, 0.5);  // 二者中间
+```
+若无攻击者（反应飘字等），退化为 `targetCenter.add(0, 0.6, 0)`。
+
+**finalPos（最终落点）**：
+```java
+Vec3 finalPos = targetCenter.add(
+    (rand.nextDouble() - 0.5) * 0.55,    // X 散布 ±0.275
+    0.30 + rand.nextDouble() * 0.20,     // Y 抬高 0.30~0.50
+    (rand.nextDouble() - 0.5) * 0.55     // Z 散布 ±0.275
+);
+```
+每次命中落点随机散布，避免连续命中数字重叠。
+
+#### 颜色配置
+
+配置文件：`./config/minegenshin/damage-indicator.toml`，分两大组：
+
+**元素伤害颜色**（`damage_indicator_element_colors`）：
+
+| 键 | 默认值 | 元素 |
+|----|--------|------|
+| `pyro` | `#FB9B00` | 火 |
+| `cyro` | `#99FBFB` | 冰 |
+| `hydro` | `#38CAFB` | 水 |
+| `anemo` | `#68FBCA` | 风 |
+| `electro` | `#DE9BFB` | 雷 |
+| `dendro` | `#00E755` | 草 |
+| `geo` | `#FBCA68` | 岩 |
+| `physical` | `#FFFFFF` | 物理 |
+
+**元素反应颜色**（`damage_indicator_reaction_colors`）：
+
+| 键 | 默认值 | 反应 |
+|----|--------|------|
+| `melt` / `vaporize` | `#FFCC66` | 融化 / 蒸发 |
+| `shattered` | `#BBEFFF` | 碎冰 |
+| `superconduct` | `#B39BFF` | 超导 |
+| `swirl` | `#7FFFD4` | 扩散 |
+| `electro_charged` | `#D48BFF` | 感电 |
+| `overload` | `#FF809B` | 超载 |
+| `burning` | `#FF6633` | 燃烧 |
+| `bloom` | `#8FE060` | 绽放 |
+| `hyperbloom` | `#C77BFF` | 超绽放 |
+| `burgeon` | `#FFB03A` | 烈绽放 |
+| `quicken` | `#D4E85B` | 原激化 |
+| `aggravate` | `#B7E85B` | 超激化 |
+| `spread` | `#62C93F` | 蔓激化 |
+| `frozen` | `#AEE0FF` | 冻结 |
+| `crystallize` | `#FFD966` | 结晶 |
+
+API：`DamageIndicatorConfig.getColorForElement(ElementalsGIM)` 和 `getColorForReaction(ElementalReactionType)`。
+
+类元素（FROZEN→CYRO, AGGRAVATE→DENDRO, BURNING→PYRO）自动归并到主元素取色。
+
+#### 添加新类型飘字
+
+**Step 1**：`DamageIndicatorFactory.Style` 加枚举
+
+```java
+public enum Style { NORMAL, CRIT, REACTION, HEAL, TEXT, SHIELD }
+```
+
+**Step 2**：加便捷方法
+
+```java
+public static void shield(LivingEntity target, float absorbed, Options options) {
+    spawnValue(target, absorbed, 0xFFAAAAAA, 0xFFAAAAAA, Style.SHIELD, options);
+}
+```
+
+**Step 3**：渲染器加 class 分支 → LSS 加样式
+
+#### 常见问题
+
+| 问题 | 排查方向 |
+|------|---------|
+| 飘字看不见 | ① `ClientHudRegistration` 是否注册 ② `LivingEntityHurtMixin` 是否调用 `DamageIndicatorFactory.damage()` ③ 日志有无 `[DI-RPC] received packet` |
+| 飘字颜色不对 | 检查 `damage-indicator.toml` 十六进制值；确认元素非类元素 |
+| 飘字卡顿 | 用 `label.transform()` 不触发 Taffy 重排；无飘字时 `LABEL_ENTRIES.isEmpty()` 零开销 |
+| 飘字从摄像头出现 | `spawn()` 用 `attacker.position()`（身体）非 `getEyePosition()` |
 
 ---
 
@@ -2648,15 +3000,14 @@ public class ExampleChar extends PGCharacter {
     public ExampleChar() {
         super(
             135099,                              // UUID (保持唯一)
-            0,                                   // 武器类型 (0=单手剑, 3=法器, 5=长柄)
+            5,                                   // 星级 (4/5星)
             Component.translatable("character.name.example"),
             ElementalsGIM.HYDRO,                // 水元素
             CharacterAscendAttribute.HP,        // 突破属性是HP
-            12 * 20,                            // E技能CD 12秒
-            20 * 20,                            // Q技能CD 20秒
-            80,                                 // 能量需求
-            1.2f,                               // 默认技能倍率
-            "example_char",                     // 注册名
+            12 * 20,                            // E技能CD 12秒 (tick)
+            20 * 20,                            // Q技能CD 20秒 (tick)
+            80f,                                // 最大元素能量
+            "example_char",                     // 纹理ID
             Map.of(
                 ModAttributes.MAX_HP.getId(), Config.EXAMPLE_HP,
                 ModAttributes.ATK.getId(), Config.EXAMPLE_ATK,
@@ -2701,7 +3052,7 @@ static {
 **Step 3: 注册角色**
 
 ```java
-// CharacterRegister.java
+// ModCharacters.java
 public static final DeferredHolder<PGCharacter, ExampleChar> EXAMPLE_CHAR = 
     CHARACTERS.register("example_char", ExampleChar::new);
 ```
@@ -2759,7 +3110,7 @@ public class ReflectEffect implements ICharacterEffect {
 **Step 2: 注册效果**
 
 ```java
-// CharacterEffectRegister.java
+// ModCharacterEffects.java
 public static final DeferredHolder<ICharacterEffect, ReflectEffect> 
     REFLECT_EFFECT = CHARACTER_EFFECTS.register("reflect", ReflectEffect::new);
 ```
@@ -2772,7 +3123,7 @@ protected void triggerElementalSkill(Player player, int skillTime) {
     PGCharacter currentChar = CharacterHelper.getCurrentCharacter(player);
     if (currentChar != null) {
         CharacterEffectInstance effect = new CharacterEffectInstance(
-            CharacterEffectRegister.REFLECT_EFFECT.get(),
+            ModCharacterEffects.REFLECT_EFFECT.get(),
             200,   // 10秒
             1
         );
@@ -2799,7 +3150,7 @@ public class ExampleMonster extends TeyvatLivingEntity {
 **Step 2: 注册实体**
 
 ```java
-// EntityRegister.java
+// ModEntities.java
 public static final Supplier<EntityType<ExampleMonster>> EXAMPLE_MONSTER =
     ENTITIES.register("example_monster",
         () -> EntityType.Builder.of(ExampleMonster::new, MobCategory.MONSTER)
@@ -2821,7 +3172,7 @@ private static void registerEntityAttributes(EntityAttributeCreationEvent event)
 ### 6.4 添加新伤害类型
 
 ```java
-// DamageTypeRegister.java
+// ModDamageTypes.java
 public static final DeferredHolder<DamageType, DamageType> CUSTOM_DAMAGE =
     DAMAGE_TYPES.register("custom_damage",
         () -> new DamageType("custom_damage", 0));
@@ -3017,7 +3368,7 @@ public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
 
 ### 为什么 PGCharacter 使用原型模式？
 
-角色注册时创建的是**原型实例**，玩家拥有的是从原型初始化数据后的实例副本。`CharacterRegister.getByUUID()` 从注册表查找原型，然后调用 `initBaseStats()` 用等级配置初始化属性。
+角色注册时创建的是**原型实例**，玩家拥有的是从原型初始化数据后的实例副本。`ModCharacters.getByUUID()` 从注册表查找原型，然后调用 `initBaseStats()` 用等级配置初始化属性。
 
 ### 为什么用 UUID 而不是 Identifier 区分角色？
 
@@ -3050,18 +3401,13 @@ UUID 是纯数字 (int)，在 Attachment 的持久化和 RPC 传输中更轻量�
 | 系统 | 文件路径 |
 |------|----------|
 | 主入口 | `Minegenshin.java` |
-| 注册表总览 | `registry/ModRegistries.java` |
-| 角色注册表 | `registry/register/CharacterRegister.java` |
-| 效果注册表 | `registry/register/CharacterEffectRegister.java` |
-| 实体注册表 | `registry/register/EntityRegister.java` |
-| 伤害类型注册 | `registry/register/DamageTypeRegister.java` |
-| 角色基类 | `core/character/PGCharacter.java` |
-| 角色数据 | `core/character/PGCharacterData.java` |
-| 角色帮助类 | `core/character/CharacterHelper.java` |
-| 属性容器 | `core/attribute/AttributeContainer.java` |
-| 属性实例 | `core/attribute/AttributeInstance.java` |
-| 属性类型 | `core/attribute/AttributeType.java` |
-| 属性注册 | `core/attribute/ModAttributes.java` |
+| 注册表总览 | `core/system/registry/ModRegistries.java` |
+| 角色注册表 | `core/system/registry/register/ModCharacters.java` |
+| 效果注册表 | `core/system/registry/register/ModCharacterEffects.java` |
+| 实体注册表 | `core/system/registry/register/ModEntities.java` |
+| 伤害类型注册 | `core/system/registry/register/ModDamageTypes.java` |
+| 元素反应注册 | `core/system/registry/register/ModElementalReactions.java` |
+| 属性注册 | `core/system/registry/register/ModAttributes.java`
 | 效果接口 | `content/effect/character/ICharacterEffect.java` |
 | 效果实例 | `content/effect/character/CharacterEffectInstance.java` |
 | 效果容器 | `content/effect/character/CharacterEffectContainer.java` |
@@ -3090,22 +3436,40 @@ UUID 是纯数字 (int)，在 Attachment 的持久化和 RPC 传输中更轻量�
 | 蒸发 | `core/system/reaction/builtin/VaporizeReaction.java` |
 | 融化 | `core/system/reaction/builtin/MeltReaction.java` |
 | 冻结 | `core/system/reaction/builtin/FreezeReaction.java` |
-| 反应注册 | `core/system/registry/register/ElementalReactionRegister.java` |
-| DataComponent 注册 | `core/system/registry/register/StatusDataComponents.java` |
-| 玩家附件 | `core/attachment/PlayerCharactersAttachment.java` |
+| 超导 | `core/system/reaction/builtin/SuperConductReaction.java` |
+| 冻结衰减状态 | `core/system/about/FrozenDecayState.java` |
+| DataComponent 注册(圣遗物) | `core/system/registry/register/ModDataComponents.java` |
+| DataComponent 注册(状态) | `core/system/registry/register/ModStatusDataComponents.java` |
+| 玩家附件-角色 | `core/attachment/PlayerCharactersAttachment.java` |
+| 玩家附件-信息 | `core/attachment/AdventurerInfoAttachment.java` |
+| 玩家附件-背包 | `core/attachment/Backpack.java` |
 | 附件注册 | `core/attachment/AttachmentRegistration.java` |
 | 网络同步 | `core/network/NetworkManager.java` |
 | 客户端处理 | `core/network/ClientHandler.java` |
 | 角色 Tick | `event/server/CharacterTickEvent.java` |
 | 效果 Tick | `event/server/CharacterEffectEvent.java` |
 | 玩家登录 | `event/server/PlayerLoginEventListeners.java` |
+| 怪物等级计算 | `core/monster/MonsterLevelCalculator.java` |
+| 怪物生成处理 | `core/monster/MonsterLevelSpawnHandler.java` |
 | Mixin 配置 | `resources/minegenshin.mixins.json` |
-| Mixin 注入 | `mixin/mixins/LivingEntityDecayMixin.java` |
+| Mixin 衰减注入 | `mixin/mixins/LivingEntityDecayMixin.java` |
 | Mixin 攻击拦截 | `mixin/mixins/PlayerAttackInterceptor.java` |
-| 配置文件 | `Config.java` |
+| Mixin 受伤注入 | `mixin/mixins/LivingEntityHurtMixin.java` |
+| Mixin 受伤拦截 | `mixin/mixins/PlayerHurtInterceptor.java` |
+| Mixin 怪物 | `mixin/mixins/MonsterMixin.java` |
+| Mixin 配置插件 | `mixin/MixinConfig.java` |
+| 配置主文件 | `Config.java` |
+| 反应倍率配置 | `config/ElementalReactionConfig.java` |
 | 圣遗物配置 | `config/ArtifactConfig.java` |
 | 主词条配置 | `config/ArtifactMainStatConfig.java` |
 | 副词条配置 | `config/ArtifactSubStatConfig.java` |
+| 圣遗物经验配置 | `config/ArtifactLevelConfig.java` |
+| 伤害指示器管理 | `client/damage/DamageIndicatorManager.java` |
+| 伤害指示器条目 | `client/damage/DamageIndicatorEntry.java` |
+| 元素附着工具 | `core/system/about/utils/ElementalAttachmentUtils.java` |
+| 技能-冲锋节点 | `content/skill_node/RushesForward.java` |
+| 技能-范围实体收集 | `content/skill_node/AreaEntityCollector.java` |
+| 技能-工具 | `content/skill_node/SkillHelper.java` |
 | 属性数据 | `content/items/artifact/ArtifactStatData.java` |
 | 主词条生成 | `content/items/artifact/ArtifactMainStatGenerator.java` |
 | 副词条生成 | `content/items/artifact/ArtifactSubStatGenerator.java` |
@@ -3115,3 +3479,4 @@ UUID 是纯数字 (int)，在 Attachment 的持久化和 RPC 传输中更轻量�
 | 元素枚举 | `enums/ElementalsGIM.java` |
 | 攻击类型 | `enums/AttackType.java` |
 | 突破属性 | `enums/CharacterAscendAttribute.java` |
+| 元素附着接口 | `core/system/about/IAttachmentReducer.java` |
