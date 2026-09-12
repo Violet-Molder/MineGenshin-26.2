@@ -2,6 +2,8 @@ package com.linweiyun.genshin.content.items.artifact.inventory;
 
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
+import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
+import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
@@ -142,10 +144,11 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
 
     /**
      * 检查指定物品是否可以放入指定槽位
-     * <p>
+     *
      * 规则：
      * - 空物品堆（ItemStack.EMPTY）始终允许放入（表示清空槽位）
      * - 非圣遗物物品不允许放入
+     * - 未激活的圣遗物不允许放入
      * - 圣遗物类型必须与槽位类型匹配
      *
      * @param slot  目标槽位索引
@@ -155,6 +158,13 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
     public static boolean isValidForSlot(int slot, ItemStack stack) {
         if (stack.isEmpty()) return true;
         if (!(stack.getItem() instanceof ArtifactItem artifact)) return false;
+
+        // 未激活的圣遗物不能放入圣遗物栏
+        ArtifactStatsComponent stats = stack.getOrDefault(
+                ModDataComponents.ARTIFACT_STATS.get(),
+                ArtifactStatsComponent.DEFAULT);
+        if (!stats.activated) return false;
+
         ArtifactType expected = slotToType(slot);
         return artifact.getType() == expected;
     }

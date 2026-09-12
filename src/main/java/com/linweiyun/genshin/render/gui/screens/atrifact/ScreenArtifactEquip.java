@@ -6,7 +6,9 @@ import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
@@ -17,7 +19,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Scroller;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
 import com.mojang.logging.LogUtils;
@@ -51,7 +53,6 @@ public class ScreenArtifactEquip extends Screen {
     private static final ArtifactType[] TYPES = ArtifactType.values();
     private static final String[] LABELS = {"生之花","死之羽","时之沙","空之杯","理之冠"};
     private static final String BORDER = "minegenshin:textures/character_avatar/selected_border.png";
-    private static final float SCF = 20f;
 
     public ScreenArtifactEquip(ModularUI modularUI) {
         super(Component.empty());
@@ -89,10 +90,13 @@ public class ScreenArtifactEquip extends Screen {
         var bp = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
 
         // ===== 状态对象 =====
-        var st = new St(slotIndex, ItemStack.EMPTY, -1,
-                slotIndex >= 0 && slotIndex < 5 ? ArtifactInventory.slotToType(slotIndex) : ArtifactType.FLOWER,
-                null, 0f);
-        autoSel(inv, bp, st);
+        var st = new St(slotIndex,
+                slotIndex >= 0 && slotIndex < 5 ? ArtifactInventory.slotToType(slotIndex) : ArtifactType.FLOWER);
+        st.currentCharUUID = cc.getCharacterUUID();
+        st.characterTextureId = cc.getTextureId();
+        st.attachment = ca;
+        st.inv = inv;
+        autoSel(bp, st);
 
         // ===== 窗口容器 =====
         var win = new UIElement().setId("window");
@@ -108,7 +112,7 @@ public class ScreenArtifactEquip extends Screen {
                 se.transform(t -> t.scale(1.1f));
             });
             se.addEventListener(UIEvents.MOUSE_LEAVE, e -> {
-                if (!(st.slot == si && st.artifact.isEmpty())) {
+                if (!(st.slot == si && st.selectedEnt == null)) {
                     se.style(s -> s.overlay(null));
                     se.transform(t -> t.scale(1f));
                 }
@@ -116,7 +120,7 @@ public class ScreenArtifactEquip extends Screen {
             se.addEventListener(UIEvents.MOUSE_DOWN, e -> {
                 se.transform(t -> t.scale(1f));
             });
-            se.addEventListener(UIEvents.CLICK, e -> clickSlot(si, inv, bp, cd, st, top));
+            se.addEventListener(UIEvents.CLICK, e -> clickSlot(si, bp, st));
             srow.addChild(se);
         }
         top.addChild(srow);
@@ -126,10 +130,13 @@ public class ScreenArtifactEquip extends Screen {
         var lp = new UIElement().setId("left-panel");
         var tc = new UIElement().setId("type-toggle-container");
         var src = new UIElement().setId("list-scroller-container");
-        var scr = new Scroller.Vertical();
+
+        var sv = new ScrollerView();
+        sv.setId("artifact-list-scroller-view");
         var lc = new UIElement().setId("artifact-list-container");
-        scr.bindObserver(v -> { st.scroll = v; lc.layout(l -> l.bottom(v * SCF)); lc.markAsInternal(); });
-        src.addChildren(scr, lc);
+        sv.addScrollViewChild(lc);
+        src.addChild(sv);
+
         lp.addChildren(tc, src);
         var mp = new UIElement().setId("middle-panel");
         var rp = new UIElement().setId("right-panel");
@@ -138,12 +145,19 @@ public class ScreenArtifactEquip extends Screen {
         win.addChildren(top, det);
         root.addChild(win);
 
-        // ===== ★ 填充初始内容（发生在 init() 之前） =====
-        fillTC(tc, inv, bp, cd, st);
-        fillLC(lc, inv, bp, st);
-        fillDetail(mp, rp, inv, bp, st);
+        // ===== 把关键引用存到 St =====
+        st.top = top;
+        st.det = det;
+        st.lc = lc;
+        st.mp = mp;
+        st.rp = rp;
 
-        // ===== ★ 内容在 init() 前已填充（LDLib2 组件树已注册），但默认隐藏 =====
+        // ===== 填充初始内容 =====
+        fillTC(tc, bp, st);
+        fillLC(lc, bp, st);
+        fillDetail(mp, rp, bp, st);
+
+        // ===== 内容默认隐藏 =====
         det.setDisplay(false);
         if (slotIndex >= 0 && slotIndex < 5) {
             top.setDisplay(false);
@@ -155,30 +169,22 @@ public class ScreenArtifactEquip extends Screen {
     }
 
     // ================================================================
-    //  点击槽位
+    //  点击顶部槽位
     // ================================================================
 
-    private static void clickSlot(int si, ArtifactInventory inv, Backpack bp,
-                                  PGCharacterData cd, St st, UIElement top) {
+    private static void clickSlot(int si, Backpack bp, St st) {
         LOG.info("点击槽位[{}]", si);
         st.slot = si;
-        st.artifact = ItemStack.EMPTY;
-        st.invIdx = -1;
         st.type = ArtifactInventory.slotToType(si);
         st.sel = null;
-        st.scroll = 0f;
-        top.setDisplay(false);
-        var det = byId(top.getParent(), "detail-section");
-        if (det != null) det.setDisplay(true);
-        autoSel(inv, bp, st);
+        st.top.setDisplay(false);
+        st.det.setDisplay(true);
+        autoSel(bp, st);
 
-        var tc = byId(top.getParent(), "type-toggle-container");
-        var lc = byId(top.getParent(), "artifact-list-container");
-        var mp = byId(top.getParent(), "middle-panel");
-        var rp = byId(top.getParent(), "right-panel");
-        if (tc != null) fillTC(tc, inv, bp, cd, st);
-        if (lc != null) fillLC(lc, inv, bp, st);
-        if (mp != null && rp != null) fillDetail(mp, rp, inv, bp, st);
+        var tc = byId(st.det, "type-toggle-container");
+        if (tc != null) fillTC(tc, bp, st);
+        if (st.lc != null) fillLC(st.lc, bp, st);
+        if (st.mp != null && st.rp != null) fillDetail(st.mp, st.rp, bp, st);
     }
 
     // ================================================================
@@ -195,30 +201,70 @@ public class ScreenArtifactEquip extends Screen {
 
     // ================================================================
     //  自动选中第一个物品
+    //  优先级：当前角色已穿戴 → 其他角色已穿戴 → 背包已激活 → 背包未激活
     // ================================================================
 
-    private static void autoSel(ArtifactInventory inv, Backpack bp, St st) {
+    private static void autoSel(Backpack bp, St st) {
         int si = ArtifactInventory.typeToSlot(st.type);
-        var eq = inv.getItem(si);
-        if (!eq.isEmpty()) { st.artifact = eq.copy(); st.invIdx = -1; return; }
 
+        // 1. 当前角色已穿戴
+        var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+        if (currentChar != null && currentChar.getData() != null) {
+            var currentInv = currentChar.getData().getArtifactInventory();
+            var eq = currentInv.getItem(si);
+            if (!eq.isEmpty()) {
+                st.selectedEnt = new Ent(eq.copy(), false, -1, true,
+                        st.currentCharUUID, st.characterTextureId, si);
+                return;
+            }
+        }
+
+        // 2. 其他角色已穿戴
+        for (var ch : st.attachment.getOwnedCharacters()) {
+            if (ch == null || ch.getData() == null) continue;
+            if (ch.getCharacterUUID() == st.currentCharUUID) continue;
+            var chInv = ch.getData().getArtifactInventory();
+            var chEq = chInv.getItem(si);
+            if (chEq.isEmpty()) continue;
+            if (!(chEq.getItem() instanceof ArtifactItem ai)) continue;
+            if (ai.getType() != st.type) continue;
+            st.selectedEnt = new Ent(chEq.copy(), false, -1, true,
+                    ch.getCharacterUUID(), ch.getTextureId(), si);
+            return;
+        }
+
+        // 3. 背包已激活
         var arr = bp.getCategoryList(Backpack.Category.ARTIFACTS);
         for (int i = 0; i < arr.size(); i++) {
             var s = arr.get(i);
             if (s.isEmpty()) continue;
             if (!(s.getItem() instanceof ArtifactItem ai)) continue;
             if (ai.getType() != st.type) continue;
-            st.artifact = s.copy(); st.invIdx = i; return;
+            var stats = s.getOrDefault(ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
+            if (stats.activated) {
+                st.selectedEnt = new Ent(s.copy(), true, i, true, -1, null, -1);
+                return;
+            }
         }
-        st.artifact = ItemStack.EMPTY; st.invIdx = -1;
+
+        // 4. 背包未激活
+        for (int i = 0; i < arr.size(); i++) {
+            var s = arr.get(i);
+            if (s.isEmpty()) continue;
+            if (!(s.getItem() instanceof ArtifactItem ai)) continue;
+            if (ai.getType() != st.type) continue;
+            st.selectedEnt = new Ent(s.copy(), true, i, false, -1, null, -1);
+            return;
+        }
+
+        st.selectedEnt = null;
     }
 
     // ================================================================
     //  填充类型切换按钮
     // ================================================================
 
-    private static void fillTC(UIElement c, ArtifactInventory inv, Backpack bp,
-                               PGCharacterData cd, St st) {
+    private static void fillTC(UIElement c, Backpack bp, St st) {
         c.clearAllChildren();
         for (int i = 0; i < TYPES.length; i++) {
             var t = TYPES[i];
@@ -227,15 +273,13 @@ public class ScreenArtifactEquip extends Screen {
             b.addClass("type-toggle-btn");
             if (t == st.type) b.addClass("type-toggle-active");
             b.setOnClick(e -> {
-                st.type = t; st.artifact = ItemStack.EMPTY; st.invIdx = -1;
-                st.sel = null; st.slot = ArtifactInventory.typeToSlot(t); st.scroll = 0f;
-                autoSel(inv, bp, st);
-                fillTC(c, inv, bp, cd, st);
-                var lc = byId(c.getParent().getParent(), "artifact-list-container");
-                if (lc != null) fillLC(lc, inv, bp, st);
-                var mp = byId(c.getParent().getParent(), "middle-panel");
-                var rp = byId(c.getParent().getParent(), "right-panel");
-                if (mp != null && rp != null) fillDetail(mp, rp, inv, bp, st);
+                st.type = t;
+                st.sel = null;
+                st.slot = ArtifactInventory.typeToSlot(t);
+                autoSel(bp, st);
+                fillTC(c, bp, st);
+                if (st.lc != null) fillLC(st.lc, bp, st);
+                if (st.mp != null && st.rp != null) fillDetail(st.mp, st.rp, bp, st);
             });
             c.addChild(b);
         }
@@ -244,44 +288,96 @@ public class ScreenArtifactEquip extends Screen {
 
     // ================================================================
     //  填充圣遗物列表
+    //  分组顺序：
+    //    1. 当前角色已穿戴（仅 1 个）
+    //    2. 其他角色已穿戴（按 ownedCharacters 顺序）
+    //    3. 背包未穿戴已激活（按排序规则）
+    //    4. 背包未穿戴未激活（按排序规则）
+    //  所有已穿戴项右上角叠加佩戴者头像。
     // ================================================================
 
-    private static void fillLC(UIElement c, ArtifactInventory inv, Backpack bp, St st) {
+    private static void fillLC(UIElement c, Backpack bp, St st) {
         c.clearAllChildren();
         st.sel = null;
 
         int si = ArtifactInventory.typeToSlot(st.type);
-        var eq = inv.getItem(si);
         var list = new ArrayList<Ent>();
-        if (!eq.isEmpty()) list.add(new Ent(eq.copy(), true, -1));
 
+        // 1. 当前角色已穿戴
+        var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+        if (currentChar != null && currentChar.getData() != null) {
+            var currentInv = currentChar.getData().getArtifactInventory();
+            var currentEq = currentInv.getItem(si);
+            if (!currentEq.isEmpty()) {
+                list.add(new Ent(currentEq.copy(), false, -1, true,
+                        st.currentCharUUID, st.characterTextureId, si));
+            }
+        }
+
+        // 2. 其他角色已穿戴
+        for (var ch : st.attachment.getOwnedCharacters()) {
+            if (ch == null || ch.getData() == null) continue;
+            if (ch.getCharacterUUID() == st.currentCharUUID) continue;
+            var chInv = ch.getData().getArtifactInventory();
+            var chEq = chInv.getItem(si);
+            if (chEq.isEmpty()) continue;
+            if (!(chEq.getItem() instanceof ArtifactItem ai)) continue;
+            if (ai.getType() != st.type) continue;
+            list.add(new Ent(chEq.copy(), false, -1, true,
+                    ch.getCharacterUUID(), ch.getTextureId(), si));
+        }
+
+        // 3+4. 背包内未穿戴
         var arr = bp.getCategoryList(Backpack.Category.ARTIFACTS);
+        var activatedList = new ArrayList<Ent>();
+        var inactivatedList = new ArrayList<Ent>();
         for (int i = 0; i < arr.size(); i++) {
             var s = arr.get(i);
             if (s.isEmpty()) continue;
             if (!(s.getItem() instanceof ArtifactItem ai)) continue;
             if (ai.getType() != st.type) continue;
-            list.add(new Ent(s.copy(), false, i));
+            var stats = s.getOrDefault(ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
+            if (stats.activated) activatedList.add(new Ent(s.copy(), true, i, true, -1, null, -1));
+            else inactivatedList.add(new Ent(s.copy(), true, i, false, -1, null, -1));
         }
+        activatedList.sort((a, b) -> compareEntries(a.s, b.s));
+        inactivatedList.sort((a, b) -> compareEntries(a.s, b.s));
+        list.addAll(activatedList);
+        list.addAll(inactivatedList);
 
         for (int i = 0; i < list.size(); i++) {
             var e = list.get(i);
             var el = new UIElement().addClass("artifact-list-item");
             el.style(x -> x.background(SpriteTexture.of(tex(e.s))));
+            if (!e.activated) el.addClass("artifact-list-inactivated");
 
-            boolean sel = !st.artifact.isEmpty()
-                    ? ItemStack.isSameItemSameComponents(e.s, st.artifact)
-                    : e.eq;
-            if (sel) { el.style(x -> x.overlay(SpriteTexture.of(BORDER)));
-                        el.transform(t -> t.scale(1.1f)); st.sel = el; }
+            // 已穿戴的圣遗物：右上角叠加佩戴者头像
+            if (!e.fromBackpack && e.ownerTextureId != null) {
+                var avatar = new UIElement().addClass("artifact-avatar-overlay");
+                avatar.style(x -> x.background(SpriteTexture.of(
+                        "minegenshin:textures/character_avatar/hud/"
+                                + e.ownerTextureId + ".png")));
+                el.addChild(avatar);
+            }
+
+            boolean sel = isSelected(e, st);
+            if (sel) {
+                el.style(x -> x.overlay(SpriteTexture.of(BORDER)));
+                el.transform(t -> t.scale(1.1f));
+                st.sel = el;
+            }
 
             el.addEventListener(UIEvents.MOUSE_ENTER, ev -> {
-                if (st.sel != el) { el.style(x -> x.overlay(SpriteTexture.of(BORDER)));
-                                    el.transform(t -> t.scale(1.1f)); }
+                if (st.sel != el) {
+                    el.style(x -> x.overlay(SpriteTexture.of(BORDER)));
+                    el.transform(t -> t.scale(1.1f));
+                }
             });
             el.addEventListener(UIEvents.MOUSE_LEAVE, ev -> {
-                if (st.sel != el) { el.style(x -> x.overlay(null));
-                                    el.transform(t -> t.scale(1f)); }
+                if (st.sel != el) {
+                    el.style(x -> x.overlay(null));
+                    el.transform(t -> t.scale(1f));
+                }
             });
             el.addEventListener(UIEvents.MOUSE_DOWN, ev -> {
                 el.transform(t -> t.scale(1f));
@@ -295,12 +391,11 @@ public class ScreenArtifactEquip extends Screen {
                 st.sel = el;
                 el.style(x -> x.overlay(SpriteTexture.of(BORDER)));
                 el.transform(t -> t.scale(1.1f));
-                st.artifact = e.s.copy();
-                st.invIdx = e.eq ? -1 : e.idx;
+                st.selectedEnt = e;
 
-                var mp = byId(c.getParent().getParent().getParent(), "middle-panel");
-                var rp = byId(c.getParent().getParent().getParent(), "right-panel");
-                if (mp != null && rp != null) fillDetail(mp, rp, inv, bp, st);
+                if (st.mp != null && st.rp != null) {
+                    fillDetail(st.mp, st.rp, bp, st);
+                }
             });
 
             c.addChild(el);
@@ -308,39 +403,89 @@ public class ScreenArtifactEquip extends Screen {
         c.markAsInternal();
     }
 
+    /**
+     * 判断条目是否为当前选中项。
+     * 背包物品按 backpackIdx 判定；已穿戴按 ownerUUID + ownerSlot 判定。
+     */
+    private static boolean isSelected(Ent e, St st) {
+        if (st.selectedEnt == null) return false;
+        if (e.fromBackpack != st.selectedEnt.fromBackpack) return false;
+        if (e.fromBackpack) return e.backpackIdx == st.selectedEnt.backpackIdx;
+        return e.ownerUUID == st.selectedEnt.ownerUUID
+                && e.ownerSlot == st.selectedEnt.ownerSlot;
+    }
+
+    /**
+     * 单个圣遗物的组内比较器：
+     *   星级降序 → 等级降序 → 套装号升序 → 部位序
+     */
+    private static int compareEntries(ItemStack a, ItemStack b) {
+        if (!(a.getItem() instanceof ArtifactItem aa)) return 1;
+        if (!(b.getItem() instanceof ArtifactItem bb)) return -1;
+        int c = Integer.compare(bb.getStar(), aa.getStar());
+        if (c != 0) return c;
+        var sa = a.getOrDefault(ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
+        var sb = b.getOrDefault(ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
+        c = Integer.compare(sb.level, sa.level);
+        if (c != 0) return c;
+        int setIda = aa.getSet() != null && aa.getSet().get() != null ? aa.getSet().get().setId() : 999;
+        int setIdb = bb.getSet() != null && bb.getSet().get() != null ? bb.getSet().get().setId() : 999;
+        c = Integer.compare(setIda, setIdb);
+        if (c != 0) return c;
+        return Integer.compare(aa.getType().ordinal(), bb.getType().ordinal());
+    }
+
     // ================================================================
-    //  填充详情面板（大图标 + 属性 + 按钮）
+    //  填充详情面板
     // ================================================================
 
     private static void fillDetail(UIElement mp, UIElement rp,
-                                   ArtifactInventory inv, Backpack bp, St st) {
-        mp.clearAllChildren(); rp.clearAllChildren();
+                                   Backpack bp, St st) {
+        mp.clearAllChildren();
+        rp.clearAllChildren();
 
         int slot = st.slot;
         if (slot < 0 || slot >= 5) return;
 
-        var sel = st.artifact;
-        var eq = inv.getItem(slot);
-        var disp = !sel.isEmpty() ? sel : (!eq.isEmpty() ? eq : ItemStack.EMPTY);
-        boolean fromEq = !sel.isEmpty() ? st.invIdx < 0 : true;
-
-        if (disp.isEmpty()) {
+        var ent = st.selectedEnt;
+        if (ent == null || ent.s.isEmpty()) {
             rp.addChild(new Label().setText("该槽位无圣遗物").setId("info-empty"));
-            rp.markAsInternal(); return;
+            rp.markAsInternal();
+            return;
         }
+
+        ItemStack disp = ent.s;
 
         // 大图标
         var ic = new UIElement().addClass("artifact-detail-icon");
         ic.style(x -> x.background(SpriteTexture.of(tex(disp))));
-        ic.markAsInternal(); mp.addChild(ic); mp.markAsInternal();
+        ic.markAsInternal();
+        mp.addChild(ic);
+        mp.markAsInternal();
 
         if (!(disp.getItem() instanceof ArtifactItem ai)) return;
         var stats = disp.getOrDefault(ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
         int star = ai.getStar();
+        boolean activated = stats.activated;
 
         var info = new UIElement().setId("info-container");
         info.addChild(new Label().setText(disp.getHoverName()).addClass("info-name"));
         info.addChild(new Label().setText(Component.literal("★".repeat(star)).withStyle(ChatFormatting.GOLD)).addClass("info-star"));
+
+        if (!activated) {
+            info.addChild(new Label().setText(
+                    Component.literal("未激活（需要激活后才能穿戴）")
+                            .withStyle(ChatFormatting.RED)).addClass("info-inactivated"));
+        }
+
+        if (!ent.fromBackpack && ent.ownerTextureId != null) {
+            PGCharacter owner = st.attachment.getCharacterByUUID(ent.ownerUUID);
+            String ownerName = owner != null ? owner.getName().getString() : "?";
+            ChatFormatting color = (ent.ownerUUID == st.currentCharUUID) ? ChatFormatting.GOLD : ChatFormatting.AQUA;
+            info.addChild(new Label().setText(
+                    Component.literal("【已装备 · " + ownerName + "】").withStyle(color)).addClass("info-level"));
+        }
+
         info.addChild(new Label().setText(Component.literal("等级: +"+stats.level).withStyle(ChatFormatting.GRAY)).addClass("info-level"));
         long ex = stats.getExpToNextLevel(star);
         info.addChild(new Label().setText(
@@ -354,37 +499,99 @@ public class ScreenArtifactEquip extends Screen {
                     .withStyle(ss.isUnlocked()?ChatFormatting.GRAY:ChatFormatting.DARK_GRAY)).addClass("info-sub-stat"));
         }
 
-        // 按钮
+        // ============ 按钮 ============
         var bc = new UIElement().setId("button-container");
         var act = new Button();
         act.addClass("action-button");
-        if (fromEq) {
-            if (!eq.isEmpty()) {
-                act.setText("卸下");
-                var tu = eq.copy();
+
+        if (ent.fromBackpack) {
+            // ===== 来自背包 =====
+            if (!activated) {
+                // 未激活 → 按钮变为"激活"
+                act.setText("激活");
+                int ii = ent.backpackIdx;
                 act.setOnClick(e -> {
-                    NetworkManager.sendUnequipArtifactToServer(slot);
-                    inv.setItem(slot, ItemStack.EMPTY);
-                    bp.addItemToCategory(Backpack.Category.ARTIFACTS, tu);
-                    st.artifact = ItemStack.EMPTY; st.invIdx = -1;
-                    var lc = byId(mp.getParent(), "artifact-list-container");
-                    if (lc != null) fillLC(lc, inv, bp, st);
-                    fillDetail(mp, rp, inv, bp, st);
+                    NetworkManager.sendActivateArtifactToServer(ii);
+                    int globalSlot = getCategoryOffset(Backpack.Category.ARTIFACTS) + ii;
+                    ItemStack local = bp.getItem(globalSlot);
+                    if (!local.isEmpty() && local.getItem() instanceof ArtifactItem) {
+                        ArtifactItem.initializeArtifactStackIfNeeded(local);
+                        bp.setItem(globalSlot, local);
+                        // 保持选中：直接更新 selectedEnt 指向激活后的物品，
+                        // 不调用 autoSel（autoSel 会把选中跳到优先级最高的物品）。
+                        // 背包索引不变，因此 isSelected 依然能匹配到这个条目。
+                        st.selectedEnt = new Ent(local.copy(), true, ii, true, -1, null, -1);
+                    }
+                    if (st.lc != null) fillLC(st.lc, bp, st);
+                    fillDetail(mp, rp, bp, st);
                 });
-            } else act.setDisplay(false);
-        } else {
-            act.setText(eq.isEmpty()?"穿戴":"更换");
-            int ii = st.invIdx; var te = sel.copy();
+            } else {
+                // 已激活 → 穿戴 / 更换
+                boolean currentSlotEmpty = currentSlotIsEmpty(st);
+                act.setText(currentSlotEmpty ? "穿戴" : "更换");
+                int ii = ent.backpackIdx;
+                var te = disp.copy();
+                act.setOnClick(e -> {
+                    if (!ArtifactInventory.isValidForSlot(slot, te)) return;
+                    NetworkManager.sendEquipOrSwapArtifactToServer(slot, ii);
+                    var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+                    if (currentChar != null && currentChar.getData() != null) {
+                        var curInv = currentChar.getData().getArtifactInventory();
+                        var old = curInv.getItem(slot);
+                        bp.removeItemFromCategory(Backpack.Category.ARTIFACTS, ii);
+                        curInv.setItem(slot, te.copy());
+                        if (!old.isEmpty()) bp.addItemToCategory(Backpack.Category.ARTIFACTS, old.copy());
+                    }
+                    autoSel(bp, st);
+                    if (st.lc != null) fillLC(st.lc, bp, st);
+                    fillDetail(mp, rp, bp, st);
+                });
+            }
+        } else if (ent.ownerUUID == st.currentCharUUID) {
+            // ===== 当前角色已穿戴 → 卸下 =====
+            act.setText("卸下");
+            var tu = disp.copy();
             act.setOnClick(e -> {
-                NetworkManager.sendEquipOrSwapArtifactToServer(slot, ii);
-                var old = inv.getItem(slot);
-                bp.removeItemFromCategory(Backpack.Category.ARTIFACTS, ii);
-                inv.setItem(slot, te);
-                if (!old.isEmpty()) bp.addItemToCategory(Backpack.Category.ARTIFACTS, old.copy());
-                st.artifact = ItemStack.EMPTY; st.invIdx = -1;
-                var lc = byId(mp.getParent(), "artifact-list-container");
-                if (lc != null) fillLC(lc, inv, bp, st);
-                fillDetail(mp, rp, inv, bp, st);
+                NetworkManager.sendUnequipArtifactToServer(slot);
+                var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+                if (currentChar != null && currentChar.getData() != null) {
+                    var curInv = currentChar.getData().getArtifactInventory();
+                    curInv.setItem(slot, ItemStack.EMPTY);
+                }
+                bp.addItemToCategory(Backpack.Category.ARTIFACTS, tu);
+                autoSel(bp, st);
+                if (st.lc != null) fillLC(st.lc, bp, st);
+                fillDetail(mp, rp, bp, st);
+            });
+        } else {
+            // ===== 其他角色已穿戴 → 交换 =====
+            act.setText("更换");
+            int targetUUID = ent.ownerUUID;
+            act.setOnClick(e -> {
+                var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+                var targetChar = st.attachment.getCharacterByUUID(targetUUID);
+                if (currentChar == null || currentChar.getData() == null
+                        || targetChar == null || targetChar.getData() == null) return;
+                var curInv = currentChar.getData().getArtifactInventory();
+                var tgtInv = targetChar.getData().getArtifactInventory();
+
+                ItemStack a = curInv.getItem(slot);
+                ItemStack b = tgtInv.getItem(slot);
+
+                if (!ArtifactInventory.isValidForSlot(slot, b)) return;
+                if (!ArtifactInventory.isValidForSlot(slot, a)) return;
+
+                curInv.setItem(slot, b.copy());
+                tgtInv.setItem(slot, a.copy());
+
+                currentChar.recalculateDirtyArtifactSlots();
+                targetChar.recalculateDirtyArtifactSlots();
+
+                st.attachment.syncToServer();
+
+                autoSel(bp, st);
+                if (st.lc != null) fillLC(st.lc, bp, st);
+                fillDetail(mp, rp, bp, st);
             });
         }
 
@@ -392,10 +599,12 @@ public class ScreenArtifactEquip extends Screen {
         up.setText("升级");
         up.addClass("upgrade-button");
         up.setOnClick(e -> NetworkManager.sendArtifactLevelUpToServer(disp, 10000));
-        if (stats.level >= stats.getMaxLevel(star)) up.setDisplay(false);
+        if (!activated || stats.level >= stats.getMaxLevel(star)) up.setDisplay(false);
 
-        bc.addChildren(act, up); info.addChild(bc);
-        rp.addChild(info); rp.markAsInternal();
+        bc.addChildren(act, up);
+        info.addChild(bc);
+        rp.addChild(info);
+        rp.markAsInternal();
     }
 
     // ================================================================
@@ -408,6 +617,21 @@ public class ScreenArtifactEquip extends Screen {
         return null;
     }
 
+    private static int getCategoryOffset(Backpack.Category target) {
+        int offset = 0;
+        for (var category : Backpack.Category.values()) {
+            if (category == target) break;
+            offset += category.maxCapacity;
+        }
+        return offset;
+    }
+
+    /** 当前角色的 slot 槽位是否为空 */
+    private static boolean currentSlotIsEmpty(St st) {
+        var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+        if (currentChar == null || currentChar.getData() == null) return true;
+        return currentChar.getData().getArtifactInventory().getItem(st.slot).isEmpty();
+    }
     private static String tex(ItemStack s) {
         if (s.isEmpty()) return "minegenshin:textures/empty.png";
         var id = BuiltInRegistries.ITEM.getKey(s.getItem());
@@ -426,13 +650,37 @@ public class ScreenArtifactEquip extends Screen {
     //  内部数据类
     // ================================================================
 
+    /**
+     * 列表条目。
+     *
+     * s              物品堆
+     * fromBackpack   true 表示来自背包，false 表示来自某个角色的圣遗物栏
+     * backpackIdx    背包索引（仅 fromBackpack 时有效）
+     * activated      是否已激活
+     * ownerUUID      佩戴者角色 UUID（仅 !fromBackpack 时有效）
+     * ownerTextureId 佩戴者贴图 ID（仅 !fromBackpack 时有效）
+     * ownerSlot      佩戴者身上的部位索引（仅 !fromBackpack 时有效）
+     */
+    private record Ent(ItemStack s, boolean fromBackpack, int backpackIdx, boolean activated,
+                       int ownerUUID, String ownerTextureId, int ownerSlot) {}
+
     private static final class St {
-        int slot; ItemStack artifact; int invIdx;
-        ArtifactType type; UIElement sel; float scroll;
-        St(int s, ItemStack a, int i, ArtifactType t, UIElement e, float sc) {
-            slot=s; artifact=a; invIdx=i; type=t; sel=e; scroll=sc;
+        int slot;
+        ArtifactType type;
+        Ent selectedEnt;
+        UIElement sel;
+        UIElement top;
+        UIElement det;
+        UIElement lc;
+        UIElement mp;
+        UIElement rp;
+        String characterTextureId;
+        int currentCharUUID;
+        PlayerCharactersAttachment attachment;
+        ArtifactInventory inv;
+        St(int slot, ArtifactType type) {
+            this.slot = slot;
+            this.type = type;
         }
     }
-
-    private record Ent(ItemStack s, boolean eq, int idx) {}
 }

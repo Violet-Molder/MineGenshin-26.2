@@ -142,10 +142,10 @@ public class DamageIndicatorRenderer {
             if (indicator.isGradient()) {
                 // 挂 mask：wrapper 用垂直渐变压 mask，让顶层只在文字上半部分显示
                 topWrapper.addClass(CLASS_GRADIENT_WRAPPER);
-                topWrapper.style(s -> {
-                    s.clip(Clip.MASK)
-                            .mask(SpriteTexture.of(Minegenshin.id("textures/gui/damage_indicator_mask.png")));
-                });
+//                topWrapper.style(s -> {
+//                    s.clip(Clip.MASK)
+//                            .mask(SpriteTexture.of(Minegenshin.id("textures/gui/damage_indicator_mask.png")));
+//                });
             } else {
                 // 非渐变：顶层完全透明，避免叠影
                 topLabel.style(s -> s.opacity(0f));

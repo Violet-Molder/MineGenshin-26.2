@@ -1,0 +1,33 @@
+/* assets/minegenshin/lss/hud/mob_health_bar.lss */
+
+#mob_health_bar_root {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.mob-health-bar {
+    fill-direction: LEFT_TO_RIGHT;
+    interpolate: false;
+    layout-direction: ltr;
+}
+
+/* 正常血量（绿色基础纹理，无额外着色） */
+.mob-health-bar.normal .bar-icon {
+    background: sprite(minegenshin:textures/gui/short_character_hp_bar_green.png);
+}
+
+/* 低于 50%：橙色覆盖 */
+.mob-health-bar.low .bar-icon {
+    background: sprite(minegenshin:textures/gui/short_character_hp_bar_green.png) color(#FFAA00);
+}
+
+/* 低于 30%：红色覆盖 */
+.mob-health-bar.critical .bar-icon {
+    background: sprite(minegenshin:textures/gui/short_character_hp_bar_green.png) color(#FF3333);
+}
+
+/* 空槽背景，不参与着色 */
+.mob-health-bar .bar-container {
+    background: sprite(minegenshin:textures/gui/short_character_hp_green.png);
+}

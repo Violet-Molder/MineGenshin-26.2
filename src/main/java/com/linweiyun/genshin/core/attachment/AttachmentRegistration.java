@@ -60,11 +60,18 @@ public class AttachmentRegistration {
                             .copyOnDeath().build()
             );
 
-//    public static final Supplier<AttachmentType<GenshinBackpack>> GENSHIN_BACKPACK_ATTACHMENT =
-//            ATTACHMENTS.register(
-//                    "genshin_backpack",
-//                    () -> AttachmentType.serializable(GenshinBackpack::new).copyOnDeath().build()
-//            );
+    // 注册战斗计时器附件，默认值为 0，并配置为自动同步
+    public static final Supplier<AttachmentType<Integer>> COMBAT_TIMER = ATTACHMENTS.register(
+            "combat_timer",
+            () -> AttachmentType.builder(() -> 0)
+                    .serialize(Codec.INT.fieldOf("combat_timer")) // 可选：如果需要持久化保存
+                    .sync(StreamCodec.of(
+                            FriendlyByteBuf::writeInt,
+                            FriendlyByteBuf::readInt
+                    ))
+                    .copyOnDeath()
+                    .build()
+    );
 
     public static void register(IEventBus modEventBus) {
         ATTACHMENTS.register(modEventBus);

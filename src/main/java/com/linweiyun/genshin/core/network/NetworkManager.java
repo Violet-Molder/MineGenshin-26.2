@@ -470,6 +470,54 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("openCharacterInfoRPCPacket");
   }
 
+  @RPCPacket("activateArtifactRPCPacket")
+  public static void activateArtifactRPCPacket(RPCSender sender, int inventorySlotIndex) {
+    if (sender.isServer()) {
+      // 服务端 → 客户端的同步分支：服务端完成激活后，把结果同步回客户端
+      ClientHandler.activateArtifactClientHandler(inventorySlotIndex);
+    } else {
+      // 客户端 → 服务端：请求服务端权威执行激活
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
+      int globalSlot = getCategoryOffset(Backpack.Category.ARTIFACTS) + inventorySlotIndex;
+      ItemStack stack = backpack.getItem(globalSlot);
+      if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem)) return;
+
+      ArtifactStatsComponent stats = stack.getOrDefault(
+              ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
+      // 已激活的不重复激活
+      if (stats.activated) return;
+
+      // 抽取词条并标记为已激活
+      ArtifactItem.initializeArtifactStackIfNeeded(stack);
+      // 写回背包（持久化）
+      backpack.setItem(globalSlot, stack);
+
+      LOGGER.info("服务端激活圣遗物: 背包索引 {}", inventorySlotIndex);
+    }
+  }
+
+  public static void sendActivateArtifactToServer(int inventorySlotIndex) {
+    RPCPacketDistributor.rpcToServer("activateArtifactRPCPacket", inventorySlotIndex);
+  }
+
+  public static void sendActivateArtifactToPlayer(ServerPlayer player, int inventorySlotIndex) {
+    RPCPacketDistributor.rpcToPlayer(player, "activateArtifactRPCPacket", inventorySlotIndex);
+  }
+
+  /**
+   * 计算某分类在 Backpack 中的全局起始槽位索引。
+   * 与 BackpackMenu 里的同名方法保持一致。
+   */
+  private static int getCategoryOffset(Backpack.Category target) {
+    int offset = 0;
+    for (var category : Backpack.Category.values()) {
+      if (category == target) break;
+      offset += category.maxCapacity;
+    }
+    return offset;
+  }
+
   @RPCPacket("backpackTakeOutFromSlotRPCPacket")
   public static void backpackTakeOutFromSlotRPCPacket(RPCSender sender, int slotIndex) {
     if (sender.isServer()) {

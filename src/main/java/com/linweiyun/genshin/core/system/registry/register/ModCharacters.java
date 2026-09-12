@@ -24,8 +24,7 @@ public class ModCharacters {
 
     public static final DeferredHolder<PGCharacter, Arlecchino> ARLECCHINO = CHARACTERS.register("arlecchino", Arlecchino::new);
 
-    public static final DeferredHolder<PGCharacter, Columbina> COLUMBINA = CHARACTERS.register("columbina",
-            Columbina::new);
+    public static final DeferredHolder<PGCharacter, Columbina> COLUMBINA = CHARACTERS.register("columbina", Columbina::new);
 
     private static final Map<Integer, Supplier<PGCharacter>> FACTORIES = new LinkedHashMap<>();
 

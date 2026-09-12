@@ -7,7 +7,7 @@ custom-toggle {
   mark-background: rect(#477596);
 }
 
-custom-item-slot {
+item-slot {
   aspect-rate: 1;
 }
 
@@ -25,11 +25,13 @@ custom-item-slot {
 .backpack-slot {
   width: 7.14%;
   aspect-rate: 1.0;
+  clip: none;
 }
 
 #backpack_slot {
   width: 7.14%;
   aspect-rate: 1.0;
+  clip: none;
 }
 
 #root {
@@ -47,6 +49,7 @@ custom-item-slot {
   height: 100%;
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 #sidebar-panel {
@@ -72,6 +75,7 @@ custom-item-slot {
   align-items: center;
   justify-content: center;
 }
+
 #content-panel {
   background: rect(#949494, 0);
   width: 100%;
@@ -80,6 +84,7 @@ custom-item-slot {
   align-items: center;
   justify-content: center;
 }
+
 #backpack_container {
   background: rect(#9c9c9c, 0);
   width: 95%;
@@ -103,7 +108,6 @@ custom-item-slot {
   background: rect(#a8a8a8);
 }
 
-
 #icon-player-inventory-window {
   width: 40%;
   height: 100%;
@@ -112,21 +116,32 @@ custom-item-slot {
   background: rect(#a8a8a8);
 }
 
-/* ========== 图标模式 - 物品图标列表 ========== */
+/* ========== 图标模式 - 物品图标列表 ==========
+   布局计算：
+     容器可用宽度 = 100% - 2%（左 padding） - 2%（右 padding） = 96%
+     每行 8 个元素，共 7 个水平 gap，设元素宽 W、水平 gap G：8W + 7G = 96
+     取 G = 1.7%，则 W = 10.5125%，8×10.5125 + 7×1.7 = 84.1 + 11.9 = 96 ✓ 刚好填满
+     放大 1.1 倍后 1.1 × 10.5125 = 11.56375%，
+     相邻视觉间距 = 1.7 - 1.05125 = 0.649% > 0 ✓ 不重叠
+   水平间距 1.7%，垂直间距 2.5%。 */
 #icon-grid-container {
-  height: 100%;
   width: 100%;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
+  gap-column: 2%;
+  padding-all: 2%;
 }
 
+/* 单层图标：宽 10.5125% × 8 = 84.1% + 7 个 1.7% 水平 gap = 96%，正好填满容器内容区。
+   放大 1.1 倍后仍与相邻图标保持约 0.65% 的视觉间距，白框不重合。
+   过渡时长 0.25s，缩放由 Java 的 transform 驱动。 */
 .backpack-icon-item {
-  width: 12.5%;
+  width: 10.5125%;
   aspect-rate: 1;
-  transition: transform 0.05 ease;  /* 平滑过渡 */
+  clip: none;
+  transform-2d: scale(1.0);
+  transition: transform 0.25;
 }
 
 /* ========== 图标模式 - 详情面板 ========== */
@@ -140,6 +155,14 @@ custom-item-slot {
   background: rect(#111111);
 }
 
+/* 物品信息滚动区域：限制最大高度，为下方按钮区永久保留位置。
+   内容少时按内容高度显示，内容多时出现垂直滚动条。 */
+#detail-scroller {
+  width: 100%;
+  max-height: 80%;
+  flex-shrink: 0;
+}
+
 .detail-line {
   font-size: 12px;
   color: #ffffff;
@@ -150,6 +173,7 @@ custom-item-slot {
   height: 100%;
   flex-direction: row;
 }
+
 #mode-switch {
   position: absolute;
   top: 90%;
@@ -162,6 +186,7 @@ custom-item-slot {
   height: 100%;
   flex-direction: row;
 }
+
 #player_inventory_window {
   background: rect(#a8a8a8);
   width: 40%;
@@ -197,4 +222,43 @@ custom-item-slot {
   background: rect(#4a6a8a);
 }
 
+/* ========== 圣遗物专属控件（排序 + 整理）
+   放在图标/槽位模式切换器（#mode-switch）的左侧。 */
+#artifact-controls {
+  position: absolute;
+  top: 90%;
+  right: 12%;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  z-index: 10;
+}
 
+#artifact-sort-selector {
+  width: 80px;
+}
+
+#artifact-organize-button {
+  width: 50px;
+}
+
+/* ========== 已装备圣遗物视觉标记 ========== */
+
+.equipped-artifact {
+  /* 例如：加金色描边纹理 */
+}
+
+.equipped-slot {
+  border: 1px solid #FFD700;
+}
+
+/* 已装备圣遗物右上角的角色头像覆盖层 */
+.equipped-avatar-overlay {
+  position: absolute;
+  right: -12%;
+  top: -12%;
+  width: 45%;
+  aspect-rate: 1;
+  z-index: 5;
+  clip: none;
+}

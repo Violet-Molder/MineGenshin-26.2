@@ -17,6 +17,7 @@
   display: flex;
   padding-all: 8;
   gap-all: 4;
+  min-height: 0;
 }
 
 #top-section {
@@ -27,6 +28,7 @@
   align-items: center;
   padding-all: 10;
   background: sdf(#1a1a2ee0, 8);
+  flex-shrink: 0;
 }
 
 #artifact-slots-row {
@@ -54,7 +56,8 @@
 
 #detail-section {
   width: 100%;
-  flex-grow: 1;
+  flex: 1;
+  min-height: 0;
   flex-direction: row;
   display: flex;
   gap-all: 8;
@@ -65,12 +68,12 @@
 
 #left-panel {
   width: 35%;
-  height: 100%;
   flex-direction: column;
   display: flex;
   gap-all: 4;
   padding-all: 4;
   overflow: hidden;
+  min-height: 0;
 }
 
 #type-toggle-container {
@@ -97,24 +100,45 @@
 }
 
 #list-scroller-container {
+  flex: 1;
+  min-height: 0;
   flex-direction: row;
   display: flex;
-  flex-grow: 1;
   overflow: hidden;
 }
 
+/* ScrollerView 增加 1% 内边距作为内边框。
+   这会让内部可用宽度变为 98%，
+   list-container 在此基础上再做 1% padding → 最终内容区 = 98% × 98% = 96.04%。 */
+#artifact-list-scroller-view {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding-all: 1%;
+}
+
+/* ========== 圣遗物列表：每行固定 4 个 ==========
+   布局计算：
+     ScrollerView 内容区宽度 = 100% - 1%（左 padding） - 1%（右 padding） = 98%
+     list-container 内容区宽度 = 98% - 1%（左 padding） - 1%（右 padding） = 96.04%
+     每行 4 个元素，共 3 个水平 gap，设元素宽 W、水平 gap G：4W + 3G = 96.04
+     取 G = 3%，则 W = 21.76%，4×21.76 + 3×3 = 87.04 + 9 = 96.04 ✓ 刚好填满
+     放大 1.1 倍后 1.1 × 21.76 = 23.936%，
+     相邻视觉间距 = 3 - 2.176 = 0.824% > 0 ✓ 白框不重合 */
 #artifact-list-container {
   flex-direction: row;
   display: flex;
   flex-wrap: wrap;
-  gap-all: 4;
-  padding-all: 4;
+  gap-row: 3%;
+  gap-column: 3%;
+  padding-all: 1%;
   width: 100%;
   align-content: flex-start;
 }
 
+/* 单层图标：宽 21.76% × 4 = 87.04% + 3 个 3% 水平 gap = 96.04%，正好填满容器内容区。 */
 .artifact-list-item {
-  width: 22%;
+  width: 21.76%;
   aspect-rate: 1.0f;
   flex-shrink: 0;
   border-radius: 6;
@@ -134,12 +158,29 @@
   border: 2px #ffffffcc;
 }
 
+/* 未激活的圣遗物：视觉上做区分 */
+.artifact-list-inactivated {
+  opacity: 0.6;
+  border: 1px #aa3333aa;
+}
+
+/* 已穿戴圣遗物列表项右上角的角色头像覆盖层 */
+.artifact-avatar-overlay {
+  position: absolute;
+  right: -8%;
+  top: -8%;
+  width: 40%;
+  aspect-rate: 1;
+  z-index: 5;
+  clip: none;
+}
+
 #middle-panel {
   width: 20%;
-  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
+  min-height: 0;
 }
 
 .artifact-detail-icon {
@@ -150,12 +191,12 @@
 
 #right-panel {
   width: 40%;
-  height: 100%;
   flex-direction: column;
   display: flex;
   padding-all: 8;
   gap-all: 4;
   overflow: hidden;
+  min-height: 0;
 }
 
 #info-container {
@@ -189,6 +230,12 @@
 
 .info-sub-stat {
   font-size: 11;
+}
+
+.info-inactivated {
+  color: #ff5555;
+  font-size: 12;
+  font-weight: bold;
 }
 
 #info-empty {

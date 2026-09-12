@@ -2,65 +2,85 @@
 
 ---
 
-## v0.4.0 — 2026-09-10
+## v0.4.0 — 2026-09-11
 
-### 新角色：Arlecchino / Columbina
+### 伤害飘字系统（全新）
 
-#### Arlecchino（阿蕾奇诺）
+引入完整的屏幕空间伤害飘字系统，在实体受伤时显示浮动数字/反应名称/自定义文本。采用**服务端 → 客户端 RPC 单向下发**架构，客户端通过 LDLib2 的 `ModularHudLayer` 渲染。
 
-- 火元素长柄武器角色
-- E 技能：前冲 + 召唤火焰领域（TalismanSpiritArea）
-- Q 技能：全屏火焰伤害
+#### 五种飘字类型 + 三种颜色模式
 
-#### Columbina（哥伦比娅）
+| 类型 | Style 枚举 | 用途 |
+|------|-----------|------|
+| NORMAL | 普通伤害数字 | 伤害飘字 |
+| CRIT | 暴击伤害数字 | 暴击飘字，附加 `.crit` class |
+| REACTION | 元素反应名称 | "蒸发""融化"等反应名飘字 |
+| HEAL | 治疗数字 | 治疗量飘字 |
+| TEXT | 纯文本 | "免疫"等自定义消息 |
 
-- 法器角色，可切换冰/火双元素形态
-- E 技能触发元素切换与对应效果
-- Q 技能根据当前元素释放不同爆发
+| 颜色模式 | 说明 |
+|----------|------|
+| Default | 按元素/反应类型从 `damage-indicator.toml` 取色 |
+| Custom | 传入单个十六进制颜色 |
+| Gradient | 传入顶部+底部两个颜色，客户端垂直渐变 |
 
-### 超导反应
+#### 动画系统
 
-- `SuperConductReaction`：冰+雷触发，目标物理抗性降低40%，持续12秒
-- 反应倍率配置化：`genshin-reaction.toml`（蒸发/融化正向反向倍率、超导减抗值）
+- **缩放**：`startScale=6.2 → baseScale=2.2`，easeOutCubic 缓出曲线（`1-(1-t)³`）
+- **飞向落点**：200ms 内从攻击者与目标中间飞到目标上方落点
+- **上升**：整个生命周期匀速上升 `RISE_HEIGHT=0.23` 格
+- **淡出**：最后 300ms alpha 1→0
+- **REACTION 额外偏移**：反应名飘字额外抬高 +0.2 Y 轴，与伤害数字错开
+- **随机散布**：每次落点 ±0.275 格，避免连续命中数字重叠
 
-### Shenhe 战技重构
+#### 可配置参数（Options）
 
-- E 技能逻辑抽出至 `ShenheTalent.java`，分离长按/短按逻辑
-- 长按：前方攻击 + 召唤 TalismanSpiritArea
-- 短按：前方范围攻击
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `baseScale` | `2.2` | 稳定后基础大小 |
+| `startScale` | `6.2` | 出场瞬间大小 |
+| `durationMs` | `950` | 总持续时间（毫秒） |
 
-### 冻结衰减状态
+#### 距离缩放
 
-- `FrozenDecayState`：冰冻状态消失时自动附加减速效果
+| 常量 | 值 | 说明 |
+|------|-----|------|
+| `NEAR_DISTANCE` | `4.0` | 此距离内保持原大小 |
+| `FAR_DISTANCE` | `32.0` | 此距离外缩至 `FAR_SCALE` |
+| `FAR_SCALE` | `0.25` | 远端缩放下限 |
+| `MAX_RENDER_DISTANCE` | `128.0` | 超过不绘制 |
+| `BROADCAST_RADIUS` | `48.0` | RPC 发送半径 |
 
-### 元素附着工具类
+#### 颜色配置
 
-- `ElementalAttachmentUtils` 抽取公共附着逻辑
-- `GlyphOfRadiant = true` 统一管理荧辉标记
+配置文件 `./config/minegenshin/damage-indicator.toml`，分两大组：
 
-### 导入导出工具
+- **元素伤害颜色**（8 项）：火/冰/水/风/雷/草/岩/物理，可自定义十六进制颜色
+- **元素反应颜色**（17 项）：融化、蒸发、碎冰、超导、扩散、感电、超载、燃烧、绽放、超绽放、烈绽放、原激化、超激化、蔓激化、冻结、结晶
 
-- `ImportExporter`：支持 `/genshin export/import <player>` 命令
-- 通过JSON文件导出/导入角色数据
+类元素（FROZEN/DENDRO_QUICKEN/BURNING）自动归并到主元素取色。
 
-### 按键绑定
+### 文件变动
 
-- `ModKeyBindings`：技能按键映射
+**新增**：
 
-### 伤害指示器
+| 文件 | 说明 |
+|------|------|
+| `core/system/combat/damage/DamageIndicatorFactory.java` | 飘字工厂，20+ 便捷方法统一入口 |
+| `config/DamageIndicatorConfig.java` | 元素色 + 反应色配置（8+17 项） |
+| `core/network/DamageIndicatorRpc.java` | 服务端→客户端 RPC 通道 |
+| `client/damage/DamageIndicator.java` | 客户端动画状态（位置/缩放/透明度） |
+| `client/damage/DamageIndicatorManager.java` | 活跃飘字列表管理 |
+| `client/damage/DamageIndicatorRenderer.java` | HUD 渲染（世界坐标→屏幕投影） |
+| `client/damage/ClientHudRegistration.java` | ModularHudLayer 注册 |
+| `resources/assets/minegenshin/lss/hud/damage_indicator.lss` | 飘字样式表（5 种 class） |
 
-- `DamageIndicatorManager`：客户端伤害数字显示
-- 各元素/反应伤害颜色可配置：`damage-indicator.toml`
+**修改**：
 
-### 状态系统扩展
-
-- 侵蚀效果（`ErodeHealEffect`）：持有效果期间无法通过常规手段治疗
-- 附着攻击效果（`AttachedAttackEffect`）：状态记录附着攻击数据
-- `StatusContainer` 支持 ItemStack DataComponent 存储（武器元素附魔）
-
-### 怪物火抗 Mixin
-
-- `MagmaCubeResistanceMixin` / `BlazeResistanceMixin`：岩浆怪/烈焰人额外80%火抗
+| 文件 | 改动 |
+|------|------|
+| `core/system/combat/attack/HurtEntityHelper.java` | processPipeline 中调用 `DamageIndicatorFactory.damage()` |
+| `mixin/mixins/LivingEntityHurtMixin.java` | 受伤后触发飘字生成 |
 
 ---
 
@@ -194,8 +214,6 @@
 | `core/system/registry/register/ModAttributes.java` | 修正 CR/ER/CDG/HB 属性 ID |
 | `core/character/PGCharacterData.java` | 新增 5 个圣遗物槽位 |
 | `client/gui/screens/ScreenCharacterInfo.java` | 新增圣遗物槽位显示 |
-
----
 
 ## v0.2.0 — 2026-09-04
 

@@ -48,11 +48,13 @@ public class ArtifactItem extends TeyvatItem {
                 ModDataComponents.ARTIFACT_STATS.get(),
                 ArtifactStatsComponent.DEFAULT
         );
-        //TEMP mainStat 为 null 说明是未初始化的默认值，才生成随机属性
-        if (!stats.mainStat.isInitialized()) {
+        // 只有未激活的圣遗物才进行抽取；已激活的圣遗物不再重置词条。
+        // 用 activated 判定替代原来的 mainStat.isInitialized() 判定，
+        // 这样在数据上明确表达"已激活"这个语义。
+        if (!stats.activated) {
             ArtifactStatsComponent generated = buildInitialStats(artifact.getStar(), artifact.getType());
+            generated.activated = true;
             stack.set(ModDataComponents.ARTIFACT_STATS.get(), generated);
-//            LOGGER.info("Initialized artifact stats for stack: {}", stack);
         }
     }
     protected static ArtifactStatsComponent buildInitialStats(int star, ArtifactType type) {
@@ -139,6 +141,26 @@ public class ArtifactItem extends TeyvatItem {
             case 2 -> ChatFormatting.WHITE;
             default -> ChatFormatting.GRAY;
         };
+    }
+
+    /**
+     * 获取圣遗物 UID。
+     *
+     * 格式：31TIII
+     *   3    固定前缀，表示属于“圣遗物类”UID
+     *   1    表示这是“圣遗物物品”（区别于套装的 2）
+     *   T    部位编号：1=生之花，2=死之羽，3=时之沙，4=空之杯，5=理之冠
+     *   III  套装编号，例如魔女套为 001
+     *
+     * 例如：魔女套生之花 = 311001，魔女套死之羽 = 312001，
+     * 魔女套时之沙 = 313001，魔女套空之杯 = 314001，魔女套理之冠 = 315001。
+     *
+     * @return 圣遗物 UID；若数据不完整则返回 0
+     */
+    public int getUID() {
+        if (set == null || set.get() == null || type == null) return 0;
+        int typeDigit = type.ordinal() + 1;     // FLOWER=1, PLUME=2, SANDS=3, GOBLET=4, CIRCLET=5
+        return 310000 + typeDigit * 1000 + set.get().setId();
     }
 
     public ArtifactType getType() {return type;}

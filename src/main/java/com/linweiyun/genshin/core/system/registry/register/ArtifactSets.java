@@ -13,7 +13,7 @@ public class ArtifactSets {
     public static final DeferredRegister<ArtifactSet> ARTIFACT_SET = ModRegistries.ARTIFACT_SETS;
 
     public static final DeferredHolder<ArtifactSet, ArtifactSet> CRIMSON_WITCH =
-            ARTIFACT_SET.register("crimson_witch", () -> new ArtifactSet(ModCharacterEffects.CRIMSON_WITCH2_EFFECT, ModCharacterEffects.CRIMSON_WITCH4_EFFECT, true));
+            ARTIFACT_SET.register("crimson_witch", () -> new ArtifactSet(1,ModCharacterEffects.CRIMSON_WITCH2_EFFECT, ModCharacterEffects.CRIMSON_WITCH4_EFFECT,true ,true));
 
 
     public static void register(IEventBus eventBus) {

@@ -1,12 +1,15 @@
 package com.linweiyun.genshin.core.network;
 
+import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.TagValueInput;
 
 public class ClientHandler {
@@ -116,6 +119,27 @@ public class ClientHandler {
     // ========== 圣遗物卸下 ==========
     public static void unequipArtifactClientHandler(int artifactSlotIndex) {
         // 客户端不需要额外处理，数据通过 PlayerCharactersAttachment 同步回来
+    }
+
+    /**
+     * 客户端处理服务端激活同步：
+     * 更新本地背包中指定索引的圣遗物数据。
+     */
+    public static void activateArtifactClientHandler(int inventorySlotIndex) {
+        var player = net.minecraft.client.Minecraft.getInstance().player;
+        if (player == null) return;
+        Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
+        int globalSlot = 0;
+        for (var category : Backpack.Category.values()) {
+            if (category == Backpack.Category.ARTIFACTS) break;
+            globalSlot += category.maxCapacity;
+        }
+        globalSlot += inventorySlotIndex;
+        ItemStack stack = backpack.getItem(globalSlot);
+        if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem)) return;
+        // 本地补一次激活（与服务端结果一致），UI 下次刷新时即显示激活后的数据
+        ArtifactItem.initializeArtifactStackIfNeeded(stack);
+        backpack.setItem(globalSlot, stack);
     }
 
 //    // ========== 原神背包同步（服务端→客户端） ==========

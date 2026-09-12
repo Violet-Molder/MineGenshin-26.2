@@ -48,11 +48,8 @@ public class LivingEntityHurtMixin {
     @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
     private void onLivingEntityHurtServer(ServerLevel level, DamageSource source, float damage,
                                           CallbackInfoReturnable<Boolean> cir) {
-        LOGGER.info("[DI-Mixin] hurtServer called. source={} damage={}",
-                source == null ? "null" : source.getClass().getName(), damage);
 
         if (!(source instanceof ModDamageSource modSource)) {
-            LOGGER.info("[DI-Mixin] not a ModDamageSource, returning");
             return;
         }
 
@@ -63,12 +60,8 @@ public class LivingEntityHurtMixin {
         float finalDamage = HurtEntityHelper.calculateFinalModDamage(
                 modSource, attackerCharacter, target);
 
-        LOGGER.info("[DI-Mixin] target={} finalDamage={} element={}",
-                target.getName().getString(), finalDamage, element);
-
         DamageContainer container = new DamageContainer(source, finalDamage);
         if (CommonHooks.onEntityIncomingDamage(target, container)) {
-            LOGGER.info("[DI-Mixin] damage cancelled by onEntityIncomingDamage");
             cir.setReturnValue(false);
             return;
         }
@@ -79,7 +72,6 @@ public class LivingEntityHurtMixin {
                     player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter current = attachment.getCurrentCharacter();
             if (current != null) {
-                //AI hurt() 内部已处理倒下逻辑，不再需要外部手动调用 incapacitate()
                 current.hurt(finalDamage);
             }
         } else {
