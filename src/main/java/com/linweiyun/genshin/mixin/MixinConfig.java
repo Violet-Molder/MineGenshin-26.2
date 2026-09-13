@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class MixinConfig implements IMixinConfigPlugin {
 
-    private static final String TEYVAT_INTERFACE = "com/linweiyun/genshin/content/entities/teyvat/TeyvatLivingEntity";
+    private static final String TEYVAT_INTERFACE = "com/linweiyun/genshin/content/entities/teyvat/TeyvatLiving";
 
     @Override public void onLoad(String mixinPackage) {}
     @Override public String getRefMapperConfig() { return null; }

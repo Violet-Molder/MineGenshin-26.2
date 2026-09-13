@@ -33,6 +33,9 @@ public class DamageContainerMixin implements IDamageSourceModifier {
     @Unique
     private DamageSource modifiedSource;
 
+    /**
+     * @param newSource 替换用的伤害源（通常是内嵌了DamageSpec的ModDamageSource）
+     */
     @Override
     public void setModifiedSource(DamageSource newSource) {
         this.modifiedSource = newSource;

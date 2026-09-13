@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.attachment;
 
 import com.linweiyun.genshin.Minegenshin;
+import com.linweiyun.genshin.content.entities.teyvat.TeyvatEntityStats;
 import com.mojang.serialization.Codec;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -60,15 +61,11 @@ public class AttachmentRegistration {
                             .copyOnDeath().build()
             );
 
-    // 注册战斗计时器附件，默认值为 0，并配置为自动同步
-    public static final Supplier<AttachmentType<Integer>> COMBAT_TIMER = ATTACHMENTS.register(
-            "combat_timer",
-            () -> AttachmentType.builder(() -> 0)
-                    .serialize(Codec.INT.fieldOf("combat_timer")) // 可选：如果需要持久化保存
-                    .sync(StreamCodec.of(
-                            FriendlyByteBuf::writeInt,
-                            FriendlyByteBuf::readInt
-                    ))
+    public static final Supplier<AttachmentType<TeyvatEntityStats>> ENTITY_STATS = ATTACHMENTS.register(
+            "entity_stats",
+            () -> AttachmentType.builder(() -> TeyvatEntityStats.DEFAULT)
+                    .serialize(TeyvatEntityStats.CODEC.fieldOf("entity_stats"))
+                    .sync(TeyvatEntityStats.STREAM_CODEC)
                     .copyOnDeath()
                     .build()
     );

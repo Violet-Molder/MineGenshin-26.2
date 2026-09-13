@@ -1,9 +1,9 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
+import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.ElementalsGIM;
-import com.linweiyun.genshin.mixin.interfaces.IMonsterLevel;
 import net.minecraft.client.model.animal.fish.PufferfishBigModel;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -11,15 +11,15 @@ import net.minecraft.world.entity.LivingEntity;
  * 统一从攻击方 / 被攻击方身上获取等级、防御、元素抗性。
  * 来源优先级：
  *   1. PGCharacter     → 角色数据里读
- *   2. IMonsterLevel   → Mixin 注入的怪物数据（外部怪物才有）
+ *   2. TeyvatLiving    → Mixin 注入的实体数据
  *   3. 默认值兜底
  */
 public final class CombatEntityAccessor {
     private CombatEntityAccessor() {}
 
-    /** TeyvatLivingEntity 和普通 LivingEntity 的默认等级 */
+    /** ITeyvatEntity 和普通 LivingEntity 的默认等级 */
     private static final int DEFAULT_MOB_LEVEL = 10;
-    /** TeyvatLivingEntity 和普通 LivingEntity 的默认元素抗性 10% */
+    /** ITeyvatEntity 和普通 LivingEntity 的默认元素抗性 10% */
     private static final float DEFAULT_MOB_RESISTANCE = 0.10f;
 
     // ==================== 等级 ====================
@@ -31,8 +31,8 @@ public final class CombatEntityAccessor {
         if (attackerCharacter != null) {
             return attackerCharacter.getData().getLevel();
         }
-        if (attacker instanceof IMonsterLevel ml && ml.genshin$getMonsterLevel() > 0) {
-            return ml.genshin$getMonsterLevel();
+        if (attacker instanceof TeyvatLiving ml && ml.getMonsterLevel() > 0) {
+            return ml.getMonsterLevel();
         }
         return DEFAULT_MOB_LEVEL;
     }
@@ -44,8 +44,8 @@ public final class CombatEntityAccessor {
         if (defenderCharacter != null) {
             return defenderCharacter.getData().getLevel();
         }
-        if (defender instanceof IMonsterLevel ml && ml.genshin$getMonsterLevel() > 0) {
-            return ml.genshin$getMonsterLevel();
+        if (defender instanceof TeyvatLiving ml && ml.getMonsterLevel() > 0) {
+            return ml.getMonsterLevel();
         }
         return DEFAULT_MOB_LEVEL;
     }
@@ -60,14 +60,14 @@ public final class CombatEntityAccessor {
     /**
      * 获取被攻击方防御力
      * PGCharacter → 角色 DEF 属性
-     * TeyvatLivingEntity / 普通 LivingEntity → 怪物防御力 = 等级系数 = level×500+500
+     * TeyvatLiving / 普通 LivingEntity → 怪物防御力 = 等级系数 = level×500+500
      */
     public static double getDefenderDefense(LivingEntity defender, PGCharacter defenderCharacter) {
         if (defenderCharacter != null) {
             return defenderCharacter.getData().getAttributeTotalValue(ModAttributes.DEF.value());
         }
-        if (defender instanceof IMonsterLevel ml && ml.genshin$getMonsterLevel() > 0) {
-            return ml.genshin$getDefense();
+        if (defender instanceof TeyvatLiving ml && ml.getMonsterLevel() > 0) {
+            return ml.getDefense();
         }
         return CombatMath.levelCoefficient(DEFAULT_MOB_LEVEL);
     }
@@ -99,8 +99,8 @@ public final class CombatEntityAccessor {
         if (defenderCharacter != null) {
             return getElementResistanceFromCharacter(defenderCharacter, element);
         }
-        if (defender instanceof IMonsterLevel ml) {
-            return ml.genshin$getElementResistance(element);
+        if (defender instanceof TeyvatLiving ml) {
+            return ml.getElementResistance(element);
         }
         return DEFAULT_MOB_RESISTANCE;
     }
@@ -125,8 +125,8 @@ public final class CombatEntityAccessor {
         if (defenderCharacter != null) {
             return (float) defenderCharacter.getData().getAttributeTotalValue(ModAttributes.PHYSICAL_RES.value());
         }
-        if (defender instanceof IMonsterLevel ml) {
-            return ml.genshin$getPhysicalResistance();
+        if (defender instanceof TeyvatLiving ml) {
+            return ml.getPhysicalResistance();
         }
         return DEFAULT_MOB_RESISTANCE;
     }
