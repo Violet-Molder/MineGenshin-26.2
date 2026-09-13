@@ -12,6 +12,7 @@ import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
@@ -61,6 +62,8 @@ public class LivingEntityHurtMixin {
         if (!(source instanceof ModDamageSource modSource)) {
             return;
         }
+
+        if (!TeyvatWorldInvasion.get(level).isInvaded()) return;
 
         LivingEntity target = (LivingEntity) (Object) this;
         ModDamageSpec spec = modSource.getSpec();

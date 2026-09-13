@@ -2,6 +2,7 @@ package com.linweiyun.genshin.event.client;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -44,6 +45,7 @@ public class BackpackScreenRenderEvent {
             int screenWidth,
             int screenHeight) {
         if (player == null) return;
+        if (!TeyvatWorldInvasion.isClientInvaded()) return;
         int primogemCount = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
         int x;
         int y;

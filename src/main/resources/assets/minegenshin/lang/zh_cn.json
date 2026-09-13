@@ -176,7 +176,9 @@
   "key.minegenshin.x_element_skill": "元素战技",
   "key.minegenshin.o_character_party": "编队页面",
   "key.minegenshin.r_wish": "祈愿",
-  "button.tutorial.one": "一"
+  "button.tutorial.one": "一",
+
+  "item.minegenshin.dark_fragment": "漆黑碎片"
 
 
 }

@@ -5,6 +5,8 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -17,6 +19,7 @@ public class PlayerDeathCloneEvent {
     public static void onClone(PlayerEvent.Clone event) {
         if (!event.isWasDeath()) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (player.level() instanceof ServerLevel sl && !TeyvatWorldInvasion.get(sl).isInvaded()) return;
 
         var original = event.getOriginal();
         var entity = event.getEntity();

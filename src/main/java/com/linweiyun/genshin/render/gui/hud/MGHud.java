@@ -10,6 +10,7 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
@@ -53,6 +54,7 @@ public class MGHud {
                                         () -> {
                                             var player = Minecraft.getInstance().player;
                                             if (player == null) return false;
+                                            if (!TeyvatWorldInvasion.isClientInvaded()) return false;
                                             boolean isGenShin = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
                                             return isGenShin;
                                         }))

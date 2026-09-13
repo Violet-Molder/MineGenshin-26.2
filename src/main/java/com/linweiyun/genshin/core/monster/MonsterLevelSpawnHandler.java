@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.monster;
 
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.monster.Monster;
@@ -17,6 +18,7 @@ public class MonsterLevelSpawnHandler {
     public static void onFinalizeSpawn(FinalizeSpawnEvent event) {
         if (event.getLevel().isClientSide()) return;
         if (!(event.getLevel() instanceof ServerLevel serverLevel)) return;
+        if (!TeyvatWorldInvasion.get(serverLevel).isInvaded()) return;
         if (!(event.getEntity() instanceof Monster monster)) return;
         if (!(monster instanceof TeyvatLiving monsterLevel)) return;
         if (monsterLevel.getMonsterLevel() != 0) return;

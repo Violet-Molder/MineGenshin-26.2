@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.ProblemReporter;
@@ -153,6 +154,10 @@ public class ClientHandler {
 //                    ProblemReporter.DISCARDING, mc.player.registryAccess(), data));
 //            backpack.setSuppressDirty(false);
 //            backpack.clearDirty();
-//        }
+//            }
 //    }
+
+    public static void invasionStatusClientHandler(boolean invaded) {
+        TeyvatWorldInvasion.setClientInvaded(invaded);
+    }
 }

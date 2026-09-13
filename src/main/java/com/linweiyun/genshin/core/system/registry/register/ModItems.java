@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.Minegenshin;
+import com.linweiyun.genshin.content.items.DarkFragment;
 import com.linweiyun.genshin.content.items.artifact.crimson_witch.*;
 import com.linweiyun.genshin.content.items.preicous.ItemPrimogem;
 import com.linweiyun.genshin.core.system.registry.RegistryHelper;
@@ -27,6 +28,9 @@ public class ModItems {
           RegistryHelper.registerOrdinaryItem("crimson_goblet", CrimsonGoblet::new);
   public static final Supplier<CrimsonCirclet> CRIMSON_CIRCLET =
           RegistryHelper.registerOrdinaryItem("crimson_circlet", CrimsonCirclet::new);
+
+  public static final Supplier<DarkFragment> DARK_FRAGMENT =
+          RegistryHelper.registerOrdinaryItem("dark_fragment", DarkFragment::new);
 
   public static void register(IEventBus modEventBus) {
     ITEMS.register(modEventBus);
