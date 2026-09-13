@@ -5,6 +5,7 @@ import com.linweiyun.genshin.content.entities.teyvat.monster.TeyvatMonster;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -22,6 +23,7 @@ public class PlayerHurtInterceptor {
                                       CallbackInfo ci) {
         Player player = (Player) (Object) this;
         if (!player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT)) return;
+        if (!TeyvatWorldInvasion.get(level).isInvaded()) return;
         if (source instanceof com.linweiyun.genshin.core.system.combat.damage.ModDamageSource) return;
 
         Entity attacker = source.getEntity();

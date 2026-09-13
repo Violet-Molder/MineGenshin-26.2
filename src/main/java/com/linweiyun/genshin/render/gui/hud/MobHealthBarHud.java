@@ -12,6 +12,7 @@ import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.about.FrozenDecayState;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.logging.LogUtils;
@@ -89,6 +90,7 @@ public class MobHealthBarHud {
     public static void onSubmitCustomGeometry(SubmitCustomGeometryEvent event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
+        if (!TeyvatWorldInvasion.isClientInvaded()) return;
 
         SubmitNodeCollector collector = event.getSubmitNodeCollector();
         PoseStack poseStack = event.getPoseStack();

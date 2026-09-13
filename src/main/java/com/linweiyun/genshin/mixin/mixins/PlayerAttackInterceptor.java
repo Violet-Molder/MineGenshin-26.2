@@ -7,6 +7,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.linweiyun.genshin.enums.AttackType;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -24,6 +25,7 @@ public class PlayerAttackInterceptor {
         Player player = (Player) (Object) this;
 
         if (!(target instanceof LivingEntity livingTarget)) return;
+        if (!(player.level() instanceof ServerLevel sl) || !TeyvatWorldInvasion.get(sl).isInvaded()) return;
         boolean isGenshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
         if (!isGenshinMode) return;
 

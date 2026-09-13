@@ -10,9 +10,9 @@
 #window {
   background: sdf(#cc333333, 8);
   width: 300;
-  height: 360;
-  padding-all: 16;
-  gap-all: 10;
+  height: auto;
+  padding-all: 12;
+  gap-all: 6;
   flex-direction: column;
 }
 
@@ -20,13 +20,13 @@
   font-size: 20;
   color: #FFD700;
   text-align: center;
-  height: 30;
+  height: 24;
 }
 
 #adv-info-container {
   background: sdf(#44333333, 4);
-  padding-all: 10;
-  gap-all: 6;
+  padding-all: 8;
+  gap-all: 4;
   flex-direction: column;
 }
 
@@ -61,8 +61,8 @@
 
 #char-info-container {
   background: sdf(#44333333, 4);
-  padding-all: 10;
-  gap-all: 6;
+  padding-all: 8;
+  gap-all: 4;
   flex-direction: column;
 }
 

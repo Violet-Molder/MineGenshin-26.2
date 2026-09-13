@@ -10,6 +10,8 @@ import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -23,6 +25,7 @@ public class PlayerPickupEvent {
     public static void onPickupXpOrb(PlayerXpEvent.XpChange event) {
         Player player = event.getEntity();
         if (!player.level().isClientSide()){
+            if (player.level() instanceof ServerLevel sl && !TeyvatWorldInvasion.get(sl).isInvaded()) return;
             boolean isGenshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
 
             if (isGenshinMode) {

@@ -673,4 +673,15 @@ public class NetworkManager {
   public static void sendRestoreWorldLevelToServer() {
     RPCPacketDistributor.rpcToServer("restoreWorldLevelRPCPacket");
   }
+
+  @RPCPacket("invasionStatusRPCPacket")
+  public static void invasionStatusRPCPacket(RPCSender sender, boolean invaded) {
+    if (sender.isServer()) {
+      ClientHandler.invasionStatusClientHandler(invaded);
+    }
+  }
+
+  public static void setInvasionStatusToPlayer(ServerPlayer player, boolean invaded) {
+    RPCPacketDistributor.rpcToPlayer(player, "invasionStatusRPCPacket", invaded);
+  }
 }

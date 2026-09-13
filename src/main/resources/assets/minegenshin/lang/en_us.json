@@ -185,7 +185,9 @@
   "key.minegenshin.x_element_skill": "Elemental Skill",
   "key.minegenshin.o_character_party": "Formation Page",
   "key.minegenshin.r_wish": "Wish",
-  "button.tutorial.one": "One"
+  "button.tutorial.one": "One",
+
+  "item.minegenshin.dark_fragment": "Dark Fragment"
 
 
 }

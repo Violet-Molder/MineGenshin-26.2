@@ -5,6 +5,7 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
@@ -26,6 +27,7 @@ public class KeyInputHandler {
     Player player = mc.player;
 
     if (player == null) return;
+    if (!TeyvatWorldInvasion.isClientInvaded()) return;
 
 
 
