@@ -93,7 +93,7 @@ public class KeyInputHandler {
       GUIServerHelperGIM.openBackpackScreen(player);
     }
     if (KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY_2.get().consumeClick()) {
-      GUIServerHelperGIM.openCharacterInfoScreen(player);
+      GUIServerHelperGIM.openAscensionScreen(player);
     }
   }
 

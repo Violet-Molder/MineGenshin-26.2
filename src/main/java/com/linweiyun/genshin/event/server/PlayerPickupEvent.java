@@ -1,11 +1,18 @@
 package com.linweiyun.genshin.event.server;
 
+import com.linweiyun.genshin.content.items.TeyvatItem;
+import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
+import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
+import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
+import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.ExperienceOrb;
+import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
@@ -24,8 +31,35 @@ public class PlayerPickupEvent {
                 PGCharacter character = attachment.getCurrentCharacter();
                 if (character == null) return;
                 character.addExp(amount);
+
+                AdventurerInfoAttachment advInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+                advInfo.addExp(amount);
+                advInfo.syncToPlayer((ServerPlayer) player);
+
+                PGCharacterData data = character.getData();
+                if (data != null) {
+                    ArtifactInventory inv = data.getArtifactInventory();
+                    addArtifactExp(data.getFlower(), ArtifactType.FLOWER, amount, inv);
+                    addArtifactExp(data.getPlume(), ArtifactType.PLUME, amount, inv);
+                    addArtifactExp(data.getSands(), ArtifactType.SANDS, amount, inv);
+                    addArtifactExp(data.getGoblet(), ArtifactType.GOBLET, amount, inv);
+                    addArtifactExp(data.getCirclet(), ArtifactType.CIRCLET, amount, inv);
+                }
             }
         }
+    }
 
+    private static void addArtifactExp(ItemStack stack, ArtifactType type, int amount, ArtifactInventory inv) {
+        if (stack.isEmpty()) return;
+        if (!(stack.getItem() instanceof TeyvatItem teyvatItem)) return;
+        int star = teyvatItem.getStar();
+        if (star <= 0) return;
+
+        ArtifactStatsComponent stats = stack.get(ModDataComponents.ARTIFACT_STATS);
+        if (stats == null) return;
+
+        int slot = ArtifactInventory.typeToSlot(type);
+        stats.setOnStatsChanged(() -> inv.markDirty(slot));
+        stats.addExp(amount, star, type);
     }
 }

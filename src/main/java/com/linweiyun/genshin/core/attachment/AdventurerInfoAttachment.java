@@ -134,9 +134,25 @@ public class AdventurerInfoAttachment implements IPersistedSerializable {
 
     public long getExpToNextRank() {
         if (adventureRank >= MAX_ADVENTURE_RANK) {
-            return 0;
+            return -1;
         }
         return EXP_TABLE[adventureRank];
+    }
+
+    public static long getPrecomputedTotalExpToMax() {
+        long total = 0;
+        for (int i = 1; i < MAX_ADVENTURE_RANK; i++) {
+            total += EXP_TABLE[i];
+        }
+        return total;
+    }
+
+    private long getTotalExpSpent() {
+        long spent = 0;
+        for (int i = 1; i < adventureRank; i++) {
+            spent += EXP_TABLE[i];
+        }
+        return spent;
     }
 
     public boolean isMaxRank() {
@@ -202,7 +218,17 @@ public class AdventurerInfoAttachment implements IPersistedSerializable {
         if (exp <= 0) {
             return;
         }
-        currentExp += exp;
+        if (isMaxRank()) {
+            return;
+        }
+        long constantTotal = getPrecomputedTotalExpToMax();
+        long totalExp = getTotalExpSpent() + currentExp;
+        long remaining = constantTotal - totalExp;
+        if (exp > remaining) {
+            currentExp += remaining;
+        } else {
+            currentExp += exp;
+        }
         tryAutoRankUp();
     }
 
@@ -258,9 +284,6 @@ public class AdventurerInfoAttachment implements IPersistedSerializable {
 
     public boolean canDowngradeWorldLevel() {
         if (breakthroughLevel < 5) {
-            return false;
-        }
-        if (breakthroughLevel >= 9) {
             return false;
         }
         return worldLevel == breakthroughLevel;

@@ -47,7 +47,9 @@ public class AttachmentRegistration {
 
     public static final Supplier<AttachmentType<StatusContainer>> CONTAINER =
             ATTACHMENTS.register("status_container",
-                    () -> AttachmentType.serializable(StatusContainer::new).copyOnDeath().build());
+                    () -> AttachmentType.serializable(StatusContainer::new)
+                            .sync(StatusContainer.STREAM_CODEC)
+                            .copyOnDeath().build());
 
     public static final Supplier<AttachmentType<AdventurerInfoAttachment>> ADVENTURER_INFO_ATTACHMENT =
             ATTACHMENTS.register("adventurer_info",

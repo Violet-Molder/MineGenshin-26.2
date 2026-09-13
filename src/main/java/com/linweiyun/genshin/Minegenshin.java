@@ -55,6 +55,8 @@ public class Minegenshin {
         ModCharacterEffects.register(modEventBus);
         ModMenus.register(modEventBus);
 
+        ModStatusInstanceTypes.register(modEventBus);
+
 
         PlayerUIMenuType.register(
                 Identifier.fromNamespaceAndPath("minegenshin", "backpack"),

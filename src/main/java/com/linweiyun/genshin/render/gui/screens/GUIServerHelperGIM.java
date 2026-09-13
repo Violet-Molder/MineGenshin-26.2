@@ -26,4 +26,8 @@ public class GUIServerHelperGIM {
   public static void openBackpackScreen(Player player) {
     NetworkManager.openBackpackMenuToServer();
   }
+
+  public static void openAscensionScreen(Player player) {
+    Minecraft.getInstance().setScreenAndShow(new ScreenAscension(player));
+  }
 }

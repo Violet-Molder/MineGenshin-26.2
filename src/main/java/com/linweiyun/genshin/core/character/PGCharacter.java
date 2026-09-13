@@ -326,7 +326,24 @@ public class PGCharacter implements IPersistedSerializable {
                 .collect(Collectors.toSet());
     }
     public void addExp(int amount) {
-        data.setCurrentExp(data.getCurrentExp() + amount);
+        if (data.getLevel() >= 90) {
+            return;
+        }
+        var expList = Config.CHARACTER_UP_EXP.get();
+        long totalMaxExp = 0;
+        for (int i = 0; i < 89; i++) {
+            totalMaxExp += expList.get(i);
+        }
+        long currentSpent = 0;
+        for (int i = 0; i < data.getLevel() - 1; i++) {
+            currentSpent += expList.get(i);
+        }
+        long remaining = totalMaxExp - currentSpent - data.getCurrentExp();
+        if (amount > remaining) {
+            data.setCurrentExp(data.getCurrentExp() + (int) remaining);
+        } else {
+            data.setCurrentExp(data.getCurrentExp() + amount);
+        }
         tryLevelUp();
     }
     public void tryLevelUp() {
@@ -374,25 +391,38 @@ public class PGCharacter implements IPersistedSerializable {
         data.setAscensionPhase(newPhase);
         int statIndex = maxLevelForPhase - 1 + newPhase;
         updateBaseStatsFromConfig(statIndex);
-        // 替代原来的 character.getATK().addExtraPercent(0.012f * (start + 1))
+
         int starRating = this.getStarRating();
         CharacterAscendAttribute ascendAttr = this.getAscendAttribute();
-
-        // 先移除旧的突破加成，再添加新的
-        data.removeAttributeModifier(getAscendAttributeType(ascendAttr), "ascension_bonus");
-
         AttributeType targetAttrType = getAscendAttributeType(ascendAttr);
-        switch (ascendAttr) {
-            case ATK, HP:
-                data.addAttributePercentModifier(targetAttrType, "ascension_bonus", 0.012f * (starRating + 1));
-                break;
-            case DEF:
-                data.addAttributePercentModifier(targetAttrType, "ascension_bonus", 0.015f * (starRating + 1));
-                break;
+
+        data.removeAttributeModifier(targetAttrType, "ascension_bonus");
+
+        int bonusCount = getAscensionBonusCount(newPhase);
+        if (bonusCount > 0) {
+            switch (ascendAttr) {
+                case ATK, HP:
+                    data.addAttributePercentModifier(targetAttrType, "ascension_bonus", 0.012f * (starRating + 1) * bonusCount);
+                    break;
+                case DEF:
+                    data.addAttributePercentModifier(targetAttrType, "ascension_bonus", 0.015f * (starRating + 1) * bonusCount);
+                    break;
+            }
         }
 
         // 突破后尝试继续升级
         tryLevelUp();
+    }
+
+    private static int getAscensionBonusCount(int phase) {
+        return switch (phase) {
+            case 0, 1 -> 0;
+            case 2 -> 1;
+            case 3, 4 -> 2;
+            case 5 -> 3;
+            case 6 -> 4;
+            default -> 0;
+        };
     }
 
     private AttributeType getAscendAttributeType(CharacterAscendAttribute ascendAttr) {

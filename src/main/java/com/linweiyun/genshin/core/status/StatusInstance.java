@@ -21,7 +21,7 @@ public class StatusInstance implements IPersistedSerializable {
 
     /** 序列化恢复用的类型标识，子类构造时设置 */
     @Persisted(key = "type_id")
-    protected String typeId;
+    protected String typeId = "";
 
     /** 序列化恢复用的类型标识，子类自己决定返回什么字符串 */
     public String getTypeId() { return typeId; }

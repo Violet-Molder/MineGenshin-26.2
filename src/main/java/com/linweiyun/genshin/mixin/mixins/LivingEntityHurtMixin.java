@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.mixin.mixins;
 
 import com.linweiyun.genshin.config.DamageIndicatorConfig;
+import com.linweiyun.genshin.content.entities.teyvat.NonTeyvatEntity;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
@@ -15,6 +16,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.damagesource.DamageContainer;
@@ -58,6 +60,11 @@ public class LivingEntityHurtMixin {
         ElementalsGIM element = spec.getElement();
         float finalDamage = HurtEntityHelper.calculateFinalModDamage(
                 modSource, attackerCharacter, target);
+
+        if (target instanceof NonTeyvatEntity && modSource.getEntity() instanceof Player player) {
+            float playerAttack = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+            finalDamage = finalDamage + playerAttack;
+        }
 
         DamageContainer container = new DamageContainer(source, finalDamage);
         if (CommonHooks.onEntityIncomingDamage(target, container)) {

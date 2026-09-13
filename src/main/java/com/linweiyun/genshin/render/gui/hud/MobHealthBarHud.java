@@ -5,8 +5,15 @@ import com.linweiyun.genshin.content.entities.teyvat.NonTeyvatEntity;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatFriendly;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatHostile;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.status.StatusInstance;
+import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
+import com.linweiyun.genshin.core.system.about.FrozenDecayState;
+import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.logging.LogUtils;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -26,12 +33,17 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import org.joml.Matrix4f;
+import org.slf4j.Logger;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 @EventBusSubscriber(value = Dist.CLIENT)
 public class MobHealthBarHud {
+
+    public static final Logger LOGGER = LogUtils.getLogger();
 
     private static final Identifier HP_BAR_BG_TEXTURE =
             Identifier.fromNamespaceAndPath("minegenshin", "textures/gui/short_character_hp_green.png");
@@ -52,11 +64,25 @@ public class MobHealthBarHud {
     private static final float LEVEL_TEXT_Y_BIG = 0.225f;
     private static final float LEVEL_TEXT_SCALE_BIG = 0.05f;
 
+    // 图标尺寸
+    private static final float ICON_SIZE = 0.30f;
+    private static final float ICON_SPACING = 0.04f;
+    private static final float ICON_PADDING = 0.02f;
+
+    // 字体行高（mc.font.lineHeight），用于计算文字顶部
+    private static final float FONT_LINE_HEIGHT = 9.0f;
+
+    // 图标闪烁：剩余衰减时间低于此阈值（秒）开始闪烁
+    private static final float BLINK_THRESHOLD_SECONDS = 2.0f;
+    // 闪烁周期（tick）
+    private static final long BLINK_PERIOD = 10L;
+
     private static final float RECENT_HIT_THRESHOLD = 0.8f;
 
     private static final float[] COLOR_HOSTILE = { 1.00f, 0.20f, 0.20f };
     private static final float[] COLOR_FRIENDLY = { 0.30f, 0.90f, 0.30f };
     private static final float[] COLOR_TRAIL = { 0.70f, 0.50f, 0.10f };
+
 
     @SubscribeEvent
     public static void onSubmitCustomGeometry(SubmitCustomGeometryEvent event) {
@@ -69,6 +95,9 @@ public class MobHealthBarHud {
         float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         Vec3 camPos = mc.gameRenderer.mainCamera().position();
 
+        long gameTime = mc.level.getGameTime();
+        boolean blinkVisible = (gameTime % BLINK_PERIOD) < (BLINK_PERIOD / 2);
+
         Set<Integer> activeIds = new HashSet<>();
 
         for (Entity entity : mc.level.entitiesForRendering()) {
@@ -77,22 +106,35 @@ public class MobHealthBarHud {
             if (living instanceof ITeyvatBoss) continue;
             if (!living.isAlive()) continue;
             if (!(living instanceof TeyvatLiving teyvat)) continue;
-            if (!teyvat.isInCombat()) continue;
+
+            // 元素附着独立于战斗状态
+            StatusContainer container = living.getData(AttachmentRegistration.CONTAINER);
+            boolean hasElements = container != null && hasActiveElements(container, living);
+
+            boolean inCombat = teyvat.isInCombat();
+
+            if (!inCombat && !hasElements) continue;
 
             float[] fillColor = resolveColor(living);
-            if (fillColor == null) continue;
 
             Vec3 entPos = living.getPosition(partialTick);
             double distance = camPos.distanceTo(entPos);
 
             boolean recentlyHit = teyvat.getCombatTicks() > teyvat.getCombatDuration() * RECENT_HIT_THRESHOLD;
-            boolean showBar = distance <= MAX_DISTANCE || recentlyHit;
+            boolean showBar = inCombat && (distance <= MAX_DISTANCE || recentlyHit);
+
+            if (distance > MAX_DISTANCE && !recentlyHit && !inCombat && !hasElements) continue;
 
             float maxHealth = living.getMaxHealth();
             if (maxHealth <= 0) continue;
             float healthRatio = Math.max(0f, Math.min(1f, living.getHealth() / maxHealth));
 
-            float r = fillColor[0], g = fillColor[1], b = fillColor[2];
+            float r, g, b;
+            if (fillColor == null) {
+                r = 1.0f; g = 1.0f; b = 1.0f;
+            } else {
+                r = fillColor[0]; g = fillColor[1]; b = fillColor[2];
+            }
 
             Vec3 relative = entPos.subtract(camPos);
             double baseY = relative.y + living.getBbHeight() + Y_OFFSET;
@@ -120,7 +162,7 @@ public class MobHealthBarHud {
                             1.0f, 1.0f, 1.0f, 1.0f);
                 });
 
-                // ============ 拖尾（反序 UV，左三角保留、右端收缩） ============
+                // ============ 拖尾 ============
                 if (trailRatio > healthRatio) {
                     float trailWidth = BAR_WIDTH * trailRatio;
                     RenderType trailType = RenderTypes.entityTranslucent(HP_BAR_FILL_TEXTURE);
@@ -134,7 +176,7 @@ public class MobHealthBarHud {
                     });
                 }
 
-                // ============ 血条填充（反序 UV） ============
+                // ============ 血条填充 ============
                 float fillWidth = BAR_WIDTH * healthRatio;
                 RenderType barType = RenderTypes.entityTranslucent(HP_BAR_FILL_TEXTURE);
                 collector.submitCustomGeometry(poseStack, barType, (pose, buffer) -> {
@@ -150,16 +192,133 @@ public class MobHealthBarHud {
                 if (level > 0) {
                     submitLevelText(poseStack, collector, mc, level, LEVEL_TEXT_Y, LEVEL_TEXT_SCALE);
                 }
-            } else {
+            } else if (inCombat) {
                 if (level > 0) {
                     submitLevelText(poseStack, collector, mc, level, LEVEL_TEXT_Y_BIG, LEVEL_TEXT_SCALE_BIG);
                 }
+            }
+
+            // ============ 元素图标 ============
+            if (hasElements) {
+                float iconY = computeIconY(showBar, level > 0, inCombat);
+                renderElementalIcons(poseStack, collector, container, iconY, blinkVisible);
             }
 
             poseStack.popPose();
         }
 
         HealthBarTrail.cleanup(activeIds);
+    }
+
+    private static boolean hasActiveElements(StatusContainer container, LivingEntity living) {
+        if (container == null) {
+            return false;
+        }
+
+        int total = container.getAll().size();
+        int active = 0;
+        for (StatusInstance inst : container.getAll()) {
+            if (inst.isFinished()) continue;
+            if (!(inst instanceof ElementalAttachmentInstance)) continue;
+            active++;
+        }
+
+        return active > 0;
+    }
+
+    /**
+     * 图标中心 Y 坐标（相对血条中心，Y 轴向上）：
+     * - 有血条 + 有等级：在等级文字上方
+     * - 有血条 + 无等级：在血条上方
+     * - 无血条 + 有大等级（远距）：在大等级文字上方
+     * - 无血条 + 无等级（仅元素）：占血条位置（Y=0）
+     */
+    private static float computeIconY(boolean showBar, boolean hasLevel, boolean inCombat) {
+        if (showBar && hasLevel) {
+            float levelTop = LEVEL_TEXT_Y + FONT_LINE_HEIGHT * LEVEL_TEXT_SCALE;
+            return levelTop + ICON_PADDING + ICON_SIZE / 2.0f;
+        }
+        if (showBar) {
+            return BAR_HEIGHT / 2.0f + ICON_PADDING + ICON_SIZE / 2.0f;
+        }
+        if (inCombat && hasLevel) {
+            float levelTop = LEVEL_TEXT_Y_BIG + FONT_LINE_HEIGHT * LEVEL_TEXT_SCALE_BIG;
+            return levelTop + ICON_PADDING + ICON_SIZE / 2.0f;
+        }
+        return 0.0f;
+    }
+
+    /**
+     * 渲染元素图标：
+     * - 类元素映射到主元素（FROZEN → CYRO），按主元素去重
+     * - 剩余衰减时间 ≤ 2s 的元素闪烁
+     */
+    private static void renderElementalIcons(PoseStack poseStack, SubmitNodeCollector collector,
+                                             StatusContainer container, float yOffset,
+                                             boolean blinkVisible) {
+        if (container == null) return;
+
+        FrozenDecayState frozenState = container.getFrozenDecayState();
+
+        // 收集主元素 -> 是否 low
+        Map<ElementalsGIM, Boolean> mainElementMap = new LinkedHashMap<>();
+        for (StatusInstance inst : container.getAll()) {
+            if (inst.isFinished()) continue;
+            if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
+            ElementalsGIM e = ea.getElement();
+            if (e == null || e == ElementalsGIM.FYSIKOS) continue;
+
+            ElementalsGIM main = e.getMainElement();
+
+            float rate;
+            if (e == ElementalsGIM.FROZEN && frozenState != null) {
+                rate = frozenState.getCurrentDecayRate();
+            } else {
+                rate = ea.getCurrentDecayPerSecond();
+            }
+
+            boolean isLow = false;
+            if (rate > 0.0001f) {
+                float remainSeconds = ea.getUnit() / rate;
+                isLow = remainSeconds <= BLINK_THRESHOLD_SECONDS;
+            }
+
+            mainElementMap.merge(main, isLow, (a, b) -> a || b);
+        }
+        if (mainElementMap.isEmpty()) return;
+
+        int count = mainElementMap.size();
+        float totalWidth = count * ICON_SIZE + (count - 1) * ICON_SPACING;
+        float startX = -totalWidth / 2.0f;
+
+        int i = 0;
+        for (Map.Entry<ElementalsGIM, Boolean> entry : mainElementMap.entrySet()) {
+            ElementalsGIM element = entry.getKey();
+            boolean isLow = entry.getValue();
+
+            // 闪烁：处于低量状态且当前相位不可见时跳过渲染
+            if (isLow && !blinkVisible) {
+                i++;
+                continue;
+            }
+
+            Identifier texture = Identifier.fromNamespaceAndPath(
+                    "minegenshin", "textures/elemental/" + element.getId() + ".png");
+            float x1 = startX + i * (ICON_SIZE + ICON_SPACING);
+            float x2 = x1 + ICON_SIZE;
+            float yTop = yOffset + ICON_SIZE / 2.0f;
+            float yBottom = yOffset - ICON_SIZE / 2.0f;
+
+            RenderType type = RenderTypes.entityTranslucent(texture);
+            collector.submitCustomGeometry(poseStack, type, (pose, buffer) -> {
+                Matrix4f matrix = pose.pose();
+                drawTexturedQuad(buffer, matrix, 0.0f,
+                        x1, yBottom, x2, yTop,
+                        1.0f, 0.0f, 0.0f, 1.0f,
+                        1.0f, 1.0f, 1.0f, 1.0f);
+            });
+            i++;
+        }
     }
 
     private static float[] resolveColor(LivingEntity living) {

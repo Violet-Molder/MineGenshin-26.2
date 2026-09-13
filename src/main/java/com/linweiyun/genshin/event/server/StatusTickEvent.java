@@ -4,7 +4,6 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.warden.Warden;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
@@ -12,21 +11,24 @@ import org.slf4j.Logger;
 
 @EventBusSubscriber
 public class StatusTickEvent {
+
     public static final Logger LOGGER = LogUtils.getLogger();
+
     @SubscribeEvent
     public static void onEntityTick(EntityTickEvent.Post event) {
-        if (event.getEntity() instanceof LivingEntity living
-                && !living.level().isClientSide()) {
-            StatusContainer c = living.getData(AttachmentRegistration.CONTAINER);
-            c.tick();
-        }
+        if (!(event.getEntity() instanceof LivingEntity living)) return;
+        if (living.level().isClientSide()) return;
 
-        if (event.getEntity() instanceof Warden warden
-                && !warden.level().isClientSide()) {
-            LivingEntity target = warden.getTarget();
-            LOGGER.info("[Warden] tick={} target={}",
-                    warden.level().getGameTime(),
-                    target != null ? target.getName().getString() : "null");
+        StatusContainer c = living.getData(AttachmentRegistration.CONTAINER);
+        c.tick();
+
+        // 强制触发附件同步：NeoForge 只在 setData 时同步，可变对象内部修改不会被感知
+        living.setData(AttachmentRegistration.CONTAINER.get(), c);
+
+        // 诊断日志：仅在容器有内容时打印，确认服务端确实发出了同步
+        if (c.getAll().size() > 0) {
+            LOGGER.info("[CONTAINER] 服务端 setData, entity={} size={}",
+                    living.getName().getString(), c.getAll().size());
         }
     }
 }

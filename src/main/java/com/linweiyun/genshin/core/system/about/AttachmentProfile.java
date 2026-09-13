@@ -23,23 +23,23 @@ public class AttachmentProfile implements IPersistedSerializable {
 
     /** 附着量 U（损耗前的基础值，常规攻击 1/1.5/2/4 中的一个） */
     @Persisted(key = "base_quantity")
-    private final float baseQuantity;
+    private float baseQuantity;
 
     /** 附着损耗系数，常规攻击先手 0.8，直接附着 1.0（无损耗） */
     @Persisted(key = "loss_multiplier")
-    private final float lossMultiplier;
+    private float lossMultiplier;
 
     /** 每秒衰减速率 U/s，恒定附着为 0 */
     @Persisted(key = "decay_per_second")
-    private final float decayPerSecond;
+    private float decayPerSecond;
 
     /** 附着时间秒数，恒定附着为 -1（无限） */
     @Persisted(key = "duration_seconds")
-    private final float durationSeconds;
+    private float durationSeconds;
 
     /** 是否恒定附着（衰减 0，无限时间，被消耗后周期补充） */
     @Persisted(key = "permanent")
-    private final boolean permanent;
+    private boolean permanent;
 
     // ========== 构造 ==========
 

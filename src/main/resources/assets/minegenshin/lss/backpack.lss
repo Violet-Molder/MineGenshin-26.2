@@ -23,13 +23,13 @@ item-slot {
 }
 
 .backpack-slot {
-  width: 7.14%;
+  width: 10%;
   aspect-rate: 1.0;
   clip: none;
 }
 
 #backpack_slot {
-  width: 7.14%;
+  width: 10%;
   aspect-rate: 1.0;
   clip: none;
 }

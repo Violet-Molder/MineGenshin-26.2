@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.mixin.mixins;
 
+import com.linweiyun.genshin.content.entities.teyvat.NonTeyvatEntity;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
@@ -33,6 +34,17 @@ public class PlayerAttackInterceptor {
         ci.cancel();
 
         ModDamageSource source = buildModDamageSource(player, character, livingTarget);
+
+        if (livingTarget instanceof NonTeyvatEntity) {
+            ModDamageSpec spec = source.getSpec();
+            ModDamageSpec adjustedSpec = ModDamageSpec.builder(spec.getAttackType(), spec.getElement())
+                    .multiplier(spec.getAtkMultiplier() / 8.0f)
+                    .elementAmount(spec.getElementAmount())
+                    .attackerCharacter(spec.getAttackerCharacter())
+                    .build();
+            source.setSpec(adjustedSpec);
+        }
+
         if (livingTarget.level() instanceof ServerLevel serverLevel) {
             livingTarget.hurtServer(serverLevel, source, 0f);
         }
