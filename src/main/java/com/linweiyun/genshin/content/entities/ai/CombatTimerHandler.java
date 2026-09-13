@@ -1,6 +1,8 @@
 package com.linweiyun.genshin.content.entities.ai;
 
+import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -12,11 +14,18 @@ public class CombatTimerHandler {
 
     @SubscribeEvent
     public static void onLivingHurt(LivingIncomingDamageEvent event) {
-        LivingEntity entity = event.getEntity();
-        if (entity.level().isClientSide()) return;
-        if (entity instanceof Player) return;
-        if (!(entity instanceof ICombatTimer timer)) return;
-        timer.genshin$resetCombat();
+        LivingEntity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
+
+        if (!(victim instanceof Player) && victim instanceof TeyvatLiving victimTeyvat) {
+            victimTeyvat.resetCombat();
+        }
+
+        if (event.getSource().getEntity() instanceof LivingEntity attacker
+                && !(attacker instanceof Player)
+                && attacker instanceof TeyvatLiving attackerTeyvat) {
+            attackerTeyvat.resetCombat();
+        }
     }
 
     @SubscribeEvent
@@ -24,10 +33,16 @@ public class CombatTimerHandler {
         if (!(event.getEntity() instanceof LivingEntity living)) return;
         if (living.level().isClientSide()) return;
         if (living instanceof Player) return;
-        if (!(living instanceof ICombatTimer timer)) return;
-        int ticks = timer.genshin$getCombatTicks();
+        if (!(living instanceof TeyvatLiving teyvat)) return;
+
+        boolean hasTarget = living instanceof Mob mob && mob.getTarget() != null;
+        if (teyvat.isTargeting() != hasTarget) {
+            teyvat.setTargeting(hasTarget);
+        }
+
+        int ticks = teyvat.getCombatTicks();
         if (ticks > 0) {
-            timer.genshin$setCombatTicks(ticks - 1);
+            teyvat.setCombatTicks(ticks - 1);
         }
     }
 }

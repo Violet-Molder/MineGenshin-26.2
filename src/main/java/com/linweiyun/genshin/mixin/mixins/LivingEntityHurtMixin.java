@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.mixin.mixins;
 
 import com.linweiyun.genshin.config.DamageIndicatorConfig;
-import com.linweiyun.genshin.content.entities.teyvat.TeyvatLivingEntity;
+import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
@@ -14,7 +14,6 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.ai.attributes.Attributes; //AI注释
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.common.CommonHooks;
@@ -74,13 +73,7 @@ public class LivingEntityHurtMixin {
             if (current != null) {
                 current.hurt(finalDamage);
             }
-        } else {
-            if (target != null && !(target instanceof TeyvatLivingEntity)){
-                finalDamage = finalDamage / 10;
-                if (source.getEntity() instanceof LivingEntity livingAttacker) { //AI注释
-                    finalDamage += (float) livingAttacker.getAttribute(Attributes.ATTACK_DAMAGE).getValue(); //AI注释
-                }
-            }
+        } else if (target instanceof TeyvatLiving) {
             target.setHealth(Math.max(target.getHealth() - finalDamage, 0));
         }
 

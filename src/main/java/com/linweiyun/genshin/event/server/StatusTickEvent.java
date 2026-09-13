@@ -4,6 +4,7 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.warden.Warden;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
@@ -18,6 +19,14 @@ public class StatusTickEvent {
                 && !living.level().isClientSide()) {
             StatusContainer c = living.getData(AttachmentRegistration.CONTAINER);
             c.tick();
+        }
+
+        if (event.getEntity() instanceof Warden warden
+                && !warden.level().isClientSide()) {
+            LivingEntity target = warden.getTarget();
+            LOGGER.info("[Warden] tick={} target={}",
+                    warden.level().getGameTime(),
+                    target != null ? target.getName().getString() : "null");
         }
     }
 }

@@ -19,6 +19,7 @@ import com.linweiyun.genshin.core.system.reaction.ReactionResult;
 import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
@@ -166,10 +167,11 @@ public class HurtEntityHelper {
         int attackerLevel = CombatEntityAccessor.getAttackerLevel(attacker, attackerCharacter);
         int defenderLevel = CombatEntityAccessor.getDefenderLevel(defender, defenderCharacter);
         double defenderDef = CombatEntityAccessor.getDefenderDefense(defender, defenderCharacter);
+        Monster monster;
         // 注意这个是防御力效用，不是防御力系数，比如60%的防御力效用的意思是受到的伤害降低60%，也就是实际伤害是40%
         double atkCoef = CombatMath.levelCoefficient(attackerLevel);
-//        LOGGER.info("[防御区] 攻方等级={} | 攻方等级系数={} | 被攻方等级={} | 被攻方防御={}",
-//                attackerLevel, atkCoef, defenderLevel, defenderDef);
+        LOGGER.info("[防御区] 攻方等级={} | 攻方等级系数={} | 被攻方等级={} | 被攻方防御={}",
+                attackerLevel, atkCoef, defenderLevel, defenderDef);
         return 1 - CombatMath.defenseZone(attackerLevel, defenderDef);
     }
 
