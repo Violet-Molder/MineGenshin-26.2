@@ -5,6 +5,7 @@ import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.status.StatusInstanceType;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import net.minecraft.core.Registry;
@@ -45,6 +46,10 @@ public class ModRegistries {
             ResourceKey.createRegistryKey(
                     Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "status_instance_types"));
 
+    public static final ResourceKey<Registry<GenshinElement>> ELEMENT_REGISTRY_KEY =
+            ResourceKey.createRegistryKey(
+                    Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "elements"));
+
 
     // ======== 注册表 ========
     public static final Registry<AttributeType> ATTRIBUTE_TYPE_REGISTRY =
@@ -81,6 +86,12 @@ public class ModRegistries {
                     .maxId(256)
                     .create();
 
+    public static final Registry<GenshinElement> ELEMENT_REGISTRY =
+            new RegistryBuilder<>(ELEMENT_REGISTRY_KEY)
+                    .sync(true)
+                    .maxId(32)
+                    .create();
+
     // ======== 注册表实例 ========
     public static final DeferredRegister<AttributeType> ATTRIBUTE_TYPES =
             DeferredRegister.create(ATTRIBUTE_TYPE_REGISTRY, Minegenshin.MOD_ID);
@@ -100,9 +111,13 @@ public class ModRegistries {
     public static final DeferredRegister<StatusInstanceType<?>> STATUS_INSTANCE_TYPES =
             DeferredRegister.create(STATUS_INSTANCE_TYPE_REGISTRY, Minegenshin.MOD_ID);
 
+    public static final DeferredRegister<GenshinElement> ELEMENTS =
+            DeferredRegister.create(ELEMENT_REGISTRY, Minegenshin.MOD_ID);
+
     @SubscribeEvent
     public static void registerRegistries(NewRegistryEvent event) {
         event.register(ATTRIBUTE_TYPE_REGISTRY);
+        event.register(ELEMENT_REGISTRY);
         event.register(CHARACTER_REGISTRY);
         event.register(CHARACTER_EFFECT_REGISTRY);
         event.register(ELEMENTAL_REACTIONS_REGISTRY);

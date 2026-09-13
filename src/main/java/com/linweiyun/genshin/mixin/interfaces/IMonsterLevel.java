@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.mixin.interfaces;
 
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
-import com.linweiyun.genshin.enums.ElementalsGIM;
+import com.linweiyun.genshin.core.element.GenshinElement;
 
 public interface IMonsterLevel extends TeyvatLiving {
 
@@ -15,7 +15,7 @@ public interface IMonsterLevel extends TeyvatLiving {
     int getDefense();
 
     @Override
-    float getElementResistance(ElementalsGIM element);
+    float getElementResistance(GenshinElement element);
 
     @Override
     float getPhysicalResistance();

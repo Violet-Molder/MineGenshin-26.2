@@ -37,8 +37,6 @@ public class DamageIndicator {
         this.startScale = startScale;
         this.lifetimeMs = lifetimeMs;
         this.spawnTime = System.currentTimeMillis();
-        LOGGER.info("[DI-Data] created: text='{}' top=0x{} bottom=0x{}",
-                text, Integer.toHexString(topColor), Integer.toHexString(bottomColor));
     }
 
     public boolean isExpired() {

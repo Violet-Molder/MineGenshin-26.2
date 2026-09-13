@@ -24,11 +24,5 @@ public class StatusTickEvent {
 
         // 强制触发附件同步：NeoForge 只在 setData 时同步，可变对象内部修改不会被感知
         living.setData(AttachmentRegistration.CONTAINER.get(), c);
-
-        // 诊断日志：仅在容器有内容时打印，确认服务端确实发出了同步
-        if (c.getAll().size() > 0) {
-            LOGGER.info("[CONTAINER] 服务端 setData, entity={} size={}",
-                    living.getName().getString(), c.getAll().size());
-        }
     }
 }

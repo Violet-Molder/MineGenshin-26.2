@@ -1,10 +1,10 @@
 package com.linweiyun.genshin.core.system.reaction;
 
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.about.AttachmentProfile;
 import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -18,10 +18,12 @@ import net.minecraft.world.entity.LivingEntity;
  * @param damageSpec       本次附着对应的伤害规格（增幅反应要用到）
  * @param attackerEntity   伤害源实体（攻击者）
  * @param targetContainer  目标身上的状态容器（反应要消耗里面的元素）
+ * @param targetEntity     目标实体（用于元素附着/移除时的效果钩子）
  */
-public record ReactionContext(ElementalsGIM attackerElement, float attackerUnit,
+public record ReactionContext(GenshinElement attackerElement, float attackerUnit,
                               AttachmentSource attackerSource, AttachmentProfile attackerProfile,
-                              ModDamageSpec damageSpec, Entity attackerEntity, StatusContainer targetContainer) {
+                              ModDamageSpec damageSpec, Entity attackerEntity,
+                              StatusContainer targetContainer, LivingEntity targetEntity) {
 
     /**
      * 后手元素是否遵循"后手不残留"规则

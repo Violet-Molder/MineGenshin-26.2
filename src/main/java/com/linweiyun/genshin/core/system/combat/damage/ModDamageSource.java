@@ -16,7 +16,7 @@ import javax.annotation.Nullable;
  * ModDamageSource 作为桥梁，将规格嵌入伤害源，使其随MC管线流动。
  *
  * 与旧项目 ElementalDamageSourceGIM 的区别：
- * - 旧版只携带一个 ElementalsGIM 元素字段
+ * - 旧版只携带一个 GenshinElement 元素字段
  * - 新版内嵌完整的 DamageSpec（攻击类型+元素+倍率+元素量+衰减组别）
  * - 任何地方拿到 DamageSource → instanceof ModDamageSource → getSpec() → 获取全部数据
  */

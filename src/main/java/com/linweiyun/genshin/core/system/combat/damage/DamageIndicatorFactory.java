@@ -1,9 +1,10 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
 import com.linweiyun.genshin.config.DamageIndicatorConfig;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.network.DamageIndicatorRpc;
 import com.linweiyun.genshin.enums.ElementalReactionType;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -79,11 +80,11 @@ public final class DamageIndicatorFactory {
     // =====================================================================
 
     /** 普通伤害 —— 默认元素色 */
-    public static void damage(LivingEntity target, DamageSource source, float finalDamage, ElementalsGIM element) {
+    public static void damage(LivingEntity target, DamageSource source, float finalDamage, GenshinElement element) {
         damage(target, source, finalDamage, element, Options.DEFAULT);
     }
 
-    public static void damage(LivingEntity target, DamageSource source, float finalDamage, ElementalsGIM element, Options options) {
+    public static void damage(LivingEntity target, DamageSource source, float finalDamage, GenshinElement element, Options options) {
         if (source == null) return;
         int color = DamageIndicatorConfig.getColorForElement(element);
         spawnDamage(target, source, finalDamage, color, color, Style.NORMAL, options);
@@ -113,11 +114,11 @@ public final class DamageIndicatorFactory {
     //  2. crit
     // =====================================================================
 
-    public static void crit(LivingEntity target, DamageSource source, float finalDamage, ElementalsGIM element) {
+    public static void crit(LivingEntity target, DamageSource source, float finalDamage, GenshinElement element) {
         crit(target, source, finalDamage, element, Options.DEFAULT);
     }
 
-    public static void crit(LivingEntity target, DamageSource source, float finalDamage, ElementalsGIM element, Options options) {
+    public static void crit(LivingEntity target, DamageSource source, float finalDamage, GenshinElement element, Options options) {
         if (source == null) return;
         int color = DamageIndicatorConfig.getColorForElement(element);
         spawnDamage(target, source, finalDamage, color, color, Style.CRIT, options);
@@ -196,7 +197,7 @@ public final class DamageIndicatorFactory {
     }
 
     public static void heal(LivingEntity target, float amount, Options options) {
-        int color = DamageIndicatorConfig.getColorForElement(ElementalsGIM.DENDRO);
+        int color = DamageIndicatorConfig.getColorForElement(ModElements.DENDRO.get());
         spawnValue(target, amount, color, color, Style.HEAL, options);
     }
 
@@ -226,7 +227,7 @@ public final class DamageIndicatorFactory {
     }
 
     public static void text(LivingEntity target, String text, Options options) {
-        int color = DamageIndicatorConfig.getColorForElement(ElementalsGIM.FYSIKOS);
+        int color = DamageIndicatorConfig.getColorForElement(ModElements.FYSIKOS.get());
         spawnRaw(target, null, text, color, color, Style.TEXT, options);
     }
 

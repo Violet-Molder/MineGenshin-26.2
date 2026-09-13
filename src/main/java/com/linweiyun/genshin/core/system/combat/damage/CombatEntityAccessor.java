@@ -2,8 +2,9 @@ package com.linweiyun.genshin.core.system.combat.damage;
 
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.minecraft.client.model.animal.fish.PufferfishBigModel;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -50,7 +51,7 @@ public final class CombatEntityAccessor {
         return DEFAULT_MOB_LEVEL;
     }
 
-    public static float getDamageBonus(PGCharacter character, ElementalsGIM element) {
+    public static float getDamageBonus(PGCharacter character, GenshinElement element) {
         if (character == null) return 0;
         return getElementBonusFromCharacter(character, element);
     }
@@ -73,18 +74,16 @@ public final class CombatEntityAccessor {
     }
 
     // ==================== 元素加成 ====================
-    private static float getElementBonusFromCharacter(PGCharacter character, ElementalsGIM elemental) {
+    private static float getElementBonusFromCharacter(PGCharacter character, GenshinElement elemental) {
         var data = character.getData();
-        return switch (elemental) {
-            case PYRO    -> (float) data.getAttributeTotalValue(ModAttributes.PYRO_BONUS.value());
-            case HYDRO   -> (float) data.getAttributeTotalValue(ModAttributes.HYDRO_BONUS.value());
-            case DENDRO  -> (float) data.getAttributeTotalValue(ModAttributes.DENDRO_BONUS.value());
-            case ELECTRO -> (float) data.getAttributeTotalValue(ModAttributes.ELECTRO_BONUS.value());
-            case ANEMO   -> (float) data.getAttributeTotalValue(ModAttributes.ANEMO_BONUS.value());
-            case CYRO    -> (float) data.getAttributeTotalValue(ModAttributes.CYRO_BONUS.value());
-            case GEO     -> (float) data.getAttributeTotalValue(ModAttributes.GEO_BONUS.value());
-            default      -> 0.0f;
-        };
+        if (elemental == ModElements.PYRO.get())    return (float) data.getAttributeTotalValue(ModAttributes.PYRO_BONUS.value());
+        if (elemental == ModElements.HYDRO.get())   return (float) data.getAttributeTotalValue(ModAttributes.HYDRO_BONUS.value());
+        if (elemental == ModElements.DENDRO.get())  return (float) data.getAttributeTotalValue(ModAttributes.DENDRO_BONUS.value());
+        if (elemental == ModElements.ELECTRO.get()) return (float) data.getAttributeTotalValue(ModAttributes.ELECTRO_BONUS.value());
+        if (elemental == ModElements.ANEMO.get())   return (float) data.getAttributeTotalValue(ModAttributes.ANEMO_BONUS.value());
+        if (elemental == ModElements.CYRO.get())    return (float) data.getAttributeTotalValue(ModAttributes.CYRO_BONUS.value());
+        if (elemental == ModElements.GEO.get())     return (float) data.getAttributeTotalValue(ModAttributes.GEO_BONUS.value());
+        return 0.0f;
     }
 
     // ==================== 元素抗性 ====================
@@ -92,8 +91,8 @@ public final class CombatEntityAccessor {
     /**
      * 获取被攻击方对应元素抗性（小数，如 0.3 = 30%）
      */
-    public static float getDefenderResistance(LivingEntity defender, PGCharacter defenderCharacter, ElementalsGIM element) {
-        if (element == ElementalsGIM.FYSIKOS) {
+    public static float getDefenderResistance(LivingEntity defender, PGCharacter defenderCharacter, GenshinElement element) {
+        if (element == ModElements.FYSIKOS.get()) {
             return getPhysicalResistance(defender, defenderCharacter);
         }
         if (defenderCharacter != null) {
@@ -107,18 +106,16 @@ public final class CombatEntityAccessor {
 
 
 
-    private static float getElementResistanceFromCharacter(PGCharacter c, ElementalsGIM element) {
+    private static float getElementResistanceFromCharacter(PGCharacter c, GenshinElement element) {
         var data = c.getData();
-        return switch (element) {
-            case PYRO    -> (float) data.getAttributeTotalValue(ModAttributes.PYRO_RES.value());
-            case HYDRO   -> (float) data.getAttributeTotalValue(ModAttributes.HYDRO_RES.value());
-            case DENDRO  -> (float) data.getAttributeTotalValue(ModAttributes.DENDRO_RES.value());
-            case ELECTRO -> (float) data.getAttributeTotalValue(ModAttributes.ELECTRO_RES.value());
-            case ANEMO   -> (float) data.getAttributeTotalValue(ModAttributes.ANEMO_RES.value());
-            case CYRO    -> (float) data.getAttributeTotalValue(ModAttributes.CYRO_RES.value());
-            case GEO     -> (float) data.getAttributeTotalValue(ModAttributes.GEO_RES.value());
-            default      -> 0.0f;
-        };
+        if (element == ModElements.PYRO.get())    return (float) data.getAttributeTotalValue(ModAttributes.PYRO_RES.value());
+        if (element == ModElements.HYDRO.get())   return (float) data.getAttributeTotalValue(ModAttributes.HYDRO_RES.value());
+        if (element == ModElements.DENDRO.get())  return (float) data.getAttributeTotalValue(ModAttributes.DENDRO_RES.value());
+        if (element == ModElements.ELECTRO.get()) return (float) data.getAttributeTotalValue(ModAttributes.ELECTRO_RES.value());
+        if (element == ModElements.ANEMO.get())   return (float) data.getAttributeTotalValue(ModAttributes.ANEMO_RES.value());
+        if (element == ModElements.CYRO.get())    return (float) data.getAttributeTotalValue(ModAttributes.CYRO_RES.value());
+        if (element == ModElements.GEO.get())     return (float) data.getAttributeTotalValue(ModAttributes.GEO_RES.value());
+        return 0.0f;
     }
 
     private static float getPhysicalResistance(LivingEntity defender, PGCharacter defenderCharacter) {

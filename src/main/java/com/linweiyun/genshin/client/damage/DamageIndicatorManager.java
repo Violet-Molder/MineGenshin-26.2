@@ -19,9 +19,7 @@ public final class DamageIndicatorManager {
         ACTIVE.add(indicator);
         if (ACTIVE.size() > MAX_INDICATORS) {
             ACTIVE.remove(0);
-            LOGGER.warn("[DI-Manager] exceeded max, evicting oldest");
         }
-        LOGGER.info("[DI-Manager] add -> active size = {}", ACTIVE.size());
     }
 
     /** 由客户端 Tick 事件驱动，移除过期飘字 */
@@ -31,7 +29,6 @@ public final class DamageIndicatorManager {
         ACTIVE.removeIf(DamageIndicator::isExpired);
         int removed = before - ACTIVE.size();
         if (removed > 0) {
-            LOGGER.info("[DI-Manager] tick removed {} expired, active size = {}", removed, ACTIVE.size());
         }
     }
 
@@ -40,7 +37,6 @@ public final class DamageIndicatorManager {
     }
 
     public static void clear() {
-        LOGGER.info("[DI-Manager] clear, was size = {}", ACTIVE.size());
         ACTIVE.clear();
     }
 }

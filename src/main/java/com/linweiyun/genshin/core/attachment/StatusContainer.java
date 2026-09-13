@@ -1,10 +1,11 @@
 package com.linweiyun.genshin.core.attachment;
 
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.status.StatusInstanceTypes;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.about.FrozenDecayState;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.lowdragmc.lowdraglib2.LDLib2;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
@@ -116,7 +117,7 @@ public class StatusContainer implements IPersistedSerializable {
         for (StatusInstance inst : instances) {
             if (!inst.isFinished()
                     && inst instanceof ElementalAttachmentInstance ea
-                    && ea.getElement() == ElementalsGIM.FROZEN) {
+                    && ea.getElement() == ModElements.FROZEN.get()) {
                 hadFrozenAlive = true;
                 break;
             }

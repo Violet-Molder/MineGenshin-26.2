@@ -1,10 +1,11 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroup;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.enums.AttackType;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 
 import javax.annotation.Nullable;
 
@@ -44,7 +45,7 @@ public class ModDamageSpec {
 
     // ========== 核心伤害数据 ==========
     private final AttackType attackType;                 // 攻击类型 —— 决定伤害分类和衰减标签
-    private final ElementalsGIM element;                 // 伤害元素 —— 决定伤害的元素属性
+    private final GenshinElement element;                 // 伤害元素 —— 决定伤害的元素属性
 
     // ========== 基础伤害区 - 倍率 ==========
     private final float atkMultiplier;                   // 攻击力倍率（技能面板描述的那个）
@@ -65,7 +66,7 @@ public class ModDamageSpec {
     private final PGCharacter attackerCharacter;       // 攻击者的PGCharacter —— 非玩家攻击者时为null
 
     // ========== 构造函数 ==========
-    private ModDamageSpec(AttackType attackType, ElementalsGIM element,
+    private ModDamageSpec(AttackType attackType, GenshinElement element,
                           float atkMultiplier, float hpMultiplier, float defMultiplier, float emMultiplier,
                           float skillMultiplierBonus, float flatDamageBonus,
                           float elementAmount, DecayGroup decayGroup,
@@ -95,7 +96,7 @@ public class ModDamageSpec {
 
     // ========== Getter ==========
     public AttackType getAttackType() { return attackType; }
-    public ElementalsGIM getElement() { return element; }
+    public GenshinElement getElement() { return element; }
     public float getAtkMultiplier() { return atkMultiplier; }
     public float getHpMultiplier() { return hpMultiplier; }
     public float getDefMultiplier() { return defMultiplier; }
@@ -107,8 +108,8 @@ public class ModDamageSpec {
     public @Nullable PGCharacter getAttackerCharacter() { return attackerCharacter; }
 
     // ========== 便捷判断 ==========
-    public boolean isElemental() { return element != ElementalsGIM.FYSIKOS; }
-    public boolean isPhysical() { return element == ElementalsGIM.FYSIKOS; }
+    public boolean isElemental() { return element != ModElements.FYSIKOS.get(); }
+    public boolean isPhysical() { return element == ModElements.FYSIKOS.get(); }
     public boolean hasDecayTag() { return attackType.hasDecayTag(); }
     public boolean hasAuraPotential() { return elementAmount > 0 && isElemental(); }
 
@@ -126,31 +127,23 @@ public class ModDamageSpec {
      * @param element 伤害元素（必填）
      * @return 新的 Builder 实例
      */
-    public static Builder builder(AttackType attackType, ElementalsGIM element) {
+    public static Builder builder(AttackType attackType, GenshinElement element) {
         return new Builder(attackType, element);
     }
 
     /**
      * 快速创建一个物理伤害规格
-     * @param attackType 攻击类型
-     * @param multiplier 伤害倍率
-     * @return 物理伤害规格实例
      */
     public static ModDamageSpec physical(AttackType attackType, float multiplier) {
-        return builder(attackType, ElementalsGIM.FYSIKOS)
+        return builder(attackType, ModElements.FYSIKOS.get())
                 .multiplier(multiplier)
                 .build();
     }
 
     /**
      * 快速创建一个带默认附着的元素伤害规格
-     * 使用默认元素量1.0，使用默认衰减组别
-     * @param attackType 攻击类型
-     * @param element 伤害元素
-     * @param multiplier 伤害倍率
-     * @return 元素伤害规格实例
      */
-    public static ModDamageSpec elemental(AttackType attackType, ElementalsGIM element, float multiplier) {
+    public static ModDamageSpec elemental(AttackType attackType, GenshinElement element, float multiplier) {
         return builder(attackType, element)
                 .multiplier(multiplier)
                 .elementAmount(1.0f)
@@ -165,7 +158,7 @@ public class ModDamageSpec {
      * 使用示例：
      * <pre>
      * // 普通元素攻击（使用默认衰减组别）
-     * DamageSpec normal = DamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.PYRO)
+     * DamageSpec normal = DamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.PYRO.get())
      *     .multiplier(1.5f)
      *     .elementAmount(1.0f)
      *     .build();
@@ -175,14 +168,14 @@ public class ModDamageSpec {
      *     DecaySequence.of(1,0,0,0,0,0,0),
      *     DecaySequence.DEFAULT_DAMAGE,
      *     DecaySequence.DEFAULT_POISE);
-     * DamageSpec skill = DamageSpec.builder(AttackType.ELEMENTAL_SKILL, ElementalsGIM.CYRO)
+     * DamageSpec skill = DamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.CYRO.get())
      *     .multiplier(2.5f)
      *     .elementAmount(1.0f)
      *     .decayGroup(shenheGroup)
      *     .build();
      *
      * // 0伤害但有附着的特殊攻击
-     * DamageSpec auraOnly = DamageSpec.builder(AttackType.SPECIAL, ElementalsGIM.HYDRO)
+     * DamageSpec auraOnly = DamageSpec.builder(AttackType.SPECIAL, ModElements.HYDRO.get())
      *     .multiplier(0.0f)
      *     .elementAmount(1.0f)
      *     .build();
@@ -191,7 +184,7 @@ public class ModDamageSpec {
     // ========== Builder ==========
     public static class Builder {
         private final AttackType attackType;
-        private final ElementalsGIM element;
+        private final GenshinElement element;
 
         private float atkMultiplier = 1.0f;
         private float hpMultiplier = 0.0f;
@@ -203,7 +196,7 @@ public class ModDamageSpec {
         private DecayGroup decayGroup = null;
         private PGCharacter attackerCharacter = null;
 
-        private Builder(AttackType attackType, ElementalsGIM element) {
+        private Builder(AttackType attackType, GenshinElement element) {
             this.attackType = attackType;
             this.element = element;
         }

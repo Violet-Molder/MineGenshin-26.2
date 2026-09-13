@@ -21,7 +21,7 @@ import net.minecraft.world.entity.Entity;
  * 三层分离架构：
  * - DamageType（MC层）：死亡消息、伤害缩放、疲劳值 → 按攻击方式
  * - AttackType（游戏层）：衰减标签、攻击分类、计时计数器 → 按攻击方式
- * - ElementalsGIM（元素层）：元素附着、元素反应、元素量 → 按元素
+ * - GenshinElement（元素层）：元素附着、元素反应、元素量 → 按元素
  *
  * 与 AttackType 的关系：
  * - AttackType 是游戏内部枚举，控制衰减系统和计时计数器

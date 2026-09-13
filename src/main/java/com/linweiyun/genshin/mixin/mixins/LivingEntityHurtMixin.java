@@ -10,11 +10,13 @@ import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.DamageIndicatorFactory;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
-import com.linweiyun.genshin.enums.ElementalsGIM;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -46,6 +48,12 @@ public class LivingEntityHurtMixin {
 
     }
 
+    @Shadow
+    protected int lastHurtByPlayerMemoryTime;
+
+    @Shadow
+    protected EntityReference<Player> lastHurtByPlayer;
+
     @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
     private void onLivingEntityHurtServer(ServerLevel level, DamageSource source, float damage,
                                           CallbackInfoReturnable<Boolean> cir) {
@@ -57,7 +65,7 @@ public class LivingEntityHurtMixin {
         LivingEntity target = (LivingEntity) (Object) this;
         ModDamageSpec spec = modSource.getSpec();
         PGCharacter attackerCharacter = spec.getAttackerCharacter();
-        ElementalsGIM element = spec.getElement();
+        GenshinElement element = spec.getElement();
         float finalDamage = HurtEntityHelper.calculateFinalModDamage(
                 modSource, attackerCharacter, target);
 
@@ -82,22 +90,21 @@ public class LivingEntityHurtMixin {
             }
         } else if (target instanceof TeyvatLiving) {
             target.setHealth(Math.max(target.getHealth() - finalDamage, 0));
+        } else {
+            target.setHealth(Math.max(target.getHealth() - finalDamage, 0));
         }
 
-        // ★★★ 新增：飘字 ★★★
         LOGGER.info("[DI-Mixin] about to call DamageIndicatorFactory, finalDamage={} element={}", finalDamage, element);
         if (finalDamage > 0f) {
             try {
-                if (element == ElementalsGIM.HYDRO) {
-                    // 水元素：顶部白色 → 底部水元素配置色（渐变）
-                    int hydroColor = DamageIndicatorConfig.getColorForElement(ElementalsGIM.HYDRO);
+                if (element == ModElements.HYDRO.get()) {
+                    int hydroColor = DamageIndicatorConfig.getColorForElement(ModElements.HYDRO.get());
                     DamageIndicatorFactory.damageGradient(
                             target, modSource, finalDamage,
-                            0xFFFFFF,       // 顶部白
-                            hydroColor      // 底部按配置的水元素色
+                            0xFFFFFF,
+                            hydroColor
                     );
                 } else {
-                    // 其他元素：保持默认
                     DamageIndicatorFactory.damage(target, modSource, finalDamage, element);
                 }
             } catch (Throwable t) {
@@ -109,15 +116,20 @@ public class LivingEntityHurtMixin {
 
         level.broadcastDamageEvent(target, source);
 
-        // ★★★ 受伤音效：使用 @Shadow 方法直接调用（不用 target.） ★★★
         if (target.isDeadOrDying()) {
             target.makeSound(getDeathSound());
             playSecondaryHurtSound(source);
+
+            if (modSource.getEntity() instanceof Player player) {
+                lastHurtByPlayerMemoryTime = 100;
+                lastHurtByPlayer = EntityReference.of(player);
+            }
+
+            target.die(source);
         } else {
             playHurtSound(source);
         }
 
-        // 事件广播：post damage
         CommonHooks.onLivingDamagePost(target, container);
 
         cir.setReturnValue(true);

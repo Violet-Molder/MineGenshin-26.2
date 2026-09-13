@@ -1,8 +1,9 @@
 package com.linweiyun.genshin.content.entities.teyvat;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.enums.ElementalsGIM;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 
 public interface TeyvatLiving {
 
@@ -26,7 +27,7 @@ public interface TeyvatLiving {
         return getEntityStats().getDefense();
     }
 
-    default float getElementResistance(ElementalsGIM element) {
+    default float getElementResistance(GenshinElement element) {
         return getEntityStats().getElementResistance(element);
     }
 
@@ -60,5 +61,11 @@ public interface TeyvatLiving {
 
     default void resetCombat() {
         setCombatTicks(getCombatDuration());
+    }
+
+    default void setAiEnabled(boolean enabled) {
+        if (this instanceof Mob mob) {
+            mob.setNoAi(!enabled);
+        }
     }
 }

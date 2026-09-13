@@ -3,7 +3,7 @@ package com.linweiyun.genshin.core.system.about;
 /**
  * 附着来源 —— 决定"谁和谁能相互覆盖"
  *
- * 只有同元素（ElementalsGIM 匹配）+ 同来源（本枚举匹配）的两份附着才能发生覆盖。
+ * 只有同元素（GenshinElement 匹配）+ 同来源（本枚举匹配）的两份附着才能发生覆盖。
  * 不同来源的同元素是容器里的两个独立 StatusInstance，互不干扰。
  *
  * 例子：可莉普攻火（NORMAL_ATTACK）和元素试炼仪火（SPECIAL）同时挂在一个目标身上，

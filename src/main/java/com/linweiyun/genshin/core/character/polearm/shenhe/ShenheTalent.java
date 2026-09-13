@@ -16,8 +16,8 @@ import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
 import com.linweiyun.genshin.enums.AttachmentType;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.enums.AttackType;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
@@ -51,7 +51,7 @@ public class ShenheTalent {
                     entity -> {
                         if (entity != player) {
                             damageMultiplier.set(0.0024f * skillLevel * skillLevel + 0.098f * skillLevel + 1.29f);
-                            ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ElementalsGIM.CYRO)
+                            ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.CYRO.get())
                                     .multiplier(damageMultiplier.get())
                                     .elementAmount(AttachmentType.WEAK.getInitialAmount())
                                     .decayGroup(DecayGroups.SHENHE_SKILL)

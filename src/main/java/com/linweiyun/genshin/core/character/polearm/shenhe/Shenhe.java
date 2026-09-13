@@ -7,7 +7,6 @@ import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.linweiyun.genshin.core.system.registry.register.ModEntities;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
@@ -25,7 +24,7 @@ public class Shenhe extends PGCharacter {
 
     public Shenhe() {
         super(135001, 5, Component.translatable("character.name.shenhe"),
-                ElementalsGIM.CYRO, CharacterAscendAttribute.ATK,
+                "minegenshin:cyro", CharacterAscendAttribute.ATK,
                 10 * 20, 15*20, 10 * 20, 80f, "shenhe",
                 Map.of(
                         ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,

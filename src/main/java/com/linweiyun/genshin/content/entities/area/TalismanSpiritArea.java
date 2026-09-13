@@ -5,8 +5,8 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.enums.AttackType;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -165,7 +165,7 @@ public class TalismanSpiritArea extends AreaEntity {
     private void dealDamageToEntity(LivingEntity target) {
         int burstLevel = this.character.getData().getElementalBurstLevel();
         float damageMultiplier = 0.033f * burstLevel + 0.3f;
-        ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_BURST, ElementalsGIM.CYRO)
+        ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_BURST, ModElements.CYRO.get())
                 .multiplier(damageMultiplier)
                 .elementAmount(1.0f)
                 .attackerCharacter(this.character)
