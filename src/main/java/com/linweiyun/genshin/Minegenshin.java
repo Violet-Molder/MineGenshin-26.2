@@ -37,6 +37,8 @@ public class Minegenshin {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_ATTRIBUTE_SPEC, "minegenshin/attribute.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, ElementalReactionConfig.REACTION_SPEC, "minegenshin/genshin-reaction.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, MonsterLevelConfig.MONSTER_LEVEL_SPEC, "minegenshin/monster-level.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, MonsterHealthConfig.MONSTER_HEALTH_SPEC, "minegenshin/monster-health.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, MonsterAttackConfig.MONSTER_ATTACK_SPEC, "minegenshin/monster-attack.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, ArtifactConfig.ARTIFACT_SPEC, "minegenshin/artifact.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, DamageIndicatorConfig.DAMAGE_INDICATOR_SPEC, "minegenshin/damage-indicator.toml");
 

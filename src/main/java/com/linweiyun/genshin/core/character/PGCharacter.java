@@ -284,23 +284,54 @@ public class PGCharacter implements IPersistedSerializable {
         Player player = data.getOwnerPlayer();
         if (player == null) return;
         PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-        //AI 找 party 中下一个 currentHP > 0 的角色
         int currentIndex = attachment.getCurrentCharacterIndex();
         for (int offset = 1; offset <= 4; offset++) {
             int nextIndex = (currentIndex + offset) % 4;
             PGCharacter nextChar = attachment.getPartyCharacter(nextIndex);
             if (nextChar != null && nextChar.getData().getCurrentHP() > 0) {
                 attachment.setCurrentCharacterIndex(nextIndex);
-                NetworkManager.setCharacterSelectionToPlayer(
-                        (ServerPlayer) player, nextIndex);
+                if (player instanceof ServerPlayer sp) {
+                    NetworkManager.setCharacterSelectionToPlayer(sp, nextIndex);
+                }
                 return;
             }
         }
 
-        //AI 全部阵亡则关闭原神模式并同步客户端
         player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT, false);
-        NetworkManager.setGenshinModeToPlayer(
-                (ServerPlayer) player, false);
+        if (player instanceof ServerPlayer sp) {
+            NetworkManager.setGenshinModeToPlayer(sp, false);
+        }
+    }
+
+    public void revive(int hp) {
+        float maxHp = (float) data.getAttributeTotalValue(ModAttributes.MAX_HP.value());
+        data.setCurrentHP(Math.min(hp, maxHp));
+        enableDeployIfNeeded();
+    }
+
+    public void revive(float percent) {
+        float maxHp = (float) data.getAttributeTotalValue(ModAttributes.MAX_HP.value());
+        data.setCurrentHP(Math.min(maxHp * percent, maxHp));
+        enableDeployIfNeeded();
+    }
+
+    public void revive(float percent, int extraHp) {
+        float maxHp = (float) data.getAttributeTotalValue(ModAttributes.MAX_HP.value());
+        data.setCurrentHP(Math.min(maxHp * percent + extraHp, maxHp));
+        enableDeployIfNeeded();
+    }
+
+    private void enableDeployIfNeeded() {
+        if (data.getCurrentHP() <= 0) return;
+        Player player = data.getOwnerPlayer();
+        if (player == null) return;
+        Boolean genshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+        if (genshinMode != null && !genshinMode) {
+            player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT, true);
+            if (player instanceof ServerPlayer sp) {
+                NetworkManager.setGenshinModeToPlayer(sp, true);
+            }
+        }
     }
 
     public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {

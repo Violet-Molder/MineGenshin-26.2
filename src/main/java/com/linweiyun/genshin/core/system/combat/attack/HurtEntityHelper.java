@@ -33,10 +33,10 @@ public class HurtEntityHelper {
                                                 PGCharacter attacker,
                                                 LivingEntity target) {
         ModDamageSpec spec = damageSource.getSpec();
-//        LOGGER.info("[伤害管线] === 攻击={} | 目标={} | 元素={} | 类型={} ===",
-//                attacker != null ? attacker.getName() : damageSource.getEntity(),
-//                target.getName().getString(),
-//                spec.getElement(), spec.getAttackType());
+        LOGGER.info("[伤害管线] === 攻击={} | 目标={} | 元素={} | 类型={} ===",
+                attacker != null ? attacker.getName() : damageSource.getEntity(),
+                target.getName().getString(),
+                spec.getElement(), spec.getAttackType());
 
         if (attacker != null) {
             for (CharacterEffectInstance effect : new ArrayList<>(attacker.getData().getEffectContainer().getEffects())) {
@@ -48,7 +48,7 @@ public class HurtEntityHelper {
             }
         }
         spec = damageSource.getSpec();
-//        LOGGER.info("[效果处理后] spec={}", spec);
+        LOGGER.info("[效果处理后] spec={}", spec);
 
         float baseDamage = attacker != null
                 ? calculateCharacterDamage(spec, attacker)
@@ -102,7 +102,7 @@ public class HurtEntityHelper {
         float finalDamage = calculateFinalDamage(
                 baseDamage, spec, sourceEntity, attacker, target, targetCharacter, reactionResult);
 
-//        LOGGER.info("[最终伤害] base={} → final={}", baseDamage, finalDamage);
+        LOGGER.info("[最终伤害] base={} → final={}", baseDamage, finalDamage);
         finalDamage *= decayResult.getDamageCoefficient();
         return finalDamage;
     }
@@ -115,10 +115,10 @@ public class HurtEntityHelper {
         double def = data.getAttributeTotalValue(ModAttributes.DEF.value());
         double em  = data.getAttributeTotalValue(ModAttributes.ELEMENTAL_MASTERY.value());
 
-//        LOGGER.info("[属性快照] ATK={} | HP={} | DEF={} | EM={}", atk, hp, def, em);
-//        LOGGER.info("[倍率快照] atkMult={} | hpMult={} | defMult={} | emMult={} | skillMultBonus={} | flatBonus={}",
-//                spec.getAtkMultiplier(), spec.getHpMultiplier(), spec.getDefMultiplier(), spec.getEmMultiplier(),
-//                spec.getSkillMultiplierBonus(), spec.getFlatDamageBonus());
+        LOGGER.info("[属性快照] ATK={} | HP={} | DEF={} | EM={}", atk, hp, def, em);
+        LOGGER.info("[倍率快照] atkMult={} | hpMult={} | defMult={} | emMult={} | skillMultBonus={} | flatBonus={}",
+                spec.getAtkMultiplier(), spec.getHpMultiplier(), spec.getDefMultiplier(), spec.getEmMultiplier(),
+                spec.getSkillMultiplierBonus(), spec.getFlatDamageBonus());
 
         float base = (float) ((
                 atk * spec.getAtkMultiplier() +
@@ -127,7 +127,7 @@ public class HurtEntityHelper {
                         em  * spec.getEmMultiplier()
         ) * (1 + spec.getSkillMultiplierBonus()) + spec.getFlatDamageBonus());
 
-//        LOGGER.info("[基础伤害区] = {}", base);
+        LOGGER.info("[基础伤害区] = {}", base);
         return base;
     }
 
@@ -139,7 +139,7 @@ public class HurtEntityHelper {
         float bonus = dmgBonusZone(attackerCharacter, spec);
         float def = defenseZone(attacker, attackerCharacter, target, targetCharacter);
         float res = resistanceZone(spec.getElement(), target, targetCharacter);
-//        LOGGER.info("[最终伤害区] crit={} | bonus={} | def={} | res={}", crit, bonus, def, res);
+        LOGGER.info("[最终伤害区] crit={} | bonus={} | def={} | res={}", crit, bonus, def, res);
 
         if (reaction == null || !reaction.isReacted()) {
             return baseDamage * crit * bonus * def * res;
@@ -178,7 +178,7 @@ public class HurtEntityHelper {
     private static float resistanceZone(GenshinElement element,
                                         LivingEntity defender, PGCharacter defenderCharacter) {
         float res = CombatEntityAccessor.getDefenderResistance(defender, defenderCharacter, element);
-//        LOGGER.info("[元素抗性区] {}抗性={}", element, res);
+        LOGGER.info("[元素抗性区] {}抗性={}", element, res);
         return CombatMath.resistanceZone(res);
     }
 

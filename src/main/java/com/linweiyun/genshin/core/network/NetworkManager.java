@@ -81,6 +81,23 @@ public class NetworkManager {
         setGenshinModeToPlayer(player, false);
         return;
       }
+      if (isGenshinMode) {
+        PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        PGCharacter current = attachment.getCurrentCharacter();
+        if (current == null || current.getData().getCurrentHP() <= 0) {
+          for (int i = 0; i < 4; i++) {
+            PGCharacter c = attachment.getPartyCharacter(i);
+            if (c != null && c.getData().getCurrentHP() > 0) {
+              attachment.setCurrentCharacterIndex(i);
+              break;
+            }
+          }
+        }
+        attachment.syncToPlayer(player);
+        setGenshinModeToPlayer(player, true);
+      } else {
+        setGenshinModeToPlayer(player, false);
+      }
       player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT.get(), isGenshinMode);
       player.sendSystemMessage(Component.literal(isGenshinMode ? "已进入原神模式" : "已退出原神模式"));
     }

@@ -43,7 +43,9 @@ public class AttachmentRegistration {
             PLAYER_CHARACTERS_ATTACHMENT =
             ATTACHMENTS.register(
                     "player_characters",
-                    () -> AttachmentType.serializable(PlayerCharactersAttachment::new).copyOnDeath().build());
+                    () -> AttachmentType.serializable(PlayerCharactersAttachment::new)
+                            .sync(PlayerCharactersAttachment.STREAM_CODEC)
+                            .copyOnDeath().build());
 
     public static final Supplier<AttachmentType<StatusContainer>> CONTAINER =
             ATTACHMENTS.register("status_container",
@@ -53,7 +55,9 @@ public class AttachmentRegistration {
 
     public static final Supplier<AttachmentType<AdventurerInfoAttachment>> ADVENTURER_INFO_ATTACHMENT =
             ATTACHMENTS.register("adventurer_info",
-                    () -> AttachmentType.serializable(AdventurerInfoAttachment::new).copyOnDeath().build());
+                    () -> AttachmentType.serializable(AdventurerInfoAttachment::new)
+                            .sync(AdventurerInfoAttachment.STREAM_CODEC)
+                            .copyOnDeath().build());
 
     public static final Supplier<AttachmentType<Backpack>> BACKPACK_ATTACHMENT =
             ATTACHMENTS.register(

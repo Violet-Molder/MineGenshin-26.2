@@ -23,6 +23,30 @@ public interface TeyvatLiving {
         setEntityStats(getEntityStats().withLevel(level));
     }
 
+    default float getEnvironmentMultiplier() {
+        return getEntityStats().environmentMultiplier();
+    }
+
+    default void setEnvironmentMultiplier(float multiplier) {
+        setEntityStats(getEntityStats().withEnvironmentMultiplier(multiplier));
+    }
+
+    default float getHealthMultiplier() {
+        return 1.0f;
+    }
+
+    default float getAttackMultiplier() {
+        return 1.0f;
+    }
+
+    default float getMonsterAttack() {
+        return getEntityStats().attack();
+    }
+
+    default void setMonsterAttack(float attack) {
+        setEntityStats(getEntityStats().withAttack(attack));
+    }
+
     default int getDefense() {
         return getEntityStats().getDefense();
     }

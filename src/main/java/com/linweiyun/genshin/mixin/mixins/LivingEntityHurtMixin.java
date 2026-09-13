@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.mixin.mixins;
 
 import com.linweiyun.genshin.config.DamageIndicatorConfig;
-import com.linweiyun.genshin.content.entities.teyvat.NonTeyvatEntity;
+import com.linweiyun.genshin.content.entities.teyvat.TeyvatEntityStats;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
@@ -10,6 +10,7 @@ import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.DamageIndicatorFactory;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.system.combat.damage.TeyvatConvertedDamageSource;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
@@ -17,6 +18,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -59,6 +61,30 @@ public class LivingEntityHurtMixin {
     private void onLivingEntityHurtServer(ServerLevel level, DamageSource source, float damage,
                                           CallbackInfoReturnable<Boolean> cir) {
 
+        if (TeyvatWorldInvasion.get(level).isInvaded()
+                && !(source instanceof ModDamageSource)
+                && !(source instanceof TeyvatConvertedDamageSource)) {
+            Entity attacker = source.getEntity();
+            if (attacker instanceof TeyvatLiving teyvatAttacker && attacker instanceof LivingEntity livingAttacker) {
+                TeyvatEntityStats stats = teyvatAttacker.getEntityStats();
+                float teyvatAttack = stats.attack();
+                if (teyvatAttack > 0) {
+                    float vanillaAttack = (float) livingAttacker.getAttributeBaseValue(Attributes.ATTACK_DAMAGE);
+                    if (vanillaAttack > 0) {
+                        float convertedDamage = damage / vanillaAttack * teyvatAttack;
+                        LOGGER.info("[世界入侵伤害转化] 攻击者: {} 原版攻击力: {} MOD攻击力: {} 原始伤害: {} 最终伤害: {}",
+                                attacker.getName().getString(), vanillaAttack, teyvatAttack, damage, convertedDamage);
+                        cir.cancel();
+                        TeyvatConvertedDamageSource newSource = new TeyvatConvertedDamageSource(source);
+                        LivingEntity self = (LivingEntity) (Object) this;
+                        boolean result = self.hurtServer(level, newSource, convertedDamage);
+                        cir.setReturnValue(result);
+                        return;
+                    }
+                }
+            }
+        }
+
         if (!(source instanceof ModDamageSource modSource)) {
             return;
         }
@@ -71,11 +97,6 @@ public class LivingEntityHurtMixin {
         GenshinElement element = spec.getElement();
         float finalDamage = HurtEntityHelper.calculateFinalModDamage(
                 modSource, attackerCharacter, target);
-
-        if (target instanceof NonTeyvatEntity && modSource.getEntity() instanceof Player player) {
-            float playerAttack = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-            finalDamage = finalDamage + playerAttack;
-        }
 
         DamageContainer container = new DamageContainer(source, finalDamage);
         if (CommonHooks.onEntityIncomingDamage(target, container)) {
