@@ -5,6 +5,8 @@ import com.linweiyun.genshin.content.entities.teyvat.monster.TeyvatMonster;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
+import com.linweiyun.genshin.core.system.combat.damage.TeyvatConvertedDamageSource;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
@@ -24,14 +26,15 @@ public class PlayerHurtInterceptor {
         Player player = (Player) (Object) this;
         if (!player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT)) return;
         if (!TeyvatWorldInvasion.get(level).isInvaded()) return;
-        if (source instanceof com.linweiyun.genshin.core.system.combat.damage.ModDamageSource) return;
+        if (source instanceof ModDamageSource) return;
 
         Entity attacker = source.getEntity();
         boolean isTeyvatMonsterOrBoss = attacker instanceof TeyvatMonster
                 || attacker instanceof ITeyvatBoss;
 
+        boolean isAlreadyConverted = source instanceof TeyvatConvertedDamageSource;
         float adjustedDamage = damage;
-        if (!isTeyvatMonsterOrBoss && attacker != null) {
+        if (!isAlreadyConverted && !isTeyvatMonsterOrBoss && attacker != null) {
             adjustedDamage = damage * 2.5f;
         }
 

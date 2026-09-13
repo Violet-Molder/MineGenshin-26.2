@@ -5,7 +5,10 @@ import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.mojang.logging.LogUtils;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.player.Player;
@@ -17,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerCharactersAttachment implements IPersistedSerializable {
+    public final static StreamCodec<ByteBuf, PlayerCharactersAttachment> STREAM_CODEC = PersistedParser.createStreamCodec(PlayerCharactersAttachment::new);
     public static final Logger LOGGER = LogUtils.getLogger();
     @Persisted(key = "owned_characters")
     private List<PGCharacter> ownedCharacters = new ArrayList<>();

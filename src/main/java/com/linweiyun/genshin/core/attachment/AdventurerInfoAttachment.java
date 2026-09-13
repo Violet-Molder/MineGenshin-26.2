@@ -3,13 +3,16 @@ package com.linweiyun.genshin.core.attachment;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.lowdragmc.lowdraglib2.utils.PersistedParser;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 public class AdventurerInfoAttachment implements IPersistedSerializable {
-
+    public final static StreamCodec<ByteBuf, AdventurerInfoAttachment> STREAM_CODEC = PersistedParser.createStreamCodec(AdventurerInfoAttachment::new);
     public static final int MAX_ADVENTURE_RANK = 60;
     public static final int MAX_WORLD_LEVEL = 9;
 

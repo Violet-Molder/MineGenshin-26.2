@@ -1,6 +1,5 @@
 package com.linweiyun.genshin.mixin.mixins;
 
-import com.linweiyun.genshin.content.entities.teyvat.NonTeyvatEntity;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
@@ -9,6 +8,7 @@ import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.linweiyun.genshin.enums.AttackType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -23,6 +23,7 @@ public class PlayerAttackInterceptor {
     @Inject(method = "attack", at = @At("HEAD"), cancellable = true)
     private void onPlayerAttack(Entity target, CallbackInfo ci) {
         Player player = (Player) (Object) this;
+        player.sendSystemMessage(Component.nullToEmpty("aaa"));
 
         if (!(target instanceof LivingEntity livingTarget)) return;
         if (!(player.level() instanceof ServerLevel sl) || !TeyvatWorldInvasion.get(sl).isInvaded()) return;
@@ -36,16 +37,6 @@ public class PlayerAttackInterceptor {
         ci.cancel();
 
         ModDamageSource source = buildModDamageSource(player, character, livingTarget);
-
-        if (livingTarget instanceof NonTeyvatEntity) {
-            ModDamageSpec spec = source.getSpec();
-            ModDamageSpec adjustedSpec = ModDamageSpec.builder(spec.getAttackType(), spec.getElement())
-                    .multiplier(spec.getAtkMultiplier() / 8.0f)
-                    .elementAmount(spec.getElementAmount())
-                    .attackerCharacter(spec.getAttackerCharacter())
-                    .build();
-            source.setSpec(adjustedSpec);
-        }
 
         if (livingTarget.level() instanceof ServerLevel serverLevel) {
             livingTarget.hurtServer(serverLevel, source, 0f);

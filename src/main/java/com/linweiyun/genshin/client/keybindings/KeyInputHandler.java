@@ -18,8 +18,17 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 public class KeyInputHandler {
 
 
+  private static boolean wasRKeyDown = false;
+  private static boolean wasGKeyDown = false;
+  private static boolean wasVKeyDown = false;
   private static boolean wasXKeyDown = false;
+  private static boolean wasCKeyDown = false;
+  private static boolean wasOKeyDown = false;
+  private static boolean wasCharInfoKeyDown = false;
+  private static boolean wasArtifactKeyDown = false;
+  private static boolean wasArtifactKey2Down = false;
   private static long longPressStartTick = 0;
+  private static boolean xSkillTriggered = false;
 
   @SubscribeEvent
   public static void onKeyInput(ClientTickEvent.Post event) {
@@ -36,72 +45,89 @@ public class KeyInputHandler {
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     var character = charactersAttachment.getCurrentCharacter();
 
-    if (KeyMappingRegistry.R_KEY.get().consumeClick()) {
+    boolean isRDown = KeyMappingRegistry.R_KEY.get().isDown();
+    if (isRDown && !wasRKeyDown) {
       NetworkManager.wishEventToServer();
     }
+    wasRKeyDown = isRDown;
 
-    if (KeyMappingRegistry.G_KEY.get().consumeClick()) {
+    boolean isGDown = KeyMappingRegistry.G_KEY.get().isDown();
+    if (isGDown && !wasGKeyDown) {
       boolean newMode = !isInGenshinMode;
       NetworkManager.setGenshinModeToServer(newMode);
     }
+    wasGKeyDown = isGDown;
 
-    //AI O_KEY 移到后面，取消原神模式限制（退出原神模式也能开配队面板）
-    if (!isInGenshinMode) {
-      KeyMappingRegistry.V_KEY.get().consumeClick();
-      KeyMappingRegistry.X_KEY.get().consumeClick();
-      KeyMappingRegistry.C_KEY.get().consumeClick();
-    }
-
-    if (KeyMappingRegistry.V_KEY.get().consumeClick()) {
+    boolean isVDown = KeyMappingRegistry.V_KEY.get().isDown();
+    if (isVDown && !wasVKeyDown && isInGenshinMode) {
       switchToNextAvailableCharacter(player, charactersAttachment);
     }
-    boolean isXKeyDown = false;
-    if (character != null) {
-      if (character.getSkillShortMaxCooldownTick() == character.getSkillLongMaxCooldownTick()){
-        if (KeyMappingRegistry.X_KEY.get().consumeClick()) {
+    wasVKeyDown = isVDown;
+
+    boolean isXDown = KeyMappingRegistry.X_KEY.get().isDown();
+    if (isInGenshinMode && character != null) {
+      if (character.getSkillShortMaxCooldownTick() == character.getSkillLongMaxCooldownTick()) {
+        if (isXDown && !wasXKeyDown) {
           triggerCharacterSkill(player, -1);
         }
       } else {
-        KeyMappingRegistry.X_KEY.get().consumeClick();
-        isXKeyDown = KeyMappingRegistry.X_KEY.get().isDown();
-        if (isXKeyDown && !wasXKeyDown) {
+        if (isXDown && !wasXKeyDown) {
           longPressStartTick = System.currentTimeMillis();
-        } else if (isXKeyDown) {
+          xSkillTriggered = false;
+        } else if (isXDown && !xSkillTriggered) {
           int time = (int) (System.currentTimeMillis() - longPressStartTick);
           if (time >= 1000) {
             triggerCharacterSkill(player, time);
+            xSkillTriggered = true;
           }
-        }
-        else if (!isXKeyDown && wasXKeyDown) {
-          int time = (int) (System.currentTimeMillis() - longPressStartTick);
-          if (time < 1000) {
-            triggerCharacterSkill(player, time);
+        } else if (!isXDown && wasXKeyDown) {
+          if (!xSkillTriggered) {
+            int time = (int) (System.currentTimeMillis() - longPressStartTick);
+            if (time < 1000) {
+              triggerCharacterSkill(player, time);
+            }
           }
           longPressStartTick = 0;
         }
-        wasXKeyDown = isXKeyDown;
       }
     }
-    if (KeyMappingRegistry.C_KEY.get().consumeClick()) {
+    wasXKeyDown = isXDown;
+
+    boolean isCDown = KeyMappingRegistry.C_KEY.get().isDown();
+    if (isCDown && !wasCKeyDown && isInGenshinMode) {
       triggerCharacterBurst(player);
     }
-    if (KeyMappingRegistry.O_KEY.get().consumeClick()) {
+    wasCKeyDown = isCDown;
+
+    boolean isODown = KeyMappingRegistry.O_KEY.get().isDown();
+    if (isODown && !wasOKeyDown) {
       GUIServerHelperGIM.openCharacterPartyScreen(player);
     }
-    if (KeyMappingRegistry.CHARACTER_INFO_SCREEN_KEY.get().consumeClick()) {
+    wasOKeyDown = isODown;
+
+    boolean isCharInfoDown = KeyMappingRegistry.CHARACTER_INFO_SCREEN_KEY.get().isDown();
+    if (isCharInfoDown && !wasCharInfoKeyDown) {
       GUIServerHelperGIM.openArtifactEquipScreen(player, -1);
     }
-    if (KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY.get().consumeClick()) {
+    wasCharInfoKeyDown = isCharInfoDown;
+
+    boolean isArtifactDown = KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY.get().isDown();
+    if (isArtifactDown && !wasArtifactKeyDown) {
       GUIServerHelperGIM.openBackpackScreen(player);
     }
-    if (KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY_2.get().consumeClick()) {
+    wasArtifactKeyDown = isArtifactDown;
+
+    boolean isArtifact2Down = KeyMappingRegistry.ARTIFACT_EQUIP_SCREEN_KEY_2.get().isDown();
+    if (isArtifact2Down && !wasArtifactKey2Down) {
       GUIServerHelperGIM.openAscensionScreen(player);
     }
+    wasArtifactKey2Down = isArtifact2Down;
   }
 
   private static void switchToNextAvailableCharacter(Player player, PlayerCharactersAttachment attachment) {
     wasXKeyDown = false;
     longPressStartTick = 0;
+    xSkillTriggered = false;
     int currentIndex = attachment.getCurrentCharacterIndex();
     for (int i = 1; i <= 4; i++) {
       int nextIndex = (currentIndex + i) % 4;

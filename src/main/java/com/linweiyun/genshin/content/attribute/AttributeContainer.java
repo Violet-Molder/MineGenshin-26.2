@@ -2,11 +2,18 @@ package com.linweiyun.genshin.content.attribute;
 
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.lowdragmc.lowdraglib2.utils.PersistedParser;
+import com.mojang.serialization.Codec;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class AttributeContainer implements IPersistedSerializable {
+
+    public static final Codec<AttributeContainer> CODEC = PersistedParser.createCodec(AttributeContainer::new);
+    public static final StreamCodec<ByteBuf, AttributeContainer> STREAM_CODEC = PersistedParser.createStreamCodec(AttributeContainer::new);
 
     @Persisted(key = "attributes")
     private final Map<String, AttributeInstance> attributes = new HashMap<>();

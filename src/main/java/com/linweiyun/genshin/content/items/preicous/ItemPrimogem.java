@@ -6,8 +6,11 @@ import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.RPCMethod;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -26,46 +29,28 @@ public class ItemPrimogem extends PreciousItem {
   @RPCMethod
   public InteractionResult use(
       Level level, @NotNull Player player, @NotNull InteractionHand usedHand) {
-    PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-    PGCharacter character = attachment.getCurrentCharacter();
-    if (character != null) {
-      PGCharacterData data = character.getData();
-      if (data != null) {
-        ItemStack flower = data.getFlower();
-        ItemStack plume = data.getPlume();
-        ItemStack sands = data.getSands();
-        ItemStack goblet = data.getGoblet();
-        ItemStack circlet = data.getCirclet();
-        ArtifactInventory inv = data.getArtifactInventory();
-        if (!flower.isEmpty()) {flower.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_FLOWER)); flower.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.FLOWER);}
-        if (!plume.isEmpty()) {plume.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_PLUME)); plume.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.PLUME);}
-        if (!sands.isEmpty()) {sands.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_SANDS)); sands.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.SANDS);}
-        if (!goblet.isEmpty()) {goblet.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_GOBLET)); goblet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.GOBLET);}
-        if (!circlet.isEmpty()) {circlet.get(ModDataComponents.ARTIFACT_STATS).setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_CIRCLET)); circlet.get(ModDataComponents.ARTIFACT_STATS).addExp(10000, 5, ArtifactType.CIRCLET);}
-      }
-    }
     if (!level.isClientSide()) {
-//      ItemStack stack = player.getItemInHand(usedHand);
-//
-//      int primogem =
-//          player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get()) + stack.getCount();
-//      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get(), primogem);
-//      System.out.println(player);
-//      NetworkManager.setPrimogemToPlayer((ServerPlayer) player, primogem);
-//      player.sendSystemMessage(
-//          Component.literal(
-//              "你获得了 " + stack.getCount() + " 个原石，" + "当前原石数量为 " + player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get())));
-//      stack.shrink(stack.getCount());
-//      if (player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT)){
-//        PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT.get());
-//        PGCharacter character = attachment.getCurrentCharacter();
-//        character.unequipArtifact(ArtifactType.FLOWER);
-//        character.unequipArtifact(ArtifactType.PLUME);
-//        character.unequipArtifact(ArtifactType.SANDS);
-//        character.unequipArtifact(ArtifactType.GOBLET);
-//        character.unequipArtifact(ArtifactType.CIRCLET);
-//        PGCharacterData data = character.getData();
-//      }
+      ItemStack stack = player.getItemInHand(usedHand);
+
+      int primogem =
+          player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get()) + stack.getCount();
+      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get(), primogem);
+      System.out.println(player);
+      NetworkManager.setPrimogemToPlayer((ServerPlayer) player, primogem);
+      player.sendSystemMessage(
+          Component.literal(
+              "你获得了 " + stack.getCount() + " 个原石，" + "当前原石数量为 " + player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get())));
+      stack.shrink(stack.getCount());
+      if (player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT)){
+        PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT.get());
+        PGCharacter character = attachment.getCurrentCharacter();
+        character.unequipArtifact(ArtifactType.FLOWER);
+        character.unequipArtifact(ArtifactType.PLUME);
+        character.unequipArtifact(ArtifactType.SANDS);
+        character.unequipArtifact(ArtifactType.GOBLET);
+        character.unequipArtifact(ArtifactType.CIRCLET);
+        PGCharacterData data = character.getData();
+      }
 
 
     }
