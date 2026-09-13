@@ -57,6 +57,9 @@ public class ElementalAttachmentInstance extends StatusInstance {
 
     public ElementalAttachmentInstance() {
         this.typeId = TYPE_ID;
+        this.element = ElementalsGIM.FYSIKOS;
+        this.source = AttachmentSource.SPECIAL;
+        this.profile = new AttachmentProfile(0f, 0f, 0f, 0f);
     }
 
     @Override

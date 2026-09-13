@@ -5,6 +5,7 @@ import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.status.StatusInstanceType;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
@@ -40,6 +41,10 @@ public class ModRegistries {
             ResourceKey.createRegistryKey(
                     Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "artifact_sets"));
 
+    public static final ResourceKey<Registry<StatusInstanceType<?>>> STATUS_INSTANCE_TYPE_REGISTRY_KEY =
+            ResourceKey.createRegistryKey(
+                    Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "status_instance_types"));
+
 
     // ======== 注册表 ========
     public static final Registry<AttributeType> ATTRIBUTE_TYPE_REGISTRY =
@@ -70,6 +75,12 @@ public class ModRegistries {
                     .sync(true)
                     .create();
 
+    public static final Registry<StatusInstanceType<?>> STATUS_INSTANCE_TYPE_REGISTRY =
+            new RegistryBuilder<>(STATUS_INSTANCE_TYPE_REGISTRY_KEY)
+                    .sync(true)
+                    .maxId(256)
+                    .create();
+
     // ======== 注册表实例 ========
     public static final DeferredRegister<AttributeType> ATTRIBUTE_TYPES =
             DeferredRegister.create(ATTRIBUTE_TYPE_REGISTRY, Minegenshin.MOD_ID);
@@ -86,6 +97,9 @@ public class ModRegistries {
     public static final DeferredRegister<ArtifactSet> ARTIFACT_SETS =
             DeferredRegister.create(ARTIFACT_SET_REGISTRY, Minegenshin.MOD_ID);
 
+    public static final DeferredRegister<StatusInstanceType<?>> STATUS_INSTANCE_TYPES =
+            DeferredRegister.create(STATUS_INSTANCE_TYPE_REGISTRY, Minegenshin.MOD_ID);
+
     @SubscribeEvent
     public static void registerRegistries(NewRegistryEvent event) {
         event.register(ATTRIBUTE_TYPE_REGISTRY);
@@ -93,5 +107,6 @@ public class ModRegistries {
         event.register(CHARACTER_EFFECT_REGISTRY);
         event.register(ELEMENTAL_REACTIONS_REGISTRY);
         event.register(ARTIFACT_SET_REGISTRY);
+        event.register(STATUS_INSTANCE_TYPE_REGISTRY);
     }
 }

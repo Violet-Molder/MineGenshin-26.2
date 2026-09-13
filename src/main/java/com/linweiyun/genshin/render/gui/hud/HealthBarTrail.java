@@ -9,7 +9,7 @@ public class HealthBarTrail {
     private static final Map<Integer, Float> TRAIL_RATIO = new HashMap<>();
 
     public static float get(int entityId, float currentRatio) {
-        return TRAIL_RATIO.computeIfAbsent(entityId, id -> currentRatio);
+        return TRAIL_RATIO.computeIfAbsent(entityId, id -> 1.0f);
     }
 
     public static void update(int entityId, float currentRatio, float speed) {

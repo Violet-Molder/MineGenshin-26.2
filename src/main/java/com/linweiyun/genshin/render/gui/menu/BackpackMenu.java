@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class BackpackMenu {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final int SLOTS_PER_ROW = 14;
+    private static final int SLOTS_PER_ROW = 10;
 
     public static ModularUI createUI(Player player, Backpack backpack) {
         var root = new UIElement().setId("root");

@@ -575,4 +575,102 @@ public class NetworkManager {
       player.level().addFreshEntity(itemEntity);
     }
   }
+
+  @RPCPacket("ascendAdventureRankRPCPacket")
+  public static void ascendAdventureRankRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      if (player.experienceLevel < 30) {
+        player.sendSystemMessage(Component.literal("经验等级不足30级，无法进行冒险等级突破"));
+        return;
+      }
+      AdventurerInfoAttachment advInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+      if (!advInfo.canBreakthroughWorldLevel()) {
+        player.sendSystemMessage(Component.literal("不满足冒险等级突破条件"));
+        return;
+      }
+      player.giveExperienceLevels(-30);
+      advInfo.breakthroughWorldLevel();
+      advInfo.syncToPlayer(player);
+      player.sendSystemMessage(Component.literal("冒险等级突破成功！当前世界等级: " + advInfo.getWorldLevel()));
+    }
+  }
+
+  public static void sendAscendAdventureRankToServer() {
+    RPCPacketDistributor.rpcToServer("ascendAdventureRankRPCPacket");
+  }
+
+  @RPCPacket("ascendCharacterRPCPacket")
+  public static void ascendCharacterRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      if (player.experienceLevel < 30) {
+        player.sendSystemMessage(Component.literal("经验等级不足30级，无法进行角色突破"));
+        return;
+      }
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter character = attachment.getCurrentCharacter();
+      if (character == null || character.getData() == null) {
+        player.sendSystemMessage(Component.literal("当前没有选中角色"));
+        return;
+      }
+      int maxLevelForPhase = character.getData().getAscensionPhase() == 0
+              ? 20
+              : Math.min((character.getData().getAscensionPhase() + 3) * 10, 90);
+      if (character.getData().getLevel() < maxLevelForPhase) {
+        player.sendSystemMessage(Component.literal("角色未达到当前突破阶段最大等级，无法突破"));
+        return;
+      }
+      if (character.getData().getLevel() >= 90) {
+        player.sendSystemMessage(Component.literal("角色已达最高等级"));
+        return;
+      }
+      player.giveExperienceLevels(-30);
+      character.ascend();
+      attachment.syncToPlayer(player);
+      player.sendSystemMessage(Component.literal("角色突破成功！当前突破阶段: " + character.getData().getAscensionPhase()));
+    }
+  }
+
+  public static void sendAscendCharacterToServer() {
+    RPCPacketDistributor.rpcToServer("ascendCharacterRPCPacket");
+  }
+
+  @RPCPacket("downgradeWorldLevelRPCPacket")
+  public static void downgradeWorldLevelRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      AdventurerInfoAttachment advInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+      if (!advInfo.canDowngradeWorldLevel()) {
+        player.sendSystemMessage(Component.literal("不满足降低世界等级条件"));
+        return;
+      }
+      advInfo.downgradeWorldLevel();
+      advInfo.syncToPlayer(player);
+      player.sendSystemMessage(Component.literal("世界等级已降低至 " + advInfo.getWorldLevel()));
+    }
+  }
+
+  public static void sendDowngradeWorldLevelToServer() {
+    RPCPacketDistributor.rpcToServer("downgradeWorldLevelRPCPacket");
+  }
+
+  @RPCPacket("restoreWorldLevelRPCPacket")
+  public static void restoreWorldLevelRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      AdventurerInfoAttachment advInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
+      if (!advInfo.canRestoreWorldLevel()) {
+        player.sendSystemMessage(Component.literal("世界等级无需还原"));
+        return;
+      }
+      advInfo.restoreWorldLevel();
+      advInfo.syncToPlayer(player);
+      player.sendSystemMessage(Component.literal("世界等级已还原至 " + advInfo.getWorldLevel()));
+    }
+  }
+
+  public static void sendRestoreWorldLevelToServer() {
+    RPCPacketDistributor.rpcToServer("restoreWorldLevelRPCPacket");
+  }
 }

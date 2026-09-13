@@ -75,7 +75,8 @@ public class ShenheTalent {
                     }
                 }
             }
-            SkillHelper.addStun(player, 40);
+            // 短暂冻结按键输入
+            SkillHelper.addStun(player, 10);
         } else {
             player.sendSystemMessage(Component.literal("长按"));
         }

@@ -43,15 +43,15 @@ public class Backpack implements IPersistedSerializable, Container, IContainerUI
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public enum Category {
-        WEAPONS("weapons", 500, WeaponItem.class),
-        ARTIFACTS("artifacts", 500, ArtifactItem.class),
-        DEVELOPMENT("development", 500, CharacterDevelopmentItem.class),
-        FOOD("food", 500, FoodItem.class),
-        MATERIALS("materials", 500, MaterialItem.class),
-        GADGET("gadgets", 500, GadgetItem.class),
-        QUEST("quests", 500, QuestItem.class),
-        PRECIOUS("precious", 500, PreciousItem.class),
-        FURNISHINGS("furnishings", 500, FurnishingItem.class);
+        WEAPONS("weapons", 100, WeaponItem.class),
+        ARTIFACTS("artifacts", 100, ArtifactItem.class),
+        DEVELOPMENT("development", 100, CharacterDevelopmentItem.class),
+        FOOD("food", 100, FoodItem.class),
+        MATERIALS("materials", 100, MaterialItem.class),
+        GADGET("gadgets", 100, GadgetItem.class),
+        QUEST("quests", 100, QuestItem.class),
+        PRECIOUS("precious", 100, PreciousItem.class),
+        FURNISHINGS("furnishings", 100, FurnishingItem.class);
 
         public final String displayName;
         public final int maxCapacity;
