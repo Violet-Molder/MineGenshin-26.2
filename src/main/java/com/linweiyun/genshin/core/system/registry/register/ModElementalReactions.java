@@ -6,7 +6,6 @@ import com.linweiyun.genshin.core.system.reaction.builtin.MeltReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.VaporizeReaction;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.enums.ElementalReactionType;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -20,7 +19,7 @@ public class ModElementalReactions {
             "vaporize",
             () -> new VaporizeReaction(
                     ElementalReactionType.VAPORIZE,
-                    ElementalsGIM.HYDRO, ElementalsGIM.PYRO,
+                    "minegenshin:hydro", "minegenshin:pyro",
                     1f, 2f,
                     0));
 
@@ -29,7 +28,7 @@ public class ModElementalReactions {
             "melt",
             () -> new MeltReaction(
                     ElementalReactionType.MELT,
-                    ElementalsGIM.PYRO, ElementalsGIM.CYRO,
+                    "minegenshin:pyro", "minegenshin:cyro",
                     1f, 2f,
                     0));
 
@@ -38,7 +37,7 @@ public class ModElementalReactions {
             "freeze",
             () -> new FreezeReaction(
                     ElementalReactionType.FROZEN,
-                    ElementalsGIM.HYDRO, ElementalsGIM.CYRO,
+                    "minegenshin:hydro", "minegenshin:cyro",
                     1f, 1f,
                     0));
 

@@ -7,10 +7,11 @@ import com.linweiyun.genshin.content.entities.teyvat.TeyvatHostile;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.about.FrozenDecayState;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.logging.LogUtils;
@@ -261,17 +262,17 @@ public class MobHealthBarHud {
         FrozenDecayState frozenState = container.getFrozenDecayState();
 
         // 收集主元素 -> 是否 low
-        Map<ElementalsGIM, Boolean> mainElementMap = new LinkedHashMap<>();
+        Map<GenshinElement, Boolean> mainElementMap = new LinkedHashMap<>();
         for (StatusInstance inst : container.getAll()) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
-            ElementalsGIM e = ea.getElement();
-            if (e == null || e == ElementalsGIM.FYSIKOS) continue;
+            GenshinElement e = ea.getElement();
+            if (e == null || e == ModElements.FYSIKOS.get()) continue;
 
-            ElementalsGIM main = e.getMainElement();
+            GenshinElement main = e.getMainElement();
 
             float rate;
-            if (e == ElementalsGIM.FROZEN && frozenState != null) {
+            if (e == ModElements.FROZEN.get() && frozenState != null) {
                 rate = frozenState.getCurrentDecayRate();
             } else {
                 rate = ea.getCurrentDecayPerSecond();
@@ -292,8 +293,8 @@ public class MobHealthBarHud {
         float startX = -totalWidth / 2.0f;
 
         int i = 0;
-        for (Map.Entry<ElementalsGIM, Boolean> entry : mainElementMap.entrySet()) {
-            ElementalsGIM element = entry.getKey();
+        for (Map.Entry<GenshinElement, Boolean> entry : mainElementMap.entrySet()) {
+            GenshinElement element = entry.getKey();
             boolean isLow = entry.getValue();
 
             // 闪烁：处于低量状态且当前相位不可见时跳过渲染

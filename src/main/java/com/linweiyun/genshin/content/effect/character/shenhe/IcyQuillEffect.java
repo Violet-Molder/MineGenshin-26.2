@@ -9,8 +9,8 @@ import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -23,7 +23,7 @@ public class IcyQuillEffect implements ICharacterEffect {
     @Override
     public void onAttacked(Player holder, PGCharacter character, LivingEntity target, CharacterEffectInstance instance, ModDamageSource damageSource) {
         ModDamageSpec oldDamageSpec = damageSource.getSpec();
-        if (oldDamageSpec.getElement() == ElementalsGIM.CYRO) {
+        if (oldDamageSpec.getElement() == ModElements.CYRO.get()) {
             PlayerCharactersAttachment charactersAttachment = holder.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter shenhe = charactersAttachment.getCharacterByUUID(ModCharacters.SHENHE.get().getCharacterUUID());
             if (shenhe != null) {

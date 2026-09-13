@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.content.entities.teyvat;
 
-import com.linweiyun.genshin.enums.ElementalsGIM;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.FriendlyByteBuf;
@@ -57,17 +58,15 @@ public record TeyvatEntityStats(
                     TeyvatEntityStats::new
             );
 
-    public float getElementResistance(ElementalsGIM element) {
-        return switch (element) {
-            case PYRO -> pyroResistance;
-            case HYDRO -> hydroResistance;
-            case ANEMO -> anemoResistance;
-            case ELECTRO -> electroResistance;
-            case DENDRO -> dendroResistance;
-            case CYRO -> cyroResistance;
-            case GEO -> geoResistance;
-            default -> DEFAULT_RES;
-        };
+    public float getElementResistance(GenshinElement element) {
+        if (element == ModElements.PYRO.get()) return pyroResistance;
+        if (element == ModElements.HYDRO.get()) return hydroResistance;
+        if (element == ModElements.ANEMO.get()) return anemoResistance;
+        if (element == ModElements.ELECTRO.get()) return electroResistance;
+        if (element == ModElements.DENDRO.get()) return dendroResistance;
+        if (element == ModElements.CYRO.get()) return cyroResistance;
+        if (element == ModElements.GEO.get()) return geoResistance;
+        return DEFAULT_RES;
     }
 
     public TeyvatEntityStats withLevel(int newLevel) {
@@ -88,31 +87,29 @@ public record TeyvatEntityStats(
                 electroResistance, dendroResistance, cyroResistance, geoResistance);
     }
 
-    public TeyvatEntityStats withElementResistance(ElementalsGIM element, float resistance) {
-        return switch (element) {
-            case PYRO -> new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
-                    resistance, hydroResistance, anemoResistance, electroResistance,
-                    dendroResistance, cyroResistance, geoResistance);
-            case HYDRO -> new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
-                    pyroResistance, resistance, anemoResistance, electroResistance,
-                    dendroResistance, cyroResistance, geoResistance);
-            case ANEMO -> new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
-                    pyroResistance, hydroResistance, resistance, electroResistance,
-                    dendroResistance, cyroResistance, geoResistance);
-            case ELECTRO -> new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
-                    pyroResistance, hydroResistance, anemoResistance, resistance,
-                    dendroResistance, cyroResistance, geoResistance);
-            case DENDRO -> new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
-                    pyroResistance, hydroResistance, anemoResistance, electroResistance,
-                    resistance, cyroResistance, geoResistance);
-            case CYRO -> new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
-                    pyroResistance, hydroResistance, anemoResistance, electroResistance,
-                    dendroResistance, resistance, geoResistance);
-            case GEO -> new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
-                    pyroResistance, hydroResistance, anemoResistance, electroResistance,
-                    dendroResistance, cyroResistance, resistance);
-            default -> this;
-        };
+    public TeyvatEntityStats withElementResistance(GenshinElement element, float resistance) {
+        if (element == ModElements.PYRO.get()) return new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
+                resistance, hydroResistance, anemoResistance, electroResistance,
+                dendroResistance, cyroResistance, geoResistance);
+        if (element == ModElements.HYDRO.get()) return new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
+                pyroResistance, resistance, anemoResistance, electroResistance,
+                dendroResistance, cyroResistance, geoResistance);
+        if (element == ModElements.ANEMO.get()) return new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
+                pyroResistance, hydroResistance, resistance, electroResistance,
+                dendroResistance, cyroResistance, geoResistance);
+        if (element == ModElements.ELECTRO.get()) return new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
+                pyroResistance, hydroResistance, anemoResistance, resistance,
+                dendroResistance, cyroResistance, geoResistance);
+        if (element == ModElements.DENDRO.get()) return new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
+                pyroResistance, hydroResistance, anemoResistance, electroResistance,
+                resistance, cyroResistance, geoResistance);
+        if (element == ModElements.CYRO.get()) return new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
+                pyroResistance, hydroResistance, anemoResistance, electroResistance,
+                dendroResistance, resistance, geoResistance);
+        if (element == ModElements.GEO.get()) return new TeyvatEntityStats(level, combatTicks, targeting, physicalResistance,
+                pyroResistance, hydroResistance, anemoResistance, electroResistance,
+                dendroResistance, cyroResistance, resistance);
+        return this;
     }
 
     public TeyvatEntityStats withPhysicalResistance(float resistance) {

@@ -1,10 +1,12 @@
 package com.linweiyun.genshin.core.system.reaction;
 
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
-import com.linweiyun.genshin.enums.ElementalsGIM;
+import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.enums.ElementalReactionType;
+import net.minecraft.resources.Identifier;
 
 /**
  * 元素反应基类 —— 所有元素反应继承此类
@@ -25,51 +27,55 @@ import com.linweiyun.genshin.enums.ElementalReactionType;
  */
 public abstract class ElementalReaction {
 
-    protected final ElementalsGIM elementA;
-    protected final ElementalsGIM elementB;
+    protected final String elementAId;
+    protected final String elementBId;
+    private transient GenshinElement cachedElementA;
+    private transient GenshinElement cachedElementB;
     protected final float ratioA;
     protected final float ratioB;
     protected final int basePriority;
     protected final ElementalReactionType reactionType;
 
-    /**
-     * @param reactionType  反应类型枚举
-     * @param elementA      元素1（消耗 ratioA 份）
-     * @param elementB      元素2（消耗 ratioB 份，被克制方）
-     * @param ratioA        元素1消耗系数
-     * @param ratioB        元素2消耗系数
-     * @param basePriority  默认优先级（数值越小越优先）
-     */
     protected ElementalReaction(ElementalReactionType reactionType,
-                                ElementalsGIM elementA, ElementalsGIM elementB,
+                                String elementAId, String elementBId,
                                 float ratioA, float ratioB,
                                 int basePriority) {
         this.reactionType = reactionType;
-        this.elementA = elementA;
-        this.elementB = elementB;
+        this.elementAId = elementAId;
+        this.elementBId = elementBId;
         this.ratioA = ratioA;
         this.ratioB = ratioB;
         this.basePriority = basePriority;
     }
 
-    public ElementalsGIM getElementA() { return elementA; }
-    public ElementalsGIM getElementB() { return elementB; }
+    public GenshinElement getElementA() {
+        if (cachedElementA == null) cachedElementA = resolveElement(elementAId);
+        return cachedElementA;
+    }
+    public GenshinElement getElementB() {
+        if (cachedElementB == null) cachedElementB = resolveElement(elementBId);
+        return cachedElementB;
+    }
+
+    private static GenshinElement resolveElement(String id) {
+        String[] parts = id.split(":", 2);
+        Identifier identifier = Identifier.fromNamespaceAndPath(parts[0], parts[1]);
+        return ModRegistries.ELEMENT_REGISTRY.get(identifier).map(r -> r.value()).orElse(null);
+    }
+
     public float getRatioA() { return ratioA; }
     public float getRatioB() { return ratioB; }
     public int getBasePriority() { return basePriority; }
     public ElementalReactionType getReactionType() { return reactionType; }
 
-    /**
-     * 给定 attacker（后手）和 defender（先手，目标身上已有）的主元素，
-     * 判断该反应是否可以参与匹配
-     */
-// 基类默认实现：仍然做主元素归并配对
-    public boolean canMatch(ElementalsGIM attackerElement, ElementalsGIM defenderElement) {
-        ElementalsGIM attackerMain = attackerElement.getMainElement();
-        ElementalsGIM defenderMain = defenderElement.getMainElement();
+    public boolean canMatch(GenshinElement attackerElement, GenshinElement defenderElement) {
+        GenshinElement attackerMain = attackerElement.getMainElement();
+        GenshinElement defenderMain = defenderElement.getMainElement();
         if (attackerMain == null || defenderMain == null) return false;
-        return (attackerMain == elementA && defenderMain == elementB)
-                || (attackerMain == elementB && defenderMain == elementA);
+        GenshinElement a = getElementA();
+        GenshinElement b = getElementB();
+        return (attackerMain == a && defenderMain == b)
+                || (attackerMain == b && defenderMain == a);
     }
 
     /**
@@ -103,7 +109,7 @@ public abstract class ElementalReaction {
      * 默认：主元素归并匹配（MAIN 策略，融化语义）
      * FreezeReaction 覆盖：排除 FROZEN（EXACT 策略语义）
      */
-    public boolean canConsume(ElementalAttachmentInstance instance, ElementalsGIM slotElement) {
+    public boolean canConsume(ElementalAttachmentInstance instance, GenshinElement slotElement) {
         return instance.getElement().getMainElement() == slotElement.getMainElement();
     }
 
@@ -111,7 +117,7 @@ public abstract class ElementalReaction {
      * 基类统一：求和容器中所有能参与 slotElement 消耗的实例的元素量
      * 内部调用 canConsume 做过滤
      */
-    public float sumConsumable(StatusContainer container, ElementalsGIM slotElement) {
+    public float sumConsumable(StatusContainer container, GenshinElement slotElement) {
         float sum = 0f;
         for (StatusInstance inst : container.getAll()) {
             if (inst.isFinished()) continue;
@@ -126,7 +132,7 @@ public abstract class ElementalReaction {
      * 基类统一：从容器中扣减 amount 量的、能参与 slotElement 消耗的实例
      * 返回实际扣了多少
      */
-    public void consumeElementUnit(StatusContainer container, ElementalsGIM slotElement, float amount) {
+    public void consumeElementUnit(StatusContainer container, GenshinElement slotElement, float amount) {
         float remaining = amount;
         for (StatusInstance inst : container.getAll()) {
             if (inst.isFinished()) continue;

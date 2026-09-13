@@ -4,7 +4,6 @@ import com.linweiyun.genshin.config.Config;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
@@ -16,7 +15,7 @@ import java.util.function.Supplier;
 public class Columbina extends PGCharacter {
     public Columbina() {
         super(145001, 5, Component.translatable("character.name.columbina"),
-                ElementalsGIM.HYDRO, CharacterAscendAttribute.ATK,
+                "minegenshin:hydro", CharacterAscendAttribute.ATK,
                 17 * 20, 20 * 20, 80f, "columbina",
                 Map.of(
                         ModAttributes.MAX_HP.getId(), Config.COLUMBINA_HP,

@@ -10,10 +10,12 @@ import com.geckolib.animation.object.PlayState;
 import com.geckolib.animation.state.AnimationTest;
 import com.geckolib.util.GeckoLibUtil;
 import com.linweiyun.genshin.content.entities.teyvat.monster.TeyvatMonster;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.enums.AttackType;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -48,7 +50,7 @@ public class TeyvatSlime extends TeyvatMonster implements GeoEntity {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder entityData) {
         super.defineSynchedData(entityData);
-        entityData.define(DATA_ELEMENT, ElementalsGIM.ANEMO.getId());
+        entityData.define(DATA_ELEMENT, "minegenshin:anemo");
     }
 
     //AI逻辑注册
@@ -91,12 +93,22 @@ public class TeyvatSlime extends TeyvatMonster implements GeoEntity {
         }
         return PlayState.STOP;
     }
-    public ElementalsGIM getElement() {
-        return ElementalsGIM.getElementById(this.entityData.get(DATA_ELEMENT));
+    public GenshinElement getElement() {
+        String id = this.entityData.get(DATA_ELEMENT);
+        if (id != null && !id.isEmpty()) {
+            String[] parts = id.split(":", 2);
+            if (parts.length == 2) {
+                net.minecraft.resources.Identifier identifier = net.minecraft.resources.Identifier.fromNamespaceAndPath(parts[0], parts[1]);
+                GenshinElement resolved = ModRegistries.ELEMENT_REGISTRY.get(identifier).map(r -> r.value()).orElse(null);
+                if (resolved != null) return resolved;
+            }
+        }
+        return ModElements.FYSIKOS.get();
     }
     // 设置元素类型
-    public void setElement(ElementalsGIM element) {
-        this.entityData.set(DATA_ELEMENT, element.getId());  // 将元素ID字符串写入同步数据
+    public void setElement(GenshinElement element) {
+        net.minecraft.resources.Identifier key = ModRegistries.ELEMENT_REGISTRY.getKey(element);
+        this.entityData.set(DATA_ELEMENT, key != null ? key.toString() : "minegenshin:fysikos");
     }
     static class SlimeMoveControl extends MoveControl {
         private float yRot;              //旋转角度

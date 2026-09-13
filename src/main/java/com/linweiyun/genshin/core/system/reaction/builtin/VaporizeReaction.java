@@ -1,15 +1,13 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
 import com.linweiyun.genshin.config.ElementalReactionConfig;
-import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionPriorityCalculator;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.linweiyun.genshin.enums.ElementalReactionType;
-import net.minecraft.world.entity.LivingEntity;
 
 /**
  * 蒸发反应 —— 增幅反应
@@ -28,9 +26,9 @@ public class VaporizeReaction extends ElementalReaction {
     private static float getSubmissiveMultiplier() { return Float.parseFloat(ElementalReactionConfig.VAPORIZE_COEFFICIENT_NEGATIVE.get()); }
 
     public VaporizeReaction(ElementalReactionType type,
-                            ElementalsGIM elementA, ElementalsGIM elementB,
+                            String elementAId, String elementBId,
                             float ratioA, float ratioB, int basePriority) {
-        super(type, elementA, elementB, ratioA, ratioB, basePriority);
+        super(type, elementAId, elementBId, ratioA, ratioB, basePriority);
     }
 
     @Override
@@ -41,13 +39,15 @@ public class VaporizeReaction extends ElementalReaction {
 
     @Override
     public ReactionResult execute(ReactionContext ctx) {
-        // 确定先手是 A 还是 B，以及实际对应的 ElementalsGIM
-        ElementalsGIM attackerMain = ctx.attackerElement().getMainElement();
-        boolean attackerIsA = (attackerMain == elementA);
+        // 确定先手是 A 还是 B，以及实际对应的 GenshinElement
+        GenshinElement elA = getElementA();
+        GenshinElement elB = getElementB();
+        GenshinElement attackerMain = ctx.attackerElement().getMainElement();
+        boolean attackerIsA = (attackerMain == elA);
 
         // 找到目标身上对应的先手实例
         ElementalAttachmentInstance defInstance = findDefenderInstance(ctx,
-                attackerIsA ? elementB : elementA);
+                attackerIsA ? elB : elA);
 
         if (defInstance == null || defInstance.isFinished()) {
             return ReactionResult.builder(reactionType).build();
@@ -70,8 +70,8 @@ public class VaporizeReaction extends ElementalReaction {
         consumedA = consumed[0];
         consumedB = consumed[1];
 
-        consumeElementUnit(ctx.targetContainer(), elementB, consumedB);
-        consumeElementUnit(ctx.targetContainer(), elementA, consumedA);
+        consumeElementUnit(ctx.targetContainer(), elB, consumedB);
+        consumeElementUnit(ctx.targetContainer(), elA, consumedA);
 
         // 判断克制关系 → 倍率
         // elementA 是克制方（消耗少的）
@@ -91,13 +91,13 @@ public class VaporizeReaction extends ElementalReaction {
     }
 
     private ElementalAttachmentInstance findDefenderInstance(ReactionContext ctx,
-                                                             ElementalsGIM targetMain) {
+                                                             GenshinElement targetMain) {
         // 遍历容器，找到主元素匹配的先手实例（优先找主元素精确匹配的，再找类元素）
         ElementalAttachmentInstance subElementMatch = null;
         for (com.linweiyun.genshin.core.status.StatusInstance inst : ctx.targetContainer().getAll()) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
-            ElementalsGIM eaElement = ea.getElement();
+            GenshinElement eaElement = ea.getElement();
             if (eaElement.getMainElement() != targetMain) continue;
             // 精确匹配优先
             if (eaElement == targetMain) return ea;

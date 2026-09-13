@@ -3,6 +3,7 @@ package com.linweiyun.genshin.core.system.combat.attack;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.combat.damage.*;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
@@ -16,7 +17,6 @@ import com.linweiyun.genshin.core.system.combat.decay.IDecayCounterHolder;
 import com.linweiyun.genshin.core.system.reaction.ElementalReactionManager;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
@@ -76,7 +76,7 @@ public class HurtEntityHelper {
         AttachmentProfile profile = chooseProfile(spec.getElementAmount());
         boolean canAttach = spec.hasAuraPotential() && elementCoefficient > 0;
         if (canAttach) {
-            ElementalAttachmentHelper.attach(
+            ElementalAttachmentHelper.attach(target,
                     StatusAccessor.of(target), spec.getElement(),
                     AttachmentSource.NORMAL_ATTACK, profile);
         }
@@ -89,7 +89,7 @@ public class HurtEntityHelper {
             ReactionContext ctx = new ReactionContext(
                     spec.getElement(), spec.getElementAmount() * elementCoefficient,
                     AttachmentSource.NORMAL_ATTACK, profile, spec,
-                    damageSource.getEntity(), container);
+                    damageSource.getEntity(), container, target);
             reactionResult = ElementalReactionManager.tryReactAfterAttach(ctx);
         }
 
@@ -175,7 +175,7 @@ public class HurtEntityHelper {
         return 1 - CombatMath.defenseZone(attackerLevel, defenderDef);
     }
 
-    private static float resistanceZone(ElementalsGIM element,
+    private static float resistanceZone(GenshinElement element,
                                         LivingEntity defender, PGCharacter defenderCharacter) {
         float res = CombatEntityAccessor.getDefenderResistance(defender, defenderCharacter, element);
 //        LOGGER.info("[元素抗性区] {}抗性={}", element, res);

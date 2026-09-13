@@ -16,11 +16,12 @@ import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
@@ -47,7 +48,8 @@ public class PGCharacter implements IPersistedSerializable {
     @Persisted(key = "name")
     protected Component name;
     @Persisted(key = "elemental")
-    protected ElementalsGIM elemental;
+    protected String elementalId;
+    private transient GenshinElement elemental;
     @Persisted(key = "ascend_attribute")
     protected CharacterAscendAttribute ascendAttribute;
     @Persisted(key = "skill_short_cooldown")
@@ -71,14 +73,14 @@ public class PGCharacter implements IPersistedSerializable {
 
     public PGCharacter(
             int characterUUID, int starRating, Component name,
-            ElementalsGIM elemental, CharacterAscendAttribute ascendAttribute,
+            String elementalId, CharacterAscendAttribute ascendAttribute,
             int skillMaxCooldownTick, int burstMaxCooldownTick,
             float maxObtainingEnergy, String textureId,
             Map<Identifier, Supplier<List<? extends Integer>>> statGrowthMap) {
         this.characterUUID = characterUUID;
         this.starRating = starRating;
         this.name = name;
-        this.elemental = elemental;
+        this.elementalId = elementalId;
         this.ascendAttribute = ascendAttribute;
         this.skillShortMaxCooldownTick = skillMaxCooldownTick;
         this.skillLongMaxCooldownTick = skillMaxCooldownTick;
@@ -89,14 +91,14 @@ public class PGCharacter implements IPersistedSerializable {
     }
     public PGCharacter(
             int characterUUID, int starRating, Component name,
-            ElementalsGIM elemental, CharacterAscendAttribute ascendAttribute,
+            String elementalId, CharacterAscendAttribute ascendAttribute,
             int skillShortMaxCooldownTick,int skillLongMaxCooldownTick, int burstMaxCooldownTick,
             float maxObtainingEnergy, String textureId,
             Map<Identifier, Supplier<List<? extends Integer>>> statGrowthMap) {
         this.characterUUID = characterUUID;
         this.starRating = starRating;
         this.name = name;
-        this.elemental = elemental;
+        this.elementalId = elementalId;
         this.ascendAttribute = ascendAttribute;
         this.skillShortMaxCooldownTick = skillShortMaxCooldownTick;
         this.skillLongMaxCooldownTick = skillLongMaxCooldownTick;
@@ -435,7 +437,16 @@ public class PGCharacter implements IPersistedSerializable {
     public int getCharacterUUID() { return characterUUID; }
     public int getStarRating() { return starRating; }
     public Component getName() { return name; }
-    public ElementalsGIM getElemental() { return elemental; }
+    public GenshinElement getElemental() {
+        if (elemental != null) return elemental;
+        if (elementalId != null && !elementalId.isEmpty()) {
+            String[] parts = elementalId.split(":", 2);
+            Identifier id = Identifier.fromNamespaceAndPath(parts[0], parts[1]);
+            elemental = ModRegistries.ELEMENT_REGISTRY.get(id).map(r -> r.value()).orElse(null);
+            return elemental;
+        }
+        return ModElements.FYSIKOS.get();
+    }
     public CharacterAscendAttribute getAscendAttribute() { return ascendAttribute; }
     public int getSkillShortMaxCooldownTick() { return skillShortMaxCooldownTick; }
     public int getSkillLongMaxCooldownTick() { return skillLongMaxCooldownTick; }

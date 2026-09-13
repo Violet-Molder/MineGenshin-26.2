@@ -4,10 +4,10 @@ import com.linweiyun.genshin.content.entities.teyvat.NonTeyvatEntity;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.enums.AttackType;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -54,20 +54,20 @@ public class PlayerAttackInterceptor {
         boolean genshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
         if (genshinMode) {
             if (character.getCharacterUUID() == 145001) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.HYDRO)
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.HYDRO.get())
                         .multiplier(1.0f).elementAmount(1.0f).attackerCharacter(character).build();
                 return ModDamageSource.from(spec, player);
             } else if (character.getCharacterUUID() == 135001) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.CYRO)
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.CYRO.get())
                         .multiplier(1.0f).elementAmount(1.0f).attackerCharacter(character).build();
                 return ModDamageSource.from(spec, player);
             } else if (character.getCharacterUUID() == 135002) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.PYRO)
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.PYRO.get())
                         .multiplier(1.0f).elementAmount(1.0f).attackerCharacter(character).build();
                 return ModDamageSource.from(spec, player);
             }
         }
-        ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ElementalsGIM.FYSIKOS)
+        ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.FYSIKOS.get())
                 .multiplier(1.0f).attackerCharacter(character).build();
         return ModDamageSource.from(spec, player);
     }

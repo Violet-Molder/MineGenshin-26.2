@@ -1,10 +1,13 @@
 package com.linweiyun.genshin.core.system.about;
 
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.LivingEntity;
 import org.slf4j.Logger;
 
 public class ElementalAttachmentInstance extends StatusInstance {
@@ -12,8 +15,10 @@ public class ElementalAttachmentInstance extends StatusInstance {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String TYPE_ID = "elemental_attachment";
 
-    @Persisted(key = "element")
-    private ElementalsGIM element;
+    @Persisted(key = "element_id")
+    private String elementId;
+
+    private transient GenshinElement element;
 
     @Persisted(key = "source")
     private AttachmentSource source;
@@ -40,11 +45,13 @@ public class ElementalAttachmentInstance extends StatusInstance {
     private int replenishTimer;
 
     private transient StatusContainer container;
+    private transient LivingEntity owner;
 
-    public ElementalAttachmentInstance(ElementalsGIM element, AttachmentSource source,
+    public ElementalAttachmentInstance(GenshinElement element, AttachmentSource source,
                                        AttachmentProfile profile, float initialUnit) {
         this.typeId = TYPE_ID;
         this.element = element;
+        this.elementId = resolveElementId(element);
         this.source = source;
         this.profile = profile;
         this.unit = initialUnit;
@@ -57,7 +64,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
 
     public ElementalAttachmentInstance() {
         this.typeId = TYPE_ID;
-        this.element = ElementalsGIM.FYSIKOS;
+        this.elementId = "minegenshin:fysikos";
         this.source = AttachmentSource.SPECIAL;
         this.profile = new AttachmentProfile(0f, 0f, 0f, 0f);
     }
@@ -73,7 +80,8 @@ public class ElementalAttachmentInstance extends StatusInstance {
             return;
         }
         float effectiveDecayPerSecond;
-        if (element == ElementalsGIM.FROZEN
+        GenshinElement e = getElement();
+        if (e == ModElements.FROZEN.get()
                 && container != null
                 && container.getFrozenDecayState() != null) {
             effectiveDecayPerSecond = container.getFrozenDecayState().getCurrentDecayRate();
@@ -94,6 +102,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
     public StatusInstance copy() {
         ElementalAttachmentInstance c = new ElementalAttachmentInstance();
         c.element = this.element;
+        c.elementId = this.elementId;
         c.source = this.source;
         c.profile = this.profile;
         c.unit = this.unit;
@@ -107,6 +116,17 @@ public class ElementalAttachmentInstance extends StatusInstance {
     }
     public void setContainer(StatusContainer container) {
         this.container = container;
+    }
+
+    public void setOwner(LivingEntity owner) {
+        this.owner = owner;
+    }
+
+    @Override
+    public void onRemove() {
+        if (element != null && owner != null && GenshinElement.isNonPlayerLiving(owner)) {
+            element.onDetach(owner);
+        }
     }
 
     // ========== 覆盖规则 & 消耗 ==========
@@ -130,10 +150,22 @@ public class ElementalAttachmentInstance extends StatusInstance {
 
     // ========== Getter ==========
 
-    public ElementalsGIM getElement() { return element; }
+    public GenshinElement getElement() {
+        if (element == null && elementId != null && !elementId.isEmpty()) {
+            String[] parts = elementId.split(":", 2);
+            Identifier id = Identifier.fromNamespaceAndPath(parts[0], parts[1]);
+            element = com.linweiyun.genshin.core.system.registry.ModRegistries.ELEMENT_REGISTRY.get(id).map(r -> r.value()).orElse(null);
+        }
+        return element;
+    }
     public AttachmentSource getSource() { return source; }
     public AttachmentProfile getProfile() { return profile; }
     public float getUnit() { return unit; }
     public float getCurrentDecayPerSecond() { return currentDecayPerSecond; }
     public boolean isPermanent() { return permanent; }
+
+    private static String resolveElementId(GenshinElement element) {
+        Identifier key = com.linweiyun.genshin.core.system.registry.ModRegistries.ELEMENT_REGISTRY.getKey(element);
+        return key != null ? key.toString() : "minegenshin:fysikos";
+    }
 }

@@ -1,9 +1,10 @@
 package com.linweiyun.genshin.core.system.about;
 
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
+import net.minecraft.world.entity.LivingEntity;
 import org.slf4j.Logger;
 
 /**
@@ -29,27 +30,24 @@ public class ElementalAttachmentHelper {
 
     // ========== 附着入口 —— 四种宿主 ==========
     public static final Logger LOGGER = LogUtils.getLogger();
-    public static void attach(StatusContainer container,
-                              ElementalsGIM element,
+    public static void attach(LivingEntity target, StatusContainer container,
+                              GenshinElement element,
                               AttachmentSource source,
                               AttachmentProfile profile) {
-        doAttach(container, element, source, profile);
+        doAttach(target, container, element, source, profile);
     }
 
     // ========== 消耗（元素反应调用）==========
 
     /**
      * 从容器里消耗指定元素的附着量
-     * 遍历容器里所有同元素（ElementalsGIM 匹配）的实例，逐个扣量
-     * 注意：类元素（FROZEN）和对应的主元素（CYRO）是不同的 ElementalsGIM 值，
-     * 不会被一起消耗。元素反应需要根据实际消耗规则自行决定消耗哪些。
      */
-    public static float consume(StatusContainer container, ElementalsGIM element, float amount) {
+    public static float consume(StatusContainer container, GenshinElement element, float amount) {
         if (container == null) return 0f;
         return consumeInternal(container, element, amount);
     }
 
-    private static float consumeInternal(StatusContainer container, ElementalsGIM element, float amount) {
+    private static float consumeInternal(StatusContainer container, GenshinElement element, float amount) {
         float remaining = amount;
         for (StatusInstance inst : container.getAll()) {
             if (inst.isFinished()) continue;
@@ -64,42 +62,36 @@ public class ElementalAttachmentHelper {
 
     // ========== 核心附着逻辑 ==========
 
-    private static void doAttach(StatusContainer container,
-                                 ElementalsGIM element,
+    private static void doAttach(LivingEntity target, StatusContainer container,
+                                 GenshinElement element,
                                  AttachmentSource source,
                                  AttachmentProfile profile) {
 
         // 1. 实际附着量 = baseQuantity × lossMultiplier
         float actualQuantity = profile.actualQuantity();
 
-        // 2. 风/岩：瞬时附着。附着后立即 finished，只能做后手反应
-        if (element.isInstant()) {
-            // 先加到容器（让反应逻辑在同一 tick 内读到它）
-            // 但设置 quantity 让它立即 finished → 容器下一个 tick 清
-            // 不对——瞬时附着的"附着量"有意义（反应消耗时要读），
-            // 所以 initial quantity 设为 actualQuantity，但让它 isFinished 在同 tick 结束后
-            // 实现方式：加进去，然后反应逻辑处理完后，容器 tick 清掉。
-            // 这里不做特殊处理，直接走到下面的"无匹配实例 → 新建"逻辑
-        }
-
-        // 3. 查找容器里"同元素 + 同 source + 未 finished"的已有实例
+        // 2. 查找容器里"同元素 + 同 source + 未 finished"的已有实例
         ElementalAttachmentInstance existing = findMatching(container, element, source);
 
         if (existing == null) {
             // 无匹配实例 → 新建
             ElementalAttachmentInstance newInst =
                     new ElementalAttachmentInstance(element, source, profile, actualQuantity);
+            if (target != null && GenshinElement.isNonPlayerLiving(target)) {
+                element.onAttach(target);
+            }
+            newInst.setOwner(target);
             container.add(newInst);
             return;
         }
 
-        // 4. 量多则覆盖判断
+        // 3. 量多则覆盖判断
         if (actualQuantity <= existing.getUnit()) {
             // 后手段量 ≤ 先手段量 → 不覆盖
             return;
         }
 
-        // 5. 发生覆盖
+        // 4. 发生覆盖
         existing.refreshQuantity(actualQuantity);
         // 衰减速率分支
         if (element.canOverrideDecay()) {
@@ -111,12 +103,8 @@ public class ElementalAttachmentHelper {
 
     // ========== 查找工具 ==========
 
-    /**
-     * 在容器里查找同元素 + 同来源 + 未 finished 的实例
-     * 不同来源的同元素是独立的（比如可莉普攻火 vs 元素试炼仪火）
-     */
     private static ElementalAttachmentInstance findMatching(
-            StatusContainer container, ElementalsGIM element, AttachmentSource source) {
+            StatusContainer container, GenshinElement element, AttachmentSource source) {
         return (ElementalAttachmentInstance) container.find(inst -> {
             if (inst.isFinished()) return false;
             if (!(inst instanceof ElementalAttachmentInstance ea)) return false;

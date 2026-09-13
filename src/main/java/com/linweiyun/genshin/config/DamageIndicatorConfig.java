@@ -1,7 +1,8 @@
 package com.linweiyun.genshin.config;
 
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.enums.ElementalReactionType;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.mojang.logging.LogUtils;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.slf4j.Logger;
@@ -114,29 +115,37 @@ public class DamageIndicatorConfig {
     }
 
     /** 按元素获取颜色（类元素自动回退到主元素） */
-    public static int getColorForElement(ElementalsGIM element) {
+    public static int getColorForElement(GenshinElement element) {
         if (element == null) {
             LOGGER.warn("[DI-Config] getColorForElement: element is null, using physical color");
             return safeGet(COLOR_PHYSICAL, 0xFFFFFFFF);
         }
 
-        ElementalsGIM main = element.getMainElement();
+        GenshinElement main = element.getMainElement();
         try {
-            int color = switch (main) {
-                case PYRO    -> parseColor(COLOR_PYRO.get());
-                case CYRO    -> parseColor(COLOR_CYRO.get());
-                case HYDRO   -> parseColor(COLOR_HYDRO.get());
-                case ANEMO   -> parseColor(COLOR_ANEMO.get());
-                case ELECTRO -> parseColor(COLOR_ELECTRO.get());
-                case DENDRO  -> parseColor(COLOR_DENDRO.get());
-                case GEO     -> parseColor(COLOR_GEO.get());
-                default      -> parseColor(COLOR_PHYSICAL.get());
-            };
+            int color;
+            if (main == ModElements.PYRO.get()) {
+                color = parseColor(COLOR_PYRO.get());
+            } else if (main == ModElements.CYRO.get()) {
+                color = parseColor(COLOR_CYRO.get());
+            } else if (main == ModElements.HYDRO.get()) {
+                color = parseColor(COLOR_HYDRO.get());
+            } else if (main == ModElements.ANEMO.get()) {
+                color = parseColor(COLOR_ANEMO.get());
+            } else if (main == ModElements.ELECTRO.get()) {
+                color = parseColor(COLOR_ELECTRO.get());
+            } else if (main == ModElements.DENDRO.get()) {
+                color = parseColor(COLOR_DENDRO.get());
+            } else if (main == ModElements.GEO.get()) {
+                color = parseColor(COLOR_GEO.get());
+            } else {
+                color = parseColor(COLOR_PHYSICAL.get());
+            }
             LOGGER.info("[DI-Config] getColorForElement: element={} main={} color=0x{}",
-                    element, main, Integer.toHexString(color));
+                    element.getId(), main.getId(), Integer.toHexString(color));
             return color;
         } catch (Exception e) {
-            LOGGER.error("[DI-Config] getColorForElement failed for element={}", element, e);
+            LOGGER.error("[DI-Config] getColorForElement failed for element={}", element.getId(), e);
             return 0xFFFFFFFF;
         }
     }

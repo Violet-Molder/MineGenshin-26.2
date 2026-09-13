@@ -1,15 +1,13 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
 import com.linweiyun.genshin.config.ElementalReactionConfig;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.status.StatusInstance;
-import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
-import com.linweiyun.genshin.enums.ElementalsGIM;
 import com.linweiyun.genshin.enums.ElementalReactionType;
-import net.minecraft.world.entity.LivingEntity;
 /**
  * 融化反应 —— 增幅反应
  *
@@ -25,18 +23,20 @@ public class MeltReaction extends ElementalReaction {
     private static float getSubmissiveMultiplier() { return Float.parseFloat(ElementalReactionConfig.MELT_COEFFICIENT_NEGATIVE.get()); }
 
     public MeltReaction(ElementalReactionType type,
-                        ElementalsGIM elementA, ElementalsGIM elementB,
+                        String elementAId, String elementBId,
                         float ratioA, float ratioB, int basePriority) {
-        super(type, elementA, elementB, ratioA, ratioB, basePriority);
+        super(type, elementAId, elementBId, ratioA, ratioB, basePriority);
     }
 
     @Override
     public ReactionResult execute(ReactionContext ctx) {
-        ElementalsGIM attackerMain = ctx.attackerElement().getMainElement();
-        boolean attackerIsA = (attackerMain == elementA);
+        GenshinElement elA = getElementA();
+        GenshinElement elB = getElementB();
+        GenshinElement attackerMain = ctx.attackerElement().getMainElement();
+        boolean attackerIsA = (attackerMain == elA);
 
         // 找到目标身上主元素为 elementB 的所有实例（CYRO 主元素，可能是 CYRO 或 FROZEN）
-        ElementalsGIM defenderTarget = attackerIsA ? elementB : elementA;
+        GenshinElement defenderTarget = attackerIsA ? elB : elA;
         float totalDefenderQty = sumMainElementQuantity(ctx, defenderTarget);
 
         if (totalDefenderQty <= 0f) {
@@ -56,8 +56,8 @@ public class MeltReaction extends ElementalReaction {
         }
 
         // 从容器里扣
-        consumeElementUnit(ctx.targetContainer(), elementB, consumedB);
-        consumeElementUnit(ctx.targetContainer(), elementA, consumedA);
+        consumeElementUnit(ctx.targetContainer(), elB, consumedB);
+        consumeElementUnit(ctx.targetContainer(), elA, consumedA);
         // 倍率
         boolean dominant = attackerIsA;
         float multiplier = dominant ? getDominantMultiplier() : getSubmissiveMultiplier();
@@ -71,7 +71,7 @@ public class MeltReaction extends ElementalReaction {
                 .build();
     }
 
-    private float sumMainElementQuantity(ReactionContext ctx, ElementalsGIM mainTarget) {
+    private float sumMainElementQuantity(ReactionContext ctx, GenshinElement mainTarget) {
         float sum = 0f;
         for (StatusInstance inst : ctx.targetContainer().getAll()) {
             if (inst.isFinished()) continue;

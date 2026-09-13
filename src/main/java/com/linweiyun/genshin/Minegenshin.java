@@ -3,6 +3,7 @@ package com.linweiyun.genshin;
 import com.linweiyun.genshin.config.*;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
@@ -39,6 +40,8 @@ public class Minegenshin {
         modContainer.registerConfig(ModConfig.Type.COMMON, ArtifactConfig.ARTIFACT_SPEC, "minegenshin/artifact.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, DamageIndicatorConfig.DAMAGE_INDICATOR_SPEC, "minegenshin/damage-indicator.toml");
 
+
+        ModElements.register(modEventBus);
         ModItems.register(modEventBus);
         ModItemGroups.register(modEventBus);
         ModEntities.register(modEventBus);
@@ -71,7 +74,7 @@ public class Minegenshin {
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
-
+        ModElements.setupSubElements();
     }
 
     public static Identifier id(String path) {

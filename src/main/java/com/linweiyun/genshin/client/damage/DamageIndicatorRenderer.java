@@ -156,12 +156,6 @@ public class DamageIndicatorRenderer {
             hudRoot.addChild(bottomLabel);
             hudRoot.addChild(topWrapper);
             LABEL_ENTRIES.add(new LabelEntry(indicator, topWrapper, topLabel, bottomLabel));
-
-            LOGGER.info("[DI-Hud] label pair created: text='{}' gradient={} top=0x{} bottom=0x{} textW={} textH={}",
-                    indicator.text, indicator.isGradient(),
-                    Integer.toHexString(indicator.topColor),
-                    Integer.toHexString(indicator.bottomColor),
-                    textW, textH);
         }
 
         // 3. 每帧更新位置 / 缩放 / 透明度
