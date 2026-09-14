@@ -5,9 +5,12 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.system.combat.ComboSystem;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -16,7 +19,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 @EventBusSubscriber(value = Dist.CLIENT)
 public class KeyInputHandler {
-
 
   private static boolean wasRKeyDown = false;
   private static boolean wasGKeyDown = false;
@@ -27,8 +29,49 @@ public class KeyInputHandler {
   private static boolean wasCharInfoKeyDown = false;
   private static boolean wasArtifactKeyDown = false;
   private static boolean wasArtifactKey2Down = false;
+  private static boolean wasJumpDown = false;
   private static long longPressStartTick = 0;
   private static boolean xSkillTriggered = false;
+
+  @SubscribeEvent
+  public static void onClientTickPre(ClientTickEvent.Pre event) {
+    Minecraft mc = Minecraft.getInstance();
+    LocalPlayer player = mc.player;
+    if (player == null) return;
+    if (!TeyvatWorldInvasion.isClientInvaded()) return;
+
+    boolean isInGenshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+    PlayerCharactersAttachment attachment =
+            player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    PGCharacter character = attachment.getCurrentCharacter();
+
+    if (isInGenshinMode && character != null) {
+      int pendingStage = ComboSystem.consumePendingAttack(player);
+      if (pendingStage >= 0) {
+        mc.player.swing(InteractionHand.MAIN_HAND);
+        NetworkManager.performNormalAttackToServer(pendingStage);
+
+        int maxCombo = character.getMaxComboCount();
+        if (maxCombo > 1) {
+          int displayStage = ComboSystem.getComboStage(player);
+          if (displayStage == 0) displayStage = maxCombo;
+          mc.player.sendSystemMessage(
+                  Component.literal("§e段 " + displayStage + "/" + maxCombo));
+        }
+      }
+
+      if (mc.options.keyAttack.consumeClick()) {
+        if (!ComboSystem.isAttackBlocked(player)) {
+          int stage = ComboSystem.getComboStage(player);
+          int precast = character.getNormalAttackPrecastTicks(stage);
+          int postcast = character.getNormalAttackPostcastTicks(stage);
+          int window = character.getNormalAttackWindowTicks(stage);
+          int maxCombo = character.getMaxComboCount();
+          ComboSystem.advanceCombo(player, precast, postcast, window, maxCombo);
+        }
+      }
+    }
+  }
 
   @SubscribeEvent
   public static void onKeyInput(ClientTickEvent.Post event) {
@@ -37,8 +80,6 @@ public class KeyInputHandler {
 
     if (player == null) return;
     if (!TeyvatWorldInvasion.isClientInvaded()) return;
-
-
 
     boolean isInGenshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
     PlayerCharactersAttachment charactersAttachment =
@@ -63,6 +104,12 @@ public class KeyInputHandler {
       switchToNextAvailableCharacter(player, charactersAttachment);
     }
     wasVKeyDown = isVDown;
+
+    boolean isJumpDown = mc.options.keyJump.isDown();
+    if (isJumpDown && !wasJumpDown && isInGenshinMode && character != null) {
+      ComboSystem.resetCombo(player);
+    }
+    wasJumpDown = isJumpDown;
 
     boolean isXDown = KeyMappingRegistry.X_KEY.get().isDown();
     if (isInGenshinMode && character != null) {
@@ -128,6 +175,7 @@ public class KeyInputHandler {
     wasXKeyDown = false;
     longPressStartTick = 0;
     xSkillTriggered = false;
+    ComboSystem.resetCombo(player);
     int currentIndex = attachment.getCurrentCharacterIndex();
     for (int i = 1; i <= 4; i++) {
       int nextIndex = (currentIndex + i) % 4;
@@ -142,7 +190,9 @@ public class KeyInputHandler {
       }
     }
   }
+
   private static void triggerCharacterSkill(Player player, int isLong) {
+    ComboSystem.resetCombo(player);
     PlayerCharactersAttachment attachment =
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
 
@@ -154,6 +204,7 @@ public class KeyInputHandler {
   }
 
   private static void triggerCharacterBurst(Player player) {
+    ComboSystem.resetCombo(player);
     PlayerCharactersAttachment attachment =
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     PGCharacter currentChar = attachment.getCurrentCharacter();

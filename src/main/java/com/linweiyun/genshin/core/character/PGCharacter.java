@@ -16,6 +16,7 @@ import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
@@ -64,6 +65,8 @@ public class PGCharacter implements IPersistedSerializable {
     protected String textureId;
     @Persisted(key = "data")
     protected PGCharacterData data;
+
+    protected transient TalentBase talent;
 
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -135,8 +138,34 @@ public class PGCharacter implements IPersistedSerializable {
             player.sendSystemMessage(Component.literal("技能冷却中"));
         }
     };
+
+    public void performNormalAttack(Player player, int comboStage) {
+        triggerNormalAttack(player, comboStage);
+    }
     protected void triggerElementalSkill(Player player, int skillTime){};
     protected void triggerElementalBurst(Player player){};
+
+    protected void triggerNormalAttack(Player player, int comboStage){};
+
+    public int getMaxComboCount() {
+        if (talent != null) return talent.getMaxCombo();
+        return 1;
+    }
+
+    public int getNormalAttackPrecastTicks(int stage) {
+        if (talent != null) return talent.getPrecastTicks(stage);
+        return 0;
+    }
+
+    public int getNormalAttackPostcastTicks(int stage) {
+        if (talent != null) return talent.getPostcastTicks(stage);
+        return 0;
+    }
+
+    public int getNormalAttackWindowTicks(int stage) {
+        if (talent != null) return talent.getWindowTicks(stage);
+        return 0;
+    }
 
     public void frontTick(Player player) {
 

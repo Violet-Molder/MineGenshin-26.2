@@ -22,6 +22,8 @@ import java.util.function.Supplier;
 public class Shenhe extends PGCharacter {
     private static final Logger LOGGER= LogUtils.getLogger();
 
+    private final ShenheTalent shenheTalent = new ShenheTalent();
+
     public Shenhe() {
         super(135001, 5, Component.translatable("character.name.shenhe"),
                 "minegenshin:cyro", CharacterAscendAttribute.ATK,
@@ -31,13 +33,13 @@ public class Shenhe extends PGCharacter {
                         ModAttributes.ATK.getId(), Config.SHENHE_ATK,
                         ModAttributes.DEF.getId(), Config.SHENHE_DEF
                 ));
+        this.talent = shenheTalent;
         data.setElementalSkillStacks(2);
-
     }
 
     @Override
     protected void triggerElementalSkill(Player player, int skillTime) {
-        ShenheTalent.elementalSkill(player,this, skillTime);
+        shenheTalent.elementalSkill(player, this, skillTime);
     }
 
     @Override
@@ -54,6 +56,11 @@ public class Shenhe extends PGCharacter {
             }
             boolean added = player.level().addFreshEntity(field);
         }
+    }
+
+    @Override
+    protected void triggerNormalAttack(Player player, int comboStage) {
+        shenheTalent.attack(player, this, comboStage);
     }
 
     @Override
