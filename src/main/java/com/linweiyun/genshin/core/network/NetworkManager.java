@@ -291,6 +291,22 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket");
   }
 
+  @RPCPacket("characterNormalAttackRPCPacket")
+  public static void characterNormalAttackRPCPacket(RPCSender sender, int comboStage) {
+    if (!sender.isServer()) {
+      ServerPlayer serverPlayer = sender.asPlayer();
+      PlayerCharactersAttachment attachment =
+              serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter currentChar = attachment.getCurrentCharacter();
+      if (currentChar != null) {
+        currentChar.performNormalAttack(serverPlayer, comboStage);
+      }
+    }
+  }
+  public static void performNormalAttackToServer(int comboStage) {
+    RPCPacketDistributor.rpcToServer("characterNormalAttackRPCPacket", comboStage);
+  }
+
   @RPCPacket("artifactLevelUpRPCPacket")
   public static void artifactLevelUpRPCPacket(RPCSender sender, ItemStack stack, int expAmount) {
     if (sender.isServer()) {

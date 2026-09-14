@@ -20,6 +20,7 @@ import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.enums.AttackType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
@@ -28,13 +29,53 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 
+import com.linweiyun.genshin.core.character.talent.TalentBase;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class ShenheTalent {
+public class ShenheTalent extends TalentBase {
     public static final Logger LOGGER = LogUtils.getLogger();
-    public static void elementalSkill(Player player, PGCharacter character, int skillType) {
+
+    private static final float[] COMBO_MULTIPLIERS = {0.41f, 0.42f, 0.55f, 0.35f, 0.68f};
+
+    public ShenheTalent() {
+        super(5,
+                List.of(3, 3, 3, 3, 3),
+                List.of(20, 20, 10, 10, 12),
+                List.of(15, 15, 15, 15, 0));
+    }
+
+    public void attack(Player player, PGCharacter character, int comboStage) {
+        Level level = player.level();
+        if (level.isClientSide()) return;
+
+        int stage = comboStage % this.maxCombo;
+        float multiplier = stage < COMBO_MULTIPLIERS.length ? COMBO_MULTIPLIERS[stage] : 1.0f;
+
+        Vec3 startPos = player.position();
+        Vec3 lookDir = player.getLookAngle();
+        Vec3 endPos = startPos.add(lookDir.scale(2.5f));
+
+        List<LivingEntity> targets = AreaEntityCollector.execute(level, startPos, endPos, 1.0f);
+
+        for (LivingEntity target : targets) {
+            if (target != player) {
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.CYRO.get())
+                        .multiplier(multiplier)
+                        .elementAmount(AttachmentType.WEAK.getInitialAmount())
+                        .attackerCharacter(character)
+                        .build();
+                ModDamageSource source = ModDamageSource.from(spec, player);
+                if (target.level() instanceof ServerLevel serverLevel) {
+                    target.hurtServer(serverLevel, source, 0f);
+                }
+            }
+        }
+    }
+
+    public void elementalSkill(Player player, PGCharacter character, int skillType) {
         Level level = player.level();
         PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         AtomicReference<Float> damageMultiplier = new AtomicReference<>(1.0f);
@@ -81,7 +122,7 @@ public class ShenheTalent {
             player.sendSystemMessage(Component.literal("长按"));
         }
     }
-    public static void elementalBurst(Player player, PGCharacter character) {
+    public void elementalBurst(Player player, PGCharacter character) {
         int burstLevel = character.getData().getElementalBurstLevel();
         float damageMultiplier = 0.103f * burstLevel + 0.89f;
     }
