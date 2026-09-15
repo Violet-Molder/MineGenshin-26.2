@@ -4,24 +4,25 @@ import com.linweiyun.genshin.config.character.ShenheTalentConfig;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
+import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
 import com.linweiyun.genshin.content.skill_node.AreaEntityCollector;
 import com.linweiyun.genshin.content.skill_node.RushesForward;
 import com.linweiyun.genshin.content.skill_node.SkillHelper;
-import com.linweiyun.genshin.content.skill_node.math.HorizonEndVec3;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
+import com.linweiyun.genshin.core.system.registry.register.ModEntities;
 import com.linweiyun.genshin.enums.AttachmentType;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.enums.AttackType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
@@ -46,6 +47,7 @@ public class ShenheTalent extends TalentBase {
                 List.of(15, 15, 15, 15, 0));
     }
 
+    @Override
     public void attack(Player player, PGCharacter character, int comboStage) {
         Level level = player.level();
         if (level.isClientSide()) return;
@@ -83,6 +85,37 @@ public class ShenheTalent extends TalentBase {
         }
     }
 
+    @Override
+    public void chargeAttack(Player player, PGCharacter character) {
+        Level level = player.level();
+        Vec3 startPos = player.position();
+        Vec3 dashTotal = new RushesForward(player, 10).execute();
+        Vec3 rawEndPos = startPos.add(dashTotal);
+        HitResult hit = level.clip(new ClipContext(startPos, rawEndPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+        Vec3 endPos = hit.getLocation();
+        LOGGER.info("rowEndPos: {}, endPos: {}, rushPos: {}", rawEndPos, endPos, player.position());
+        List<LivingEntity> entities = new ArrayList<>();
+        entities = new AreaEntityCollector(level, startPos, endPos, 0.5f).execute();
+        entities.forEach(
+                entity -> {
+                    if (entity != player) {
+                        ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.PYRO.get())
+                                .multiplier(3.5f)
+                                .elementAmount(AttachmentType.WEAK.getInitialAmount())
+                                .decayGroup(DecayGroups.SHENHE_SKILL)
+                                .attackerCharacter(character)
+                                .build();
+                        ModDamageSource source = ModDamageSource.from(spec, player);
+                        if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                            entity.hurtServer(serverLevel, source, 0f);
+                        }
+                    }
+
+                }
+        );
+    }
+
+    @Override
     public void elementalSkill(Player player, PGCharacter character, int skillType) {
         Level level = player.level();
         PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
@@ -90,10 +123,10 @@ public class ShenheTalent extends TalentBase {
         int skillLevel = character.getData().getElementalSkillLevel();
         if (skillType < 1000) {
             Vec3 startPos = player.position();
-            Vec3 rawEndPos = startPos.add(new HorizonEndVec3(player, 2.2f).execute());
+            Vec3 dashTotal = new RushesForward(player, 10).execute();
+            Vec3 rawEndPos = startPos.add(dashTotal);
             HitResult hit = level.clip(new ClipContext(startPos, rawEndPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
             Vec3 endPos = hit.getLocation();
-            new RushesForward(player, 2.2f).execute();
             List<LivingEntity> entities = new ArrayList<>();
             entities = new AreaEntityCollector(level, startPos, endPos, 0.5f).execute();
             entities.forEach(
@@ -133,5 +166,18 @@ public class ShenheTalent extends TalentBase {
     public void elementalBurst(Player player, PGCharacter character) {
         int burstLevel = character.getData().getElementalBurstLevel();
         float damageMultiplier = 0.103f * burstLevel + 0.89f;
+
+        PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        PGCharacter currentChar = attachment.getCurrentCharacter();
+
+        TalismanSpiritArea field = ModEntities.FIELD_TALISMAN_SPIRIT.get()
+                .create(player.level(), EntitySpawnReason.EVENT);
+        if (field != null) {
+            field.setPos(player.position());
+            if (currentChar != null) {
+                field.setOwner(player, currentChar);
+            }
+            boolean added = player.level().addFreshEntity(field);
+        }
     }
  }

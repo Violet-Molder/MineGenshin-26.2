@@ -68,7 +68,6 @@ public class PGCharacter implements IPersistedSerializable {
 
     protected transient TalentBase talent;
 
-
     private static final Logger LOGGER = LogUtils.getLogger();
     public PGCharacter() {
         this.data = new PGCharacterData();
@@ -115,7 +114,7 @@ public class PGCharacter implements IPersistedSerializable {
     }
     public void performElementalSkill(Player player, int skillTime) {
         if (data.getElementalSkillCooldownTick() == 0) {
-            triggerElementalSkill(player, skillTime);
+            if (talent != null) talent.elementalSkill(player, this, skillTime);
             data.setElementalSkillStacks(data.getElementalSkillStacks() - 1);
             if (player.level().isClientSide()) return;
             if (skillTime < 1000) {
@@ -130,7 +129,7 @@ public class PGCharacter implements IPersistedSerializable {
     };
     public void performElementalBurst(Player player) {
         if (data.getElementalBurstCooldownTick() == 0) {
-            triggerElementalBurst(player);
+            if (talent != null) talent.elementalBurst(player, this);
             if (player.level().isClientSide()) return;
             data.setElementalBurstCooldownTick(burstMaxCooldownTick);
 
@@ -140,12 +139,12 @@ public class PGCharacter implements IPersistedSerializable {
     };
 
     public void performNormalAttack(Player player, int comboStage) {
-        triggerNormalAttack(player, comboStage);
+        if (talent != null) talent.attack(player, this, comboStage);
     }
-    protected void triggerElementalSkill(Player player, int skillTime){};
-    protected void triggerElementalBurst(Player player){};
 
-    protected void triggerNormalAttack(Player player, int comboStage){};
+    public void performChargedAttack(Player player) {
+        if (talent != null) talent.chargeAttack(player, this);
+    }
 
     public int getMaxComboCount() {
         if (talent != null) return talent.getMaxCombo();
@@ -165,6 +164,21 @@ public class PGCharacter implements IPersistedSerializable {
     public int getNormalAttackWindowTicks(int stage) {
         if (talent != null) return talent.getWindowTicks(stage);
         return 0;
+    }
+
+    public int getChargedAttackChargeTicks() {
+        if (talent != null) return talent.getChargeTicks();
+        return 20;
+    }
+
+    public int getChargedAttackPrecastTicks() {
+        if (talent != null) return talent.getChargedPrecastTicks();
+        return 5;
+    }
+
+    public int getChargedAttackPostcastTicks() {
+        if (talent != null) return talent.getChargedPostcastTicks();
+        return 15;
     }
 
     public void frontTick(Player player) {
