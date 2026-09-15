@@ -1,6 +1,6 @@
 package com.linweiyun.genshin;
 
-import com.linweiyun.genshin.config.*;
+import com.linweiyun.genshin.config.GenshinConfig;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.element.ModElements;
@@ -8,9 +8,6 @@ import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
-import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
-import com.lowdragmc.lowdraglib2.gui.ui.UI;
-import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -33,14 +30,12 @@ public class Minegenshin {
     public Minegenshin(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
         NeoForge.EVENT_BUS.register(this);
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_EXP_SPEC, "minegenshin/exp.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.CHARACTER_ATTRIBUTE_SPEC, "minegenshin/attribute.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, ElementalReactionConfig.REACTION_SPEC, "minegenshin/genshin-reaction.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, MonsterLevelConfig.MONSTER_LEVEL_SPEC, "minegenshin/monster-level.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, MonsterHealthConfig.MONSTER_HEALTH_SPEC, "minegenshin/monster-health.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, MonsterAttackConfig.MONSTER_ATTACK_SPEC, "minegenshin/monster-attack.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, ArtifactConfig.ARTIFACT_SPEC, "minegenshin/artifact.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, DamageIndicatorConfig.DAMAGE_INDICATOR_SPEC, "minegenshin/damage-indicator.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, GenshinConfig.CHARACTER_SPEC, "minegenshin/character.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, GenshinConfig.WORLD_TEXT_COLOR_SPEC, "minegenshin/world-text-color.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, GenshinConfig.ENTITY_SPEC, "minegenshin/entity.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, GenshinConfig.WEAPON_SPEC, "minegenshin/weapon.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, GenshinConfig.ARTIFACT_SPEC, "minegenshin/artifact.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, GenshinConfig.REACTION_SPEC, "minegenshin/reaction.toml");
 
 
         ModElements.register(modEventBus);

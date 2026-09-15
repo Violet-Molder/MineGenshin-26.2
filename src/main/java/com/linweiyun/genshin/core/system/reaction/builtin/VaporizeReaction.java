@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
-import com.linweiyun.genshin.config.ElementalReactionConfig;
+import com.linweiyun.genshin.config.reaction.ReactionConfig;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
@@ -22,8 +22,8 @@ import com.linweiyun.genshin.enums.ElementalReactionType;
  */
 public class VaporizeReaction extends ElementalReaction {
 
-    private static float getDominantMultiplier() { return Float.parseFloat(ElementalReactionConfig.VAPORIZE_COEFFICIENT_POSITIVE.get()); }
-    private static float getSubmissiveMultiplier() { return Float.parseFloat(ElementalReactionConfig.VAPORIZE_COEFFICIENT_NEGATIVE.get()); }
+    private static float getDominantMultiplier() { return ReactionConfig.VAPORIZE.getFloat(); }
+    private static float getSubmissiveMultiplier() { return ReactionConfig.VAPORIZE_NEGATIVE.getFloat(); }
 
     public VaporizeReaction(ElementalReactionType type,
                             String elementAId, String elementBId,

@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.character.catalyst.Columbina;
+import com.linweiyun.genshin.core.character.catalyst.columbina.Columbina;
 import com.linweiyun.genshin.core.character.polearm.arlecchino.Arlecchino;
 import com.linweiyun.genshin.core.character.polearm.shenhe.Shenhe;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;

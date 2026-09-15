@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
-import com.linweiyun.genshin.config.DamageIndicatorConfig;
+import com.linweiyun.genshin.config.WorldTextColorConfig;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.network.DamageIndicatorRpc;
@@ -31,6 +31,30 @@ public final class DamageIndicatorFactory {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     private DamageIndicatorFactory() {}
+
+    private static int parseColor(String hex) {
+        if (hex == null || hex.isEmpty()) return 0xFFFFFF;
+        try {
+            return Integer.parseInt(hex.startsWith("#") ? hex.substring(1) : hex, 16);
+        } catch (NumberFormatException e) {
+            return 0xFFFFFF;
+        }
+    }
+
+    public static int getColorForElement(GenshinElement element) {
+        if (element == ModElements.PYRO.get()) return parseColor(WorldTextColorConfig.PYRO_COLOR.get());
+        if (element == ModElements.HYDRO.get()) return parseColor(WorldTextColorConfig.HYDRO_COLOR.get());
+        if (element == ModElements.DENDRO.get()) return parseColor(WorldTextColorConfig.DENDRO_COLOR.get());
+        if (element == ModElements.ELECTRO.get()) return parseColor(WorldTextColorConfig.ELECTRO_COLOR.get());
+        if (element == ModElements.ANEMO.get()) return parseColor(WorldTextColorConfig.ANEMO_COLOR.get());
+        if (element == ModElements.CYRO.get()) return parseColor(WorldTextColorConfig.CYRO_COLOR.get());
+        if (element == ModElements.GEO.get()) return parseColor(WorldTextColorConfig.GEO_COLOR.get());
+        return parseColor(WorldTextColorConfig.PHYSICAL_COLOR.get());
+    }
+
+    public static int getColorForReaction(ElementalReactionType type) {
+        return parseColor(WorldTextColorConfig.VAPORIZE_COLOR.get());
+    }
 
     public enum Style {
         NORMAL, CRIT, REACTION, HEAL, TEXT
@@ -86,7 +110,7 @@ public final class DamageIndicatorFactory {
 
     public static void damage(LivingEntity target, DamageSource source, float finalDamage, GenshinElement element, Options options) {
         if (source == null) return;
-        int color = DamageIndicatorConfig.getColorForElement(element);
+        int color = getColorForElement(element);
         spawnDamage(target, source, finalDamage, color, color, Style.NORMAL, options);
     }
 
@@ -120,7 +144,7 @@ public final class DamageIndicatorFactory {
 
     public static void crit(LivingEntity target, DamageSource source, float finalDamage, GenshinElement element, Options options) {
         if (source == null) return;
-        int color = DamageIndicatorConfig.getColorForElement(element);
+        int color = getColorForElement(element);
         spawnDamage(target, source, finalDamage, color, color, Style.CRIT, options);
     }
 
@@ -153,7 +177,7 @@ public final class DamageIndicatorFactory {
 
     public static void reaction(LivingEntity target, ElementalReactionType type, Options options) {
         if (type == null) return;
-        int color = DamageIndicatorConfig.getColorForReaction(type);
+        int color = getColorForReaction(type);
         spawnRaw(target, null, type.getDisplayName(), color, color, Style.REACTION, options);
     }
 
@@ -164,7 +188,7 @@ public final class DamageIndicatorFactory {
 
     public static void reaction(LivingEntity target, Entity attacker, ElementalReactionType type, Options options) {
         if (type == null) return;
-        int color = DamageIndicatorConfig.getColorForReaction(type);
+        int color = getColorForReaction(type);
         spawnRaw(target, attacker, type.getDisplayName(), color, color, Style.REACTION, options);
     }
 
@@ -197,7 +221,7 @@ public final class DamageIndicatorFactory {
     }
 
     public static void heal(LivingEntity target, float amount, Options options) {
-        int color = DamageIndicatorConfig.getColorForElement(ModElements.DENDRO.get());
+        int color = getColorForElement(ModElements.DENDRO.get());
         spawnValue(target, amount, color, color, Style.HEAL, options);
     }
 
@@ -227,7 +251,7 @@ public final class DamageIndicatorFactory {
     }
 
     public static void text(LivingEntity target, String text, Options options) {
-        int color = DamageIndicatorConfig.getColorForElement(ModElements.FYSIKOS.get());
+        int color = getColorForElement(ModElements.FYSIKOS.get());
         spawnRaw(target, null, text, color, color, Style.TEXT, options);
     }
 
@@ -344,7 +368,5 @@ public final class DamageIndicatorFactory {
                 }
             }
         }
-        LOGGER.info("[DI-Factory] spawn() sent to {} players. text='{}' top=0x{} bottom=0x{} style={}",
-                sent, text, Integer.toHexString(topColor), Integer.toHexString(bottomColor), style);
     }
 }

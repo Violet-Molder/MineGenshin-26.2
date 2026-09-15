@@ -2,7 +2,7 @@ package com.linweiyun.genshin.core.monster;
 
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.config.MonsterLevelConfig;
+import com.linweiyun.genshin.config.entity.EntitiyConfig;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.AABB;
@@ -64,7 +64,7 @@ public class MonsterLevelCalculator {
     public static int getMonsterLevelNatural(ServerLevel level, Vec3 spawnPos, long randomSeed) {
         List<ServerPlayer> players = getPlayersInSpawnRange(level, spawnPos);
         double progress = getNearestProgress(players, spawnPos);
-        MonsterLevelConfig.CalculationMode calcMode = MonsterLevelConfig.getCalculationMode();
+        EntitiyConfig.CalculationMode calcMode = EntitiyConfig.getCalculationMode();
         int worldLevel = calculateWorldLevel(players, spawnPos, calcMode);
         int[] range = getMonsterLevelRange(worldLevel);
         return weightedRandom(range[0], range[1], progress, randomSeed);
@@ -73,7 +73,7 @@ public class MonsterLevelCalculator {
     public static int getMonsterLevelWithBias(ServerLevel level, Vec3 spawnPos, long randomSeed, int worldLevelBias) {
         List<ServerPlayer> players = getPlayersInSpawnRange(level, spawnPos);
         double progress = getNearestProgress(players, spawnPos);
-        MonsterLevelConfig.CalculationMode calcMode = MonsterLevelConfig.getCalculationMode();
+        EntitiyConfig.CalculationMode calcMode = EntitiyConfig.getCalculationMode();
         int worldLevel = calculateWorldLevel(players, spawnPos, calcMode);
         worldLevel = Math.max(0, Math.min(9, worldLevel + worldLevelBias));
         int[] range = getMonsterLevelRange(worldLevel);
@@ -81,7 +81,7 @@ public class MonsterLevelCalculator {
     }
 
     private static List<ServerPlayer> getPlayersInSpawnRange(ServerLevel level, Vec3 spawnPos) {
-        double radius = MonsterLevelConfig.getSpawnRadius();
+        double radius = EntitiyConfig.getSpawnRadius();
         return level.getEntitiesOfClass(ServerPlayer.class, new AABB(spawnPos.add(-radius, -radius, -radius), spawnPos.add(radius, radius, radius)));
     }
 
@@ -95,7 +95,7 @@ public class MonsterLevelCalculator {
     }
 
     private static int calculateWorldLevel(List<ServerPlayer> players, Vec3 spawnPos,
-                                            MonsterLevelConfig.CalculationMode mode) {
+                                            EntitiyConfig.CalculationMode mode) {
         if (players.isEmpty()) return 0;
 
         return switch (mode) {

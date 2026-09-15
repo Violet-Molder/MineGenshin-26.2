@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.content.entities.teyvat;
 
-import com.linweiyun.genshin.config.MonsterAttackConfig;
-import com.linweiyun.genshin.config.MonsterHealthConfig;
+import com.linweiyun.genshin.config.entity.EntityHealthConfig;
+import com.linweiyun.genshin.config.entity.EntityAttackConfig;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -18,9 +18,9 @@ public interface NonTeyvatEntity extends TeyvatLiving {
         LivingEntity self = (LivingEntity) this;
         float[] m = MULTIPLIER_CACHE.computeIfAbsent(self.getType(), type -> {
             float h = (float) (self.getAttributeBaseValue(Attributes.MAX_HEALTH)
-                    / MonsterHealthConfig.getReferenceHealth());
+                    / EntityHealthConfig.getHealthBaseCoefficient());
             float a = (float) (self.getAttributeBaseValue(Attributes.ATTACK_DAMAGE)
-                    / MonsterAttackConfig.getReferenceAttack());
+                    / EntityAttackConfig.getReferenceAttack());
             return new float[]{h, a};
         });
         return m[0];
@@ -31,9 +31,9 @@ public interface NonTeyvatEntity extends TeyvatLiving {
         LivingEntity self = (LivingEntity) this;
         float[] m = MULTIPLIER_CACHE.computeIfAbsent(self.getType(), type -> {
             float h = (float) (self.getAttributeBaseValue(Attributes.MAX_HEALTH)
-                    / MonsterHealthConfig.getReferenceHealth());
+                    / EntityHealthConfig.getHealthBaseCoefficient());
             float a = (float) (self.getAttributeBaseValue(Attributes.ATTACK_DAMAGE)
-                    / MonsterAttackConfig.getReferenceAttack());
+                    / EntityAttackConfig.getReferenceAttack());
             return new float[]{h, a};
         });
         return m[1];

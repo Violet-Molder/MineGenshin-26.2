@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
-import com.linweiyun.genshin.config.ElementalReactionConfig;
+import com.linweiyun.genshin.config.reaction.ReactionConfig;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 
 public class SuperConductReaction extends ElementalReaction {
     public static final Logger LOGGER = LogUtils.getLogger();
-    private static float getReactionMultiplier() { return Float.parseFloat(ElementalReactionConfig.SUPERCONDUCT_COEFFICIENT.get()); }
+    private static float getReactionMultiplier() { return ReactionConfig.SUPERCONDUCT.getFloat(); }
 
     protected SuperConductReaction(ElementalReactionType reactionType,
                                    String elementAId, String elementBId,

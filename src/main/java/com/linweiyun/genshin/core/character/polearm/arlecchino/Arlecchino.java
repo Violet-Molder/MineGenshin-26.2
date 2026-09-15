@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.character.polearm.arlecchino;
 
-import com.linweiyun.genshin.config.Config;
+import com.linweiyun.genshin.config.character.ArlecchinoAttributeConfig;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
@@ -18,9 +18,9 @@ public class Arlecchino extends PGCharacter {
                 "minegenshin:pyro", CharacterAscendAttribute.ATK,
                 20 * 20, 20 * 20, 80f, "arlecchino",
                 Map.of(
-                        ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
-                        ModAttributes.ATK.getId(), Config.SHENHE_ATK,
-                        ModAttributes.DEF.getId(), Config.SHENHE_DEF
+                        ModAttributes.MAX_HP.getId(), ArlecchinoAttributeConfig::getAllHp,
+                        ModAttributes.ATK.getId(), ArlecchinoAttributeConfig::getAllAtk,
+                        ModAttributes.DEF.getId(), ArlecchinoAttributeConfig::getAllDef
                 ));
     }
 
@@ -40,9 +40,9 @@ public class Arlecchino extends PGCharacter {
     @Override
     public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {
         return Map.of(
-                ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
-                ModAttributes.ATK.getId(), Config.SHENHE_ATK,
-                ModAttributes.DEF.getId(), Config.SHENHE_DEF
+                ModAttributes.MAX_HP.getId(), ArlecchinoAttributeConfig::getAllHp,
+                ModAttributes.ATK.getId(), ArlecchinoAttributeConfig::getAllAtk,
+                ModAttributes.DEF.getId(), ArlecchinoAttributeConfig::getAllDef
         );
     }
 }
