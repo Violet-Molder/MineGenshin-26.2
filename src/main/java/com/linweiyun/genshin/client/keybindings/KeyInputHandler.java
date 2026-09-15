@@ -1,11 +1,14 @@
 package com.linweiyun.genshin.client.keybindings;
 
+import com.linweiyun.genshin.core.character.sword.SwordCharacter;
 import com.linweiyun.genshin.render.gui.screens.GUIServerHelperGIM;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.character.polearm.PolearmCharacter;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.combat.ComboSystem;
+import com.linweiyun.genshin.content.skill_node.DashSystem;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -32,6 +35,9 @@ public class KeyInputHandler {
   private static boolean wasJumpDown = false;
   private static long longPressStartTick = 0;
   private static boolean xSkillTriggered = false;
+  private static boolean wasAttackDown = false;
+  private static long attackPressStartTick = 0;
+  private static boolean attackChargedTriggered = false;
 
   @SubscribeEvent
   public static void onClientTickPre(ClientTickEvent.Pre event) {
@@ -46,6 +52,9 @@ public class KeyInputHandler {
     PGCharacter character = attachment.getCurrentCharacter();
 
     if (isInGenshinMode && character != null) {
+      mc.options.keyAttack.consumeClick();
+      DashSystem.tickDash(mc.player);
+
       int pendingStage = ComboSystem.consumePendingAttack(player);
       if (pendingStage >= 0) {
         mc.player.swing(InteractionHand.MAIN_HAND);
@@ -60,15 +69,12 @@ public class KeyInputHandler {
         }
       }
 
-      if (mc.options.keyAttack.consumeClick()) {
-        if (!ComboSystem.isAttackBlocked(player)) {
-          int stage = ComboSystem.getComboStage(player);
-          int precast = character.getNormalAttackPrecastTicks(stage);
-          int postcast = character.getNormalAttackPostcastTicks(stage);
-          int window = character.getNormalAttackWindowTicks(stage);
-          int maxCombo = character.getMaxComboCount();
-          ComboSystem.advanceCombo(player, precast, postcast, window, maxCombo);
-        }
+      boolean chargedReady = ComboSystem.consumePendingChargedAttack(player);
+      if (chargedReady) {
+        mc.player.swing(InteractionHand.MAIN_HAND);
+        mc.player.sendSystemMessage(Component.literal("§c重击"));
+        character.performChargedAttack(mc.player);
+        NetworkManager.performChargedAttackToServer();
       }
     }
   }
@@ -110,6 +116,56 @@ public class KeyInputHandler {
       ComboSystem.resetCombo(player);
     }
     wasJumpDown = isJumpDown;
+
+    if (isInGenshinMode && character != null) {
+      boolean isAttackDown = mc.options.keyAttack.isDown();
+      if (isAttackDown && !wasAttackDown) {
+        attackPressStartTick = System.currentTimeMillis();
+        attackChargedTriggered = false;
+        if (!ComboSystem.isAttackBlocked(player) && !ComboSystem.isChargedAttackBlocking(player)) {
+          int stage = ComboSystem.getComboStage(player);
+          boolean isSwordOrPolearm = character instanceof SwordCharacter
+                  || character instanceof PolearmCharacter;
+          if (isSwordOrPolearm && stage == 0) {
+            int precast = character.getNormalAttackPrecastTicks(stage);
+            int postcast = character.getNormalAttackPostcastTicks(stage);
+            int window = character.getNormalAttackWindowTicks(stage);
+            int maxCombo = character.getMaxComboCount();
+            ComboSystem.advanceCombo(player, precast, postcast, window, maxCombo);
+          }
+        }
+      } else if (isAttackDown && !attackChargedTriggered) {
+        long elapsed = System.currentTimeMillis() - attackPressStartTick;
+        int chargeTicks = character.getChargedAttackChargeTicks();
+        int chargeMs = chargeTicks * 50;
+        if (elapsed >= chargeMs && !ComboSystem.isChargedAttackBlocking(player)) {
+          int precast = character.getChargedAttackPrecastTicks();
+          int postcast = character.getChargedAttackPostcastTicks();
+          ComboSystem.startChargedAttack(player, precast, postcast);
+          attackChargedTriggered = true;
+          wasXKeyDown = false;
+          longPressStartTick = 0;
+          xSkillTriggered = false;
+        }
+      } else if (!isAttackDown && wasAttackDown) {
+        if (!attackChargedTriggered) {
+          int stage = ComboSystem.getComboStage(player);
+          boolean isSwordOrPolearm = character instanceof SwordCharacter
+                  || character instanceof PolearmCharacter;
+          if (!(isSwordOrPolearm && stage == 0)
+                  && !ComboSystem.isAttackBlocked(player)
+                  && !ComboSystem.isChargedAttackBlocking(player)) {
+            int precast = character.getNormalAttackPrecastTicks(stage);
+            int postcast = character.getNormalAttackPostcastTicks(stage);
+            int window = character.getNormalAttackWindowTicks(stage);
+            int maxCombo = character.getMaxComboCount();
+            ComboSystem.advanceCombo(player, precast, postcast, window, maxCombo);
+          }
+        }
+        attackPressStartTick = 0;
+      }
+      wasAttackDown = isAttackDown;
+    }
 
     boolean isXDown = KeyMappingRegistry.X_KEY.get().isDown();
     if (isInGenshinMode && character != null) {

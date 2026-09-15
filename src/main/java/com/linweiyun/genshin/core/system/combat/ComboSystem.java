@@ -15,6 +15,10 @@ public class ComboSystem {
         long precastEndTick = 0;
         long postcastEndTick = 0;
         long windowEndTick = 0;
+
+        boolean chargedPending = false;
+        long chargedPrecastEndTick = 0;
+        long chargedPostcastEndTick = 0;
     }
 
     private static ComboState getState(Player player) {
@@ -53,6 +57,9 @@ public class ComboSystem {
             state.precastEndTick = 0;
             state.postcastEndTick = 0;
             state.windowEndTick = 0;
+            state.chargedPending = false;
+            state.chargedPrecastEndTick = 0;
+            state.chargedPostcastEndTick = 0;
         }
     }
 
@@ -86,5 +93,37 @@ public class ComboSystem {
             return stage;
         }
         return -1;
+    }
+
+    public static void startChargedAttack(Player player, int precastTicks, int postcastTicks) {
+        ComboState state = getState(player);
+        long tick = player.level().getGameTime();
+        state.comboStage = 0;
+        state.pendingStage = -1;
+        state.precastEndTick = 0;
+        state.postcastEndTick = 0;
+        state.windowEndTick = 0;
+        state.chargedPending = true;
+        state.chargedPrecastEndTick = tick + precastTicks;
+        state.chargedPostcastEndTick = tick + precastTicks + postcastTicks;
+    }
+
+    public static boolean consumePendingChargedAttack(Player player) {
+        ComboState state = STATES.get(player.getUUID());
+        if (state == null || !state.chargedPending) return false;
+        long tick = player.level().getGameTime();
+        if (tick > state.chargedPrecastEndTick) {
+            state.chargedPending = false;
+            state.chargedPrecastEndTick = 0;
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isChargedAttackBlocking(Player player) {
+        ComboState state = STATES.get(player.getUUID());
+        if (state == null || !state.chargedPending) return false;
+        long tick = player.level().getGameTime();
+        return tick <= state.chargedPostcastEndTick;
     }
 }

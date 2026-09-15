@@ -31,6 +31,7 @@ public class ColumbinaTalent extends TalentBase {
                 List.of(15, 15, 0));
     }
 
+    @Override
     public void attack(Player player, PGCharacter character, int comboStage) {
         Level level = player.level();
         if (level.isClientSide()) return;
