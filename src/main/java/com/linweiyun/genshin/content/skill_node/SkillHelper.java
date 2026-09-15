@@ -5,7 +5,16 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 
 public class SkillHelper {
-    public static void addStun(Player player, int durationTicks) {
+
+    private final Player player;
+    private final int durationTicks;
+
+    public SkillHelper(Player player, int durationTicks) {
+        this.player = player;
+        this.durationTicks = durationTicks;
+    }
+
+    public void addStun() {
         player.addEffect(new MobEffectInstance(ModMobEffects.STUN, durationTicks, 0, false, false));
     }
 }

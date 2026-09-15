@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.content.items.artifact.stat;
 
-import com.linweiyun.genshin.config.ArtifactMainStatConfig;
+import com.linweiyun.genshin.config.artifact.ArtifactMainStatConfig;
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;

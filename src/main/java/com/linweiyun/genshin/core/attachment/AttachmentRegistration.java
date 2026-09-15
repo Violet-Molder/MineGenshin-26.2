@@ -76,6 +76,13 @@ public class AttachmentRegistration {
                     .build()
     );
 
+    public static final Supplier<AttachmentType<LockedTargetData>> LOCKED_TARGET =
+            ATTACHMENTS.register("locked_target",
+                    () -> AttachmentType.builder(() -> LockedTargetData.EMPTY)
+                            .serialize(LockedTargetData.CODEC.fieldOf("locked_target"))
+                            .build()
+            );
+
     public static void register(IEventBus modEventBus) {
         ATTACHMENTS.register(modEventBus);
     }

@@ -1,30 +1,20 @@
 package com.linweiyun.genshin.content.items.artifact;
 
-import com.linweiyun.genshin.config.ArtifactLevelConfig;
-import net.neoforged.neoforge.common.ModConfigSpec;
-
-import java.util.List;
+import com.linweiyun.genshin.config.artifact.ArtifactLevelConfig;
 
 public class ArtifactLevelData {
 
     public static long getExpToNextLevel(int star, int currentLevel) {
         if (currentLevel >= getMaxLevel(star)) return 0;
         return switch (Math.min(star, 5)) {
-            //TEMP 改为引用 ArtifactLevelConfig
-            case 1, 2, 3 -> getIntAt(ArtifactLevelConfig.EXP_3_STAR, currentLevel);
-            case 4 -> getIntAt(ArtifactLevelConfig.EXP_4_STAR, currentLevel);
-            case 5 -> getIntAt(ArtifactLevelConfig.EXP_5_STAR, currentLevel);
+            case 1, 2, 3 -> ArtifactLevelConfig.get3Star(currentLevel);
+            case 4 -> ArtifactLevelConfig.get4Star(currentLevel);
+            case 5 -> ArtifactLevelConfig.get5Star(currentLevel);
             default -> 0;
         };
     }
 
     public static int getMaxLevel(int star) {
         return star <= 2 ? 4 : 4 * star;
-    }
-
-    private static long getIntAt(ModConfigSpec.ConfigValue<List<? extends Integer>> config, int index) {
-        List<? extends Integer> list = config.get();
-        if (index < 0 || index >= list.size()) return 0;
-        return list.get(index);
     }
 }

@@ -2,12 +2,18 @@ package com.linweiyun.genshin.content.skill_node;
 
 import com.linweiyun.genshin.content.skill_node.math.HorizonEndVec3;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 
 public class RushesForward {
 
-    public static void execute(Player player, float distance) {
-        Vec3 dash = HorizonEndVec3.execute(player, distance);
-        player.setDeltaMovement(dash);
+    private final Player player;
+    private final float distance;
+
+    public RushesForward(Player player, float distance) {
+        this.player = player;
+        this.distance = distance;
+    }
+
+    public void execute() {
+        player.setDeltaMovement(new HorizonEndVec3(player, distance).execute());
     }
 }

@@ -52,7 +52,6 @@ public class Backpack implements IPersistedSerializable, Container, IContainerUI
         QUEST("quests", 100, QuestItem.class),
         PRECIOUS("precious", 100, PreciousItem.class),
         FURNISHINGS("furnishings", 100, FurnishingItem.class);
-
         public final String displayName;
         public final int maxCapacity;
         public final Class<? extends TeyvatItem> itemClass;

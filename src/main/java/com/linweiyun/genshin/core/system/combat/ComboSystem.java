@@ -56,13 +56,19 @@ public class ComboSystem {
         }
     }
 
+    /**
+     * 移动封锁：仅在前摇+后摇期间为 true，窗口期不封锁移动。
+     */
     public static boolean isMovementBlocked(Player player) {
         ComboState state = STATES.get(player.getUUID());
         if (state == null) return false;
         long tick = player.level().getGameTime();
-        return tick <= state.windowEndTick;
+        return tick <= state.postcastEndTick;
     }
 
+    /**
+     * 攻击封锁：仅在前摇+后摇期间为 true。
+     */
     public static boolean isAttackBlocked(Player player) {
         ComboState state = STATES.get(player.getUUID());
         if (state == null) return false;

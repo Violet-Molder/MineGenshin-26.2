@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.character.polearm.shenhe;
 
-import com.linweiyun.genshin.config.Config;
+import com.linweiyun.genshin.config.character.ShenheAttributeConfig;
 import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
@@ -29,9 +29,9 @@ public class Shenhe extends PGCharacter {
                 "minegenshin:cyro", CharacterAscendAttribute.ATK,
                 10 * 20, 15*20, 10 * 20, 80f, "shenhe",
                 Map.of(
-                        ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
-                        ModAttributes.ATK.getId(), Config.SHENHE_ATK,
-                        ModAttributes.DEF.getId(), Config.SHENHE_DEF
+                        ModAttributes.MAX_HP.getId(), ShenheAttributeConfig::getAllHp,
+                        ModAttributes.ATK.getId(), ShenheAttributeConfig::getAllAtk,
+                        ModAttributes.DEF.getId(), ShenheAttributeConfig::getAllDef
                 ));
         this.talent = shenheTalent;
         data.setElementalSkillStacks(2);
@@ -66,9 +66,9 @@ public class Shenhe extends PGCharacter {
     @Override
     public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {
         return Map.of(
-                ModAttributes.MAX_HP.getId(), Config.SHENHE_HP,
-                ModAttributes.ATK.getId(), Config.SHENHE_ATK,
-                ModAttributes.DEF.getId(), Config.SHENHE_DEF
+                ModAttributes.MAX_HP.getId(), ShenheAttributeConfig::getAllHp,
+                ModAttributes.ATK.getId(), ShenheAttributeConfig::getAllAtk,
+                ModAttributes.DEF.getId(), ShenheAttributeConfig::getAllDef
         );
     }
 }

@@ -1,14 +1,12 @@
 package com.linweiyun.genshin.content.items.artifact.stat;
 
-import com.linweiyun.genshin.config.ArtifactMainStatConfig;
-import com.linweiyun.genshin.config.ArtifactSubStatConfig;
+import com.linweiyun.genshin.config.artifact.ArtifactMainStatConfig;
+import com.linweiyun.genshin.config.artifact.ArtifactSubStatConfig;
 import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.items.artifact.ArtifactLevelData;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
-import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class ArtifactStatData {
@@ -28,102 +26,123 @@ public class ArtifactStatData {
     //TEMP 从 ArtifactMainStatConfig 读取所有主词条数据
     public static void reloadFromConfig() {
         MAIN_STAT.clear();
-        readStar(5, ArtifactMainStatConfig.MAIN_5_MAX_HP_FLAT, ArtifactMainStatConfig.MAIN_5_ATK_FLAT,
-                ArtifactMainStatConfig.MAIN_5_MAX_HP_PERCENT, ArtifactMainStatConfig.MAIN_5_ATK_PERCENT,
-                ArtifactMainStatConfig.MAIN_5_DEF_PERCENT, ArtifactMainStatConfig.MAIN_5_PHYSICAL_PERCENT,
-                ArtifactMainStatConfig.MAIN_5_ER_PERCENT, ArtifactMainStatConfig.MAIN_5_EM_FLAT,
-                ArtifactMainStatConfig.MAIN_5_CR_PERCENT, ArtifactMainStatConfig.MAIN_5_CDG_PERCENT,
-                ArtifactMainStatConfig.MAIN_5_HB_PERCENT, ArtifactMainStatConfig.MAIN_5_PYRO_PERCENT,
-                ArtifactMainStatConfig.MAIN_5_HYDRO_PERCENT, ArtifactMainStatConfig.MAIN_5_CYRO_PERCENT,
-                ArtifactMainStatConfig.MAIN_5_ELECTRO_PERCENT, ArtifactMainStatConfig.MAIN_5_ANEMO_PERCENT,
-                ArtifactMainStatConfig.MAIN_5_GEO_PERCENT, ArtifactMainStatConfig.MAIN_5_DENDRO_PERCENT);
-        readStar(4, ArtifactMainStatConfig.MAIN_4_MAX_HP_FLAT, ArtifactMainStatConfig.MAIN_4_ATK_FLAT,
-                ArtifactMainStatConfig.MAIN_4_MAX_HP_PERCENT, ArtifactMainStatConfig.MAIN_4_ATK_PERCENT,
-                ArtifactMainStatConfig.MAIN_4_DEF_PERCENT, ArtifactMainStatConfig.MAIN_4_PHYSICAL_PERCENT,
-                ArtifactMainStatConfig.MAIN_4_ER_PERCENT, ArtifactMainStatConfig.MAIN_4_EM_FLAT,
-                ArtifactMainStatConfig.MAIN_4_CR_PERCENT, ArtifactMainStatConfig.MAIN_4_CDG_PERCENT,
-                ArtifactMainStatConfig.MAIN_4_HB_PERCENT, ArtifactMainStatConfig.MAIN_4_PYRO_PERCENT,
-                ArtifactMainStatConfig.MAIN_4_HYDRO_PERCENT, ArtifactMainStatConfig.MAIN_4_CYRO_PERCENT,
-                ArtifactMainStatConfig.MAIN_4_ELECTRO_PERCENT, ArtifactMainStatConfig.MAIN_4_ANEMO_PERCENT,
-                ArtifactMainStatConfig.MAIN_4_GEO_PERCENT, ArtifactMainStatConfig.MAIN_4_DENDRO_PERCENT);
-        readStar(3, ArtifactMainStatConfig.MAIN_3_MAX_HP_FLAT, ArtifactMainStatConfig.MAIN_3_ATK_FLAT,
-                ArtifactMainStatConfig.MAIN_3_MAX_HP_PERCENT, ArtifactMainStatConfig.MAIN_3_ATK_PERCENT,
-                ArtifactMainStatConfig.MAIN_3_DEF_PERCENT, ArtifactMainStatConfig.MAIN_3_PHYSICAL_PERCENT,
-                ArtifactMainStatConfig.MAIN_3_ER_PERCENT, ArtifactMainStatConfig.MAIN_3_EM_FLAT,
-                ArtifactMainStatConfig.MAIN_3_CR_PERCENT, ArtifactMainStatConfig.MAIN_3_CDG_PERCENT,
-                ArtifactMainStatConfig.MAIN_3_HB_PERCENT, ArtifactMainStatConfig.MAIN_3_PYRO_PERCENT,
-                ArtifactMainStatConfig.MAIN_3_HYDRO_PERCENT, ArtifactMainStatConfig.MAIN_3_CYRO_PERCENT,
-                ArtifactMainStatConfig.MAIN_3_ELECTRO_PERCENT, ArtifactMainStatConfig.MAIN_3_ANEMO_PERCENT,
-                ArtifactMainStatConfig.MAIN_3_GEO_PERCENT, ArtifactMainStatConfig.MAIN_3_DENDRO_PERCENT);
 
-        //TEMP 从 ArtifactSubStatConfig 读取五星副词条数据
+        putMainStat("5#max_hp#FLAT",              ArtifactMainStatConfig.HP_5_FLAT_BASE.get(), ArtifactMainStatConfig.HP_5_FLAT_PER_LEVEL.get());
+        putMainStat("5#atk#FLAT",                ArtifactMainStatConfig.ATK_5_FLAT_BASE.get(), ArtifactMainStatConfig.ATK_5_FLAT_PER_LEVEL.get());
+        putMainStat("5#max_hp#PERCENT",           ArtifactMainStatConfig.HP_5_PERCENT_BASE.get(), ArtifactMainStatConfig.HP_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#atk#PERCENT",              ArtifactMainStatConfig.ATK_5_PERCENT_BASE.get(), ArtifactMainStatConfig.ATK_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#def#PERCENT",              ArtifactMainStatConfig.DEF_5_PERCENT_BASE.get(), ArtifactMainStatConfig.DEF_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#physical_bonus#PERCENT",   ArtifactMainStatConfig.PHYSICAL_5_PERCENT_BASE.get(), ArtifactMainStatConfig.PHYSICAL_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#energy_recharge#PERCENT",  ArtifactMainStatConfig.ER_5_PERCENT_BASE.get(), ArtifactMainStatConfig.ER_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#elemental_mastery#FLAT",   ArtifactMainStatConfig.EM_5_FLAT_BASE.get(), ArtifactMainStatConfig.EM_5_FLAT_PER_LEVEL.get());
+        putMainStat("5#crit_rate#PERCENT",        ArtifactMainStatConfig.CR_5_PERCENT_BASE.get(), ArtifactMainStatConfig.CR_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#crit_dmg#PERCENT",         ArtifactMainStatConfig.CD_5_PERCENT_BASE.get(), ArtifactMainStatConfig.CD_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#healing_bonus#PERCENT",    ArtifactMainStatConfig.HEAL_5_PERCENT_BASE.get(), ArtifactMainStatConfig.HEAL_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#pyro_bonus#PERCENT",       ArtifactMainStatConfig.PYRO_5_PERCENT_BASE.get(), ArtifactMainStatConfig.PYRO_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#hydro_bonus#PERCENT",      ArtifactMainStatConfig.HYDRO_5_PERCENT_BASE.get(), ArtifactMainStatConfig.HYDRO_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#cyro_bonus#PERCENT",       ArtifactMainStatConfig.CYRO_5_PERCENT_BASE.get(), ArtifactMainStatConfig.CYRO_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#electro_bonus#PERCENT",    ArtifactMainStatConfig.ELECTRO_5_PERCENT_BASE.get(), ArtifactMainStatConfig.ELECTRO_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#anemo_bonus#PERCENT",      ArtifactMainStatConfig.ANEMO_5_PERCENT_BASE.get(), ArtifactMainStatConfig.ANEMO_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#geo_bonus#PERCENT",        ArtifactMainStatConfig.GEO_5_PERCENT_BASE.get(), ArtifactMainStatConfig.GEO_5_PERCENT_PER_LEVEL.get());
+        putMainStat("5#dendro_bonus#PERCENT",     ArtifactMainStatConfig.DENDRO_5_PERCENT_BASE.get(), ArtifactMainStatConfig.DENDRO_5_PERCENT_PER_LEVEL.get());
+
+        putMainStat("4#max_hp#FLAT",              ArtifactMainStatConfig.HP_4_FLAT_BASE.get(), ArtifactMainStatConfig.HP_4_FLAT_PER_LEVEL.get());
+        putMainStat("4#atk#FLAT",                ArtifactMainStatConfig.ATK_4_FLAT_BASE.get(), ArtifactMainStatConfig.ATK_4_FLAT_PER_LEVEL.get());
+        putMainStat("4#max_hp#PERCENT",           ArtifactMainStatConfig.HP_4_PERCENT_BASE.get(), ArtifactMainStatConfig.HP_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#atk#PERCENT",              ArtifactMainStatConfig.ATK_4_PERCENT_BASE.get(), ArtifactMainStatConfig.ATK_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#def#PERCENT",              ArtifactMainStatConfig.DEF_4_PERCENT_BASE.get(), ArtifactMainStatConfig.DEF_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#physical_bonus#PERCENT",   ArtifactMainStatConfig.PHYSICAL_4_PERCENT_BASE.get(), ArtifactMainStatConfig.PHYSICAL_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#energy_recharge#PERCENT",  ArtifactMainStatConfig.ER_4_PERCENT_BASE.get(), ArtifactMainStatConfig.ER_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#elemental_mastery#FLAT",   ArtifactMainStatConfig.EM_4_FLAT_BASE.get(), ArtifactMainStatConfig.EM_4_FLAT_PER_LEVEL.get());
+        putMainStat("4#crit_rate#PERCENT",        ArtifactMainStatConfig.CR_4_PERCENT_BASE.get(), ArtifactMainStatConfig.CR_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#crit_dmg#PERCENT",         ArtifactMainStatConfig.CD_4_PERCENT_BASE.get(), ArtifactMainStatConfig.CD_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#healing_bonus#PERCENT",    ArtifactMainStatConfig.HEAL_4_PERCENT_BASE.get(), ArtifactMainStatConfig.HEAL_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#pyro_bonus#PERCENT",       ArtifactMainStatConfig.PYRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.PYRO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#hydro_bonus#PERCENT",      ArtifactMainStatConfig.HYDRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.HYDRO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#cyro_bonus#PERCENT",       ArtifactMainStatConfig.CYRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.CYRO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#electro_bonus#PERCENT",    ArtifactMainStatConfig.ELECTRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.ELECTRO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#anemo_bonus#PERCENT",      ArtifactMainStatConfig.ANEMO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.ANEMO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#geo_bonus#PERCENT",        ArtifactMainStatConfig.GEO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.GEO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("4#dendro_bonus#PERCENT",     ArtifactMainStatConfig.DENDRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.DENDRO_4_PERCENT_PER_LEVEL.get());
+
+        double scale3 = 0.8;
+        putMainStat("3#max_hp#FLAT",              ArtifactMainStatConfig.HP_4_FLAT_BASE.get() * scale3, ArtifactMainStatConfig.HP_4_FLAT_PER_LEVEL.get() * scale3);
+        putMainStat("3#atk#FLAT",                ArtifactMainStatConfig.ATK_4_FLAT_BASE.get() * scale3, ArtifactMainStatConfig.ATK_4_FLAT_PER_LEVEL.get() * scale3);
+        putMainStat("3#max_hp#PERCENT",           ArtifactMainStatConfig.HP_4_PERCENT_BASE.get(), ArtifactMainStatConfig.HP_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#atk#PERCENT",              ArtifactMainStatConfig.ATK_4_PERCENT_BASE.get(), ArtifactMainStatConfig.ATK_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#def#PERCENT",              ArtifactMainStatConfig.DEF_4_PERCENT_BASE.get(), ArtifactMainStatConfig.DEF_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#physical_bonus#PERCENT",   ArtifactMainStatConfig.PHYSICAL_4_PERCENT_BASE.get(), ArtifactMainStatConfig.PHYSICAL_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#energy_recharge#PERCENT",  ArtifactMainStatConfig.ER_4_PERCENT_BASE.get(), ArtifactMainStatConfig.ER_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#elemental_mastery#FLAT",   ArtifactMainStatConfig.EM_4_FLAT_BASE.get(), ArtifactMainStatConfig.EM_4_FLAT_PER_LEVEL.get());
+        putMainStat("3#crit_rate#PERCENT",        ArtifactMainStatConfig.CR_4_PERCENT_BASE.get(), ArtifactMainStatConfig.CR_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#crit_dmg#PERCENT",         ArtifactMainStatConfig.CD_4_PERCENT_BASE.get(), ArtifactMainStatConfig.CD_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#healing_bonus#PERCENT",    ArtifactMainStatConfig.HEAL_4_PERCENT_BASE.get(), ArtifactMainStatConfig.HEAL_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#pyro_bonus#PERCENT",       ArtifactMainStatConfig.PYRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.PYRO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#hydro_bonus#PERCENT",      ArtifactMainStatConfig.HYDRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.HYDRO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#cyro_bonus#PERCENT",       ArtifactMainStatConfig.CYRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.CYRO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#electro_bonus#PERCENT",    ArtifactMainStatConfig.ELECTRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.ELECTRO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#anemo_bonus#PERCENT",      ArtifactMainStatConfig.ANEMO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.ANEMO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#geo_bonus#PERCENT",        ArtifactMainStatConfig.GEO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.GEO_4_PERCENT_PER_LEVEL.get());
+        putMainStat("3#dendro_bonus#PERCENT",     ArtifactMainStatConfig.DENDRO_4_PERCENT_BASE.get(), ArtifactMainStatConfig.DENDRO_4_PERCENT_PER_LEVEL.get());
+
         readSubStat5();
     }
 
-    //TEMP 从 ArtifactSubStatConfig 读取五星副词条4档数值
+    private static void putMainStat(String key, double base, double growth) {
+        MAIN_STAT.put(key, new double[]{base, growth});
+    }
+
     private static void readSubStat5() {
         SUB_STAT_TIERS_5.clear();
-        tryReadFlatSubStat("atk#FLAT", ArtifactSubStatConfig.SUB_5_ATK_FLAT);
-        tryReadFlatSubStat("max_hp#FLAT", ArtifactSubStatConfig.SUB_5_MAX_HP_FLAT);
-        tryReadFlatSubStat("def#FLAT", ArtifactSubStatConfig.SUB_5_DEF_FLAT);
-        tryReadPercentSubStat("atk#PERCENT", ArtifactSubStatConfig.SUB_5_ATK_PERCENT);
-        tryReadPercentSubStat("max_hp#PERCENT", ArtifactSubStatConfig.SUB_5_MAX_HP_PERCENT);
-        tryReadPercentSubStat("def#PERCENT", ArtifactSubStatConfig.SUB_5_DEF_PERCENT);
-        tryReadFlatSubStat("elemental_mastery#FLAT", ArtifactSubStatConfig.SUB_5_EM_FLAT);
-        tryReadPercentSubStat("energy_recharge#PERCENT", ArtifactSubStatConfig.SUB_5_ER_PERCENT);
-        tryReadPercentSubStat("crit_rate#PERCENT", ArtifactSubStatConfig.SUB_5_CR_PERCENT);
-        tryReadPercentSubStat("crit_dmg#PERCENT", ArtifactSubStatConfig.SUB_5_CDG_PERCENT);
+
+        putSubStatTier("atk#FLAT",   ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER4.get());
+        putSubStatTier("max_hp#FLAT", ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER4.get());
+        putSubStatTier("def#FLAT",   ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER4.get());
+        putSubStatTier("atk#PERCENT", ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER4.get());
+        putSubStatTier("max_hp#PERCENT", ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER4.get());
+        putSubStatTier("def#PERCENT", ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER4.get());
+        putSubStatTier("elemental_mastery#FLAT", ArtifactSubStatConfig.SUB_5_EM_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_EM_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_EM_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_EM_TIER4.get());
+        putSubStatTier("energy_recharge#PERCENT", ArtifactSubStatConfig.SUB_5_ER_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_ER_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_ER_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_ER_TIER4.get());
+        putSubStatTier("crit_rate#PERCENT", ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER4.get());
+        putSubStatTier("crit_dmg#PERCENT", ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER1.get(),
+                ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER2.get(),
+                ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER3.get(),
+                ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER4.get());
     }
 
-    private static void tryReadFlatSubStat(String key, ModConfigSpec.ConfigValue<List<? extends Number>> config) {
-        try {
-            List<? extends Number> list = config.get();
-            if (list != null && list.size() == 4) {
-                SUB_STAT_TIERS_5.put(key, new double[]{
-                        list.get(0).doubleValue(),
-                        list.get(1).doubleValue(),
-                        list.get(2).doubleValue(),
-                        list.get(3).doubleValue()
-                });
-            }
-        } catch (Exception ignored) {
-        }
+    private static void putSubStatTier(String key, double t1, double t2, double t3, double t4) {
+        SUB_STAT_TIERS_5.put(key, new double[]{t1, t2, t3, t4});
     }
 
-    private static void tryReadPercentSubStat(String key, ModConfigSpec.ConfigValue<List<? extends String>> config) {
-        try {
-            List<? extends String> list = config.get();
-            if (list != null && list.size() == 4) {
-                SUB_STAT_TIERS_5.put(key, new double[]{
-                        Double.parseDouble(list.get(0)),
-                        Double.parseDouble(list.get(1)),
-                        Double.parseDouble(list.get(2)),
-                        Double.parseDouble(list.get(3))
-                });
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    //TEMP 从 ConfigValue 读取 base+growth，key = "star#attrKey#kind"
-    @SafeVarargs
-    private static void readStar(int star, ModConfigSpec.ConfigValue<List<? extends String>>... configs) {
-        String[] attrKeys = {"max_hp#FLAT", "atk#FLAT", "max_hp#PERCENT", "atk#PERCENT",
-                "def#PERCENT", "physical_bonus#PERCENT", "energy_recharge#PERCENT",
-                "elemental_mastery#FLAT", "crit_rate#PERCENT", "crit_dmg#PERCENT",
-                "healing_bonus#PERCENT", "pyro_bonus#PERCENT", "hydro_bonus#PERCENT",
-                "cyro_bonus#PERCENT", "electro_bonus#PERCENT", "anemo_bonus#PERCENT",
-                "geo_bonus#PERCENT", "dendro_bonus#PERCENT"};
-        for (int i = 0; i < configs.length; i++) {
-            try {
-                List<? extends String> list = configs[i].get();
-                if (list.size() >= 2) {
-                    String key = star + "#" + attrKeys[i];
-                    MAIN_STAT.put(key, new double[]{Double.parseDouble(list.get(0)), Double.parseDouble(list.get(1))});
-                }
-            } catch (Exception ignored) {
-            }
-        }
+    private static void putSubStatTier(String key, int t1, int t2, int t3, int t4) {
+        SUB_STAT_TIERS_5.put(key, new double[]{(double)t1, (double)t2, (double)t3, (double)t4});
     }
 
     private static String keyOf(int star, AttributeType attr, TeyvatItemStat.StatKind kind) {

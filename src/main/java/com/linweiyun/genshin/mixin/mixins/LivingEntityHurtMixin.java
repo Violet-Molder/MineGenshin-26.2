@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.mixin.mixins;
 
-import com.linweiyun.genshin.config.DamageIndicatorConfig;
+
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatEntityStats;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatLiving;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
@@ -122,7 +122,7 @@ public class LivingEntityHurtMixin {
         if (finalDamage > 0f) {
             try {
                 if (element == ModElements.HYDRO.get()) {
-                    int hydroColor = DamageIndicatorConfig.getColorForElement(ModElements.HYDRO.get());
+                    int hydroColor = DamageIndicatorFactory.getColorForElement(ModElements.HYDRO.get());
                     DamageIndicatorFactory.damageGradient(
                             target, modSource, finalDamage,
                             0xFFFFFF,

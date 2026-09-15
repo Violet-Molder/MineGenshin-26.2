@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.character;
 
-import com.linweiyun.genshin.config.Config;
+import com.linweiyun.genshin.config.character.CharacterXpConfig;
 import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectContainer;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
@@ -300,7 +300,7 @@ public class PGCharacter implements IPersistedSerializable {
     public boolean hurt(float amount) {
         double before = data.getCurrentHP();
         data.hurtHP(amount);
-        //AI 扣血后若血量归0且之前活着，则直接处理倒下逻辑
+        // 扣血后若血量归0且之前活着，则直接处理倒下逻辑
         if (data.getCurrentHP() <= 0 && before > 0) {
             incapacitate();
             return true;
@@ -308,7 +308,7 @@ public class PGCharacter implements IPersistedSerializable {
         return false;
     }
 
-    //AI 改为无参，从 data 里获取所属 Player；不操作血量（hurt() 已将 currentHP 置 0），只处理切换和全队阵亡时关闭原神模式
+    // 改为无参，从 data 里获取所属 Player；不操作血量（hurt() 已将 currentHP 置 0），只处理切换和全队阵亡时关闭原神模式
     public void incapacitate() {
         Player player = data.getOwnerPlayer();
         if (player == null) return;
@@ -391,7 +391,7 @@ public class PGCharacter implements IPersistedSerializable {
         if (data.getLevel() >= 90) {
             return;
         }
-        var expList = Config.CHARACTER_UP_EXP.get();
+        var expList = CharacterXpConfig.getAllXp();
         long totalMaxExp = 0;
         for (int i = 0; i < 89; i++) {
             totalMaxExp += expList.get(i);
@@ -409,7 +409,7 @@ public class PGCharacter implements IPersistedSerializable {
         tryLevelUp();
     }
     public void tryLevelUp() {
-        var expList = Config.CHARACTER_UP_EXP.get();
+        var expList = CharacterXpConfig.getAllXp();
         // ===== 计算阶段：遍历计算可升级级数，不修改状态 =====
         int totalExpConsumed = 0; //将要消耗的经验值的总数
         int levelsToGain = 0;

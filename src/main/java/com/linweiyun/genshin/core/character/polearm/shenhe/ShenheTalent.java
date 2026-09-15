@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.character.polearm.shenhe;
 
+import com.linweiyun.genshin.config.character.ShenheTalentConfig;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
@@ -38,8 +39,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public class ShenheTalent extends TalentBase {
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final float[] COMBO_MULTIPLIERS = {0.41f, 0.42f, 0.55f, 0.35f, 0.68f};
-
     public ShenheTalent() {
         super(5,
                 List.of(3, 3, 3, 3, 3),
@@ -52,13 +51,19 @@ public class ShenheTalent extends TalentBase {
         if (level.isClientSide()) return;
 
         int stage = comboStage % this.maxCombo;
-        float multiplier = stage < COMBO_MULTIPLIERS.length ? COMBO_MULTIPLIERS[stage] : 1.0f;
+        // 配置的 getNABase/getNAPerLevel 是 1~5 段
+        int naLevel = Math.max(1, character.getData().getNormalAttackLevel());
+
+        float multiplier = (float) (
+                ShenheTalentConfig.getNABase(stage)
+                        + ShenheTalentConfig.getNAPerLevel(stage) * (naLevel - 1)
+        );
 
         Vec3 startPos = player.position();
         Vec3 lookDir = player.getLookAngle();
         Vec3 endPos = startPos.add(lookDir.scale(2.5f));
 
-        List<LivingEntity> targets = AreaEntityCollector.execute(level, startPos, endPos, 1.0f);
+        List<LivingEntity> targets = new AreaEntityCollector(level, startPos, endPos, 1.0f).execute();
 
         for (LivingEntity target : targets) {
             if (target != player) {
@@ -70,6 +75,9 @@ public class ShenheTalent extends TalentBase {
                 ModDamageSource source = ModDamageSource.from(spec, player);
                 if (target.level() instanceof ServerLevel serverLevel) {
                     target.hurtServer(serverLevel, source, 0f);
+                    if (stage == 4) {
+                        target.hurtServer(serverLevel, source, 0f);
+                    }
                 }
             }
         }
@@ -82,12 +90,12 @@ public class ShenheTalent extends TalentBase {
         int skillLevel = character.getData().getElementalSkillLevel();
         if (skillType < 1000) {
             Vec3 startPos = player.position();
-            Vec3 rawEndPos  = startPos.add(HorizonEndVec3.execute(player, 2.2f));
+            Vec3 rawEndPos = startPos.add(new HorizonEndVec3(player, 2.2f).execute());
             HitResult hit = level.clip(new ClipContext(startPos, rawEndPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
             Vec3 endPos = hit.getLocation();
-            RushesForward.execute(player, 2.2f);
+            new RushesForward(player, 2.2f).execute();
             List<LivingEntity> entities = new ArrayList<>();
-            entities = AreaEntityCollector.execute(level, startPos, endPos, 0.5f);
+            entities = new AreaEntityCollector(level, startPos, endPos, 0.5f).execute();
             entities.forEach(
                     entity -> {
                         if (entity != player) {
@@ -116,12 +124,12 @@ public class ShenheTalent extends TalentBase {
                     }
                 }
             }
-            // 短暂冻结按键输入
-            SkillHelper.addStun(player, 10);
+            new SkillHelper(player, 10).addStun();
         } else {
             player.sendSystemMessage(Component.literal("长按"));
         }
     }
+
     public void elementalBurst(Player player, PGCharacter character) {
         int burstLevel = character.getData().getElementalBurstLevel();
         float damageMultiplier = 0.103f * burstLevel + 0.89f;
