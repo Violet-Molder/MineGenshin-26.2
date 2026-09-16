@@ -1,13 +1,18 @@
 package com.linweiyun.genshin.content.entities.area;
 
+import com.linweiyun.genshin.config.character.ShenheTalentConfig;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.system.combat.attack.HurtEntityHelper;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.content.entities.teyvat.TeyvatEntityStats;
 import com.linweiyun.genshin.enums.AttackType;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -16,7 +21,10 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 public class TalismanSpiritArea extends AreaEntity {
     // ========== 领域常量配置 ==========
@@ -24,7 +32,7 @@ public class TalismanSpiritArea extends AreaEntity {
     // 伤害触发间隔（tick）—— 每1秒（20tick）对范围敌人造成一次伤害
     private static final int DAMAGE_INTERVAL_TICKS = 20;
 
-    // 领域总持续时间（tick）—— 12秒 = 240tick
+    // 领域总持续时间（tick）—— 30秒 = 600tick
     private static final int FIELD_DURATION = 30 * 20;
 
     // 水平半径（格）
@@ -35,6 +43,18 @@ public class TalismanSpiritArea extends AreaEntity {
 
     // 领域唯一标识UUID
     private static final int FIELD_UUID = 612001;
+
+    // 冰伤加成属性来源键 —— 多个领域不叠加
+    private static final String CYRO_BONUS_SOURCE = "shenhe.talent.ascend2";
+
+    // 冰伤加成值
+    private static final double CYRO_BONUS_VALUE = 0.15;
+
+    // 抗性降低来源键 —— 领域内敌人冰/物抗降低12%
+    private static final String RES_SHRED_SOURCE = "shenhe.burst";
+
+    // 抗性降低值
+    private static final double RES_SHRED_VALUE = -0.12;
 
     // ========== 实例字段 ==========
 
@@ -47,20 +67,21 @@ public class TalismanSpiritArea extends AreaEntity {
     // 粒子位置是否已计算 —— 避免每tick重复计算
     private boolean particlesCalculated = false;
 
+    // 上一帧被加成的玩家UUID集合 —— 用于检测离开领域后移除加成
+    private final Set<UUID> lastBuffedPlayers = new HashSet<>();
+
+    // 上一帧被降低抗性的敌人UUID集合 —— 用于检测离开领域后还原抗性
+    private final Set<UUID> lastShreddedEntities = new HashSet<>();
+
     /**
      * 构造函数 —— 初始化镇灵之鼎领域
      */
     public TalismanSpiritArea(EntityType<?> type, Level level) {
         super(type, level);
-        // 设置领域形状为圆柱体
         setShapeType(AreaShapeType.CYLINDER);
-        // 设置水平半径
         setHorizontalRadius(HORIZONTAL_RADIUS);
-        // 设置垂直半径
         setVerticalRadius(VERTICAL_RADIUS);
-        // 设置领域UUID
         setFieldUUID(FIELD_UUID);
-        // 设置持续时间
         setDuration(FIELD_DURATION);
     }
 
@@ -68,75 +89,61 @@ public class TalismanSpiritArea extends AreaEntity {
 
     @Override
     protected void serverTick() {
-        super.serverTick();  // 父类处理持续时间倒计时
+        super.serverTick();
 
-        // 伤害计时器递增
+        // 父类可能在持续时间到期后调用 discard() 移除实体
+        if (this.isRemoved()) {
+            clearAllBuffs();
+            clearAllResShreds();
+            return;
+        }
+
         damageTickCounter++;
 
-        // 每隔 DAMAGE_INTERVAL_TICKS 次触发一次范围伤害
         if (damageTickCounter >= DAMAGE_INTERVAL_TICKS) {
-            damageTickCounter = 0;  // 重置计时器
-            applyFieldDamage();     // 对范围内敌人造成伤害
+            damageTickCounter = 0;
+            applyFieldDamage();
+            applyFieldBuff();
+            applyResShred();
         }
     }
 
     @Override
     protected void clientTick() {
-        // 首次tick时计算粒子位置（仅一次）
         if (!particlesCalculated) {
             calculateParticlePositions();
             particlesCalculated = true;
         }
-        // 每tick生成缓存的粒子（仅临时视觉效果）
         spawnCachedParticles();
     }
 
     // ========== 领域伤害逻辑 ==========
 
-    /**
-     * 对领域范围内的所有敌人造成伤害
-     * 使用圆柱体碰撞检测，而非简单AABB
-     */
     private void applyFieldDamage() {
-        // 构建圆柱体碰撞区域（用AABB作为粗筛，再用精确判定）
         double centerX = this.getX();
         double centerY = this.getY();
         double centerZ = this.getZ();
         float radius = getHorizontalRadius();
         float halfHeight = getVerticalRadius();
 
-        // 粗筛：AABB范围
         AABB cylinderBounds = new AABB(
                 centerX - radius, centerY - halfHeight, centerZ - radius,
                 centerX + radius, centerY + halfHeight, centerZ + radius);
 
-        // 获取范围内所有生物
         List<LivingEntity> entitiesInRange = this.level().getEntitiesOfClass(
                 LivingEntity.class, cylinderBounds, this::isEntityInCylinder);
 
-        // 获取拥有者信息
         Player owner = getOwner();
         PGCharacter ownerCharacter = getOwnerCharacter();
 
         if (owner == null || ownerCharacter == null) return;
 
-        // 对每个范围内的实体造成伤害
         for (LivingEntity entity : entitiesInRange) {
-            // 跳过拥有者自己
             if (entity.equals(owner)) continue;
-            // 跳过拥有者的队友（这里简化处理，只跳过拥有者）
-            // 如果需要跳过队友，可以在此扩展
-
-            // 对目标施加伤害
             dealDamageToEntity(entity);
         }
     }
 
-    /**
-     * 判定实体是否在圆柱体内（精确判定）
-     * @param entity 待检测的实体
-     * @return 是否在圆柱体内
-     */
     private boolean isEntityInCylinder(LivingEntity entity) {
         double centerX = this.getX();
         double centerY = this.getY();
@@ -145,26 +152,17 @@ public class TalismanSpiritArea extends AreaEntity {
         float halfHeight = getVerticalRadius();
 
         Vec3 entityPos = entity.position();
-        // 计算水平距离的平方（避免开方运算）
         double horizontalDistSq =
                 (entityPos.x - centerX) * (entityPos.x - centerX)
                         + (entityPos.z - centerZ) * (entityPos.z - centerZ);
-        // 计算垂直距离
         double verticalDist = Math.abs(entityPos.y - centerY);
 
-        // 水平距离 <= 半径 且 垂直距离 <= 垂直半径
         return horizontalDistSq <= radius * radius && verticalDist <= halfHeight;
     }
 
-    /**
-     * 对单个目标造成冰元素伤害
-     * 使用新的 ModDamageSpec 体系
-     *
-     * @param target 受伤实体
-     */
     private void dealDamageToEntity(LivingEntity target) {
         int burstLevel = this.character.getData().getElementalBurstLevel();
-        float damageMultiplier = 0.033f * burstLevel + 0.3f;
+        float damageMultiplier = ShenheTalentConfig.getBurstDotDamage(burstLevel);
         ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_BURST, ModElements.CYRO.get())
                 .multiplier(damageMultiplier)
                 .elementAmount(1.0f)
@@ -172,18 +170,148 @@ public class TalismanSpiritArea extends AreaEntity {
                 .build();
 
         ModDamageSource damageSource = ModDamageSource.from(spec, owner);
-        if (target.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+        if (target.level() instanceof ServerLevel serverLevel) {
             target.hurtServer(serverLevel, damageSource, 0f);
         }
+    }
+
+    // ========== 领域冰伤加成 —— 属性系统实现 ==========
+
+    /**
+     * 对领域内所有玩家当前角色施加15%冰元素伤害加成
+     * 使用属性系统的 tempFlatModifiers，source 为 "shenhe.talent.ascend2"
+     * 联机模式下多个领域不叠加（同一 source 的 set 操作覆盖旧值）
+     */
+    private void applyFieldBuff() {
+        // 突破天赋1：角色突破等级>=1时冰伤加成才生效
+        if (this.character == null || this.character.getData().getAscensionPhase() < 1) return;
+
+        double centerX = this.getX();
+        double centerY = this.getY();
+        double centerZ = this.getZ();
+        float radius = getHorizontalRadius();
+        float halfHeight = getVerticalRadius();
+
+        AABB cylinderBounds = new AABB(
+                centerX - radius, centerY - halfHeight, centerZ - radius,
+                centerX + radius, centerY + halfHeight, centerZ + radius);
+
+        List<Player> playersInRange = this.level().getEntitiesOfClass(
+                Player.class, cylinderBounds, this::isEntityInCylinder);
+
+        Set<UUID> currentPlayers = new HashSet<>();
+
+        for (Player player : playersInRange) {
+            currentPlayers.add(player.getUUID());
+
+            PlayerCharactersAttachment attachment =
+                    player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            PGCharacter current = attachment.getCurrentCharacter();
+            if (current == null) continue;
+
+            current.getData().setAttributeTempFlatModifier(
+                    ModAttributes.CYRO_BONUS.value(),
+                    CYRO_BONUS_SOURCE,
+                    CYRO_BONUS_VALUE);
+        }
+
+        // 移除离开领域玩家的加成
+        for (UUID departed : new HashSet<>(lastBuffedPlayers)) {
+            if (!currentPlayers.contains(departed)) {
+                removePlayerBuff(departed);
+            }
+        }
+
+        lastBuffedPlayers.clear();
+        lastBuffedPlayers.addAll(currentPlayers);
+    }
+
+    private void removePlayerBuff(UUID playerUuid) {
+        if (!(this.level() instanceof ServerLevel serverLevel)) return;
+        ServerPlayer serverPlayer = serverLevel.getServer().getPlayerList().getPlayer(playerUuid);
+        if (serverPlayer == null) return;
+
+        PlayerCharactersAttachment attachment =
+                serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        PGCharacter current = attachment.getCurrentCharacter();
+        if (current == null) return;
+
+        current.getData().removeAttributeModifier(
+                ModAttributes.CYRO_BONUS.value(),
+                CYRO_BONUS_SOURCE);
+    }
+
+    /**
+     * 领域消失时清除所有被加成玩家的冰伤加成
+     */
+    private void clearAllBuffs() {
+        for (UUID uuid : lastBuffedPlayers) {
+            removePlayerBuff(uuid);
+        }
+        lastBuffedPlayers.clear();
+    }
+
+    // ========== 领域抗性降低 —— 冰/物抗降低12% ==========
+
+    private void applyResShred() {
+        double centerX = this.getX();
+        double centerY = this.getY();
+        double centerZ = this.getZ();
+        float radius = getHorizontalRadius();
+        float halfHeight = getVerticalRadius();
+
+        AABB cylinderBounds = new AABB(
+                centerX - radius, centerY - halfHeight, centerZ - radius,
+                centerX + radius, centerY + halfHeight, centerZ + radius);
+
+        List<LivingEntity> entitiesInRange = this.level().getEntitiesOfClass(
+                LivingEntity.class, cylinderBounds, this::isEntityInCylinder);
+
+        Player owner = getOwner();
+        if (owner == null) return;
+
+        Set<UUID> currentEntities = new HashSet<>();
+
+        for (LivingEntity entity : entitiesInRange) {
+            if (entity.equals(owner)) continue;
+            currentEntities.add(entity.getUUID());
+
+            TeyvatEntityStats stats = entity.getData(AttachmentRegistration.ENTITY_STATS);
+            stats.attributes().setPercentModifier(ModAttributes.CYRO_RES.value(), RES_SHRED_SOURCE, RES_SHRED_VALUE);
+            stats.attributes().setPercentModifier(ModAttributes.PHYSICAL_RES.value(), RES_SHRED_SOURCE, RES_SHRED_VALUE);
+        }
+
+        // 移除离开领域敌人的抗性降低
+        for (UUID departed : new HashSet<>(lastShreddedEntities)) {
+            if (!currentEntities.contains(departed)) {
+                removeEntityResShred(departed);
+            }
+        }
+
+        lastShreddedEntities.clear();
+        lastShreddedEntities.addAll(currentEntities);
+    }
+
+    private void removeEntityResShred(UUID entityUuid) {
+        if (!(this.level() instanceof ServerLevel serverLevel)) return;
+        LivingEntity entity = (LivingEntity) serverLevel.getEntity(entityUuid);
+        if (entity == null) return;
+
+        TeyvatEntityStats stats = entity.getData(AttachmentRegistration.ENTITY_STATS);
+        stats.attributes().removeModifier(ModAttributes.CYRO_RES.value(), RES_SHRED_SOURCE);
+        stats.attributes().removeModifier(ModAttributes.PHYSICAL_RES.value(), RES_SHRED_SOURCE);
+    }
+
+    private void clearAllResShreds() {
+        for (UUID uuid : lastShreddedEntities) {
+            removeEntityResShred(uuid);
+        }
+        lastShreddedEntities.clear();
     }
 
     // ========== 临时粒子效果（标注领域范围） ==========
     // TODO: 实际特效添加后，此方法及相关字段应移除
 
-    /**
-     * 计算粒子位置（仅执行一次，缓存结果）
-     * 在圆柱体边界上均匀分布粒子点
-     */
     private void calculateParticlePositions() {
         double centerX = this.getX();
         double centerY = this.getY();
@@ -191,41 +319,31 @@ public class TalismanSpiritArea extends AreaEntity {
         float radius = getHorizontalRadius();
         float halfHeight = getVerticalRadius();
 
-        // 顶面和底面圆环粒子数
         int circleParticles = 32;
         for (int i = 0; i < circleParticles; i++) {
             double angle = 2 * Math.PI * i / circleParticles;
             double x = centerX + radius * Math.cos(angle);
             double z = centerZ + radius * Math.sin(angle);
-            // 顶面
             particlePositions.add(new Vec3(x, centerY + halfHeight, z));
-            // 底面
             particlePositions.add(new Vec3(x, centerY - halfHeight, z));
         }
 
-        // 侧面竖线粒子
-        int lineCount = 24;    // 竖线数量
-        int steps = 7;         // 每条竖线的步数
-        for (int i = 0; i < lineCount; i++) {
-            double angle = 2 * Math.PI * i / lineCount;
-            double x = centerX + radius * Math.cos(angle);
-            double z = centerZ + radius * Math.sin(angle);
-            for (int step = 0; step <= steps; step++) {
-                double y = centerY - halfHeight + (2 * halfHeight * step / steps);
+        int verticalSteps = 16;
+        for (int i = 0; i < verticalSteps; i++) {
+            double y = centerY - halfHeight + (2 * halfHeight * i / (verticalSteps - 1));
+            for (int j = 0; j < 4; j++) {
+                double angle = 2 * Math.PI * j / 4;
+                double x = centerX + radius * Math.cos(angle);
+                double z = centerZ + radius * Math.sin(angle);
                 particlePositions.add(new Vec3(x, y, z));
             }
         }
     }
 
-    /**
-     * 生成缓存的粒子 —— 每tick在所有预计算位置生成粒子
-     * 仅用于临时标注领域范围
-     */
     private void spawnCachedParticles() {
-        Level level = this.level();
         for (Vec3 pos : particlePositions) {
-            level.addParticle(ParticleTypes.SNOWFLAKE, pos.x, pos.y, pos.z,
-                    0, 0, 0);  // 零速度，瞬生瞬灭
+            this.level().addParticle(ParticleTypes.END_ROD,
+                    pos.x, pos.y, pos.z, 0, 0.05, 0);
         }
     }
 }

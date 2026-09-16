@@ -3,6 +3,7 @@ package com.linweiyun.genshin.content.items.artifact.inventory;
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
@@ -37,8 +38,8 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
     /** 日志记录器，用于输出调试信息 */
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** 圣遗物槽位总数，固定为5个 */
-    public static final int SLOT_COUNT = 5;
+    /** 装备槽位总数，5个圣遗物 + 1个武器 */
+    public static final int SLOT_COUNT = 6;
 
     // ==================== 槽位索引常量 ====================
     /** 生之花槽位索引 */
@@ -51,6 +52,8 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
     public static final int SLOT_GOBLET = 3;
     /** 理之冠槽位索引 */
     public static final int SLOT_CIRCLET = 4;
+    /** 武器槽位索引 */
+    public static final int SLOT_WEAPON = 5;
 
     // ==================== 持久化字段（会被自动保存到存档） ====================
     /** 生之花（Flower）圣遗物 */
@@ -68,6 +71,9 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
     /** 理之冠（Circlet）圣遗物 */
     @Persisted(key = "circlet")
     private ItemStack circlet = ItemStack.EMPTY;
+    /** 武器（Weapon） */
+    @Persisted(key = "weapon")
+    private ItemStack weapon = ItemStack.EMPTY;
 
     // ==================== 运行时状态字段（不会被持久化） ====================
     /**
@@ -138,7 +144,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
             case SLOT_SANDS -> ArtifactType.SANDS;
             case SLOT_GOBLET -> ArtifactType.GOBLET;
             case SLOT_CIRCLET -> ArtifactType.CIRCLET;
-            default -> throw new IndexOutOfBoundsException("Invalid artifact slot: " + slot);
+            default -> null;
         };
     }
 
@@ -157,9 +163,11 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
      */
     public static boolean isValidForSlot(int slot, ItemStack stack) {
         if (stack.isEmpty()) return true;
+        if (slot == SLOT_WEAPON) {
+            return stack.getItem() instanceof WeaponItem;
+        }
         if (!(stack.getItem() instanceof ArtifactItem artifact)) return false;
 
-        // 未激活的圣遗物不能放入圣遗物栏
         ArtifactStatsComponent stats = stack.getOrDefault(
                 ModDataComponents.ARTIFACT_STATS.get(),
                 ArtifactStatsComponent.DEFAULT);
@@ -231,6 +239,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
             case SLOT_SANDS -> sands;
             case SLOT_GOBLET -> goblet;
             case SLOT_CIRCLET -> circlet;
+            case SLOT_WEAPON -> weapon;
             default -> throw new IllegalStateException("Unexpected value: " + slot);
         };
     }
@@ -248,6 +257,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
             case SLOT_SANDS -> sands = stack;
             case SLOT_GOBLET -> goblet = stack;
             case SLOT_CIRCLET -> circlet = stack;
+            case SLOT_WEAPON -> weapon = stack;
         }
     }
 
@@ -270,7 +280,7 @@ public class ArtifactInventory implements Container, IPersistedSerializable {
      */
     @Override
     public boolean isEmpty() {
-        return flower.isEmpty() && plume.isEmpty() && sands.isEmpty() && goblet.isEmpty() && circlet.isEmpty();
+        return flower.isEmpty() && plume.isEmpty() && sands.isEmpty() && goblet.isEmpty() && circlet.isEmpty() && weapon.isEmpty();
     }
 
     /**

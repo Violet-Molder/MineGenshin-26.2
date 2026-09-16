@@ -3,6 +3,8 @@ package com.linweiyun.genshin.render.gui.screens.atrifact;
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
+import com.linweiyun.genshin.content.items.component.WeaponStatsComponent;
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
@@ -25,6 +27,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -51,7 +54,14 @@ public class ScreenArtifactEquip extends Screen {
 
     // ======== 常量 ========
     private static final ArtifactType[] TYPES = ArtifactType.values();
-    private static final String[] LABELS = {"生之花","死之羽","时之沙","空之杯","理之冠"};
+    private static final String[] LABEL_KEYS = {
+        "gui.minegenshin.artifact_equip.flower",
+        "gui.minegenshin.artifact_equip.plume",
+        "gui.minegenshin.artifact_equip.sands",
+        "gui.minegenshin.artifact_equip.goblet",
+        "gui.minegenshin.artifact_equip.circlet",
+        "gui.minegenshin.artifact_equip.weapon"
+    };
     private static final String BORDER = "minegenshin:textures/character_avatar/selected_border.png";
 
     public ScreenArtifactEquip(ModularUI modularUI) {
@@ -81,7 +91,7 @@ public class ScreenArtifactEquip extends Screen {
         root.layout(l -> { l.widthPercent(100); l.heightPercent(100); });
 
         if (cc == null || cc.getData() == null) {
-            root.addChild(new Label().setText("未选择角色"));
+            root.addChild(new Label().setText(Component.translatable("gui.minegenshin.artifact_equip.no_character")));
             return ModularUI.of(UI.of(root, ss), player);
         }
 
@@ -91,7 +101,8 @@ public class ScreenArtifactEquip extends Screen {
 
         // ===== 状态对象 =====
         var st = new St(slotIndex,
-                slotIndex >= 0 && slotIndex < 5 ? ArtifactInventory.slotToType(slotIndex) : ArtifactType.FLOWER);
+                slotIndex == 5 ? null :
+                        slotIndex >= 0 && slotIndex < 5 ? ArtifactInventory.slotToType(slotIndex) : ArtifactType.FLOWER);
         st.currentCharUUID = cc.getCharacterUUID();
         st.characterTextureId = cc.getTextureId();
         st.attachment = ca;
@@ -104,7 +115,7 @@ public class ScreenArtifactEquip extends Screen {
         // ---------- 顶部 5 槽位 ----------
         var top = new UIElement().setId("top-section");
         var srow = new UIElement().setId("artifact-slots-row");
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 6; i++) {
             int si = i;
             var se = slotEl(i, inv);
             se.addEventListener(UIEvents.MOUSE_ENTER, e -> {
@@ -159,7 +170,7 @@ public class ScreenArtifactEquip extends Screen {
 
         // ===== 内容默认隐藏 =====
         det.setDisplay(false);
-        if (slotIndex >= 0 && slotIndex < 5) {
+        if (slotIndex >= 0 && slotIndex < 6) {
             top.setDisplay(false);
             det.setDisplay(true);
         }
@@ -175,7 +186,7 @@ public class ScreenArtifactEquip extends Screen {
     private static void clickSlot(int si, Backpack bp, St st) {
         LOG.info("点击槽位[{}]", si);
         st.slot = si;
-        st.type = ArtifactInventory.slotToType(si);
+        st.type = si == 5 ? null : ArtifactInventory.slotToType(si);
         st.sel = null;
         st.top.setDisplay(false);
         st.det.setDisplay(true);
@@ -205,7 +216,14 @@ public class ScreenArtifactEquip extends Screen {
     // ================================================================
 
     private static void autoSel(Backpack bp, St st) {
-        int si = ArtifactInventory.typeToSlot(st.type);
+        int si = st.slot;
+        if (si < 0 || si >= 6) return;
+
+        // weapon mode
+        if (st.type == null) {
+            autoSelWeapon(bp, st);
+            return;
+        }
 
         // 1. 当前角色已穿戴
         var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
@@ -260,6 +278,46 @@ public class ScreenArtifactEquip extends Screen {
         st.selectedEnt = null;
     }
 
+    private static void autoSelWeapon(Backpack bp, St st) {
+        int si = ArtifactInventory.SLOT_WEAPON;
+        Class<? extends WeaponItem> allowedClass = getAllowedWeaponClass(st);
+
+        // 1. 当前角色已穿戴
+        var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+        if (currentChar != null && currentChar.getData() != null) {
+            var eq = currentChar.getData().getWeapon();
+            if (!eq.isEmpty()) {
+                st.selectedEnt = new Ent(eq.copy(), false, -1, true,
+                        st.currentCharUUID, st.characterTextureId, si);
+                return;
+            }
+        }
+
+        // 2. 其他角色已穿戴
+        for (var ch : st.attachment.getOwnedCharacters()) {
+            if (ch == null || ch.getData() == null) continue;
+            if (ch.getCharacterUUID() == st.currentCharUUID) continue;
+            var chEq = ch.getData().getWeapon();
+            if (chEq.isEmpty()) continue;
+            if (!isWeaponCompatible(chEq, allowedClass)) continue;
+            st.selectedEnt = new Ent(chEq.copy(), false, -1, true,
+                    ch.getCharacterUUID(), ch.getTextureId(), si);
+            return;
+        }
+
+        // 3. 背包
+        var arr = bp.getCategoryList(Backpack.Category.WEAPONS);
+        for (int i = 0; i < arr.size(); i++) {
+            var s = arr.get(i);
+            if (s.isEmpty()) continue;
+            if (!isWeaponCompatible(s, allowedClass)) continue;
+            st.selectedEnt = new Ent(s.copy(), true, i, true, -1, null, -1);
+            return;
+        }
+
+        st.selectedEnt = null;
+    }
+
     // ================================================================
     //  填充类型切换按钮
     // ================================================================
@@ -269,7 +327,7 @@ public class ScreenArtifactEquip extends Screen {
         for (int i = 0; i < TYPES.length; i++) {
             var t = TYPES[i];
             var b = new Button();
-            b.setText(LABELS[i]);
+            b.setText(Component.translatable(LABEL_KEYS[i]));
             b.addClass("type-toggle-btn");
             if (t == st.type) b.addClass("type-toggle-active");
             b.setOnClick(e -> {
@@ -283,7 +341,80 @@ public class ScreenArtifactEquip extends Screen {
             });
             c.addChild(b);
         }
+        // 武器按钮
+        var wb = new Button();
+        wb.setText(Component.translatable(LABEL_KEYS[5]));
+        wb.addClass("type-toggle-btn");
+        if (st.type == null) wb.addClass("type-toggle-active");
+        wb.setOnClick(e -> {
+            st.type = null;
+            st.sel = null;
+            st.slot = ArtifactInventory.SLOT_WEAPON;
+            autoSel(bp, st);
+            fillTC(c, bp, st);
+            if (st.lc != null) fillLC(st.lc, bp, st);
+            if (st.mp != null && st.rp != null) fillDetail(st.mp, st.rp, bp, st);
+        });
+        c.addChild(wb);
         c.markAsInternal();
+    }
+
+    // ================================================================
+    //  填充武器列表
+    // ================================================================
+
+    private static void fillWeaponLC(UIElement c, Backpack bp, St st) {
+        c.clearAllChildren();
+        st.sel = null;
+
+        int si = ArtifactInventory.SLOT_WEAPON;
+        var list = new ArrayList<Ent>();
+        Class<? extends WeaponItem> allowedClass = getAllowedWeaponClass(st);
+
+        // 1. 当前角色已穿戴
+        var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+        if (currentChar != null && currentChar.getData() != null) {
+            var eq = currentChar.getData().getWeapon();
+            if (!eq.isEmpty()) {
+                list.add(new Ent(eq.copy(), false, -1, true,
+                        st.currentCharUUID, st.characterTextureId, si));
+            }
+        }
+
+        // 2. 其他角色已穿戴
+        for (var ch : st.attachment.getOwnedCharacters()) {
+            if (ch == null || ch.getData() == null) continue;
+            if (ch.getCharacterUUID() == st.currentCharUUID) continue;
+            var chEq = ch.getData().getWeapon();
+            if (chEq.isEmpty()) continue;
+            if (!isWeaponCompatible(chEq, allowedClass)) continue;
+            list.add(new Ent(chEq.copy(), false, -1, true,
+                    ch.getCharacterUUID(), ch.getTextureId(), si));
+        }
+
+        // 3. 背包内武器（仅显示与角色类型匹配的武器）
+        var arr = bp.getCategoryList(Backpack.Category.WEAPONS);
+        var backpackList = new ArrayList<Ent>();
+        for (int i = 0; i < arr.size(); i++) {
+            var s = arr.get(i);
+            if (s.isEmpty()) continue;
+            if (!isWeaponCompatible(s, allowedClass)) continue;
+            backpackList.add(new Ent(s.copy(), true, i, true, -1, null, -1));
+        }
+        backpackList.sort((a, b) -> compareWeapons(a.s, b.s));
+        list.addAll(backpackList);
+
+        renderList(c, list, bp, st);
+    }
+
+    private static int compareWeapons(ItemStack a, ItemStack b) {
+        if (!(a.getItem() instanceof WeaponItem wa)) return 1;
+        if (!(b.getItem() instanceof WeaponItem wb)) return -1;
+        int c = Integer.compare(wb.getStar(), wa.getStar());
+        if (c != 0) return c;
+        var sa = a.getOrDefault(ModDataComponents.WEAPON_STATS.get(), WeaponStatsComponent.DEFAULT);
+        var sb = b.getOrDefault(ModDataComponents.WEAPON_STATS.get(), WeaponStatsComponent.DEFAULT);
+        return Integer.compare(sb.level, sa.level);
     }
 
     // ================================================================
@@ -299,6 +430,11 @@ public class ScreenArtifactEquip extends Screen {
     private static void fillLC(UIElement c, Backpack bp, St st) {
         c.clearAllChildren();
         st.sel = null;
+
+        if (st.type == null) {
+            fillWeaponLC(c, bp, st);
+            return;
+        }
 
         int si = ArtifactInventory.typeToSlot(st.type);
         var list = new ArrayList<Ent>();
@@ -345,13 +481,17 @@ public class ScreenArtifactEquip extends Screen {
         list.addAll(activatedList);
         list.addAll(inactivatedList);
 
+        renderList(c, list, bp, st);
+    }
+
+    private static void renderList(UIElement c, ArrayList<Ent> list, Backpack bp, St st) {
         for (int i = 0; i < list.size(); i++) {
             var e = list.get(i);
             var el = new UIElement().addClass("artifact-list-item");
             el.style(x -> x.background(SpriteTexture.of(tex(e.s))));
             if (!e.activated) el.addClass("artifact-list-inactivated");
 
-            // 已穿戴的圣遗物：右上角叠加佩戴者头像
+            // 已穿戴的物品：右上角叠加佩戴者头像
             if (!e.fromBackpack && e.ownerTextureId != null) {
                 var avatar = new UIElement().addClass("artifact-avatar-overlay");
                 avatar.style(x -> x.background(SpriteTexture.of(
@@ -436,6 +576,128 @@ public class ScreenArtifactEquip extends Screen {
     }
 
     // ================================================================
+    //  填充武器详情面板
+    // ================================================================
+
+    private static void fillWeaponDetail(UIElement mp, UIElement rp,
+                                         Backpack bp, St st) {
+        mp.clearAllChildren();
+        rp.clearAllChildren();
+
+        int slot = ArtifactInventory.SLOT_WEAPON;
+        var ent = st.selectedEnt;
+        if (ent == null || ent.s.isEmpty()) {
+            rp.addChild(new Label().setText(Component.translatable("gui.minegenshin.artifact_equip.no_weapon")).setId("info-empty"));
+            rp.markAsInternal();
+            return;
+        }
+
+        ItemStack disp = ent.s;
+
+        var ic = new UIElement().addClass("artifact-detail-icon");
+        ic.style(x -> x.background(SpriteTexture.of(tex(disp))));
+        ic.markAsInternal();
+        mp.addChild(ic);
+        mp.markAsInternal();
+
+        if (!(disp.getItem() instanceof WeaponItem wi)) return;
+        var stats = disp.getOrDefault(ModDataComponents.WEAPON_STATS.get(), WeaponStatsComponent.DEFAULT);
+        int star = wi.getStar();
+
+        var info = new UIElement().setId("info-container");
+        info.addChild(new Label().setText(disp.getHoverName()).addClass("info-name"));
+        info.addChild(new Label().setText(Component.literal("★".repeat(star)).withStyle(ChatFormatting.GOLD)).addClass("info-star"));
+
+        if (!ent.fromBackpack && ent.ownerTextureId != null) {
+            PGCharacter owner = st.attachment.getCharacterByUUID(ent.ownerUUID);
+            String ownerName = owner != null ? owner.getName().getString() : "?";
+            ChatFormatting color = (ent.ownerUUID == st.currentCharUUID) ? ChatFormatting.GOLD : ChatFormatting.AQUA;
+            info.addChild(new Label().setText(
+                    Component.translatable("gui.minegenshin.artifact_equip.equipped_by", ownerName).withStyle(color)).addClass("info-level"));
+        }
+
+        info.addChild(new Label().setText(Component.translatable("gui.minegenshin.artifact_equip.level_format", stats.level).withStyle(ChatFormatting.GRAY)).addClass("info-level"));
+
+        if (stats.mainStat != null && stats.mainStat.isInitialized())
+            info.addChild(new Label().setText(Component.literal(statTxt(stats.mainStat)).withStyle(ChatFormatting.YELLOW)).addClass("info-main-stat"));
+        if (stats.subStat != null && stats.subStat.isInitialized())
+            info.addChild(new Label().setText(Component.literal(statTxt(stats.subStat)).withStyle(ChatFormatting.GRAY)).addClass("info-sub-stat"));
+
+        // ============ 按钮 ============
+        var bc = new UIElement().setId("button-container");
+        var act = new Button();
+        act.addClass("action-button");
+
+        if (ent.fromBackpack) {
+            var te = disp.copy();
+            boolean currentSlotEmpty = currentSlotIsEmpty(st);
+            act.setText(Component.translatable(currentSlotEmpty ? "gui.minegenshin.artifact_equip.equip" : "gui.minegenshin.artifact_equip.change"));
+            int ii = ent.backpackIdx;
+            act.setOnClick(e -> {
+                if (!ArtifactInventory.isValidForSlot(slot, te)) return;
+                NetworkManager.sendEquipOrSwapArtifactToServer(slot, ii);
+                var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+                if (currentChar != null && currentChar.getData() != null) {
+                    var curInv = currentChar.getData().getArtifactInventory();
+                    var old = curInv.getItem(slot);
+                    bp.removeItemFromCategory(Backpack.Category.WEAPONS, ii);
+                    curInv.setItem(slot, te.copy());
+                    if (!old.isEmpty()) bp.addItemToCategory(Backpack.Category.WEAPONS, old.copy());
+                }
+                autoSel(bp, st);
+                if (st.lc != null) fillWeaponLC(st.lc, bp, st);
+                fillWeaponDetail(mp, rp, bp, st);
+            });
+        } else if (ent.ownerUUID == st.currentCharUUID) {
+            act.setText(Component.translatable("gui.minegenshin.artifact_equip.unequip"));
+            var tu = disp.copy();
+            act.setOnClick(e -> {
+                NetworkManager.sendUnequipArtifactToServer(slot);
+                var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+                if (currentChar != null && currentChar.getData() != null) {
+                    var curInv = currentChar.getData().getArtifactInventory();
+                    curInv.setItem(slot, ItemStack.EMPTY);
+                }
+                bp.addItemToCategory(Backpack.Category.WEAPONS, tu);
+                autoSel(bp, st);
+                if (st.lc != null) fillWeaponLC(st.lc, bp, st);
+                fillWeaponDetail(mp, rp, bp, st);
+            });
+        } else {
+            act.setText(Component.translatable("gui.minegenshin.artifact_equip.swap"));
+            int targetUUID = ent.ownerUUID;
+            act.setOnClick(e -> {
+                var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+                var targetChar = st.attachment.getCharacterByUUID(targetUUID);
+                if (currentChar == null || currentChar.getData() == null
+                        || targetChar == null || targetChar.getData() == null) return;
+                var curInv = currentChar.getData().getArtifactInventory();
+                var tgtInv = targetChar.getData().getArtifactInventory();
+
+                ItemStack a = curInv.getItem(slot);
+                ItemStack b = tgtInv.getItem(slot);
+
+                if (!ArtifactInventory.isValidForSlot(slot, b)) return;
+                if (!ArtifactInventory.isValidForSlot(slot, a)) return;
+
+                curInv.setItem(slot, b.copy());
+                tgtInv.setItem(slot, a.copy());
+
+                st.attachment.syncToServer();
+
+                autoSel(bp, st);
+                if (st.lc != null) fillWeaponLC(st.lc, bp, st);
+                fillWeaponDetail(mp, rp, bp, st);
+            });
+        }
+
+        bc.addChild(act);
+        info.addChild(bc);
+        rp.addChild(info);
+        rp.markAsInternal();
+    }
+
+    // ================================================================
     //  填充详情面板
     // ================================================================
 
@@ -445,11 +707,16 @@ public class ScreenArtifactEquip extends Screen {
         rp.clearAllChildren();
 
         int slot = st.slot;
-        if (slot < 0 || slot >= 5) return;
+        if (slot < 0 || slot >= 6) return;
+
+        if (st.type == null) {
+            fillWeaponDetail(mp, rp, bp, st);
+            return;
+        }
 
         var ent = st.selectedEnt;
         if (ent == null || ent.s.isEmpty()) {
-            rp.addChild(new Label().setText("该槽位无圣遗物").setId("info-empty"));
+            rp.addChild(new Label().setText(Component.translatable("gui.minegenshin.artifact_equip.no_artifact")).setId("info-empty"));
             rp.markAsInternal();
             return;
         }
@@ -474,7 +741,7 @@ public class ScreenArtifactEquip extends Screen {
 
         if (!activated) {
             info.addChild(new Label().setText(
-                    Component.literal("未激活（需要激活后才能穿戴）")
+                    Component.translatable("gui.minegenshin.artifact_equip.not_activated")
                             .withStyle(ChatFormatting.RED)).addClass("info-inactivated"));
         }
 
@@ -483,13 +750,13 @@ public class ScreenArtifactEquip extends Screen {
             String ownerName = owner != null ? owner.getName().getString() : "?";
             ChatFormatting color = (ent.ownerUUID == st.currentCharUUID) ? ChatFormatting.GOLD : ChatFormatting.AQUA;
             info.addChild(new Label().setText(
-                    Component.literal("【已装备 · " + ownerName + "】").withStyle(color)).addClass("info-level"));
+                    Component.translatable("gui.minegenshin.artifact_equip.equipped_by", ownerName).withStyle(color)).addClass("info-level"));
         }
 
-        info.addChild(new Label().setText(Component.literal("等级: +"+stats.level).withStyle(ChatFormatting.GRAY)).addClass("info-level"));
+        info.addChild(new Label().setText(Component.translatable("gui.minegenshin.artifact_equip.level_format", stats.level).withStyle(ChatFormatting.GRAY)).addClass("info-level"));
         long ex = stats.getExpToNextLevel(star);
         info.addChild(new Label().setText(
-                Component.literal(ex>0?"经验: "+stats.exp+" / "+ex:"经验: 已满级").withStyle(ChatFormatting.GRAY)).addClass("info-exp"));
+                Component.translatable(ex > 0 ? "gui.minegenshin.artifact_equip.exp_format" : "gui.minegenshin.artifact_equip.exp_max", stats.exp, ex).withStyle(ChatFormatting.GRAY)).addClass("info-exp"));
 
         if (stats.mainStat != null && stats.mainStat.isInitialized())
             info.addChild(new Label().setText(Component.literal(statTxt(stats.mainStat)).withStyle(ChatFormatting.YELLOW)).addClass("info-main-stat"));
@@ -508,7 +775,7 @@ public class ScreenArtifactEquip extends Screen {
             // ===== 来自背包 =====
             if (!activated) {
                 // 未激活 → 按钮变为"激活"
-                act.setText("激活");
+                act.setText(Component.translatable("gui.minegenshin.artifact_equip.activate"));
                 int ii = ent.backpackIdx;
                 act.setOnClick(e -> {
                     NetworkManager.sendActivateArtifactToServer(ii);
@@ -528,7 +795,7 @@ public class ScreenArtifactEquip extends Screen {
             } else {
                 // 已激活 → 穿戴 / 更换
                 boolean currentSlotEmpty = currentSlotIsEmpty(st);
-                act.setText(currentSlotEmpty ? "穿戴" : "更换");
+                act.setText(Component.translatable(currentSlotEmpty ? "gui.minegenshin.artifact_equip.equip" : "gui.minegenshin.artifact_equip.change"));
                 int ii = ent.backpackIdx;
                 var te = disp.copy();
                 act.setOnClick(e -> {
@@ -549,7 +816,7 @@ public class ScreenArtifactEquip extends Screen {
             }
         } else if (ent.ownerUUID == st.currentCharUUID) {
             // ===== 当前角色已穿戴 → 卸下 =====
-            act.setText("卸下");
+            act.setText(Component.translatable("gui.minegenshin.artifact_equip.unequip"));
             var tu = disp.copy();
             act.setOnClick(e -> {
                 NetworkManager.sendUnequipArtifactToServer(slot);
@@ -565,7 +832,7 @@ public class ScreenArtifactEquip extends Screen {
             });
         } else {
             // ===== 其他角色已穿戴 → 交换 =====
-            act.setText("更换");
+            act.setText(Component.translatable("gui.minegenshin.artifact_equip.swap"));
             int targetUUID = ent.ownerUUID;
             act.setOnClick(e -> {
                 var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
@@ -596,7 +863,7 @@ public class ScreenArtifactEquip extends Screen {
         }
 
         var up = new Button();
-        up.setText("升级");
+        up.setText(Component.translatable("gui.minegenshin.artifact_equip.upgrade"));
         up.addClass("upgrade-button");
         up.setOnClick(e -> NetworkManager.sendArtifactLevelUpToServer(disp, 10000));
         if (!activated || stats.level >= stats.getMaxLevel(star)) up.setDisplay(false);
@@ -666,7 +933,7 @@ public class ScreenArtifactEquip extends Screen {
 
     private static final class St {
         int slot;
-        ArtifactType type;
+        ArtifactType type; // null = weapon mode
         Ent selectedEnt;
         UIElement sel;
         UIElement top;
@@ -682,5 +949,18 @@ public class ScreenArtifactEquip extends Screen {
             this.slot = slot;
             this.type = type;
         }
+    }
+
+    private static Class<? extends WeaponItem> getAllowedWeaponClass(St st) {
+        var currentChar = st.attachment.getCharacterByUUID(st.currentCharUUID);
+        if (currentChar != null) {
+            return currentChar.getAllowedWeaponClass();
+        }
+        return WeaponItem.class;
+    }
+
+    private static boolean isWeaponCompatible(ItemStack stack, Class<? extends WeaponItem> allowedClass) {
+        if (stack.isEmpty()) return false;
+        return allowedClass.isInstance(stack.getItem());
     }
 }

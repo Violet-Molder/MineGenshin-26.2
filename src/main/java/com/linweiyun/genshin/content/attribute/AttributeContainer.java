@@ -68,6 +68,17 @@ public class AttributeContainer implements IPersistedSerializable {
         getOrCreate(type).setBaseValue(value);
     }
 
+    public void setBaseValue(AttributeType type, String source, double value) {
+        getOrCreate(type).setBaseValue(source, value);
+    }
+
+    public void removeBaseValue(AttributeType type, String source) {
+        AttributeInstance instance = get(type);
+        if (instance != null) {
+            instance.removeBaseValue(source);
+        }
+    }
+
     public void addFlatModifier(AttributeType type, String source, double value) {
         getOrCreate(type).addFlatModifier(source, value);
     }
@@ -90,6 +101,10 @@ public class AttributeContainer implements IPersistedSerializable {
 
     public void addTempPercentModifier(AttributeType type, String source, double value) {
         getOrCreate(type).addTempPercentModifier(source, value);
+    }
+
+    public void setTempFlatModifier(AttributeType type, String source, double value) {
+        getOrCreate(type).setTempFlatModifier(source, value);
     }
 
     public void removeModifier(AttributeType type, String source) {

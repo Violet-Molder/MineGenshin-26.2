@@ -7,6 +7,7 @@ import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.mojang.logging.LogUtils;
+import com.mojang.serialization.Codec;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,8 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerCharactersAttachment implements IPersistedSerializable {
+    public final static Codec<PlayerCharactersAttachment> CODEC = PersistedParser.createCodec(PlayerCharactersAttachment::new);
     public final static StreamCodec<ByteBuf, PlayerCharactersAttachment> STREAM_CODEC = PersistedParser.createStreamCodec(PlayerCharactersAttachment::new);
-    public static final Logger LOGGER = LogUtils.getLogger();
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     @Persisted(key = "owned_characters")
     private List<PGCharacter> ownedCharacters = new ArrayList<>();
 
@@ -113,8 +116,9 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
     }
 
     public void syncToServer() {
+        Player clientPlayer = ClientAttachmentSync.getClientPlayer();
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING,
-                net.minecraft.client.Minecraft.getInstance().player.registryAccess());
+                clientPlayer.registryAccess());
         serialize(output);
         NetworkManager.setPlayerCharactersToServer(output.buildResult());
     }
@@ -138,10 +142,11 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
     // ========== 客户端触发 ==========
 
     public void addCharacterToServer(PGCharacter character) {
-        addCharacter(character, net.minecraft.client.Minecraft.getInstance().player); //AI 客户端也透传 Player
+        Player clientPlayer = ClientAttachmentSync.getClientPlayer();
+        addCharacter(character, clientPlayer);
         TagValueOutput output = TagValueOutput.createWithContext(
                 ProblemReporter.DISCARDING,
-                net.minecraft.client.Minecraft.getInstance().player.registryAccess());
+                clientPlayer.registryAccess());
         character.serialize(output);
         NetworkManager.addCharacterToServer(output.buildResult());
     }
@@ -158,9 +163,10 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
     // 单个角色数据同步到服务端
     public void syncSingleCharacterToServer(PGCharacter character) {
         if (character == null) return;
+        Player clientPlayer = ClientAttachmentSync.getClientPlayer();
         TagValueOutput output = TagValueOutput.createWithContext(
                 ProblemReporter.DISCARDING,
-                net.minecraft.client.Minecraft.getInstance().player.registryAccess());
+                clientPlayer.registryAccess());
         character.serialize(output);
         NetworkManager.setCharacterDataToServer(character.getCharacterUUID(), output.buildResult());
     }

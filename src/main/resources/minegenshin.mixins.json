@@ -11,9 +11,11 @@
     "LivingEntityHurtMixin",
     "LivingEntityTeyvatMixin",
     "MagmaCubeResistanceMixin",
-    "MovementBlockMixin",
     "PlayerAttackInterceptor",
     "PlayerHurtInterceptor"
+  ],
+  "client": [
+    "MovementBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

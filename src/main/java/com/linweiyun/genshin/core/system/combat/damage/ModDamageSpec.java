@@ -65,6 +65,9 @@ public class ModDamageSpec {
     // ========== 攻击者角色信息 ==========
     private final PGCharacter attackerCharacter;       // 攻击者的PGCharacter —— 非玩家攻击者时为null
 
+    // ========== 运行时计算结果 ==========
+    private boolean crit;                               // 本次伤害是否暴击（计算时由战斗系统设置）
+
     // ========== 构造函数 ==========
     private ModDamageSpec(AttackType attackType, GenshinElement element,
                           float atkMultiplier, float hpMultiplier, float defMultiplier, float emMultiplier,
@@ -112,6 +115,9 @@ public class ModDamageSpec {
     public boolean isPhysical() { return element == ModElements.FYSIKOS.get(); }
     public boolean hasDecayTag() { return attackType.hasDecayTag(); }
     public boolean hasAuraPotential() { return elementAmount > 0 && isElemental(); }
+
+    public boolean isCrit() { return crit; }
+    public void setCrit(boolean crit) { this.crit = crit; }
 
     public DecayGroup getEffectiveDecayGroup() {
         return decayGroup != null ? decayGroup : DecayGroups.DEFAULT_NORMAL_ATTACK;

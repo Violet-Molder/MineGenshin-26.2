@@ -1,5 +1,7 @@
 package com.linweiyun.genshin.core.character.sword;
 
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
+import com.linweiyun.genshin.content.items.weapon.sword.Sword;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import net.minecraft.network.chat.Component;
@@ -10,6 +12,11 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class SwordCharacter extends PGCharacter {
+
+    @Override
+    public Class<? extends WeaponItem> getAllowedWeaponClass() {
+        return Sword.class;
+    }
 
     public SwordCharacter(
             int characterUUID, int starRating, Component name,

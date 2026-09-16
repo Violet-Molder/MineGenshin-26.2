@@ -13,6 +13,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.Selector;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
@@ -39,8 +40,8 @@ public class ScreenCharacterSelect extends Screen {
     private static final float SCROLL_COEFFICIENT = 20f;
 
     public enum SortMethod {
-        STAR("star", "按星级排序"),
-        LEVEL("level", "按等级排序");
+        STAR("star", "gui.minegenshin.character_select.sort_star"),
+        LEVEL("level", "gui.minegenshin.character_select.sort_level");
 
         private final String value;
         private final String description;
@@ -51,7 +52,7 @@ public class ScreenCharacterSelect extends Screen {
         }
 
         @Override
-        public String toString() { return this.description; }
+        public String toString() { return I18n.get(this.description); }
 
         public String getValue() { return value; }
     }
@@ -91,7 +92,7 @@ public class ScreenCharacterSelect extends Screen {
 
         // ========== 出战按钮 ==========
         deployButton
-                .setText("出战")
+                .setText(Component.translatable("gui.minegenshin.character_select.deploy"))
                 .setOnClick(e -> {
                     Integer uuid = selectedUUID.get();
                     if (uuid == null || uuid == 0) return;
@@ -114,7 +115,7 @@ public class ScreenCharacterSelect extends Screen {
 
         // ========== 换下按钮 ==========
         removeCharacterButton
-                .setText("换下")
+                .setText(Component.translatable("gui.minegenshin.character_select.recall"))
                 .setOnClick(e -> {
                     boolean removed = charactersAttachment.removePartyCharacterToServer(index);
                     if (removed) {
@@ -125,7 +126,7 @@ public class ScreenCharacterSelect extends Screen {
 
         // ========== 更换按钮 ==========
         switchCharacterButton
-                .setText("更换")
+                .setText(Component.translatable("gui.minegenshin.character_select.swap"))
                 .setOnClick(e -> {
                     Integer uuid = selectedUUID.get();
                     if (uuid == null || uuid == 0) return;

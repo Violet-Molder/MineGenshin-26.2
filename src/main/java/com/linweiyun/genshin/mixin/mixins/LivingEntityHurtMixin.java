@@ -111,6 +111,8 @@ public class LivingEntityHurtMixin {
             PGCharacter current = attachment.getCurrentCharacter();
             if (current != null) {
                 current.hurt(finalDamage);
+            } else {
+                target.setHealth(Math.max(target.getHealth() - finalDamage, 0));
             }
         } else if (target instanceof TeyvatLiving) {
             target.setHealth(Math.max(target.getHealth() - finalDamage, 0));
@@ -121,15 +123,28 @@ public class LivingEntityHurtMixin {
         LOGGER.info("[DI-Mixin] about to call DamageIndicatorFactory, finalDamage={} element={}", finalDamage, element);
         if (finalDamage > 0f) {
             try {
+                boolean isCrit = spec.isCrit();
+                DamageIndicatorFactory.Options options = isCrit
+                        ? DamageIndicatorFactory.Options.builder().baseScale(4.4f).startScale(12.4f).build()
+                        : DamageIndicatorFactory.Options.DEFAULT;
+
                 if (element == ModElements.HYDRO.get()) {
                     int hydroColor = DamageIndicatorFactory.getColorForElement(ModElements.HYDRO.get());
-                    DamageIndicatorFactory.damageGradient(
-                            target, modSource, finalDamage,
-                            0xFFFFFF,
-                            hydroColor
-                    );
+                    if (isCrit) {
+                        DamageIndicatorFactory.critGradient(
+                                target, modSource, finalDamage,
+                                0xFFFFFF, hydroColor, options);
+                    } else {
+                        DamageIndicatorFactory.damageGradient(
+                                target, modSource, finalDamage,
+                                0xFFFFFF, hydroColor, options);
+                    }
                 } else {
-                    DamageIndicatorFactory.damage(target, modSource, finalDamage, element);
+                    if (isCrit) {
+                        DamageIndicatorFactory.crit(target, modSource, finalDamage, element, options);
+                    } else {
+                        DamageIndicatorFactory.damage(target, modSource, finalDamage, element, options);
+                    }
                 }
             } catch (Throwable t) {
                 LOGGER.error("[DI-Mixin] DamageIndicatorFactory threw", t);

@@ -49,19 +49,19 @@ public class CharacterCommand {
 
         PGCharacter character = ModCharacters.getByUUID(uuid);
         if (character == null) {
-            context.getSource().sendFailure(Component.literal("未找到UUID为 " + uuid + " 的角色"));
+            context.getSource().sendFailure(Component.translatable("command.minegenshin.character.not_found", uuid));
             return 0;
         }
 
         PlayerCharactersAttachment attachment = target.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         if (attachment.hasCharacter(uuid)) {
-            context.getSource().sendFailure(Component.literal("目标玩家已拥有该角色"));
+            context.getSource().sendFailure(Component.translatable("command.minegenshin.character.already_owned"));
             return 0;
         }
         attachment.addCharacterToPlayer(target ,character);
 
         context.getSource().sendSuccess(
-                () -> Component.literal("已为 " + target.getName().getString() + " 添加角色 [" + character.getName().getString() + "]"),
+                () -> Component.translatable("command.minegenshin.character.add_success", target.getName().getString(), character.getName().getString()),
                 true);
         return Command.SINGLE_SUCCESS;
     }
@@ -72,7 +72,7 @@ public class CharacterCommand {
 
         PlayerCharactersAttachment attachment = target.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         if (!attachment.hasCharacter(uuid)) {
-            context.getSource().sendFailure(Component.literal("目标玩家没有该角色"));
+            context.getSource().sendFailure(Component.translatable("command.minegenshin.character.not_owned"));
             return 0;
         }
 
@@ -82,7 +82,7 @@ public class CharacterCommand {
         attachment.removeCharacterToPlayer(target, uuid);
 
         context.getSource().sendSuccess(
-                () -> Component.literal("已从 " + target.getName().getString() + " 移除角色 [" + characterName + "]"),
+                () -> Component.translatable("command.minegenshin.character.remove_success", target.getName().getString(), characterName),
                 true);
         return Command.SINGLE_SUCCESS;
     }

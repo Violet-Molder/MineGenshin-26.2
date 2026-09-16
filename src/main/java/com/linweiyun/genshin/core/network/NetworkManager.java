@@ -1,13 +1,14 @@
 package com.linweiyun.genshin.core.network;
 
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.core.attachment.*;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
+import com.linweiyun.genshin.core.system.wish.WishSystem;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
@@ -77,7 +78,7 @@ public class NetworkManager {
     } else {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       if (isGenshinMode && !hasAlivePartyCharacter(player)) {
-        player.sendSystemMessage(Component.literal("队伍中没有生命值大于0的角色，无法开启原神模式"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.no_alive_character"));
         setGenshinModeToPlayer(player, false);
         return;
       }
@@ -368,26 +369,48 @@ public class NetworkManager {
       PGCharacterData charData = currentChar.getData();
       ArtifactInventory artifactInv = charData.getArtifactInventory();
 
-      Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
-      var artifactList = backpack.getCategoryList(Backpack.Category.ARTIFACTS);
-      if (inventorySlotIndex < 0 || inventorySlotIndex >= artifactList.size()) return;
-      ItemStack newArtifact = artifactList.get(inventorySlotIndex);
-      if (newArtifact.isEmpty() || !(newArtifact.getItem() instanceof ArtifactItem)) return;
       if (artifactSlotIndex < 0 || artifactSlotIndex >= ArtifactInventory.SLOT_COUNT) return;
-      if (!ArtifactInventory.isValidForSlot(artifactSlotIndex, newArtifact)) return;
 
-      ItemStack oldArtifact = artifactInv.getItem(artifactSlotIndex);
+      Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
 
-      artifactList.set(inventorySlotIndex, ItemStack.EMPTY);
-      artifactInv.setItem(artifactSlotIndex, newArtifact.copy());
+      if (artifactSlotIndex == ArtifactInventory.SLOT_WEAPON) {
+        var weaponList = backpack.getCategoryList(Backpack.Category.WEAPONS);
+        if (inventorySlotIndex < 0 || inventorySlotIndex >= weaponList.size()) return;
+        ItemStack newWeapon = weaponList.get(inventorySlotIndex);
+        if (newWeapon.isEmpty() || !(newWeapon.getItem() instanceof WeaponItem)) return;
+        if (!ArtifactInventory.isValidForSlot(artifactSlotIndex, newWeapon)) return;
+        if (!isWeaponCompatibleWithCharacter(currentChar, newWeapon)) return;
 
-      if (!oldArtifact.isEmpty()) {
-        backpack.addItemToCategory(Backpack.Category.ARTIFACTS, oldArtifact.copy());
+        ItemStack oldWeapon = artifactInv.getItem(artifactSlotIndex);
+        weaponList.set(inventorySlotIndex, ItemStack.EMPTY);
+        artifactInv.setItem(artifactSlotIndex, newWeapon.copy());
+        if (!oldWeapon.isEmpty()) {
+          backpack.addItemToCategory(Backpack.Category.WEAPONS, oldWeapon.copy());
+        }
+      } else {
+        var artifactList = backpack.getCategoryList(Backpack.Category.ARTIFACTS);
+        if (inventorySlotIndex < 0 || inventorySlotIndex >= artifactList.size()) return;
+        ItemStack newArtifact = artifactList.get(inventorySlotIndex);
+        if (newArtifact.isEmpty() || !(newArtifact.getItem() instanceof ArtifactItem)) return;
+        if (!ArtifactInventory.isValidForSlot(artifactSlotIndex, newArtifact)) return;
+
+        ItemStack oldArtifact = artifactInv.getItem(artifactSlotIndex);
+        artifactList.set(inventorySlotIndex, ItemStack.EMPTY);
+        artifactInv.setItem(artifactSlotIndex, newArtifact.copy());
+        if (!oldArtifact.isEmpty()) {
+          backpack.addItemToCategory(Backpack.Category.ARTIFACTS, oldArtifact.copy());
+        }
       }
 
       currentChar.recalculateDirtyArtifactSlots();
       attachment.syncToPlayer(player);
     }
+  }
+
+  private static boolean isWeaponCompatibleWithCharacter(PGCharacter character, ItemStack weaponStack) {
+    if (weaponStack.isEmpty() || !(weaponStack.getItem() instanceof WeaponItem)) return false;
+    Class<? extends WeaponItem> allowedClass = character.getAllowedWeaponClass();
+    return allowedClass.isInstance(weaponStack.getItem());
   }
 
   public static void sendEquipOrSwapArtifactToServer(int artifactSlotIndex, int inventorySlotIndex) {
@@ -411,10 +434,13 @@ public class NetworkManager {
       if (oldArtifact.isEmpty()) return;
 
       artifactInv.setItem(artifactSlotIndex, ItemStack.EMPTY);
-//      LOGGER.info("NetSetItem");
 
       Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
-      backpack.addItemToCategory(Backpack.Category.ARTIFACTS, oldArtifact.copy());
+      if (artifactSlotIndex == ArtifactInventory.SLOT_WEAPON) {
+        backpack.addItemToCategory(Backpack.Category.WEAPONS, oldArtifact.copy());
+      } else {
+        backpack.addItemToCategory(Backpack.Category.ARTIFACTS, oldArtifact.copy());
+      }
 
       currentChar.recalculateDirtyArtifactSlots();
       attachment.syncToPlayer(player);
@@ -446,50 +472,7 @@ public class NetworkManager {
     if (!sender.isServer()) {
       ServerPlayer serverPlayer = sender.asPlayer();
       if (serverPlayer == null) return;
-
-      int primogem = serverPlayer.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
-      if (primogem < 160) {
-        serverPlayer.sendSystemMessage(
-                Component.translatable("message.pixel_genshin.wish.not_enough_primogem"));
-        return;
-      }
-
-      serverPlayer.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - 160);
-      setPrimogemToPlayer(serverPlayer, primogem - 160);
-
-      PlayerCharactersAttachment charactersAttachment =
-              serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-
-      List<PGCharacter> allCharacters = new ArrayList<>(ModCharacters.getAllCharacters());
-      if (allCharacters.isEmpty()) {
-        serverPlayer.sendSystemMessage(
-                Component.translatable("message.pixel_genshin.wish.no_reward"));
-        return;
-      }
-
-      var rolledCharacter = allCharacters.get(RANDOM.nextInt(allCharacters.size()));
-      Component characterName = rolledCharacter.getName().copy().withStyle(ChatFormatting.GOLD);
-
-      if (charactersAttachment.hasCharacter(rolledCharacter.getCharacterUUID())) {
-        int compensation = 75;
-        int newPrimogem = serverPlayer.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
-        serverPlayer.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, newPrimogem + compensation);
-        setPrimogemToPlayer(serverPlayer, newPrimogem + compensation);
-
-        serverPlayer.sendSystemMessage(
-                Component.translatable("message.pixel_genshin.wish.owned_character",
-                        characterName,
-                        Component.literal(String.valueOf(compensation)).withStyle(ChatFormatting.AQUA)));
-      } else {
-        charactersAttachment.addCharacter(rolledCharacter, serverPlayer);
-
-        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, serverPlayer.registryAccess());
-        charactersAttachment.serialize(output);
-        setPlayerCharactersToPlayer(serverPlayer, output.buildResult());
-
-        serverPlayer.sendSystemMessage(
-                Component.translatable("message.pixel_genshin.wish.draw_character", characterName));
-      }
+      WishSystem.performWish(serverPlayer);
     }
   }
 
@@ -630,18 +613,18 @@ public class NetworkManager {
     if (!sender.isServer()) {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       if (player.experienceLevel < 30) {
-        player.sendSystemMessage(Component.literal("经验等级不足30级，无法进行冒险等级突破"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.adventure_rank_exp_low"));
         return;
       }
       AdventurerInfoAttachment advInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
       if (!advInfo.canBreakthroughWorldLevel()) {
-        player.sendSystemMessage(Component.literal("不满足冒险等级突破条件"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.adventure_rank_breakthrough_not_met"));
         return;
       }
       player.giveExperienceLevels(-30);
       advInfo.breakthroughWorldLevel();
       advInfo.syncToPlayer(player);
-      player.sendSystemMessage(Component.literal("冒险等级突破成功！当前世界等级: " + advInfo.getWorldLevel()));
+      player.sendSystemMessage(Component.translatable("message.minegenshin.adventure_rank_breakthrough_success", advInfo.getWorldLevel()));
     }
   }
 
@@ -654,35 +637,189 @@ public class NetworkManager {
     if (!sender.isServer()) {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       if (player.experienceLevel < 30) {
-        player.sendSystemMessage(Component.literal("经验等级不足30级，无法进行角色突破"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.character_exp_low"));
         return;
       }
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter character = attachment.getCurrentCharacter();
       if (character == null || character.getData() == null) {
-        player.sendSystemMessage(Component.literal("当前没有选中角色"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.no_character_selected"));
         return;
       }
       int maxLevelForPhase = character.getData().getAscensionPhase() == 0
               ? 20
               : Math.min((character.getData().getAscensionPhase() + 3) * 10, 90);
       if (character.getData().getLevel() < maxLevelForPhase) {
-        player.sendSystemMessage(Component.literal("角色未达到当前突破阶段最大等级，无法突破"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.character_not_max_level"));
         return;
       }
       if (character.getData().getLevel() >= 90) {
-        player.sendSystemMessage(Component.literal("角色已达最高等级"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.character_max_level_reached"));
         return;
       }
       player.giveExperienceLevels(-30);
       character.ascend();
       attachment.syncToPlayer(player);
-      player.sendSystemMessage(Component.literal("角色突破成功！当前突破阶段: " + character.getData().getAscensionPhase()));
+      player.sendSystemMessage(Component.translatable("message.minegenshin.character_breakthrough_success", character.getData().getAscensionPhase()));
     }
   }
 
   public static void sendAscendCharacterToServer() {
     RPCPacketDistributor.rpcToServer("ascendCharacterRPCPacket");
+  }
+
+  @RPCPacket("ascendWeaponRPCPacket")
+  public static void ascendWeaponRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
+      if (primogem < 1600) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.weapon_primogem_low"));
+        return;
+      }
+      if (player.experienceLevel < 10) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.weapon_exp_low"));
+        return;
+      }
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter character = attachment.getCurrentCharacter();
+      if (character == null) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.no_character_selected"));
+        return;
+      }
+      ItemStack weaponStack = character.getData().getWeapon();
+      if (weaponStack.isEmpty() || !(weaponStack.getItem() instanceof WeaponItem weapon)) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.no_weapon_equipped"));
+        return;
+      }
+      if (!weapon.canAscend(weaponStack)) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.weapon_not_meet_requirements"));
+        return;
+      }
+      if (!weapon.ascend(weaponStack)) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.weapon_breakthrough_failed"));
+        return;
+      }
+      character.getData().getArtifactInventory().markDirty(3);
+      character.recalculateWeaponSlot();
+      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - 1600);
+      setPrimogemToPlayer(player, primogem - 1600);
+      player.giveExperienceLevels(-10);
+      attachment.syncToPlayer(player);
+      player.sendSystemMessage(Component.translatable("message.minegenshin.weapon_breakthrough_success"));
+    }
+  }
+
+  public static void sendAscendWeaponToServer() {
+    RPCPacketDistributor.rpcToServer("ascendWeaponRPCPacket");
+  }
+
+  @RPCPacket("upgradeNormalAttackRPCPacket")
+  public static void upgradeNormalAttackRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
+      if (primogem < 320) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_primogem_low"));
+        return;
+      }
+      if (player.experienceLevel < 5) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_exp_low"));
+        return;
+      }
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter character = attachment.getCurrentCharacter();
+      if (character == null || character.getData() == null) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.no_character_selected"));
+        return;
+      }
+      if (!character.getData().canUpgradeNormalAttack()) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_max_level"));
+        return;
+      }
+      character.upgradeNormalAttack();
+      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - 320);
+      setPrimogemToPlayer(player, primogem - 320);
+      player.giveExperienceLevels(-5);
+      attachment.syncToPlayer(player);
+      player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_upgrade_success", character.getData().getNormalAttackLevel()));
+    }
+  }
+
+  public static void sendUpgradeNormalAttackToServer() {
+    RPCPacketDistributor.rpcToServer("upgradeNormalAttackRPCPacket");
+  }
+
+  @RPCPacket("upgradeElementalSkillRPCPacket")
+  public static void upgradeElementalSkillRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
+      if (primogem < 320) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_primogem_low"));
+        return;
+      }
+      if (player.experienceLevel < 5) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_exp_low"));
+        return;
+      }
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter character = attachment.getCurrentCharacter();
+      if (character == null || character.getData() == null) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.no_character_selected"));
+        return;
+      }
+      if (!character.getData().canUpgradeElementalSkill()) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_max_level"));
+        return;
+      }
+      character.upgradeElementalSkill();
+      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - 320);
+      setPrimogemToPlayer(player, primogem - 320);
+      player.giveExperienceLevels(-5);
+      attachment.syncToPlayer(player);
+      player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_upgrade_success", character.getData().getElementalSkillLevel()));
+    }
+  }
+
+  public static void sendUpgradeElementalSkillToServer() {
+    RPCPacketDistributor.rpcToServer("upgradeElementalSkillRPCPacket");
+  }
+
+  @RPCPacket("upgradeElementalBurstRPCPacket")
+  public static void upgradeElementalBurstRPCPacket(RPCSender sender) {
+    if (!sender.isServer()) {
+      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
+      if (primogem < 320) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_primogem_low"));
+        return;
+      }
+      if (player.experienceLevel < 5) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_exp_low"));
+        return;
+      }
+      PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+      PGCharacter character = attachment.getCurrentCharacter();
+      if (character == null || character.getData() == null) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.no_character_selected"));
+        return;
+      }
+      if (!character.getData().canUpgradeElementalBurst()) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_max_level"));
+        return;
+      }
+      character.upgradeElementalBurst();
+      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - 320);
+      setPrimogemToPlayer(player, primogem - 320);
+      player.giveExperienceLevels(-5);
+      attachment.syncToPlayer(player);
+      player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_upgrade_success", character.getData().getElementalBurstLevel()));
+    }
+  }
+
+  public static void sendUpgradeElementalBurstToServer() {
+    RPCPacketDistributor.rpcToServer("upgradeElementalBurstRPCPacket");
   }
 
   @RPCPacket("downgradeWorldLevelRPCPacket")
@@ -691,12 +828,12 @@ public class NetworkManager {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       AdventurerInfoAttachment advInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
       if (!advInfo.canDowngradeWorldLevel()) {
-        player.sendSystemMessage(Component.literal("不满足降低世界等级条件"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.world_level_downgrade_not_met"));
         return;
       }
       advInfo.downgradeWorldLevel();
       advInfo.syncToPlayer(player);
-      player.sendSystemMessage(Component.literal("世界等级已降低至 " + advInfo.getWorldLevel()));
+      player.sendSystemMessage(Component.translatable("message.minegenshin.world_level_downgrade_success", advInfo.getWorldLevel()));
     }
   }
 
@@ -710,12 +847,12 @@ public class NetworkManager {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       AdventurerInfoAttachment advInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
       if (!advInfo.canRestoreWorldLevel()) {
-        player.sendSystemMessage(Component.literal("世界等级无需还原"));
+        player.sendSystemMessage(Component.translatable("message.minegenshin.world_level_no_restore"));
         return;
       }
       advInfo.restoreWorldLevel();
       advInfo.syncToPlayer(player);
-      player.sendSystemMessage(Component.literal("世界等级已还原至 " + advInfo.getWorldLevel()));
+      player.sendSystemMessage(Component.translatable("message.minegenshin.world_level_restore_success", advInfo.getWorldLevel()));
     }
   }
 

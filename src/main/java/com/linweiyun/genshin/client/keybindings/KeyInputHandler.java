@@ -12,6 +12,7 @@ import com.linweiyun.genshin.content.skill_node.DashSystem;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
@@ -65,14 +66,14 @@ public class KeyInputHandler {
           int displayStage = ComboSystem.getComboStage(player);
           if (displayStage == 0) displayStage = maxCombo;
           mc.player.sendSystemMessage(
-                  Component.literal("§e段 " + displayStage + "/" + maxCombo));
+                  Component.literal(I18n.get("key.minegenshin.combo_stage", displayStage, maxCombo)));
         }
       }
 
       boolean chargedReady = ComboSystem.consumePendingChargedAttack(player);
       if (chargedReady) {
         mc.player.swing(InteractionHand.MAIN_HAND);
-        mc.player.sendSystemMessage(Component.literal("§c重击"));
+        mc.player.sendSystemMessage(Component.literal(I18n.get("key.minegenshin.charged_attack")));
         character.performChargedAttack(mc.player);
         NetworkManager.performChargedAttackToServer();
       }
@@ -241,7 +242,7 @@ public class KeyInputHandler {
         attachment.setCurrentCharacterIndex(nextIndex);
         NetworkManager.setCharacterSelectionToServer(nextIndex);
         player.sendSystemMessage(
-                Component.literal("已切换到角色 " + character.getName().getString()));
+                Component.translatable("key.minegenshin.switched_character", character.getName().getString()));
         return;
       }
     }

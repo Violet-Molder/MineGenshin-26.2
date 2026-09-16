@@ -1,5 +1,7 @@
 package com.linweiyun.genshin.core.character.polearm;
 
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
+import com.linweiyun.genshin.content.items.weapon.polearm.Polearm;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import net.minecraft.network.chat.Component;
@@ -13,6 +15,11 @@ public abstract class PolearmCharacter extends PGCharacter {
 
     public PolearmCharacter() {
         super();
+    }
+
+    @Override
+    public Class<? extends WeaponItem> getAllowedWeaponClass() {
+        return Polearm.class;
     }
 
     public PolearmCharacter(
