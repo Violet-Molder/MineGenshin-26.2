@@ -4,6 +4,8 @@ import com.linweiyun.genshin.content.items.TeyvatItem;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
+import com.linweiyun.genshin.content.items.component.WeaponStatsComponent;
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
@@ -47,6 +49,8 @@ public class PlayerPickupEvent {
                     addArtifactExp(data.getSands(), ArtifactType.SANDS, amount, inv);
                     addArtifactExp(data.getGoblet(), ArtifactType.GOBLET, amount, inv);
                     addArtifactExp(data.getCirclet(), ArtifactType.CIRCLET, amount, inv);
+
+                    addWeaponExp(data.getWeapon(), amount, inv);
                 }
             }
         }
@@ -64,5 +68,20 @@ public class PlayerPickupEvent {
         int slot = ArtifactInventory.typeToSlot(type);
         stats.setOnStatsChanged(() -> inv.markDirty(slot));
         stats.addExp(amount, star, type);
+        stack.set(ModDataComponents.ARTIFACT_STATS, stats);
+    }
+
+    private static void addWeaponExp(ItemStack stack, int amount, ArtifactInventory inv) {
+        if (stack.isEmpty()) return;
+        if (!(stack.getItem() instanceof WeaponItem weapon)) return;
+        int star = weapon.getStar();
+        if (star <= 0) return;
+
+        WeaponStatsComponent stats = stack.get(ModDataComponents.WEAPON_STATS.get());
+        if (stats == null) return;
+
+        stats.setOnStatsChanged(() -> inv.markDirty(ArtifactInventory.SLOT_WEAPON));
+        stats.addExp(amount, star);
+        stack.set(ModDataComponents.WEAPON_STATS.get(), stats);
     }
 }

@@ -22,5 +22,7 @@ public class ModModeProvider extends ModelProvider {
     itemModels.generateFlatItem(ModItems.CRIMSON_SANDS.get(), ModelTemplates.FLAT_ITEM);
     itemModels.generateFlatItem(ModItems.CRIMSON_GOBLET.get(), ModelTemplates.FLAT_ITEM);
     itemModels.generateFlatItem(ModItems.CRIMSON_CIRCLET.get(), ModelTemplates.FLAT_ITEM);
+    itemModels.generateFlatItem(ModItems.SWEET_MADAME.get(), ModelTemplates.FLAT_ITEM);
+    itemModels.generateFlatItem(ModItems.EVERLASTING_MOONGLOW.get(), ModelTemplates.FLAT_ITEM);
   }
 }

@@ -9,8 +9,10 @@ import java.util.Map;
 public class AttributeInstance implements IPersistedSerializable {
     private AttributeType type;
 
-    @Persisted(key = "base_value")
-    private double baseValue;
+    public static final String DEFAULT_BASE_KEY = "base";
+
+    @Persisted(key = "base_values")
+    private final Map<String, Double> baseValues = new HashMap<>();
 
     @Persisted(key = "flat_modifiers")
     private final Map<String, Double> flatModifiers = new HashMap<>();
@@ -26,20 +28,33 @@ public class AttributeInstance implements IPersistedSerializable {
     public AttributeInstance() {}
     public AttributeInstance(AttributeType type) {
         this.type = type;
-        this.baseValue = type.defaultValue();
+        this.baseValues.put(DEFAULT_BASE_KEY, (double) type.defaultValue());
     }
 
     public AttributeType getType() { return type; }
 
     // ========== 基础值 ==========
-    public double getBaseValue() { return baseValue; }
+    public double getBaseValue() {
+        double sum = 0;
+        for (double v : baseValues.values()) sum += v;
+        return sum;
+    }
+
+    public void setBaseValue(String source, double value) {
+        baseValues.put(source, roundTo4(value));
+    }
 
     public void setBaseValue(double value) {
-        this.baseValue = roundTo4(value);
+        setBaseValue(DEFAULT_BASE_KEY, value);
     }
 
     public void addBaseValue(double value) {
-        this.baseValue = roundTo4(this.baseValue + value);
+        double current = baseValues.getOrDefault(DEFAULT_BASE_KEY, 0.0);
+        baseValues.put(DEFAULT_BASE_KEY, roundTo4(current + value));
+    }
+
+    public void removeBaseValue(String source) {
+        baseValues.remove(source);
     }
 
     // ========== 常驻固定值加成 ==========
@@ -90,14 +105,16 @@ public class AttributeInstance implements IPersistedSerializable {
     // ========== 计算总值 ==========
     // 公式: 总值 = 基础值 × (1 + 常驻百分比 + 临时百分比) + 常驻固定值 + 临时固定值
     public double getTotalValue() {
+        double totalBase = getBaseValue();
         double totalPercent = getTotalPercentModifier() + getTotalTempPercentModifier();
         double totalFlat = getTotalFlatModifier() + getTotalTempFlatModifier();
-        return roundTo3(baseValue * (1.0 + totalPercent) + totalFlat);
+        return roundTo3(totalBase * (1.0 + totalPercent) + totalFlat);
     }
 
     // 永久值（不含临时）
     public double getPermanentValue() {
-        return roundTo3(baseValue * (1.0 + getTotalPercentModifier()) + getTotalFlatModifier());
+        double totalBase = getBaseValue();
+        return roundTo3(totalBase * (1.0 + getTotalPercentModifier()) + getTotalFlatModifier());
     }
 
     // ========== 清除临时 ==========
@@ -117,7 +134,7 @@ public class AttributeInstance implements IPersistedSerializable {
 
     public AttributeInstance copy() {
         AttributeInstance copy = new AttributeInstance(this.type);
-        copy.baseValue = this.baseValue;
+        copy.baseValues.putAll(this.baseValues);
         copy.flatModifiers.putAll(this.flatModifiers);
         copy.percentModifiers.putAll(this.percentModifiers);
         copy.tempFlatModifiers.putAll(this.tempFlatModifiers);

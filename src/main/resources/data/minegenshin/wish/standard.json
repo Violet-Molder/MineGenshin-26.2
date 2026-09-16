@@ -1,0 +1,14 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "id": "minecraft:iron_ingot", "weight": 40, "count": 1 },
+        { "type": "character", "id": "minegenshin:shenhe", "weight": 10 },
+        { "type": "character", "id": "minegenshin:columbina", "weight": 10 },
+        { "type": "character", "id": "minegenshin:arlecchino", "weight": 10 },
+        { "type": "item", "id": "minegenshin:sweet_madame", "weight": 60, "count": 1 }
+      ]
+    }
+  ]
+}

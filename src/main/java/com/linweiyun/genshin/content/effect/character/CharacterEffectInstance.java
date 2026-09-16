@@ -36,9 +36,28 @@ public class CharacterEffectInstance {
      * @param data 额外数据标签
      */
     public CharacterEffectInstance(ICharacterEffect effect, int duration, int amplifier, boolean hidden, CompoundTag data) {
-        this.effect = effect;             // 直接存储效果实例
-        // 从注册表反查 effect 的 Identifier
+        this.effect = effect;
         this.effectId = ModRegistries.CHARACTER_EFFECT_REGISTRY.getKey(effect);
+        this.duration = duration;
+        this.amplifier = amplifier;
+        this.hidden = hidden;
+        this.data = data != null ? data : new CompoundTag();
+    }
+
+    /**
+     * 显式指定 effectId 的构造函数 —— 用于参数化效果实例（如 DamageBonusEffect）
+     * 当传递的不是注册表单例，而是参数化的新实例时使用
+     *
+     * @param effectId 效果注册名 Identifier
+     * @param effect 参数化效果实例
+     * @param duration 持续时间（tick）
+     * @param amplifier 效果等级
+     * @param hidden 是否隐藏
+     * @param data 额外数据标签
+     */
+    public CharacterEffectInstance(Identifier effectId, ICharacterEffect effect, int duration, int amplifier, boolean hidden, CompoundTag data) {
+        this.effect = effect;
+        this.effectId = effectId;
         this.duration = duration;
         this.amplifier = amplifier;
         this.hidden = hidden;
@@ -53,6 +72,13 @@ public class CharacterEffectInstance {
     /** 不带隐藏和额外数据的构造函数 */
     public CharacterEffectInstance(ICharacterEffect effect, int duration, int amplifier) {
         this(effect, duration, amplifier, false, new CompoundTag());
+    }
+
+    /**
+     * 显式指定 effectId，不带额外数据
+     */
+    public CharacterEffectInstance(Identifier effectId, ICharacterEffect effect, int duration, int amplifier) {
+        this(effectId, effect, duration, amplifier, false, new CompoundTag());
     }
 
     // ========== Getter 方法 ==========

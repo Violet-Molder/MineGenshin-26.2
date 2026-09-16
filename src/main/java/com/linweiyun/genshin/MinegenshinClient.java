@@ -1,10 +1,13 @@
 package com.linweiyun.genshin;
 
 import com.geckolib.renderer.GeoEntityRenderer;
+import com.linweiyun.genshin.render.render.entity.ElementalOrbRenderer;
 import com.linweiyun.genshin.render.render.entity.FieldTalismanSpiritRender;
 import com.linweiyun.genshin.render.gui.screens.ScreenArtifaceInfo;
+import com.linweiyun.genshin.core.attachment.ClientAttachmentSync;
 import com.linweiyun.genshin.core.system.registry.register.ModEntities;
 import com.linweiyun.genshin.core.system.registry.register.ModMenus;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -30,6 +33,7 @@ public class MinegenshinClient {
 
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
+        ClientAttachmentSync.init(() -> Minecraft.getInstance().player);
     }
 
     @SubscribeEvent
@@ -47,6 +51,8 @@ public class MinegenshinClient {
         event.registerEntityRenderer(
                 ModEntities.SLIME_CYRO.get(), context -> new GeoEntityRenderer<>(context, ModEntities.SLIME_CYRO.get())
         );
+        event.registerEntityRenderer(
+                ModEntities.ELEMENTAL_ORB.get(), ElementalOrbRenderer::new);
     }
 
 

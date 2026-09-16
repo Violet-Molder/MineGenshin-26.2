@@ -9,6 +9,7 @@ import com.mojang.logging.LogUtils;
 import dev.vfyjxf.taffy.style.TaffyPosition;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
@@ -110,12 +111,12 @@ public class DamageIndicatorRenderer {
             if (exists) continue;
 
             // 计算文字宽高
-            int textW = Math.max(1, mc.font.width(indicator.text));
+            int textW = Math.max(1, mc.font.width(I18n.get(indicator.text)));
             int textH = FONT_HEIGHT;
 
             // ===== 底层：bottomColor，完整显示 =====
             Label bottomLabel = new Label();
-            bottomLabel.setText(Component.literal(indicator.text)
+            bottomLabel.setText(Component.translatable(indicator.text)
                     .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(indicator.bottomColor & 0xFFFFFF))));
             applyStyleClasses(bottomLabel, indicator);
             bottomLabel.layout(l -> l
@@ -134,7 +135,7 @@ public class DamageIndicatorRenderer {
                     .width(textW).height(textH));
 
             Label topLabel = new Label();
-            topLabel.setText(Component.literal(indicator.text)
+            topLabel.setText(Component.translatable(indicator.text)
                     .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(indicator.topColor & 0xFFFFFF))));
             applyStyleClasses(topLabel, indicator);
             topLabel.layout(l -> l.width(textW).height(textH));
@@ -182,10 +183,8 @@ public class DamageIndicatorRenderer {
             float distanceScale = computeDistanceScale(distance);
             float scale = indicator.getScale() * distanceScale;
 
-            int textW = Math.max(1, mc.font.width(indicator.text));
+            int textW = Math.max(1, mc.font.width(I18n.get(indicator.text)));
             int textH = FONT_HEIGHT;
-
-            // 底层
             entry.bottomLabel().layout(l -> l
                     .positionType(TaffyPosition.ABSOLUTE)
                     .left(guiX).top(guiY)

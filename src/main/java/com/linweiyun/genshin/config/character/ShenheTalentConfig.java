@@ -80,4 +80,20 @@ public class ShenheTalentConfig {
             default -> 0.0;
         };
     }
+
+    public static float getSkillPressDamage(int skillLevel) {
+        return (float) (SKILL_PRESS_BASE.get() + SKILL_PRESS_PER_LEVEL.get() * (skillLevel - 1));
+    }
+
+    public static float getSkillHoldDamage(int skillLevel) {
+        return (float) (SKILL_HOLD_BASE.get() + SKILL_HOLD_PER_LEVEL.get() * (skillLevel - 1));
+    }
+
+    public static float getBurstCastDamage(int burstLevel) {
+        return (float) (BURST_CAST_BASE.get() + BURST_CAST_PER_LEVEL.get() * (burstLevel - 1));
+    }
+
+    public static float getBurstDotDamage(int burstLevel) {
+        return (float) (BURST_DOT_BASE.get() + BURST_DOT_PER_LEVEL.get() * (burstLevel - 1));
+    }
 }

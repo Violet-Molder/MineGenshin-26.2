@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.render.gui.menu;
 
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -15,20 +16,20 @@ import java.util.Comparator;
  *   3. 所有方法最终都以部位顺序（生之花、死之羽、时之沙、空之杯、理之冠）作为兜底。
  */
 public enum ArtifactSortMethod {
-    STAR("star", "按星级排序"),
-    LEVEL("level", "按等级排序"),
-    SET("set", "按套装排序");
+    STAR("star", "gui.minegenshin.backpack.sort_star"),
+    LEVEL("level", "gui.minegenshin.backpack.sort_level"),
+    SET("set", "gui.minegenshin.backpack.sort_set");
 
     private final String value;
-    private final String description;
+    private final String translationKey;
 
-    ArtifactSortMethod(String value, String description) {
+    ArtifactSortMethod(String value, String translationKey) {
         this.value = value;
-        this.description = description;
+        this.translationKey = translationKey;
     }
 
     @Override
-    public String toString() { return description; }
+    public String toString() { return I18n.get(translationKey); }
     public String getValue() { return value; }
 
     /**

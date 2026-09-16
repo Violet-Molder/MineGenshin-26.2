@@ -1,6 +1,8 @@
 package com.linweiyun.genshin.content.effect.character;
 
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
+import com.linweiyun.genshin.enums.AttackType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 
@@ -40,14 +42,13 @@ public class CharacterEffectContainer {
     }
 
     /**
-     * 检查是否包含指定效果
-     * @param effect 注册表中的效果实例
+     * 检查是否包含指定效果 —— 通过引用相等判断（适用于参数化实例）
+     * @param effect 效果实例
      * @return 是否存在该效果
      */
     public boolean hasEffect(ICharacterEffect effect) {
-        String id = getEffectIdString(effect);                               // 获取效果的注册ID字符串
-        return effects.stream()                                              // 转换为流
-                .anyMatch(e -> e.getEffectIdString().equals(id));            // 匹配效果ID
+        return effects.stream()
+                .anyMatch(e -> e.getEffect() == effect);
     }
 
     /**
@@ -63,12 +64,15 @@ public class CharacterEffectContainer {
     }
 
     /**
-     * 根据效果对象查找效果实例
-     * @param effect 注册表中的效果实例
+     * 根据效果对象查找效果实例 —— 通过引用相等判断（适用于参数化实例）
+     * @param effect 效果实例
      * @return 匹配的效果实例，未找到返回null
      */
     public @Nullable CharacterEffectInstance getEffectInstance(ICharacterEffect effect) {
-        return getEffectInstance(getEffectIdString(effect));                 // 转为ID字符串后查找
+        return effects.stream()
+                .filter(e -> e.getEffect() == effect)
+                .findFirst()
+                .orElse(null);
     }
 
     /**
@@ -91,12 +95,12 @@ public class CharacterEffectContainer {
     }
 
     /**
-     * 根据效果对象移除效果
-     * @param effect 注册表中的效果实例
+     * 根据效果对象移除效果 —— 通过引用相等判断（适用于参数化实例）
+     * @param effect 效果实例
      * @return 是否成功移除
      */
     public boolean removeEffect(ICharacterEffect effect) {
-        return removeEffect(getEffectIdString(effect));                      // 转为ID字符串后移除
+        return effects.removeIf(e -> e.getEffect() == effect);
     }
 
     /** 清空所有效果 */
@@ -112,6 +116,33 @@ public class CharacterEffectContainer {
     /** 获取效果数量 */
     public int size() {
         return effects.size();                                               // 返回列表大小
+    }
+
+    /**
+     * 获取所有效果对指定攻击类型的伤害加成总和
+     * @param attackType 攻击类型
+     * @return 总加成值（小数，如 0.12 = 12%）
+     */
+    public float getTotalDamageBonus(AttackType attackType) {
+        float total = 0f;
+        for (CharacterEffectInstance instance : effects) {
+            total += instance.getEffect().getDamageBonus(attackType);
+        }
+        return total;
+    }
+
+    /**
+     * 获取所有效果对指定攻击类型和元素的伤害加成总和 —— 带元素校验的重载版本
+     * @param attackType 攻击类型
+     * @param element 攻击元素
+     * @return 总加成值（小数，如 0.12 = 12%）
+     */
+    public float getTotalDamageBonus(AttackType attackType, GenshinElement element) {
+        float total = 0f;
+        for (CharacterEffectInstance instance : effects) {
+            total += instance.getEffect().getDamageBonus(attackType, element);
+        }
+        return total;
     }
 
     // ========== 序列化/反序列化 ==========

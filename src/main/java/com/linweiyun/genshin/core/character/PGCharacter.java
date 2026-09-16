@@ -12,6 +12,8 @@ import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
+import com.linweiyun.genshin.content.items.component.WeaponStatsComponent;
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
@@ -53,18 +55,12 @@ public class PGCharacter implements IPersistedSerializable {
     private transient GenshinElement elemental;
     @Persisted(key = "ascend_attribute")
     protected CharacterAscendAttribute ascendAttribute;
-    @Persisted(key = "skill_short_cooldown")
-    protected int skillShortMaxCooldownTick;
-    @Persisted(key = "skill_long_cooldown")
-    protected int skillLongMaxCooldownTick;
-    @Persisted(key = "burst_cooldown")
-    protected int burstMaxCooldownTick;
-    @Persisted(key = "max_obtaining_energy")
-    protected float maxObtainingEnergy;
     @Persisted(key = "texture_id")
     protected String textureId;
     @Persisted(key = "data")
     protected PGCharacterData data;
+
+    private static final String SOURCE_WEAPON = "weapon";
 
     protected transient TalentBase talent;
 
@@ -84,12 +80,12 @@ public class PGCharacter implements IPersistedSerializable {
         this.name = name;
         this.elementalId = elementalId;
         this.ascendAttribute = ascendAttribute;
-        this.skillShortMaxCooldownTick = skillMaxCooldownTick;
-        this.skillLongMaxCooldownTick = skillMaxCooldownTick;
-        this.burstMaxCooldownTick = burstMaxCooldownTick;
-        this.maxObtainingEnergy = maxObtainingEnergy;
-        this.textureId = textureId;
         this.data = new PGCharacterData();
+        this.data.setSkillShortMaxCooldownTick(skillMaxCooldownTick);
+        this.data.setSkillLongMaxCooldownTick(skillMaxCooldownTick);
+        this.data.setBurstMaxCooldownTick(burstMaxCooldownTick);
+        this.data.setMaxObtainingEnergy(maxObtainingEnergy);
+        this.textureId = textureId;
     }
     public PGCharacter(
             int characterUUID, int starRating, Component name,
@@ -102,15 +98,19 @@ public class PGCharacter implements IPersistedSerializable {
         this.name = name;
         this.elementalId = elementalId;
         this.ascendAttribute = ascendAttribute;
-        this.skillShortMaxCooldownTick = skillShortMaxCooldownTick;
-        this.skillLongMaxCooldownTick = skillLongMaxCooldownTick;
-        this.burstMaxCooldownTick = burstMaxCooldownTick;
-        this.maxObtainingEnergy = maxObtainingEnergy;
-        this.textureId = textureId;
         this.data = new PGCharacterData();
+        this.data.setSkillShortMaxCooldownTick(skillShortMaxCooldownTick);
+        this.data.setSkillLongMaxCooldownTick(skillLongMaxCooldownTick);
+        this.data.setBurstMaxCooldownTick(burstMaxCooldownTick);
+        this.data.setMaxObtainingEnergy(maxObtainingEnergy);
+        this.textureId = textureId;
     }
     private AttributeType resolveType(Identifier id) {
         return ModAttributes.ATTRIBUTES.getRegistry().get().getValue(id);
+    }
+
+    public Class<? extends WeaponItem> getAllowedWeaponClass() {
+        return WeaponItem.class;
     }
     public void performElementalSkill(Player player, int skillTime) {
         if (data.getElementalSkillCooldownTick() == 0) {
@@ -118,24 +118,28 @@ public class PGCharacter implements IPersistedSerializable {
             data.setElementalSkillStacks(data.getElementalSkillStacks() - 1);
             if (player.level().isClientSide()) return;
             if (skillTime < 1000) {
-                data.setElementalSkillCooldownTick(skillShortMaxCooldownTick);
+                data.setElementalSkillCooldownTick(data.getSkillShortMaxCooldownTick());
             } else {
-                data.setElementalSkillCooldownTick(skillLongMaxCooldownTick);
+                data.setElementalSkillCooldownTick(data.getSkillLongMaxCooldownTick());
             }
         } else {
-            player.sendSystemMessage(Component.literal("技能冷却中，当前CD" + data.getElementalSkillCooldownTick()));
+            player.sendSystemMessage(Component.translatable("message.minegenshin.skill_cooldown", data.getElementalSkillCooldownTick()));
                }
 
     };
     public void performElementalBurst(Player player) {
-        if (data.getElementalBurstCooldownTick() == 0) {
-            if (talent != null) talent.elementalBurst(player, this);
-            if (player.level().isClientSide()) return;
-            data.setElementalBurstCooldownTick(burstMaxCooldownTick);
-
-        } else {
-            player.sendSystemMessage(Component.literal("技能冷却中"));
+        if (data.getElementalBurstCooldownTick() > 0) {
+            player.sendSystemMessage(Component.translatable("message.minegenshin.skill_cooldown"));
+            return;
         }
+        if (data.getCurrentObtainingEnergy() < data.getMaxObtainingEnergy()) {
+            player.sendSystemMessage(Component.translatable("message.minegenshin.not_enough_energy"));
+            return;
+        }
+        if (talent != null) talent.elementalBurst(player, this);
+        if (player.level().isClientSide()) return;
+        data.setCurrentObtainingEnergy(0);
+        data.setElementalBurstCooldownTick(data.getBurstMaxCooldownTick());
     };
 
     public void performNormalAttack(Player player, int comboStage) {
@@ -221,12 +225,12 @@ public class PGCharacter implements IPersistedSerializable {
     }
 
     private void recalculateArtifactSlot(int slotIndex) {
+        if (slotIndex == ArtifactInventory.SLOT_WEAPON) {
+            recalculateWeaponSlot();
+            return;
+        }
         ArtifactType type = ArtifactInventory.slotToType(slotIndex);
         String source = type.name().toLowerCase();
-
-        double oldMaxHP = data.getAttributeTotalValue(ModAttributes.MAX_HP.get());
-        double oldCurrentHP = data.getCurrentHP();
-        double hpRatio = oldMaxHP > 0 ? oldCurrentHP / oldMaxHP : 1.0;
 
         for (AttributeType attrType : ModRegistries.ATTRIBUTE_TYPE_REGISTRY) {
             data.removeAttributeModifier(attrType, source);
@@ -245,10 +249,37 @@ public class PGCharacter implements IPersistedSerializable {
                 }
             }
         }
+    }
 
-        double newMaxHP = data.getAttributeTotalValue(ModAttributes.MAX_HP.get());
-        double newCurrentHP = newMaxHP * hpRatio;
-        data.setCurrentHP(newCurrentHP);
+    public void recalculateWeaponSlot() {
+        for (AttributeType attrType : ModRegistries.ATTRIBUTE_TYPE_REGISTRY) {
+            data.removeAttributeModifier(attrType, SOURCE_WEAPON);
+        }
+
+        data.removeAttributeBaseValue(ModAttributes.ATK.get(), SOURCE_WEAPON);
+        data.setWeaponBaseATK(0);
+
+        ItemStack stack = data.getArtifactInventory().getItem(ArtifactInventory.SLOT_WEAPON);
+        if (stack.isEmpty() || !(stack.getItem() instanceof WeaponItem weapon)) return;
+
+        WeaponStatsComponent stats = stack.getOrDefault(
+                ModDataComponents.WEAPON_STATS.get(), WeaponStatsComponent.DEFAULT);
+
+        if (stats.mainStat != null && stats.mainStat.isInitialized()) {
+            double mainValue = stats.mainStat.getValue();
+            data.setWeaponBaseATK(mainValue);
+            data.setAttributeBaseValue(ModAttributes.ATK.get(), SOURCE_WEAPON, mainValue);
+        }
+
+        if (stats.subStat != null && stats.subStat.isInitialized()) {
+            AttributeType attr = stats.subStat.getAttribute();
+            double value = stats.subStat.getValue();
+            if (isBaseAttribute(attr)) {
+                data.setAttributePercentModifier(attr, SOURCE_WEAPON, value);
+            } else {
+                data.setAttributeFlatModifier(attr, SOURCE_WEAPON, value);
+            }
+        }
     }
 
     private void applyStatWithSet(TeyvatItemStat stat, String source) {
@@ -508,6 +539,10 @@ public class PGCharacter implements IPersistedSerializable {
             case DEF -> ModAttributes.DEF.value();
         };
     }
+
+    public boolean upgradeNormalAttack() { return data.upgradeNormalAttack(); }
+    public boolean upgradeElementalSkill() { return data.upgradeElementalSkill(); }
+    public boolean upgradeElementalBurst() { return data.upgradeElementalBurst(); }
     public int getCharacterUUID() { return characterUUID; }
     public int getStarRating() { return starRating; }
     public Component getName() { return name; }
@@ -522,10 +557,10 @@ public class PGCharacter implements IPersistedSerializable {
         return ModElements.FYSIKOS.get();
     }
     public CharacterAscendAttribute getAscendAttribute() { return ascendAttribute; }
-    public int getSkillShortMaxCooldownTick() { return skillShortMaxCooldownTick; }
-    public int getSkillLongMaxCooldownTick() { return skillLongMaxCooldownTick; }
-    public int getBurstMaxCooldownTick() { return burstMaxCooldownTick; }
-    public float getMaxObtainingEnergy() { return maxObtainingEnergy; }
+    public int getSkillShortMaxCooldownTick() { return data.getSkillShortMaxCooldownTick(); }
+    public int getSkillLongMaxCooldownTick() { return data.getSkillLongMaxCooldownTick(); }
+    public int getBurstMaxCooldownTick() { return data.getBurstMaxCooldownTick(); }
+    public float getMaxObtainingEnergy() { return data.getMaxObtainingEnergy(); }
     public String getTextureId() { return textureId; }
 
     public PGCharacterData getData() {

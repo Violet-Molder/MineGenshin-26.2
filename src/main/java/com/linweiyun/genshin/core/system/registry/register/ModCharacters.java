@@ -28,14 +28,40 @@ public class ModCharacters {
 
     private static final Map<Integer, Supplier<PGCharacter>> FACTORIES = new LinkedHashMap<>();
 
+    private static final Map<Identifier, Supplier<PGCharacter>> FACTORIES_BY_ID = new LinkedHashMap<>();
+
     static {
         FACTORIES.put(135001, Shenhe::new);
         FACTORIES.put(135002, Arlecchino::new);
         FACTORIES.put(145001, Columbina::new);
+
+        FACTORIES_BY_ID.put(Identifier.fromNamespaceAndPath("minegenshin", "shenhe"), Shenhe::new);
+        FACTORIES_BY_ID.put(Identifier.fromNamespaceAndPath("minegenshin", "arlecchino"), Arlecchino::new);
+        FACTORIES_BY_ID.put(Identifier.fromNamespaceAndPath("minegenshin", "columbina"), Columbina::new);
     }
 
     public static PGCharacter getByUUID(int uuid) {
         Supplier<PGCharacter> factory = FACTORIES.get(uuid);
+        if (factory == null) return null;
+        PGCharacter instance = factory.get();
+        Double baseHP = null, baseATK = null, baseDEF = null;
+        for (Map.Entry<Identifier, Supplier<List<? extends Integer>>> entry : instance.getStatGrowthMap().entrySet()) {
+            List<? extends Integer> list = entry.getValue().get();
+            if (list != null && !list.isEmpty()) {
+                double first = list.get(0);
+                if (entry.getKey().equals(ModAttributes.MAX_HP.getId())) baseHP = first;
+                else if (entry.getKey().equals(ModAttributes.ATK.getId())) baseATK = first;
+                else if (entry.getKey().equals(ModAttributes.DEF.getId())) baseDEF = first;
+            }
+        }
+        if (baseHP != null && baseATK != null && baseDEF != null) {
+            instance.getData().initBaseStats(baseHP, baseATK, baseDEF);
+        }
+        return instance;
+    }
+
+    public static PGCharacter getById(Identifier id) {
+        Supplier<PGCharacter> factory = FACTORIES_BY_ID.get(id);
         if (factory == null) return null;
         PGCharacter instance = factory.get();
         Double baseHP = null, baseATK = null, baseDEF = null;

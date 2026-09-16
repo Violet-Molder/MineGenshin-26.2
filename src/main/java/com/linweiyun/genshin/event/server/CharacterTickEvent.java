@@ -4,6 +4,7 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.CharacterHelper;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,6 +28,24 @@ public class CharacterTickEvent {
                 PGCharacter character = CharacterHelper.getCharacterByUUID(player, uuid);
                 if (character != null) {
                     character.tick(player);
+                }
+            }
+
+            Boolean genshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
+            if (Boolean.TRUE.equals(genshinMode)) {
+                boolean allDead = true;
+                for (int i = 0; i < 4; i++) {
+                    PGCharacter pc = attachment.getPartyCharacter(i);
+                    if (pc != null && pc.getData().getCurrentHP() > 0) {
+                        allDead = false;
+                        break;
+                    }
+                }
+                if (allDead) {
+                    player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT, false);
+                    if (player instanceof ServerPlayer sp) {
+                        NetworkManager.setGenshinModeToPlayer(sp, false);
+                    }
                 }
             }
         }

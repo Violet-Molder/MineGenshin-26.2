@@ -83,7 +83,7 @@ public class ArtifactMainStatConfig {
 
         builder.push("crit-rate");
         CR_5_PERCENT_BASE = StringDoubleValue.defineInRange(builder, "percent_base", 0.047, 0.0, 10.0);
-        CR_5_PERCENT_PER_LEVEL = StringDoubleValue.defineInRange(builder, "percent_per_level", 0.013, 0.0, 10.0);
+        CR_5_PERCENT_PER_LEVEL = StringDoubleValue.defineInRange(builder, "percent_per_level", 0.0132, 0.0, 10.0);
         builder.pop();
 
         builder.push("crit-dmg");

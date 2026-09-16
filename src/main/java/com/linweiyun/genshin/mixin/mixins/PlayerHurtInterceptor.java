@@ -43,7 +43,7 @@ public class PlayerHurtInterceptor {
         PGCharacter current = attachment.getCurrentCharacter();
         if (current != null) {
             current.hurt(adjustedDamage);
+            ci.cancel();
         }
-        ci.cancel();
     }
 }

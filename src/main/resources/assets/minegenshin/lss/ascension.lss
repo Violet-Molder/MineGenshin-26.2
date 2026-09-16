@@ -11,8 +11,8 @@
   background: sdf(#cc333333, 8);
   width: 300;
   height: auto;
-  padding-all: 12;
-  gap-all: 6;
+  padding-all: 6;
+  gap-all: 3;
   flex-direction: column;
 }
 
@@ -20,70 +20,80 @@
   font-size: 20;
   color: #FFD700;
   text-align: center;
-  height: 24;
+  height: 20;
 }
 
 #adv-info-container {
   background: sdf(#44333333, 4);
-  padding-all: 8;
-  gap-all: 4;
+  padding-all: 4;
+  gap-all: 2;
   flex-direction: column;
 }
 
 #adv-rank-label {
-  font-size: 14;
+  font-size: 12;
   color: #FFD700;
 }
 
 #adv-exp-label {
-  font-size: 14;
+  font-size: 12;
   color: #CCFFCC;
 }
 
 #world-level-label {
-  font-size: 14;
+  font-size: 12;
   color: #CCFFCC;
 }
 
 #adv-breakthrough-btn {
   background: sdf(#66885522, 3);
-  height: 24;
+  height: 20;
   text-align: center;
   color: #FFD700;
 }
 
 #world-level-btn {
   background: sdf(#66446688, 3);
-  height: 24;
+  height: 20;
   text-align: center;
   color: #AACCFF;
 }
 
 #char-info-container {
   background: sdf(#44333333, 4);
-  padding-all: 8;
-  gap-all: 4;
+  padding-all: 4;
+  gap-all: 2;
   flex-direction: column;
 }
 
 #char-exp-label {
-  font-size: 14;
+  font-size: 12;
   color: #CCCCFF;
 }
 
 #char-level-label {
-  font-size: 14;
+  font-size: 12;
   color: #CCCCFF;
 }
 
 #char-breakthrough-btn {
   background: sdf(#66885522, 3);
-  height: 24;
+  height: 20;
   text-align: center;
   color: #FFD700;
 }
 
+#talent-level-label {
+  font-size: 12;
+  color: #AACCFF;
+}
+
+#weapon-info-label {
+  font-size: 12;
+  color: #FFCC99;
+}
+
 #no-char-label {
-  font-size: 14;
+  font-size: 12;
   color: #FF6666;
 }

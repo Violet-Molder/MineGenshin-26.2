@@ -1,7 +1,9 @@
 package com.linweiyun.genshin.content.effect.character;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
+import com.linweiyun.genshin.enums.AttackType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -78,5 +80,24 @@ public interface ICharacterEffect {
      */
     default boolean isInstantaneous() {
         return false;
+    }
+
+    /**
+     * 获取对指定攻击类型的伤害加成（加成区）
+     * @param attackType 攻击类型
+     * @return 加成值（小数，如 0.12 = 12%），默认返回0
+     */
+    default float getDamageBonus(AttackType attackType) {
+        return 0f;
+    }
+
+    /**
+     * 获取对指定攻击类型和元素的伤害加成（加成区） —— 带元素校验的重载版本
+     * @param attackType 攻击类型
+     * @param element 攻击元素
+     * @return 加成值（小数，如 0.12 = 12%），默认返回0
+     */
+    default float getDamageBonus(AttackType attackType, GenshinElement element) {
+        return 0f;
     }
 }

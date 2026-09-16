@@ -4,6 +4,8 @@ import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
+import com.linweiyun.genshin.content.items.component.WeaponStatsComponent;
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.character.PGCharacter;
@@ -22,6 +24,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
 import com.mojang.logging.LogUtils;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -68,7 +71,7 @@ public class BackpackMenu {
             String toggleId = category.name().toLowerCase() + "-toggle";
             var toggle = new CustomToggle();
             toggle.setId(toggleId).addClass("category-toggle");
-            toggle.setButtonText(category.displayName);
+            toggle.setButtonText(I18n.get("gui.minegenshin.backpack.category." + category.name().toLowerCase()));
             categoryGroup.addChild(toggle);
         }
         UIElement firstChild = categoryGroup.getChildren().get(0);
@@ -153,7 +156,7 @@ public class BackpackMenu {
         // ========== “整理”按钮（仅圣遗物 + 槽位模式显示） ==========
         var organizeBtn = new Button();
         organizeBtn.setId("artifact-organize-button");
-        organizeBtn.setText("整理");
+        organizeBtn.setText(Component.translatable("gui.minegenshin.backpack.organize"));
         organizeBtn.addClass("item-action-btn");
         organizeBtn.setDisplay(false);
         organizeBtn.setOnClick(e -> {
@@ -282,6 +285,16 @@ public class BackpackMenu {
             ResourceHandler<ItemResource> handler, int containerSlot,
             String key, String equippedByCharacterName, String equippedByCharacterTextureId) {
 
+        if (stack.getItem() instanceof WeaponItem weapon) {
+            WeaponStatsComponent stats = stack.getOrDefault(
+                    ModDataComponents.WEAPON_STATS.get(), WeaponStatsComponent.DEFAULT);
+            return new ArtifactSortMethod.Entry(
+                    stack, globalSlot, equipped, true,
+                    weapon.getStar(), stats.level, 0, 0,
+                    handler, containerSlot, key,
+                    equippedByCharacterName, equippedByCharacterTextureId);
+        }
+
         if (!(stack.getItem() instanceof ArtifactItem artifact)) {
             return new ArtifactSortMethod.Entry(
                     stack, globalSlot, equipped, false,
@@ -342,8 +355,8 @@ public class BackpackMenu {
             list.add(toEntry(stack, globalSlot, false, backpackHandler, globalSlot, key));
         }
 
-        // 2. 收集角色穿戴的圣遗物（仅 ARTIFACTS 分类）
-        if (category == Backpack.Category.ARTIFACTS) {
+        // 2. 收集角色穿戴的物品
+        if (category == Backpack.Category.ARTIFACTS || category == Backpack.Category.WEAPONS) {
             try {
                 var attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
                 if (attachment != null) {
@@ -351,31 +364,46 @@ public class BackpackMenu {
                         if (character == null || character.getData() == null) continue;
                         ArtifactInventory inv = character.getData().getArtifactInventory();
                         if (inv == null) continue;
-                        // 已装备的圣遗物用只读包装，禁止在背包界面里存取
                         ResourceHandler<ItemResource> lockedHandler =
                                 new LockedResourceHandler(inv.asResourceHandler());
                         int charUUID = character.getCharacterUUID();
                         String charName = character.getName().getString();
                         String charTextureId = character.getTextureId();
-                        for (int i = 0; i < ArtifactInventory.SLOT_COUNT; i++) {
-                            ItemStack stack = inv.getItem(i);
-                            if (stack.isEmpty()) continue;
-                            String key = "e:" + charUUID + ":" + i;
-                            list.add(toEntry(stack, -1, true, lockedHandler, i, key,
-                                    charName, charTextureId));
+                        if (category == Backpack.Category.ARTIFACTS) {
+                            for (int i = 0; i < 5; i++) {
+                                ItemStack stack = inv.getItem(i);
+                                if (stack.isEmpty()) continue;
+                                String key = "e:" + charUUID + ":" + i;
+                                list.add(toEntry(stack, -1, true, lockedHandler, i, key,
+                                        charName, charTextureId));
+                            }
+                        } else {
+                            ItemStack stack = inv.getItem(ArtifactInventory.SLOT_WEAPON);
+                            if (!stack.isEmpty()) {
+                                String key = "e:" + charUUID + ":w";
+                                list.add(toEntry(stack, -1, true, lockedHandler,
+                                        ArtifactInventory.SLOT_WEAPON, key,
+                                        charName, charTextureId));
+                            }
                         }
                     }
                 }
             } catch (Exception ex) {
-                LOGGER.warn("收集已装备圣遗物失败: {}", ex.getMessage());
+                LOGGER.warn("收集已装备物品失败: {}", ex.getMessage());
             }
         }
 
-        // 3. 排序：分三组（已穿戴 → 已激活未穿戴 → 未激活），组内按所选方式
+        // 3. 排序
         if (category == Backpack.Category.ARTIFACTS) {
             Comparator<ArtifactSortMethod.Entry> cmp = Comparator
                     .comparingInt((ArtifactSortMethod.Entry e) ->
                             e.equipped() ? 0 : (e.activated() ? 1 : 2))
+                    .thenComparing(method.comparator());
+            list.sort(cmp);
+        } else if (category == Backpack.Category.WEAPONS) {
+            Comparator<ArtifactSortMethod.Entry> cmp = Comparator
+                    .comparingInt((ArtifactSortMethod.Entry e) ->
+                            e.equipped() ? 0 : 1)
                     .thenComparing(method.comparator());
             list.sort(cmp);
         }
@@ -407,6 +435,13 @@ public class BackpackMenu {
                 int ga = ea.activated() ? 0 : 1;
                 int gb = eb.activated() ? 0 : 1;
                 if (ga != gb) return Integer.compare(ga, gb);
+                return method.comparator().compare(ea, eb);
+            });
+        } else if (category == Backpack.Category.WEAPONS) {
+            ResourceHandler<ItemResource> h = backpack.asResourceHandler();
+            stacks.sort((a, b) -> {
+                ArtifactSortMethod.Entry ea = toEntry(a, 0, false, h, 0, "");
+                ArtifactSortMethod.Entry eb = toEntry(b, 0, false, h, 0, "");
                 return method.comparator().compare(ea, eb);
             });
         }
@@ -529,7 +564,7 @@ public class BackpackMenu {
                     currentCategoryRef, selectedKeyRef, sortMethod);
         } else {
             detailPanel.clearAllChildren();
-            detailPanel.addChild(new Label().setText("未选中物品"));
+            detailPanel.addChild(new Label().setText(Component.translatable("gui.minegenshin.backpack.no_selection")));
             detailPanel.markAsInternal();
         }
 
@@ -552,7 +587,7 @@ public class BackpackMenu {
         int globalSlotIndex = entry.globalSlot();
 
         if (stack.isEmpty()) {
-            container.addChild(new Label().setText("未选中物品"));
+            container.addChild(new Label().setText(Component.translatable("gui.minegenshin.backpack.no_selection")));
             return;
         }
 
@@ -566,8 +601,8 @@ public class BackpackMenu {
         if (equipped) {
             String ownerName = entry.equippedByCharacterName();
             Component text = (ownerName != null && !ownerName.isEmpty())
-                    ? Component.literal("【已装备 · " + ownerName + "】").withStyle(ChatFormatting.GOLD)
-                    : Component.literal("【已装备】").withStyle(ChatFormatting.GOLD);
+                    ? Component.translatable("gui.minegenshin.backpack.equipped_by", ownerName).withStyle(ChatFormatting.GOLD)
+                    : Component.translatable("gui.minegenshin.backpack.equipped").withStyle(ChatFormatting.GOLD);
             var equippedLabel = new Label().setText(text);
             equippedLabel.addClass("detail-line");
             scroller.addScrollViewChild(equippedLabel);
@@ -593,7 +628,7 @@ public class BackpackMenu {
 
         if (!equipped) {
             var takeOutBtn = new Button();
-            takeOutBtn.setText("取出");
+            takeOutBtn.setText(Component.translatable("gui.minegenshin.backpack.take_out"));
             takeOutBtn.addClass("item-action-btn");
             takeOutBtn.addEventListener(UIEvents.MOUSE_DOWN, e -> {
                 NetworkManager.sendBackpackTakeOutFromSlotToServer(globalSlotIndex);
@@ -609,7 +644,7 @@ public class BackpackMenu {
         }
 
         var detailBtn = new Button();
-        detailBtn.setText("详情");
+        detailBtn.setText(Component.translatable("gui.minegenshin.backpack.detail"));
         detailBtn.addClass("item-action-btn");
         buttonContainer.addChild(detailBtn);
 

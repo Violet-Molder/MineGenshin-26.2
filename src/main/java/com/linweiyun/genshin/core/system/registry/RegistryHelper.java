@@ -29,8 +29,8 @@ public class RegistryHelper {
   }
 
   public static <T extends Item> Supplier<T> registerFoodItem(
-      String name, Supplier<? extends T> sup) {
-    Supplier<T> item = ITEMS.register(name, sup);
+      String name, Function<Item.Properties, ? extends T> func) {
+    Supplier<T> item = ITEMS.registerItem(name, func);
     ModItemGroups.foodList.add(item);
     return item;
   }

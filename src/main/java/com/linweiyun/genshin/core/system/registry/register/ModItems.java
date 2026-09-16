@@ -3,15 +3,18 @@ package com.linweiyun.genshin.core.system.registry.register;
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.items.DarkFragment;
 import com.linweiyun.genshin.content.items.artifact.crimson_witch.*;
+import com.linweiyun.genshin.content.items.food.CharacterFoods;
+import com.linweiyun.genshin.content.items.food.FoodItem;
 import com.linweiyun.genshin.content.items.preicous.ItemPrimogem;
+import com.linweiyun.genshin.content.items.weapon.catalyst.EverlastingMoonglow;
 import com.linweiyun.genshin.core.system.registry.RegistryHelper;
+import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.function.Supplier;
 
 public class ModItems {
-  // 创建一个延迟注册器，用于注册物品
   public static final DeferredRegister.Items ITEMS =
           DeferredRegister.createItems(Minegenshin.MOD_ID);
 
@@ -31,6 +34,13 @@ public class ModItems {
 
   public static final Supplier<DarkFragment> DARK_FRAGMENT =
           RegistryHelper.registerOrdinaryItem("dark_fragment", DarkFragment::new);
+
+  public static final Supplier<EverlastingMoonglow> EVERLASTING_MOONGLOW =
+          RegistryHelper.registerOrdinaryItem("everlasting_moonglow", EverlastingMoonglow::new);
+
+  public static final Supplier<FoodItem> SWEET_MADAME =
+          RegistryHelper.registerFoodItem("sweet_madame", props -> new FoodItem(
+                  CharacterFoods.SWEET_MADAME, props));
 
   public static void register(IEventBus modEventBus) {
     ITEMS.register(modEventBus);

@@ -1,10 +1,14 @@
 package com.linweiyun.genshin.render.gui.screens;
 
+import com.linweiyun.genshin.content.items.component.WeaponStatsComponent;
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUIClientAccess;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
@@ -16,6 +20,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 public class ScreenAscension extends Screen {
     final ModularUI modularUI;
@@ -27,6 +32,15 @@ public class ScreenAscension extends Screen {
     private Button worldLevelBtn;
     private Label charExpLabel;
     private Label charLevelLabel;
+
+    private Label weaponInfoLabel;
+    private Button weaponBreakthroughBtn;
+    private Label normalAttackLabel;
+    private Button normalAttackBtn;
+    private Label elementalSkillLabel;
+    private Button elementalSkillBtn;
+    private Label elementalBurstLabel;
+    private Button elementalBurstBtn;
 
     public ScreenAscension(Player player) {
         super(Component.empty());
@@ -49,19 +63,19 @@ public class ScreenAscension extends Screen {
 
     private void refreshLabels() {
         AdventurerInfoAttachment advInfo = player.getData(AttachmentRegistration.ADVENTURER_INFO_ATTACHMENT);
-        advRankLabel.setText(Component.literal("冒险等级: " + advInfo.getAdventureRank()));
+        advRankLabel.setText(Component.translatable("gui.minegenshin.ascension.adventure_rank", advInfo.getAdventureRank()));
         if (advInfo.isMaxRank()) {
-            advExpLabel.setText(Component.literal("冒险阅历: MAX"));
+            advExpLabel.setText(Component.translatable("gui.minegenshin.ascension.adventure_exp_max"));
         } else {
-            advExpLabel.setText(Component.literal("冒险阅历: " + advInfo.getCurrentExp() + " / " + advInfo.getExpToNextRank()));
+            advExpLabel.setText(Component.translatable("gui.minegenshin.ascension.adventure_exp", advInfo.getCurrentExp(), advInfo.getExpToNextRank()));
         }
-        worldLevelLabel.setText(Component.literal("世界等级: " + advInfo.getWorldLevel() + " / " + advInfo.getBreakthroughLevel()));
+        worldLevelLabel.setText(Component.translatable("gui.minegenshin.ascension.world_level", advInfo.getWorldLevel(), advInfo.getBreakthroughLevel()));
 
         if (advInfo.canDowngradeWorldLevel()) {
-            worldLevelBtn.setText("降低世界等级");
+            worldLevelBtn.setText(Component.translatable("gui.minegenshin.ascension.lower_world_level"));
             worldLevelBtn.setVisible(true);
         } else if (advInfo.canRestoreWorldLevel()) {
-            worldLevelBtn.setText("还原世界等级");
+            worldLevelBtn.setText(Component.translatable("gui.minegenshin.ascension.restore_world_level"));
             worldLevelBtn.setVisible(true);
         } else {
             worldLevelBtn.setVisible(false);
@@ -70,14 +84,45 @@ public class ScreenAscension extends Screen {
         PlayerCharactersAttachment charAttachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         PGCharacter currentChar = charAttachment.getCurrentCharacter();
         if (currentChar != null && currentChar.getData() != null) {
-            charExpLabel.setText(Component.literal("角色经验: " + currentChar.getData().getCurrentExp() + " / " + currentChar.getData().getMaxExp()));
-            charLevelLabel.setText(Component.literal("角色等级: " + currentChar.getData().getLevel()
-                    + " (突破" + currentChar.getData().getAscensionPhase() + "阶)"));
+            charExpLabel.setText(Component.translatable("gui.minegenshin.ascension.character_exp", currentChar.getData().getCurrentExp(), currentChar.getData().getMaxExp()));
+            charLevelLabel.setText(Component.translatable("gui.minegenshin.ascension.character_level", currentChar.getData().getLevel(), currentChar.getData().getAscensionPhase()));
             charExpLabel.setVisible(true);
             charLevelLabel.setVisible(true);
+
+            ItemStack weaponStack = currentChar.getData().getWeapon();
+            if (!weaponStack.isEmpty() && weaponStack.getItem() instanceof WeaponItem weapon) {
+                WeaponStatsComponent stats = weaponStack.getOrDefault(
+                        ModDataComponents.WEAPON_STATS.get(), WeaponStatsComponent.DEFAULT);
+                weaponInfoLabel.setText(Component.translatable("gui.minegenshin.ascension.weapon_info", stats.level, stats.ascended, stats.exp));
+                weaponInfoLabel.setVisible(true);
+                weaponBreakthroughBtn.setVisible(stats.canAscend());
+            } else {
+                weaponInfoLabel.setText(Component.translatable("gui.minegenshin.ascension.weapon_unequipped"));
+                weaponInfoLabel.setVisible(true);
+                weaponBreakthroughBtn.setVisible(false);
+            }
+
+            normalAttackLabel.setText(Component.translatable("gui.minegenshin.ascension.normal_attack_label", currentChar.getData().getNormalAttackLevel(), PGCharacterData.MAX_TALENT_LEVEL));
+            elementalSkillLabel.setText(Component.translatable("gui.minegenshin.ascension.elemental_skill_label", currentChar.getData().getElementalSkillLevel(), PGCharacterData.MAX_TALENT_LEVEL));
+            elementalBurstLabel.setText(Component.translatable("gui.minegenshin.ascension.elemental_burst_label", currentChar.getData().getElementalBurstLevel(), PGCharacterData.MAX_TALENT_LEVEL));
+
+            normalAttackLabel.setVisible(true);
+            elementalSkillLabel.setVisible(true);
+            elementalBurstLabel.setVisible(true);
+            normalAttackBtn.setVisible(currentChar.getData().canUpgradeNormalAttack());
+            elementalSkillBtn.setVisible(currentChar.getData().canUpgradeElementalSkill());
+            elementalBurstBtn.setVisible(currentChar.getData().canUpgradeElementalBurst());
         } else {
             charExpLabel.setVisible(false);
             charLevelLabel.setVisible(false);
+            weaponInfoLabel.setVisible(false);
+            weaponBreakthroughBtn.setVisible(false);
+            normalAttackLabel.setVisible(false);
+            elementalSkillLabel.setVisible(false);
+            elementalBurstLabel.setVisible(false);
+            normalAttackBtn.setVisible(false);
+            elementalSkillBtn.setVisible(false);
+            elementalBurstBtn.setVisible(false);
         }
     }
 
@@ -94,35 +139,35 @@ public class ScreenAscension extends Screen {
 
         var titleLabel = new Label();
         titleLabel.setId("ascension-title");
-        titleLabel.setText(Component.literal("突破"));
+        titleLabel.setText(Component.translatable("gui.minegenshin.ascension.title"));
 
         var advInfoContainer = new UIElement().setId("adv-info-container");
 
         advRankLabel = new Label();
         advRankLabel.setId("adv-rank-label");
-        advRankLabel.setText(Component.literal("冒险等级: " + advInfo.getAdventureRank()));
+        advRankLabel.setText(Component.translatable("gui.minegenshin.ascension.adventure_rank", advInfo.getAdventureRank()));
 
         advExpLabel = new Label();
         advExpLabel.setId("adv-exp-label");
         if (advInfo.isMaxRank()) {
-            advExpLabel.setText(Component.literal("冒险阅历: MAX"));
+            advExpLabel.setText(Component.translatable("gui.minegenshin.ascension.adventure_exp_max"));
         } else {
-            advExpLabel.setText(Component.literal("冒险阅历: " + advInfo.getCurrentExp() + " / " + advInfo.getExpToNextRank()));
+            advExpLabel.setText(Component.translatable("gui.minegenshin.ascension.adventure_exp", advInfo.getCurrentExp(), advInfo.getExpToNextRank()));
         }
 
         worldLevelLabel = new Label();
         worldLevelLabel.setId("world-level-label");
-        worldLevelLabel.setText(Component.literal("世界等级: " + advInfo.getWorldLevel() + " / " + advInfo.getBreakthroughLevel()));
+        worldLevelLabel.setText(Component.translatable("gui.minegenshin.ascension.world_level", advInfo.getWorldLevel(), advInfo.getBreakthroughLevel()));
 
         var advBreakthroughBtn = new Button();
         advBreakthroughBtn.setId("adv-breakthrough-btn");
-        advBreakthroughBtn.setText("冒险等级突破");
+        advBreakthroughBtn.setText(Component.translatable("gui.minegenshin.ascension.adventure_rank_up"));
         advBreakthroughBtn.setOnClick(e -> {
             if (advInfo.canBreakthroughWorldLevel()) {
                 NetworkManager.sendAscendAdventureRankToServer();
             } else {
                 if (player.isLocalPlayer()) {
-                    player.sendSystemMessage(Component.literal("不满足冒险等级突破条件"));
+                    player.sendSystemMessage(Component.translatable("gui.minegenshin.ascension.cannot_rank_up"));
                 }
             }
         });
@@ -137,9 +182,9 @@ public class ScreenAscension extends Screen {
             }
         });
         if (advInfo.canDowngradeWorldLevel()) {
-            worldLevelBtn.setText("降低世界等级");
+            worldLevelBtn.setText(Component.translatable("gui.minegenshin.ascension.lower_world_level"));
         } else if (advInfo.canRestoreWorldLevel()) {
-            worldLevelBtn.setText("还原世界等级");
+            worldLevelBtn.setText(Component.translatable("gui.minegenshin.ascension.restore_world_level"));
         } else {
             worldLevelBtn.setVisible(false);
         }
@@ -150,16 +195,15 @@ public class ScreenAscension extends Screen {
         if (currentChar != null && currentChar.getData() != null) {
             charExpLabel = new Label();
             charExpLabel.setId("char-exp-label");
-            charExpLabel.setText(Component.literal("角色经验: " + currentChar.getData().getCurrentExp() + " / " + currentChar.getData().getMaxExp()));
+            charExpLabel.setText(Component.translatable("gui.minegenshin.ascension.character_exp", currentChar.getData().getCurrentExp(), currentChar.getData().getMaxExp()));
 
             charLevelLabel = new Label();
             charLevelLabel.setId("char-level-label");
-            charLevelLabel.setText(Component.literal("角色等级: " + currentChar.getData().getLevel()
-                    + " (突破" + currentChar.getData().getAscensionPhase() + "阶)"));
+            charLevelLabel.setText(Component.translatable("gui.minegenshin.ascension.character_level", currentChar.getData().getLevel(), currentChar.getData().getAscensionPhase()));
 
             var charBreakthroughBtn = new Button();
             charBreakthroughBtn.setId("char-breakthrough-btn");
-            charBreakthroughBtn.setText("角色突破");
+            charBreakthroughBtn.setText(Component.translatable("gui.minegenshin.ascension.character_ascend"));
 
             final int maxLevelForPhase = currentChar.getData().getAscensionPhase() == 0
                     ? 20
@@ -172,25 +216,70 @@ public class ScreenAscension extends Screen {
                     NetworkManager.sendAscendCharacterToServer();
                 } else {
                     if (player.isLocalPlayer()) {
-                        player.sendSystemMessage(Component.literal("角色不满足突破条件（需达到" + maxLevelForPhase + "级）"));
+                        player.sendSystemMessage(Component.translatable("gui.minegenshin.ascension.cannot_ascend", maxLevelForPhase));
                     }
                 }
             });
 
-            charInfoContainer.addChildren(charExpLabel, charLevelLabel, charBreakthroughBtn);
+            weaponInfoLabel = new Label();
+            weaponInfoLabel.setId("weapon-info-label");
+            weaponBreakthroughBtn = new Button();
+            weaponBreakthroughBtn.setId("char-breakthrough-btn");
+            weaponBreakthroughBtn.setText(Component.translatable("gui.minegenshin.ascension.weapon_ascend"));
+            weaponBreakthroughBtn.setOnClick(e -> NetworkManager.sendAscendWeaponToServer());
+
+            normalAttackLabel = new Label();
+            normalAttackLabel.setId("talent-level-label");
+            normalAttackBtn = new Button();
+            normalAttackBtn.setId("char-breakthrough-btn");
+            normalAttackBtn.setText(Component.translatable("gui.minegenshin.ascension.normal_attack_upgrade"));
+            normalAttackBtn.setOnClick(e -> NetworkManager.sendUpgradeNormalAttackToServer());
+
+            elementalSkillLabel = new Label();
+            elementalSkillLabel.setId("talent-level-label");
+            elementalSkillBtn = new Button();
+            elementalSkillBtn.setId("char-breakthrough-btn");
+            elementalSkillBtn.setText(Component.translatable("gui.minegenshin.ascension.elemental_skill_upgrade"));
+            elementalSkillBtn.setOnClick(e -> NetworkManager.sendUpgradeElementalSkillToServer());
+
+            elementalBurstLabel = new Label();
+            elementalBurstLabel.setId("talent-level-label");
+            elementalBurstBtn = new Button();
+            elementalBurstBtn.setId("char-breakthrough-btn");
+            elementalBurstBtn.setText(Component.translatable("gui.minegenshin.ascension.elemental_burst_upgrade"));
+            elementalBurstBtn.setOnClick(e -> NetworkManager.sendUpgradeElementalBurstToServer());
+
+            charInfoContainer.addChildren(charExpLabel, charLevelLabel, charBreakthroughBtn,
+                    weaponInfoLabel, weaponBreakthroughBtn,
+                    normalAttackLabel, normalAttackBtn,
+                    elementalSkillLabel, elementalSkillBtn,
+                    elementalBurstLabel, elementalBurstBtn);
         } else {
             charExpLabel = new Label();
             charExpLabel.setId("char-exp-label");
-            charExpLabel.setText(Component.literal("角色经验: - / -"));
+            charExpLabel.setText(Component.translatable("gui.minegenshin.ascension.char_exp_empty"));
             charExpLabel.setVisible(false);
 
             charLevelLabel = new Label();
             charLevelLabel.setId("char-level-label");
-            charLevelLabel.setText(Component.literal("角色等级: -"));
+            charLevelLabel.setText(Component.translatable("gui.minegenshin.ascension.char_level_empty"));
 
             var noCharLabel = new Label();
             noCharLabel.setId("no-char-label");
-            noCharLabel.setText(Component.literal("当前没有选中角色"));
+            noCharLabel.setText(Component.translatable("gui.minegenshin.ascension.no_character"));
+
+            weaponInfoLabel = new Label();
+            weaponInfoLabel.setId("weapon-info-label");
+            weaponBreakthroughBtn = new Button();
+            weaponBreakthroughBtn.setId("char-breakthrough-btn");
+
+            normalAttackLabel = new Label();
+            normalAttackBtn = new Button();
+            elementalSkillLabel = new Label();
+            elementalSkillBtn = new Button();
+            elementalBurstLabel = new Label();
+            elementalBurstBtn = new Button();
+
             charInfoContainer.addChildren(charExpLabel, charLevelLabel, noCharLabel);
         }
 
@@ -203,12 +292,8 @@ public class ScreenAscension extends Screen {
 
         root.addChildren(window);
 
-        var ui = UI.of(root, stylesheet);
-        return ModularUI.of(ui, player);
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
+        return new ModularUI(Identifier.parse("minegenshin:ascension"), root)
+                .setClientOnly(true)
+                .setStylesheet(stylesheet);
     }
 }

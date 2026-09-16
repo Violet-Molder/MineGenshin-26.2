@@ -11,15 +11,15 @@ public class WeaponSubStatConfig {
 
     // 五星 tier44
     public static StringDoubleValue SUB_5_TIER44_CRIT_RATE, SUB_5_TIER44_CRIT_DMG, SUB_5_TIER44_ENERGY_RECHARGE;
-    public static StringDoubleValue SUB_5_TIER44_ATK_PERCENT, SUB_5_TIER44_PHYSICAL_PERCENT;
+    public static StringDoubleValue SUB_5_TIER44_ATK_PERCENT, SUB_5_TIER44_PHYSICAL_PERCENT, SUB_5_TIER44_HP_PERCENT;
     public static ModConfigSpec.IntValue SUB_5_TIER44_ELEMENTAL_MASTERY;
     // 五星 tier46
     public static StringDoubleValue SUB_5_TIER46_CRIT_RATE, SUB_5_TIER46_CRIT_DMG, SUB_5_TIER46_ENERGY_RECHARGE;
-    public static StringDoubleValue SUB_5_TIER46_ATK_PERCENT, SUB_5_TIER46_PHYSICAL_PERCENT;
+    public static StringDoubleValue SUB_5_TIER46_ATK_PERCENT, SUB_5_TIER46_PHYSICAL_PERCENT, SUB_5_TIER46_HP_PERCENT;
     public static ModConfigSpec.IntValue SUB_5_TIER46_ELEMENTAL_MASTERY;
     // 五星 tier48
     public static StringDoubleValue SUB_5_TIER48_CRIT_RATE, SUB_5_TIER48_CRIT_DMG, SUB_5_TIER48_ENERGY_RECHARGE;
-    public static StringDoubleValue SUB_5_TIER48_ATK_PERCENT, SUB_5_TIER48_PHYSICAL_PERCENT;
+    public static StringDoubleValue SUB_5_TIER48_ATK_PERCENT, SUB_5_TIER48_PHYSICAL_PERCENT, SUB_5_TIER48_HP_PERCENT;
     public static ModConfigSpec.IntValue SUB_5_TIER48_ELEMENTAL_MASTERY;
     // 五星 tier49
     public static StringDoubleValue SUB_5_TIER49_CRIT_RATE, SUB_5_TIER49_CRIT_DMG, SUB_5_TIER49_ENERGY_RECHARGE;
@@ -93,6 +93,7 @@ public class WeaponSubStatConfig {
         SUB_5_TIER44_ENERGY_RECHARGE = StringDoubleValue.defineInRange(builder, "energy-recharge", 0.160, 0.0, 1.0);
         SUB_5_TIER44_ATK_PERCENT = StringDoubleValue.defineInRange(builder, "atk", 0.144, 0.0, 1.0);
         SUB_5_TIER44_PHYSICAL_PERCENT = StringDoubleValue.defineInRange(builder, "physical-bonus", 0.180, 0.0, 1.0);
+        SUB_5_TIER44_HP_PERCENT = StringDoubleValue.defineInRange(builder, "hp", 0.144, 0.0, 1.0);
         SUB_5_TIER44_ELEMENTAL_MASTERY = builder.defineInRange("elemental-mastery", 58, 0, 1000);
         builder.pop();
 
@@ -102,6 +103,7 @@ public class WeaponSubStatConfig {
         SUB_5_TIER46_ENERGY_RECHARGE = StringDoubleValue.defineInRange(builder, "energy-recharge", 0.120, 0.0, 1.0);
         SUB_5_TIER46_ATK_PERCENT = StringDoubleValue.defineInRange(builder, "atk", 0.108, 0.0, 1.0);
         SUB_5_TIER46_PHYSICAL_PERCENT = StringDoubleValue.defineInRange(builder, "physical-bonus", 0.135, 0.0, 1.0);
+        SUB_5_TIER46_HP_PERCENT = StringDoubleValue.defineInRange(builder, "hp", 0.108, 0.0, 1.0);
         SUB_5_TIER46_ELEMENTAL_MASTERY = builder.defineInRange("elemental-mastery", 43, 0, 1000);
         builder.pop();
 
@@ -111,6 +113,7 @@ public class WeaponSubStatConfig {
         SUB_5_TIER48_ENERGY_RECHARGE = StringDoubleValue.defineInRange(builder, "energy-recharge", 0.080, 0.0, 1.0);
         SUB_5_TIER48_ATK_PERCENT = StringDoubleValue.defineInRange(builder, "atk", 0.072, 0.0, 1.0);
         SUB_5_TIER48_PHYSICAL_PERCENT = StringDoubleValue.defineInRange(builder, "physical-bonus", 0.090, 0.0, 1.0);
+        SUB_5_TIER48_HP_PERCENT = StringDoubleValue.defineInRange(builder, "hp", 0.072, 0.0, 1.0);
         SUB_5_TIER48_ELEMENTAL_MASTERY = builder.defineInRange("elemental-mastery", 29, 0, 1000);
         builder.pop();
 
@@ -208,27 +211,24 @@ public class WeaponSubStatConfig {
     }
 
     public static double getMultiplier(int level) {
-        return switch (level) {
-            case 1 -> MULT_01.get();
-            case 5 -> MULT_02.get();
-            case 10 -> MULT_03.get();
-            case 15 -> MULT_04.get();
-            case 20 -> MULT_05.get();
-            case 25 -> MULT_06.get();
-            case 30 -> MULT_07.get();
-            case 35 -> MULT_08.get();
-            case 40 -> MULT_09.get();
-            case 45 -> MULT_10.get();
-            case 50 -> MULT_11.get();
-            case 55 -> MULT_12.get();
-            case 60 -> MULT_13.get();
-            case 65 -> MULT_14.get();
-            case 70 -> MULT_15.get();
-            case 75 -> MULT_16.get();
-            case 80 -> MULT_17.get();
-            case 85 -> MULT_18.get();
-            case 90 -> MULT_19.get();
-            default -> 0;
-        };
+        if (level >= 90) return MULT_19.get();
+        if (level >= 85) return MULT_18.get();
+        if (level >= 80) return MULT_17.get();
+        if (level >= 75) return MULT_16.get();
+        if (level >= 70) return MULT_15.get();
+        if (level >= 65) return MULT_14.get();
+        if (level >= 60) return MULT_13.get();
+        if (level >= 55) return MULT_12.get();
+        if (level >= 50) return MULT_11.get();
+        if (level >= 45) return MULT_10.get();
+        if (level >= 40) return MULT_09.get();
+        if (level >= 35) return MULT_08.get();
+        if (level >= 30) return MULT_07.get();
+        if (level >= 25) return MULT_06.get();
+        if (level >= 20) return MULT_05.get();
+        if (level >= 15) return MULT_04.get();
+        if (level >= 10) return MULT_03.get();
+        if (level >= 5) return MULT_02.get();
+        return MULT_01.get();
     }
 }

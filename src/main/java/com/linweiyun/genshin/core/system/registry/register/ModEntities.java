@@ -2,6 +2,7 @@ package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
+import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
 import com.linweiyun.genshin.content.entities.teyvat.monster.slime.SlimeCyro;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -25,6 +26,19 @@ public class ModEntities {
                             .build(ResourceKey.create(
                                     Registries.ENTITY_TYPE,
                                     Minegenshin.id("talisman_spirit"))
+                            )
+            );
+    public static final Supplier<EntityType<ElementalOrb>> ELEMENTAL_ORB =
+            ENTITIES.register(
+                    "elemental_orb",
+                    () -> EntityType.Builder.<ElementalOrb>of(ElementalOrb::new, MobCategory.MISC)
+                            .sized(0.25F, 0.25F)
+                            .eyeHeight(0.125F)
+                            .clientTrackingRange(6)
+                            .updateInterval(20)
+                            .build(ResourceKey.create(
+                                    Registries.ENTITY_TYPE,
+                                    Minegenshin.id("elemental_orb"))
                             )
             );
     public static final Supplier<EntityType<SlimeCyro>> SLIME_CYRO =

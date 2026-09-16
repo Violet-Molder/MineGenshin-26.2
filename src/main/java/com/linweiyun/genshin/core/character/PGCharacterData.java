@@ -41,6 +41,14 @@ public class PGCharacterData implements IPersistedSerializable {
     private int elementalBurstLevel;
     @Persisted(key = "current_obtaining_energy")
     private float currentObtainingEnergy;
+    @Persisted(key = "skill_short_max_cooldown")
+    private int skillShortMaxCooldownTick;
+    @Persisted(key = "skill_long_max_cooldown")
+    private int skillLongMaxCooldownTick;
+    @Persisted(key = "burst_max_cooldown")
+    private int burstMaxCooldownTick;
+    @Persisted(key = "max_obtaining_energy")
+    private float maxObtainingEnergy;
     @Persisted(key = "elemental_skill_cooldown_tick")
     private float elementalSkillCooldownTick;
     @Persisted(key = "elemental_burst_cooldown_tick")
@@ -60,6 +68,8 @@ public class PGCharacterData implements IPersistedSerializable {
 
     @Persisted(key = "artifact_inventory")
     private ArtifactInventory artifactInventory = new ArtifactInventory();
+    @Persisted(key = "weapon_base_atk")
+    private double weaponBaseATK = 0;
 
     private Player ownerPlayer;
     // 效果容器的缓存引用，延迟加载，避免每次操作都重新反序列化
@@ -113,14 +123,71 @@ public class PGCharacterData implements IPersistedSerializable {
     public double getAttributeTempPercentModifierDisplay(AttributeType type) {return attributes.getTempPercentModifierDisplay(type);}
 
     // ==== 属性数据修改 ====
-    public void setAttributeBaseValue(AttributeType type, double value) { attributes.setBaseValue(type, value);markDirty();}
-    public void addAttributeFlatModifier(AttributeType type, String source, double value) { attributes.addFlatModifier(type, source, value);markDirty();}
-    public void addAttributePercentModifier(AttributeType type, String source, double value) { attributes.addPercentModifier(type, source, value);markDirty();}
-    public void setAttributeFlatModifier(AttributeType type, String source, double value) { attributes.setFlatModifier(type, source, value);markDirty();}
-    public void setAttributePercentModifier(AttributeType type, String source, double value) { attributes.setPercentModifier(type, source, value);markDirty();}
-    public void addAttributeTempFlatModifier(AttributeType type, String source, double value) { attributes.addTempFlatModifier(type, source, value);markDirty();}
-    public void addAttributeTempPercentModifier(AttributeType type, String source, double value) { attributes.addTempPercentModifier(type, source, value);markDirty();}
-    public void removeAttributeModifier(AttributeType type, String source) { attributes.removeModifier(type, source);markDirty();}
+    public void setAttributeBaseValue(AttributeType type, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.setBaseValue(type, value));
+        markDirty();
+    }
+    public void setAttributeBaseValue(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.setBaseValue(type, source, value));
+        markDirty();
+    }
+    public void removeAttributeBaseValue(AttributeType type, String source) {
+        preserveHpIfMaxHp(type, () -> attributes.removeBaseValue(type, source));
+        markDirty();
+    }
+    public void addAttributeFlatModifier(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.addFlatModifier(type, source, value));
+        markDirty();
+    }
+    public void addAttributePercentModifier(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.addPercentModifier(type, source, value));
+        markDirty();
+    }
+    public void setAttributeFlatModifier(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.setFlatModifier(type, source, value));
+        markDirty();
+    }
+    public void setAttributePercentModifier(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.setPercentModifier(type, source, value));
+        markDirty();
+    }
+    public void addAttributeTempFlatModifier(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.addTempFlatModifier(type, source, value));
+        markDirty();
+    }
+    public void addAttributeTempPercentModifier(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.addTempPercentModifier(type, source, value));
+        markDirty();
+    }
+    public void setAttributeTempFlatModifier(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.setTempFlatModifier(type, source, value));
+        markDirty();
+    }
+    public void removeAttributeModifier(AttributeType type, String source) {
+        preserveHpIfMaxHp(type, () -> attributes.removeModifier(type, source));
+        markDirty();
+    }
+
+    private boolean isMaxHpAttribute(AttributeType type) {
+        if (type == null || type.id() == null) return false;
+        return type == ModAttributes.MAX_HP.get()
+                || type.id().equals(ModAttributes.MAX_HP.getId());
+    }
+
+    private void preserveHpIfMaxHp(AttributeType type, Runnable action) {
+        if (!isMaxHpAttribute(type)) {
+            action.run();
+            return;
+        }
+        double oldMaxHP = attributes.getTotalValue(ModAttributes.MAX_HP.get());
+        double oldCurrentHP = currentHP;
+        action.run();
+        double newMaxHP = attributes.getTotalValue(ModAttributes.MAX_HP.get());
+        if (newMaxHP != oldMaxHP) {
+            double hpRatio = oldMaxHP > 0 ? oldCurrentHP / oldMaxHP : 1.0;
+            currentHP = newMaxHP * hpRatio;
+        }
+    }
 
     public int getLevel() { return characterLevel; }
     public int getCurrentExp() { return currentExp; }
@@ -136,14 +203,56 @@ public class PGCharacterData implements IPersistedSerializable {
     public int getNormalAttackLevel() { return normalAttackLevel; }
     public int getElementalSkillLevel() { return elementalSkillLevel; }
     public int getElementalBurstLevel() { return elementalBurstLevel; }
+    public int getSkillShortMaxCooldownTick() { return skillShortMaxCooldownTick; }
+    public int getSkillLongMaxCooldownTick() { return skillLongMaxCooldownTick; }
+    public int getBurstMaxCooldownTick() { return burstMaxCooldownTick; }
+    public float getMaxObtainingEnergy() { return maxObtainingEnergy; }
+
+    public static final int MAX_TALENT_LEVEL = 14;
+
+    public boolean canUpgradeNormalAttack() {
+        return normalAttackLevel < MAX_TALENT_LEVEL;
+    }
+
+    public boolean canUpgradeElementalSkill() {
+        return elementalSkillLevel < MAX_TALENT_LEVEL;
+    }
+
+    public boolean canUpgradeElementalBurst() {
+        return elementalBurstLevel < MAX_TALENT_LEVEL;
+    }
+
+    public boolean upgradeNormalAttack() {
+        if (!canUpgradeNormalAttack()) return false;
+        normalAttackLevel++;
+        markDirty();
+        return true;
+    }
+
+    public boolean upgradeElementalSkill() {
+        if (!canUpgradeElementalSkill()) return false;
+        elementalSkillLevel++;
+        markDirty();
+        return true;
+    }
+
+    public boolean upgradeElementalBurst() {
+        if (!canUpgradeElementalBurst()) return false;
+        elementalBurstLevel++;
+        markDirty();
+        return true;
+    }
 
     public ArtifactInventory getArtifactInventory() { return artifactInventory; }
+    public double getWeaponBaseATK() { return weaponBaseATK; }
+    public void setWeaponBaseATK(double value) { weaponBaseATK = value; markDirty(); }
 
     public ItemStack getFlower() { return artifactInventory.getItem(ArtifactInventory.SLOT_FLOWER); }
     public ItemStack getPlume() { return artifactInventory.getItem(ArtifactInventory.SLOT_PLUME); }
     public ItemStack getSands() { return artifactInventory.getItem(ArtifactInventory.SLOT_SANDS); }
     public ItemStack getGoblet() { return artifactInventory.getItem(ArtifactInventory.SLOT_GOBLET); }
     public ItemStack getCirclet() { return artifactInventory.getItem(ArtifactInventory.SLOT_CIRCLET); }
+    public ItemStack getWeapon() { return artifactInventory.getItem(ArtifactInventory.SLOT_WEAPON); }
 
     public List<ItemStack> getAllArtifactsAsList() {
         return artifactInventory.getAllArtifactsAsList();
@@ -160,6 +269,15 @@ public class PGCharacterData implements IPersistedSerializable {
     public void setCurrentHP(double currentHP) { this.currentHP = currentHP;markDirty();}
     public void setAscensionPhase(int ascensionPhase) { this.ascensionPhase = ascensionPhase;markDirty();}
     public void setCurrentObtainingEnergy(float energy) { this.currentObtainingEnergy = energy;markDirty();}
+    public void addElementalEnergy(float amount) {
+        amount = (float) (amount * attributes.getTotalValue(ModAttributes.ER.get()));
+        this.currentObtainingEnergy = Math.min(this.currentObtainingEnergy + amount, this.maxObtainingEnergy);
+        markDirty();
+    }
+    public void setSkillShortMaxCooldownTick(int tick) { this.skillShortMaxCooldownTick = tick; markDirty(); }
+    public void setSkillLongMaxCooldownTick(int tick) { this.skillLongMaxCooldownTick = tick; markDirty(); }
+    public void setBurstMaxCooldownTick(int tick) { this.burstMaxCooldownTick = tick; markDirty(); }
+    public void setMaxObtainingEnergy(float energy) { this.maxObtainingEnergy = energy; markDirty(); }
     public void setElementalSkillCooldownTick(float tick) { this.elementalSkillCooldownTick = tick;markDirty();}
     public void setElementalBurstCooldownTick(float tick) { this.elementalBurstCooldownTick = tick;markDirty();}
     public void setElementalSkillMaxStacks(int stacks) { this.elementalSkillMaxStacks = stacks;markDirty();}

@@ -1,5 +1,7 @@
 package com.linweiyun.genshin.core.character.catalyst;
 
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
+import com.linweiyun.genshin.content.items.weapon.catalyst.Catalyst;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import net.minecraft.network.chat.Component;
@@ -13,6 +15,11 @@ public abstract class CatalystCharacter extends PGCharacter {
 
     public CatalystCharacter() {
         super();
+    }
+
+    @Override
+    public Class<? extends WeaponItem> getAllowedWeaponClass() {
+        return Catalyst.class;
     }
 
 

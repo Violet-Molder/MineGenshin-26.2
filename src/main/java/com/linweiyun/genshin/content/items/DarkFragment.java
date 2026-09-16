@@ -32,7 +32,7 @@ public class DarkFragment extends Item {
 
         TeyvatWorldInvasion invasion = TeyvatWorldInvasion.get(serverLevel);
         if (invasion.isInvaded()) {
-            serverPlayer.sendSystemMessage(Component.literal("提瓦特世界已经入侵！"));
+            serverPlayer.sendSystemMessage(Component.translatable("message.minegenshin.world_already_invaded"));
             return InteractionResult.FAIL;
         }
 
@@ -54,9 +54,9 @@ public class DarkFragment extends Item {
         ItemStack stack = player.getItemInHand(hand);
         stack.shrink(1);
 
-        serverPlayer.sendSystemMessage(Component.literal("提瓦特世界入侵已激活！"));
+        serverPlayer.sendSystemMessage(Component.translatable("message.minegenshin.world_invasion_activated"));
         serverLevel.getServer().getPlayerList().broadcastSystemMessage(
-                Component.literal("提瓦特的力量降临于此世..."), false);
+                Component.translatable("message.minegenshin.world_invasion_broadcast"), false);
 
         return InteractionResult.CONSUME;
     }

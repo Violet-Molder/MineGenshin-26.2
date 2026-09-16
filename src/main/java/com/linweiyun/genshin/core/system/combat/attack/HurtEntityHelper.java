@@ -135,11 +135,11 @@ public class HurtEntityHelper {
                                               LivingEntity attacker, PGCharacter attackerCharacter,
                                               LivingEntity target, PGCharacter targetCharacter,
                                               ReactionResult reaction) {
-        float crit = critZone(attackerCharacter);
+        float crit = critZone(attackerCharacter, spec);
         float bonus = dmgBonusZone(attackerCharacter, spec);
         float def = defenseZone(attacker, attackerCharacter, target, targetCharacter);
         float res = resistanceZone(spec.getElement(), target, targetCharacter);
-//        LOGGER.info("[最终伤害区] crit={} | bonus={} | def={} | res={}", crit, bonus, def, res);
+        LOGGER.info("[最终伤害区] crit={} | bonus={} | def={} | res={}", crit, bonus, def, res);
 
         if (reaction == null || !reaction.isReacted()) {
             return baseDamage * crit * bonus * def * res;
@@ -157,10 +157,19 @@ public class HurtEntityHelper {
         };
     }
 
-    private static float critZone(PGCharacter attacker) { return 1.0f; }
+    private static float critZone(PGCharacter attacker, ModDamageSpec spec) {
+        if (attacker == null) return 1.0f;
+        var data = attacker.getData();
+        float critRate = (float) data.getAttributeTotalValue(ModAttributes.CR.value());
+        float critDmg = (float) data.getAttributeTotalValue(ModAttributes.CDG.value());
+        boolean isCrit = Math.random() < critRate;
+        spec.setCrit(isCrit);
+        return isCrit ? (1f + critDmg) : 1.0f;
+    }
     private static float dmgBonusZone(PGCharacter attacker, ModDamageSpec spec) {
         float elementalBonus = CombatEntityAccessor.getDamageBonus(attacker, spec.getElement());
-        return CombatMath.dmgBonusZone(elementalBonus); }
+        float effectBonus = attacker.getData().getEffectContainer().getTotalDamageBonus(spec.getAttackType(), spec.getElement());
+        return CombatMath.dmgBonusZone(elementalBonus + effectBonus); }
 
     private static float defenseZone(LivingEntity attacker, PGCharacter attackerCharacter,
                                      LivingEntity defender, PGCharacter defenderCharacter) {
