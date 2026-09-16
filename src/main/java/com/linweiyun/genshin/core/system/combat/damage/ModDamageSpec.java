@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroup;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.enums.ElementalReactionType;
 
 import javax.annotation.Nullable;
 
@@ -65,6 +66,20 @@ public class ModDamageSpec {
     // ========== 攻击者角色信息 ==========
     private final PGCharacter attackerCharacter;       // 攻击者的PGCharacter —— 非玩家攻击者时为null
 
+    // ========== 剧变反应标记 ==========
+    private final ElementalReactionType transformativeReactionType;
+
+    // ========== 伤害类型 - 决定走哪条计算管线 ==========
+    public enum DamageType {
+        DIRECT,
+        TRANSFORMATIVE,
+        QUICKEN,
+        LUNAR,
+        STELLAR
+    }
+
+    private final DamageType damageType;
+
     // ========== 运行时计算结果 ==========
     private boolean crit;                               // 本次伤害是否暴击（计算时由战斗系统设置）
 
@@ -74,6 +89,21 @@ public class ModDamageSpec {
                           float skillMultiplierBonus, float flatDamageBonus,
                           float elementAmount, DecayGroup decayGroup,
                           PGCharacter attackerCharacter) {
+        this(attackType, element,
+                atkMultiplier, hpMultiplier, defMultiplier, emMultiplier,
+                skillMultiplierBonus, flatDamageBonus,
+                elementAmount, decayGroup,
+                attackerCharacter,
+                DamageType.DIRECT, null);
+    }
+
+    private ModDamageSpec(AttackType attackType, GenshinElement element,
+                          float atkMultiplier, float hpMultiplier, float defMultiplier, float emMultiplier,
+                          float skillMultiplierBonus, float flatDamageBonus,
+                          float elementAmount, DecayGroup decayGroup,
+                          PGCharacter attackerCharacter,
+                          DamageType damageType,
+                          ElementalReactionType reactionType) {
         this.attackType = attackType;
         this.element = element;
         this.atkMultiplier = atkMultiplier;
@@ -85,6 +115,30 @@ public class ModDamageSpec {
         this.elementAmount = elementAmount;
         this.decayGroup = decayGroup;
         this.attackerCharacter = attackerCharacter;
+        this.damageType = damageType;
+        this.transformativeReactionType = reactionType;
+    }
+
+    public static ModDamageSpec transformative(ElementalReactionType reactionType, GenshinElement element) {
+        return new ModDamageSpec(
+                AttackType.SPECIAL, element,
+                0f, 0f, 0f, 0f,
+                0f, 0f,
+                0f, null,
+                null,
+                DamageType.TRANSFORMATIVE, reactionType);
+    }
+
+    public DamageType getDamageType() {
+        return damageType;
+    }
+
+    public boolean isTransformative() {
+        return damageType == DamageType.TRANSFORMATIVE;
+    }
+
+    public ElementalReactionType getTransformativeReactionType() {
+        return transformativeReactionType;
     }
 
     public ModDamageSpec withFlatDamageBonus(float newFlatBonus) {
@@ -93,7 +147,7 @@ public class ModDamageSpec {
                 this.atkMultiplier, this.hpMultiplier, this.defMultiplier, this.emMultiplier,
                 this.skillMultiplierBonus, newFlatBonus,
                 this.elementAmount, this.decayGroup,
-                this.attackerCharacter
+                this.attackerCharacter, this.damageType, this.transformativeReactionType
         );
     }
 

@@ -292,8 +292,12 @@ public class ScreenAscension extends Screen {
 
         root.addChildren(window);
 
-        return new ModularUI(Identifier.parse("minegenshin:ascension"), root)
-                .setClientOnly(true)
-                .setStylesheet(stylesheet);
+        var ui = UI.of(root, stylesheet);
+        return ModularUI.of(ui, player);
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
     }
 }

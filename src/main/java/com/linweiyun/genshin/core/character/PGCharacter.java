@@ -143,6 +143,7 @@ public class PGCharacter implements IPersistedSerializable {
     };
 
     public void performNormalAttack(Player player, int comboStage) {
+        LOGGER.info("performNormalAttack");
         if (talent != null) talent.attack(player, this, comboStage);
     }
 

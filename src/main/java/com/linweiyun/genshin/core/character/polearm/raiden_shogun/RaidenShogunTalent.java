@@ -1,10 +1,10 @@
-package com.linweiyun.genshin.core.character.polearm.shenhe;
+package com.linweiyun.genshin.core.character.polearm.raiden_shogun;
 
 import com.linweiyun.genshin.config.character.ShenheTalentConfig;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
-import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
 import com.linweiyun.genshin.content.effect.character.impl.DamageBonusEffect;
+import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
 import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
 import com.linweiyun.genshin.content.skill_node.AreaEntityCollector;
 import com.linweiyun.genshin.content.skill_node.RushesForward;
@@ -12,13 +12,14 @@ import com.linweiyun.genshin.content.skill_node.SkillHelper;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.character.talent.TalentBase;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
 import com.linweiyun.genshin.core.system.registry.register.ModEntities;
 import com.linweiyun.genshin.enums.AttachmentType;
-import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.enums.AttackType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.Identifier;
@@ -33,15 +34,13 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 
-import com.linweiyun.genshin.core.character.talent.TalentBase;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class ShenheTalent extends TalentBase {
+public class RaidenShogunTalent extends TalentBase {
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public ShenheTalent() {
+    public RaidenShogunTalent() {
         super(5,
                 List.of(1, 1, 1, 1, 1),
                 List.of(2, 2, 2, 2, 2),
@@ -50,8 +49,10 @@ public class ShenheTalent extends TalentBase {
 
     @Override
     public void attack(Player player, PGCharacter character, int comboStage) {
+        LOGGER.info("RaidenShogunTalent attack");
         Level level = player.level();
         if (level.isClientSide()) return;
+
 
         int stage = comboStage % this.maxCombo;
         // 配置的 getNABase/getNAPerLevel 是 1~5 段
@@ -70,7 +71,7 @@ public class ShenheTalent extends TalentBase {
 
         for (LivingEntity target : targets) {
             if (target != player) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.CYRO.get())
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.ELECTRO.get())
                         .multiplier(multiplier)
                         .elementAmount(AttachmentType.WEAK.getInitialAmount())
                         .attackerCharacter(character)
@@ -106,7 +107,7 @@ public class ShenheTalent extends TalentBase {
                                 .attackerCharacter(character)
                                 .build();
                         ModDamageSource source = ModDamageSource.from(spec, player);
-                        if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        if (entity.level() instanceof ServerLevel serverLevel) {
                             entity.hurtServer(serverLevel, source, 0f);
                         }
                     }

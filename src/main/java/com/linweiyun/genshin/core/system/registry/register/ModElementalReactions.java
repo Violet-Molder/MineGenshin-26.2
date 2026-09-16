@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
+import com.linweiyun.genshin.core.system.reaction.builtin.ElectroChargedReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.FreezeReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.MeltReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.VaporizeReaction;
@@ -38,6 +39,15 @@ public class ModElementalReactions {
             () -> new FreezeReaction(
                     ElementalReactionType.FROZEN,
                     "minegenshin:hydro", "minegenshin:cyro",
+                    1f, 1f,
+                    0));
+
+    // 感电：水:雷 = 1:1，共存反应
+    public static final DeferredHolder<ElementalReaction, ElectroChargedReaction> ELECTRO_CHARGED = ELEMENTAL_REACTIONS.register(
+            "electro_charged",
+            () -> new ElectroChargedReaction(
+                    ElementalReactionType.ELECTRO_CHARGED,
+                    "minegenshin:hydro", "minegenshin:electro",
                     1f, 1f,
                     0));
 

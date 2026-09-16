@@ -90,6 +90,7 @@
   "minegenshin.configuration.reaction-color": "Reaction Color",
   "minegenshin.configuration.reaction.melt": "Melt Color",
   "minegenshin.configuration.reaction.vaporize": "Vaporize Color",
+  "minegenshin.configuration.reaction.electro_charged": "Electro Charged Color",
 
   "minegenshin.configuration.spawn-level": "Monster Spawn Level",
   "minegenshin.configuration.entity.spawn.level.calculation-mode": "Spawn Level Calculation Mode",

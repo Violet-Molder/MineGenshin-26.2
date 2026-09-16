@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.character.polearm.arlecchino;
 
 import com.linweiyun.genshin.config.character.ArlecchinoAttributeConfig;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.polearm.PolearmCharacter;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
@@ -14,7 +15,7 @@ import java.util.function.Supplier;
 public class Arlecchino extends PolearmCharacter {
     public Arlecchino() {
         super(                   135002, 5, Component.translatable("character.name.arlecchino"),
-                "minegenshin:pyro", CharacterAscendAttribute.ATK,
+                ModElements.PYRO.getId().toString(), CharacterAscendAttribute.ATK,
                 20 * 20, 20 * 20, 80f, "arlecchino",
                 Map.of(
                         ModAttributes.MAX_HP.getId(), ArlecchinoAttributeConfig::getAllHp,

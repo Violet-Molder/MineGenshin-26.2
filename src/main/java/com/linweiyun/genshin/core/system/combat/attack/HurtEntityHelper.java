@@ -1,9 +1,11 @@
 package com.linweiyun.genshin.core.system.combat.attack;
 
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
+import com.linweiyun.genshin.config.reaction.ReactionConfig;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.damage.*;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacter;
@@ -17,6 +19,7 @@ import com.linweiyun.genshin.core.system.combat.decay.IDecayCounterHolder;
 import com.linweiyun.genshin.core.system.reaction.ElementalReactionManager;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
+import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
@@ -29,10 +32,32 @@ import java.util.Objects;
 public class HurtEntityHelper {
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    // ============================================================
+    // 统一伤害入口 —— 所有伤害都从这里进，按 DamageType 分发
+    // ============================================================
+
     public static float calculateFinalModDamage(ModDamageSource damageSource,
                                                 PGCharacter attacker,
                                                 LivingEntity target) {
         ModDamageSpec spec = damageSource.getSpec();
+
+        // 非直伤 → 剧变/激化/月曜/星烁 独立管线
+        if (spec.getDamageType() != ModDamageSpec.DamageType.DIRECT) {
+            LivingEntity sourceEntity = (LivingEntity) damageSource.getEntity();
+            float damage = switch (spec.getDamageType()) {
+                case TRANSFORMATIVE -> calculateTransformativeDamage(
+                        sourceEntity, target, spec.getTransformativeReactionType());
+                case QUICKEN -> 0f;
+                case LUNAR -> 0f;
+                case STELLAR -> 0f;
+                default -> 0f;
+            };
+            LOGGER.info("[{}管线] reaction={} | final={}",
+                    spec.getDamageType(), spec.getTransformativeReactionType(), damage);
+            return damage;
+        }
+
+        // 直伤 → 角色属性 → 衰减/附着/反应 → 直伤计算
 //        LOGGER.info("[伤害管线] === 攻击={} | 目标={} | 元素={} | 类型={} ===",
 //                attacker != null ? attacker.getName() : damageSource.getEntity(),
 //                target.getName().getString(),
@@ -56,6 +81,28 @@ public class HurtEntityHelper {
 
         return processPipeline(damageSource, attacker, target, baseDamage);
     }
+
+    // ============================================================
+    // 公用工具
+    // ============================================================
+
+    private static PGCharacter resolveCharacter(LivingEntity entity) {
+        if (entity instanceof Player player) {
+            return player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT).getCurrentCharacter();
+        }
+        return null;
+    }
+
+    private static AttachmentProfile chooseProfile(float elementAmount) {
+        if (elementAmount >= 4.0f) return AttachmentProfile.ULTRA_STRONG;
+        if (elementAmount >= 2.0f) return AttachmentProfile.STRONG;
+        if (elementAmount >= 1.5f) return AttachmentProfile.MEDIUM;
+        return AttachmentProfile.WEAK;
+    }
+
+    // ============================================================
+    // 直伤管线 — 入口 → 衰减/附着/反应 → 基础伤害区 + 暴击区 + 增伤区 + 防御区 + 抗性区 + 反应乘区
+    // ============================================================
 
     private static float processPipeline(ModDamageSource damageSource, PGCharacter attacker,
                                          LivingEntity target, float baseDamage) {
@@ -81,8 +128,6 @@ public class HurtEntityHelper {
                     AttachmentSource.NORMAL_ATTACK, profile);
         }
 
-
-
         ReactionResult reactionResult = null;
         if (canAttach) {
             StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
@@ -93,7 +138,6 @@ public class HurtEntityHelper {
             reactionResult = ElementalReactionManager.tryReactAfterAttach(ctx);
         }
 
-        // ★★★ 反应飘字 —— 只显示反应名 ★★★
         if (reactionResult != null && reactionResult.isReacted()
                 && reactionResult.getReactionType() != null) {
             DamageIndicatorFactory.reaction(target, reactionResult.getReactionType());
@@ -148,7 +192,7 @@ public class HurtEntityHelper {
         return switch (reaction.getReactionType()) {
             case MELT, VAPORIZE -> baseDamage
                     * crit * reaction.getAmplifyMultiplier()
-                    * emAndReactionBonus(attackerCharacter)
+                    * reactionBonusZone(attackerCharacter, reaction.getReactionType())
                     * bonus * def * res;
             case AGGRAVATE, SPREAD, QUICKEN -> baseDamage * crit * bonus * def * res;
             case OVERLOAD, SUPERCONDUCT, ELECTRO_CHARGED, BURNING, BLOOM, HYPERBLOOM, BURGEON
@@ -166,44 +210,84 @@ public class HurtEntityHelper {
         spec.setCrit(isCrit);
         return isCrit ? (1f + critDmg) : 1.0f;
     }
+
     private static float dmgBonusZone(PGCharacter attacker, ModDamageSpec spec) {
         float elementalBonus = CombatEntityAccessor.getDamageBonus(attacker, spec.getElement());
         float effectBonus = attacker.getData().getEffectContainer().getTotalDamageBonus(spec.getAttackType(), spec.getElement());
-        return CombatMath.dmgBonusZone(elementalBonus + effectBonus); }
+        return CombatMath.dmgBonusZone(elementalBonus + effectBonus);
+    }
 
     private static float defenseZone(LivingEntity attacker, PGCharacter attackerCharacter,
                                      LivingEntity defender, PGCharacter defenderCharacter) {
         int attackerLevel = CombatEntityAccessor.getAttackerLevel(attacker, attackerCharacter);
         int defenderLevel = CombatEntityAccessor.getDefenderLevel(defender, defenderCharacter);
         double defenderDef = CombatEntityAccessor.getDefenderDefense(defender, defenderCharacter);
-        Monster monster;
-        // 注意这个是防御力效用，不是防御力系数，比如60%的防御力效用的意思是受到的伤害降低60%，也就是实际伤害是40%
         double atkCoef = CombatMath.levelCoefficient(attackerLevel);
 //        LOGGER.info("[防御区] 攻方等级={} | 攻方等级系数={} | 被攻方等级={} | 被攻方防御={}",
 //                attackerLevel, atkCoef, defenderLevel, defenderDef);
         return 1 - CombatMath.defenseZone(attackerLevel, defenderDef);
     }
 
+    // ============================================================
+    // 公用乘区 —— 直伤和剧变都用的抗性区、EM乘区、反应加成区
+    // ============================================================
+
     private static float resistanceZone(GenshinElement element,
                                         LivingEntity defender, PGCharacter defenderCharacter) {
         float res = CombatEntityAccessor.getDefenderResistance(defender, defenderCharacter, element);
-//        LOGGER.info("[元素抗性区] {}抗性={}", element, res);
-        return CombatMath.resistanceZone(res);
+        float resZone = CombatMath.resistanceZone(res);
+        LOGGER.debug("[抗性区] element={} | 原始抗性={} | resZone={}", element, res, resZone);
+        return resZone;
     }
 
-    private static float emAndReactionBonus(PGCharacter attacker) { return 1.0f; }
-
-    private static AttachmentProfile chooseProfile(float elementAmount) {
-        if (elementAmount >= 4.0f) return AttachmentProfile.ULTRA_STRONG;
-        if (elementAmount >= 2.0f) return AttachmentProfile.STRONG;
-        if (elementAmount >= 1.5f) return AttachmentProfile.MEDIUM;
-        return AttachmentProfile.WEAK;
-    }
-
-    private static PGCharacter resolveCharacter(LivingEntity entity) {
-        if (entity instanceof Player player) {
-            return player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT).getCurrentCharacter();
+    private static float emBonusZone(PGCharacter attacker, ElementalReactionType reactionType) {
+        if (attacker == null) {
+            LOGGER.info("[EM乘区] attacker=null → emBonus=0");
+            return 0f;
         }
-        return null;
+        double em = attacker.getData().getAttributeTotalValue(ModAttributes.ELEMENTAL_MASTERY.value());
+        float bonus = switch (reactionType) {
+            case MELT, VAPORIZE -> (float) ((2.78 * em) / (em + 1400.0));
+            case OVERLOAD, SUPERCONDUCT, ELECTRO_CHARGED, BURNING, BLOOM, HYPERBLOOM, BURGEON
+                    -> (float) ((16.0 * em) / (em + 2000.0));
+            default -> 0f;
+        };
+        LOGGER.info("[EM乘区] EM={} | reaction={} | emBonus={}", em, reactionType, bonus);
+        return bonus;
+    }
+
+    private static float reactionBonusZone(PGCharacter attacker, ElementalReactionType reactionType) {
+        return 1.0f + emBonusZone(attacker, reactionType);
+    }
+
+    // ============================================================
+    // 剧变反应管线 — 等级系数区 × 反应倍率区 × 反应加成区 × 抗性区（无基础伤害/暴击/增伤/防御）
+    // ============================================================
+
+    public static float calculateTransformativeDamage(LivingEntity attacker, LivingEntity target,
+                                                       ElementalReactionType reactionType) {
+        PGCharacter character = resolveCharacter(attacker);
+        int level = CombatEntityAccessor.getAttackerLevel(attacker, character);
+        double levelCoef = ReactionConfig.getReactionFusion(level);
+
+        float reactionMult = switch (reactionType) {
+            case ELECTRO_CHARGED -> ReactionConfig.ELECTROCHARGED.getFloat();
+            default -> 1.0f;
+        };
+
+        float reactionBonus = reactionBonusZone(character, reactionType);
+
+        GenshinElement dmgElement = switch (reactionType) {
+            case ELECTRO_CHARGED -> ModElements.ELECTRO.get();
+            default -> ModElements.FYSIKOS.get();
+        };
+        PGCharacter targetChar = resolveCharacter(target);
+        float resZone = resistanceZone(dmgElement, target, targetChar);
+
+        float damage = (float) (levelCoef * reactionMult * reactionBonus * resZone);
+
+        LOGGER.info("[剧变伤害] attackerLevel={} | levelCoef={} | reactionMult={} | reactionBonus={} | resZone={} | final={}",
+                level, levelCoef, reactionMult, reactionBonus, resZone, damage);
+        return damage;
     }
 }
