@@ -14,6 +14,7 @@ public class WorldTextColorConfig {
     public static ModConfigSpec.ConfigValue<String> GEO_COLOR;
     public static ModConfigSpec.ConfigValue<String> MELT_COLOR;
     public static ModConfigSpec.ConfigValue<String> VAPORIZE_COLOR;
+    public static ModConfigSpec.ConfigValue<String> ELECTRO_CHARGED_COLOR;
 
     static void register(ModConfigSpec.Builder builder) {
         builder.push("elemental-color");
@@ -50,6 +51,9 @@ public class WorldTextColorConfig {
         VAPORIZE_COLOR = builder
                 .translation("minegenshin.configuration.reaction.vaporize")
                 .define("vaporize_color", "#FFCC66");
+        ELECTRO_CHARGED_COLOR = builder
+                .translation("minegenshin.configuration.reaction.electro_charged")
+                .define("electro_charged_color", "#DE9BFB");
         builder.pop();
     }
 }

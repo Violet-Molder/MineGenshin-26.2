@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.status.StatusInstanceTypes;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.about.FrozenDecayState;
+import com.linweiyun.genshin.core.system.reaction.ElectroChargedTickState;
 import com.lowdragmc.lowdraglib2.LDLib2;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
@@ -58,6 +59,9 @@ public class StatusContainer implements IPersistedSerializable {
 
     @Persisted(key = "frozen_decay_state")
     private FrozenDecayState frozenDecayState = new FrozenDecayState();
+
+    @Persisted(key = "electro_charged_tick_state")
+    private ElectroChargedTickState electroChargedTickState = new ElectroChargedTickState();
 
     public StatusContainer() {
         this.instances = new ArrayList<>();
@@ -132,10 +136,15 @@ public class StatusContainer implements IPersistedSerializable {
             }
         }
         frozenDecayState.onTick(hadFrozenAlive);
+        electroChargedTickState.onTick();
     }
 
     public FrozenDecayState getFrozenDecayState() {
         return frozenDecayState;
+    }
+
+    public ElectroChargedTickState getElectroChargedTickState() {
+        return electroChargedTickState;
     }
 
     // ========== 拷贝 ==========
@@ -159,6 +168,9 @@ public class StatusContainer implements IPersistedSerializable {
 
             CompoundTag frozenTag = PersistedParser.serializeNBT(frozenDecayState, provider);
             root.put("frozen_decay_state", frozenTag);
+
+            CompoundTag ecTickTag = PersistedParser.serializeNBT(electroChargedTickState, provider);
+            root.put("electro_charged_tick_state", ecTickTag);
 
             ListTag list = new ListTag();
             for (StatusInstance inst : instances) {
@@ -191,6 +203,13 @@ public class StatusContainer implements IPersistedSerializable {
                         frozenDecayState, provider);
             }
 
+            if (root.contains("electro_charged_tick_state")) {
+                electroChargedTickState = new ElectroChargedTickState();
+                PersistedParser.deserializeNBT(
+                        root.getCompound("electro_charged_tick_state").orElse(new CompoundTag()),
+                        electroChargedTickState, provider);
+            }
+
             instances = new ArrayList<>();
             if (root.contains("statuses")) {
                 ListTag list = root.getList("statuses").orElse(new ListTag());
@@ -221,6 +240,9 @@ public class StatusContainer implements IPersistedSerializable {
             CompoundTag frozenTag = PersistedParser.serializeNBT(frozenDecayState, provider);
             root.put("frozen_decay_state", frozenTag);
 
+            CompoundTag ecTickTag = PersistedParser.serializeNBT(electroChargedTickState, provider);
+            root.put("electro_charged_tick_state", ecTickTag);
+
             ListTag list = new ListTag();
             for (StatusInstance inst : instances) {
                 try (var reporter = new ProblemReporter.ScopedCollector(LDLib2.LOGGER)) {
@@ -250,6 +272,13 @@ public class StatusContainer implements IPersistedSerializable {
                 PersistedParser.deserializeNBT(
                         root.getCompound("frozen_decay_state").orElse(new CompoundTag()),
                         frozenDecayState, provider);
+            }
+
+            if (root.contains("electro_charged_tick_state")) {
+                electroChargedTickState = new ElectroChargedTickState();
+                PersistedParser.deserializeNBT(
+                        root.getCompound("electro_charged_tick_state").orElse(new CompoundTag()),
+                        electroChargedTickState, provider);
             }
 
             instances = new ArrayList<>();

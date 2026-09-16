@@ -91,6 +91,7 @@
   "minegenshin.configuration.reaction-color": "元素反应",
   "minegenshin.configuration.reaction.melt": "融化",
   "minegenshin.configuration.reaction.vaporize": "蒸发",
+  "minegenshin.configuration.reaction.electro_charged": "感电",
 
   "minegenshin.configuration.spawn-level": "实体生成等级",
   "minegenshin.configuration.entity.spawn.level.calculation-mode": "等级计算模式",

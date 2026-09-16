@@ -163,6 +163,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
     public float getUnit() { return unit; }
     public float getCurrentDecayPerSecond() { return currentDecayPerSecond; }
     public boolean isPermanent() { return permanent; }
+    public LivingEntity getOwner() { return owner; }
 
     private static String resolveElementId(GenshinElement element) {
         Identifier key = com.linweiyun.genshin.core.system.registry.ModRegistries.ELEMENT_REGISTRY.getKey(element);

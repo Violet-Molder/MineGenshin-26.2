@@ -3,6 +3,7 @@ package com.linweiyun.genshin.core.system.registry.register;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.catalyst.columbina.Columbina;
 import com.linweiyun.genshin.core.character.polearm.arlecchino.Arlecchino;
+import com.linweiyun.genshin.core.character.polearm.raiden_shogun.RaidenShogun;
 import com.linweiyun.genshin.core.character.polearm.shenhe.Shenhe;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import net.minecraft.resources.Identifier;
@@ -25,6 +26,7 @@ public class ModCharacters {
     public static final DeferredHolder<PGCharacter, Arlecchino> ARLECCHINO = CHARACTERS.register("arlecchino", Arlecchino::new);
 
     public static final DeferredHolder<PGCharacter, Columbina> COLUMBINA = CHARACTERS.register("columbina", Columbina::new);
+    public static final DeferredHolder<PGCharacter, RaidenShogun> RAIDEN_SHOGUN = CHARACTERS.register("raiden_shogun", RaidenShogun::new);
 
     private static final Map<Integer, Supplier<PGCharacter>> FACTORIES = new LinkedHashMap<>();
 
@@ -34,10 +36,12 @@ public class ModCharacters {
         FACTORIES.put(135001, Shenhe::new);
         FACTORIES.put(135002, Arlecchino::new);
         FACTORIES.put(145001, Columbina::new);
+        FACTORIES.put(135003, RaidenShogun::new);
 
         FACTORIES_BY_ID.put(Identifier.fromNamespaceAndPath("minegenshin", "shenhe"), Shenhe::new);
         FACTORIES_BY_ID.put(Identifier.fromNamespaceAndPath("minegenshin", "arlecchino"), Arlecchino::new);
         FACTORIES_BY_ID.put(Identifier.fromNamespaceAndPath("minegenshin", "columbina"), Columbina::new);
+        FACTORIES_BY_ID.put(Identifier.fromNamespaceAndPath("minegenshin", "raiden_shogun"), RaidenShogun::new);
     }
 
     public static PGCharacter getByUUID(int uuid) {
