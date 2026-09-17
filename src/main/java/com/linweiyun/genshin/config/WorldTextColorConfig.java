@@ -17,6 +17,10 @@ public class WorldTextColorConfig {
     public static ModConfigSpec.ConfigValue<String> ELECTRO_CHARGED_COLOR;
     public static ModConfigSpec.ConfigValue<String> SWIRL_COLOR;
 
+    public static ModConfigSpec.ConfigValue<String> LUNAR_TOP_COLOR;
+    public static ModConfigSpec.ConfigValue<String> STELLAR_BOTTOM_WIND_COLOR;
+    public static ModConfigSpec.ConfigValue<String> STELLAR_BOTTOM_ICE_COLOR;
+
     static void register(ModConfigSpec.Builder builder) {
         builder.push("elemental-color");
         PHYSICAL_COLOR = builder
@@ -58,6 +62,18 @@ public class WorldTextColorConfig {
         SWIRL_COLOR = builder
                 .translation("minegenshin.configuration.reaction.swirl")
                 .define("swirl_color", "#68FBCA");
+        builder.pop();
+
+        builder.push("lunar-stellar-color");
+        LUNAR_TOP_COLOR = builder
+                .translation("minegenshin.configuration.lunar_stellar.lunar_top")
+                .define("lunar_top_color", "#DE9BFB");
+        STELLAR_BOTTOM_WIND_COLOR = builder
+                .translation("minegenshin.configuration.lunar_stellar.stellar_bottom_wind")
+                .define("stellar_bottom_wind_color", "#68FBCA");
+        STELLAR_BOTTOM_ICE_COLOR = builder
+                .translation("minegenshin.configuration.lunar_stellar.stellar_bottom_ice")
+                .define("stellar_bottom_ice_color", "#99FBFB");
         builder.pop();
     }
 }

@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.Minegenshin;
+import com.linweiyun.genshin.content.entities.area.StellarVortexEntity;
 import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
 import com.linweiyun.genshin.content.entities.area.ThunderCloudEntity;
 import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
@@ -66,6 +67,18 @@ public class ModEntities {
                             .build(ResourceKey.create(
                                     Registries.ENTITY_TYPE,
                                     Minegenshin.id("thunder_cloud"))
+                            ));
+
+    public static final Supplier<EntityType<StellarVortexEntity>> STELLAR_VORTEX =
+            ENTITIES.register(
+                    "stellar_vortex",
+                    () -> EntityType.Builder.<StellarVortexEntity>of(StellarVortexEntity::new, MobCategory.MISC)
+                            .sized(1.0F, 1.0F)
+                            .clientTrackingRange(8)
+                            .updateInterval(20)
+                            .build(ResourceKey.create(
+                                    Registries.ENTITY_TYPE,
+                                    Minegenshin.id("stellar_vortex"))
                             ));
 
     public static void register(IEventBus eventBus) {

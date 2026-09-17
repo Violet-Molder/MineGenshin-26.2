@@ -23,6 +23,15 @@ public class ReactionConfig {
     public static StringDoubleValue LUNAR_CHARGED_MULT;
     public static StringDoubleValue LUNAR_DIRECT_BASE_COEFFICIENT;
 
+    public static StringDoubleValue STELLAR_SWIRL_WIND_COEFFICIENT;
+    public static StringDoubleValue STELLAR_SWIRL_ICE_COEFFICIENT_LOW;
+    public static StringDoubleValue STELLAR_SWIRL_ICE_COEFFICIENT_HIGH;
+
+    public static StringDoubleValue EM_A_STELLAR_SWIRL;
+    public static StringDoubleValue EM_B_STELLAR_SWIRL;
+    public static StringDoubleValue EM_A_LUNAR_CHARGED;
+    public static StringDoubleValue EM_B_LUNAR_CHARGED;
+
     public static StringDoubleValue REACTION_FUSION_01, REACTION_FUSION_02, REACTION_FUSION_03, REACTION_FUSION_04, REACTION_FUSION_05;
     public static StringDoubleValue REACTION_FUSION_06, REACTION_FUSION_07, REACTION_FUSION_08, REACTION_FUSION_09, REACTION_FUSION_10;
     public static StringDoubleValue REACTION_FUSION_11, REACTION_FUSION_12, REACTION_FUSION_13, REACTION_FUSION_14, REACTION_FUSION_15;
@@ -158,6 +167,19 @@ public class ReactionConfig {
         builder.push("reaction-lunar");
         LUNAR_CHARGED_MULT = StringDoubleValue.defineInRange(builder, "reaction-lunar-charged-mult", 1.8, 0.0, 100.0);
         LUNAR_DIRECT_BASE_COEFFICIENT = StringDoubleValue.defineInRange(builder, "reaction-lunar-direct-base-coefficient", 3.0, 0.0, 100.0);
+        builder.pop();
+
+        builder.push("reaction-stellar");
+        STELLAR_SWIRL_WIND_COEFFICIENT = StringDoubleValue.defineInRange(builder, "reaction-stellar-swirl-wind-coefficient", 0.75, 0.0, 100.0);
+        STELLAR_SWIRL_ICE_COEFFICIENT_LOW = StringDoubleValue.defineInRange(builder, "reaction-stellar-swirl-ice-coefficient-low", 2.0, 0.0, 100.0);
+        STELLAR_SWIRL_ICE_COEFFICIENT_HIGH = StringDoubleValue.defineInRange(builder, "reaction-stellar-swirl-ice-coefficient-high", 3.0, 0.0, 100.0);
+        builder.pop();
+
+        builder.push("reaction-em-params");
+        EM_A_STELLAR_SWIRL = StringDoubleValue.defineInRange(builder, "em-a-stellar-swirl", 6.0, 0.0, 100.0);
+        EM_B_STELLAR_SWIRL = StringDoubleValue.defineInRange(builder, "em-b-stellar-swirl", 2000.0, 0.0, 10000.0);
+        EM_A_LUNAR_CHARGED = StringDoubleValue.defineInRange(builder, "em-a-lunar-charged", 5.0, 0.0, 100.0);
+        EM_B_LUNAR_CHARGED = StringDoubleValue.defineInRange(builder, "em-b-lunar-charged", 1200.0, 0.0, 10000.0);
         builder.pop();
     }
 

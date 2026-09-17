@@ -62,13 +62,10 @@ public class DamageIndicatorRenderer {
         hudRoot = new UIElement()
                 .setId("damage-indicator-root")
                 .layout(l -> l.widthPercent(100).heightPercent(100));
-        LOGGER.info("[DI-Hud] hudRoot built");
         return hudRoot;
     }
 
     public static void onIndicatorAdded(DamageIndicator indicator) {
-        LOGGER.info("[DI-Hud] indicator added, text='{}' gradient={}",
-                indicator.text, indicator.isGradient());
     }
 
     @SubscribeEvent
@@ -115,9 +112,10 @@ public class DamageIndicatorRenderer {
             int textH = FONT_HEIGHT;
 
             // ===== 底层：bottomColor，完整显示 =====
+            Style bottomStyle = Style.EMPTY.withColor(TextColor.fromRgb(indicator.bottomColor & 0xFFFFFF));
+            if (indicator.italic) bottomStyle = bottomStyle.withItalic(true);
             Label bottomLabel = new Label();
-            bottomLabel.setText(Component.translatable(indicator.text)
-                    .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(indicator.bottomColor & 0xFFFFFF))));
+            bottomLabel.setText(Component.translatable(indicator.text).withStyle(bottomStyle));
             applyStyleClasses(bottomLabel, indicator);
             bottomLabel.layout(l -> l
                     .positionType(TaffyPosition.ABSOLUTE)
@@ -128,15 +126,15 @@ public class DamageIndicatorRenderer {
             UIElement topWrapper = new UIElement();
             topWrapper.setId("di-gradient-wrapper");
 
-            // 给 wrapper 明确的宽高，否则 Taffy 会算成 0×0
             topWrapper.layout(l -> l
                     .positionType(TaffyPosition.ABSOLUTE)
                     .left(0).top(0)
                     .width(textW).height(textH));
 
+            Style topStyle = Style.EMPTY.withColor(TextColor.fromRgb(indicator.topColor & 0xFFFFFF));
+            if (indicator.italic) topStyle = topStyle.withItalic(true);
             Label topLabel = new Label();
-            topLabel.setText(Component.translatable(indicator.text)
-                    .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(indicator.topColor & 0xFFFFFF))));
+            topLabel.setText(Component.translatable(indicator.text).withStyle(topStyle));
             applyStyleClasses(topLabel, indicator);
             topLabel.layout(l -> l.width(textW).height(textH));
 

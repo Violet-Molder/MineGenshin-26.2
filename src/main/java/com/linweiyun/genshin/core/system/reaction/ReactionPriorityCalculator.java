@@ -3,6 +3,7 @@ package com.linweiyun.genshin.core.system.reaction;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.character.IStellarSwirlParticipant;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.catalyst.columbina.Columbina;
 import com.linweiyun.genshin.core.element.GenshinElement;
@@ -14,6 +15,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ReactionPriorityCalculator {
 
@@ -76,5 +80,32 @@ public class ReactionPriorityCalculator {
             }
         }
         return false;
+    }
+
+    public static boolean hasStellarSwirlParticipant(ServerLevel level) {
+        for (Player p : level.players()) {
+            PlayerCharactersAttachment att = p.getData(
+                    AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            for (int i = 0; i < 4; i++) {
+                PGCharacter character = att.getPartyCharacter(i);
+                if (character instanceof IStellarSwirlParticipant) return true;
+            }
+        }
+        return false;
+    }
+
+    public static List<PGCharacter> getStellarSwirlParticipants(ServerLevel level) {
+        List<PGCharacter> result = new ArrayList<>();
+        for (Player p : level.players()) {
+            PlayerCharactersAttachment att = p.getData(
+                    AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            for (int i = 0; i < 4; i++) {
+                PGCharacter character = att.getPartyCharacter(i);
+                if (character instanceof IStellarSwirlParticipant) {
+                    result.add(character);
+                }
+            }
+        }
+        return result;
     }
 }

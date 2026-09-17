@@ -23,6 +23,7 @@ public class ColumbinaTalent extends TalentBase {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final float[] COMBO_MULTIPLIERS = {0.4f, 0.45f, 0.6f};
+    private static final float CHARGED_HP_RATIO = 0.03f;
 
     public ColumbinaTalent() {
         super(3,
@@ -68,6 +69,36 @@ public class ColumbinaTalent extends TalentBase {
                         .elementAmount(AttachmentType.ULTRA_STRONG.getInitialAmount())
                         .attackerCharacter(character)
                         .build();
+                ModDamageSource source = ModDamageSource.from(spec, player);
+                if (target.level() instanceof ServerLevel serverLevel) {
+                    target.hurtServer(serverLevel, source, 0f);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void chargeAttack(Player player, PGCharacter character) {
+        Level level = player.level();
+        if (level.isClientSide()) return;
+
+        LivingEntity primaryTarget = new TargetSeeker(player, 10.0, TargetSeeker.TargetingType.LINE_OF_SIGHT).execute();
+        if (primaryTarget == null) {
+            LOGGER.info("[哥伦比娅重击] 索敌未发现目标");
+            return;
+        }
+
+        float aoeRange = 1.5f;
+        Vec3 center = primaryTarget.position();
+        List<LivingEntity> targets = new AreaEntityCollector(level,
+                center.add(-aoeRange, -aoeRange, -aoeRange),
+                center.add(aoeRange, aoeRange, aoeRange),
+                aoeRange).execute();
+
+
+        for (LivingEntity target : targets) {
+            if (target != player) {
+                ModDamageSpec spec = ModDamageSpec.lunarDirectHp(CHARGED_HP_RATIO);
                 ModDamageSource source = ModDamageSource.from(spec, player);
                 if (target.level() instanceof ServerLevel serverLevel) {
                     target.hurtServer(serverLevel, source, 0f);

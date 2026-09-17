@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.character.polearm.shenhe;
 
 import com.linweiyun.genshin.config.character.ShenheAttributeConfig;
+import com.linweiyun.genshin.core.character.IStellarSwirlParticipant;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.polearm.PolearmCharacter;
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class Shenhe extends PolearmCharacter {
+public class Shenhe extends PolearmCharacter implements IStellarSwirlParticipant {
     private static final Logger LOGGER= LogUtils.getLogger();
 
     public Shenhe() {

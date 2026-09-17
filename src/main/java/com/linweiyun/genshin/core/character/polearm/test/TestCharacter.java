@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.character.polearm.test;
 
 import com.linweiyun.genshin.config.character.ShenheAttributeConfig;
+import com.linweiyun.genshin.core.character.IStellarSwirlParticipant;
 import com.linweiyun.genshin.core.character.polearm.PolearmCharacter;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class TestCharacter extends PolearmCharacter {
+public class TestCharacter extends PolearmCharacter implements IStellarSwirlParticipant {
 
     public TestCharacter() {
         super(135005, 5, Component.translatable("character.name.test"),
