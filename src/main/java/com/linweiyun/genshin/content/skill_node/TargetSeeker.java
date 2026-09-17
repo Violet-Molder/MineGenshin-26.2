@@ -102,7 +102,6 @@ public class TargetSeeker {
 
                 // 锁定的是敌对生物：直接返回，刷新锁定时间
                 if (livingLocked instanceof Monster) {
-                    LOGGER.debug("[TargetSeeker] 锁定敌对目标仍有效: {}", livingLocked.getName().getString());
                     refreshLock(tick, livingLocked);
                     return livingLocked;
                 }
@@ -113,18 +112,15 @@ public class TargetSeeker {
                     // 更近的敌对生物抢锁
                     source.setData(AttachmentRegistration.LOCKED_TARGET,
                             new LockedTargetData(closerHostile.getUUID(), tick + LOCK_DURATION_TICKS));
-                    LOGGER.debug("[TargetSeeker] 锁定友好目标被更近敌对{}取代", closerHostile.getName().getString());
                     return closerHostile;
                 }
 
                 // 无更近敌对，保持友好锁并刷新
-                LOGGER.debug("[TargetSeeker] 锁定友好目标仍有效: {}", livingLocked.getName().getString());
                 refreshLock(tick, livingLocked);
                 return livingLocked;
             }
             // 目标不在范围内 / 死亡 / 不可见 → 清锁重搜
             source.setData(AttachmentRegistration.LOCKED_TARGET, LockedTargetData.EMPTY);
-            LOGGER.debug("[TargetSeeker] 锁定目标已丢失/过期，重新索敌");
         }
 
         // 2. 无锁 → 按类型收集候选

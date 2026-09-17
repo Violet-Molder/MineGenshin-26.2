@@ -17,6 +17,7 @@ public class DamageIndicator {
     public final int   topColor;
     public final int   bottomColor;
     public final byte  style;
+    public final boolean italic;
 
     public final float baseScale;
     public final float startScale;
@@ -26,6 +27,7 @@ public class DamageIndicator {
 
     public DamageIndicator(Vec3 origin, Vec3 target, String text,
                            int topColor, int bottomColor, byte style,
+                           boolean italic,
                            float baseScale, float startScale, long lifetimeMs) {
         this.origin = origin;
         this.target = target;
@@ -33,6 +35,7 @@ public class DamageIndicator {
         this.topColor = topColor;
         this.bottomColor = bottomColor;
         this.style = style;
+        this.italic = italic;
         this.baseScale = baseScale;
         this.startScale = startScale;
         this.lifetimeMs = lifetimeMs;

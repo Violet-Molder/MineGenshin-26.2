@@ -16,7 +16,6 @@ public class LivingHurtEvent {
     @SubscribeEvent
     public static void onLivingHurt(LivingDamageEvent.Post event) {
         if (event.getSource() instanceof ModDamageSource source) {
-            LOGGER.info("当前生命值 {}", event.getEntity().getHealth());
         }
     }
 }

@@ -25,6 +25,7 @@ public final class DamageIndicatorRpc {
             int topColor,
             int bottomColor,
             byte style,
+            boolean italic,
             float baseScale,
             float startScale,
             int durationMs
@@ -37,6 +38,7 @@ public final class DamageIndicatorRpc {
                     topColor,
                     bottomColor,
                     style,
+                    italic,
                     baseScale,
                     startScale,
                     durationMs
@@ -56,6 +58,7 @@ public final class DamageIndicatorRpc {
             int topColor,
             int bottomColor,
             byte style,
+            boolean italic,
             float baseScale,
             float startScale,
             int durationMs
@@ -68,6 +71,7 @@ public final class DamageIndicatorRpc {
                 text,
                 topColor, bottomColor,
                 style,
+                italic,
                 baseScale, startScale,
                 durationMs
         );

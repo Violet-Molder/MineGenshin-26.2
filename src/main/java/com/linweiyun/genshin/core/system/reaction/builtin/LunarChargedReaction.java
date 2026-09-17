@@ -81,8 +81,7 @@ public class LunarChargedReaction extends ElementalReaction {
         }
 
         int electroColor = DamageIndicatorFactory.getColorForElement(ModElements.ELECTRO.get());
-        DamageIndicatorFactory.reactionGradient(target,
-                ElementalReactionType.LUNAR_CHARGED, electroColor, 0xFFFFFF);
+        DamageIndicatorFactory.lunarReactionGradient(target, ElementalReactionType.LUNAR_CHARGED);
 
         return ReactionResult.builder(reactionType).reacted()
                 .consumedAttacker(ctx.attackerUnit()).consumedDefender(0).build();

@@ -144,6 +144,8 @@ public class LivingEntityHurtMixin {
                         DamageIndicatorFactory.textGradient(target, text, topColor, bottomColor,
                                 DamageIndicatorFactory.Options.of(2.2f, 6.2f, 950L));
                     }
+                } else if (spec.getDamageType() == ModDamageSpec.DamageType.STELLAR) {
+                    handleStellarDamageIndicator(target, spec, finalDamage, isCrit, options);
                 } else if (element == ModElements.HYDRO.get()) {
                     int hydroColor = DamageIndicatorFactory.getColorForElement(ModElements.HYDRO.get());
                     if (isCrit) {
@@ -188,5 +190,19 @@ public class LivingEntityHurtMixin {
         CommonHooks.onLivingDamagePost(target, container);
 
         cir.setReturnValue(true);
+    }
+
+    private void handleStellarDamageIndicator(LivingEntity target, ModDamageSpec spec,
+                                               float finalDamage, boolean isCrit,
+                                               DamageIndicatorFactory.Options options) {
+        ElementalReactionType reactionType = spec.getTransformativeReactionType();
+        GenshinElement element = spec.getElement();
+
+        int elementColor = DamageIndicatorFactory.getColorForElement(element);
+        int bottomColor = elementColor | 0xFF000000;
+        int topColor = 0xFFFFFFFF;
+
+        String text = String.format("%.0f", finalDamage);
+        DamageIndicatorFactory.textGradient(target, text, topColor, bottomColor, options);
     }
 }

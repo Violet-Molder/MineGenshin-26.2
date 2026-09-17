@@ -45,6 +45,10 @@ public class ModDamageTypes {
     public static final DeferredHolder<DamageType, DamageType> SWIRL_TYPE =
             DAMAGE_TYPES.register("swirl",
                     () -> new DamageType("swirl", 0));
+
+    public static final DeferredHolder<DamageType, DamageType> STELLAR_SWIRL_TYPE =
+            DAMAGE_TYPES.register("stellar_swirl",
+                    () -> new DamageType("stellar_swirl", 0));
     // ========== 注册方法 ==========
 
     /**

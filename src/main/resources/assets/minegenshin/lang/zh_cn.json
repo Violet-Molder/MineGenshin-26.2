@@ -310,6 +310,8 @@
   "reaction.minegenshin.lunar_charged": "月感电",
   "reaction.minegenshin.lunar_bloom": "月绽放",
   "reaction.minegenshin.lunar_crystallize": "月结晶",
+  "reaction.minegenshin.stellar_swirl_wind": "星扩散",
+  "reaction.minegenshin.stellar_swirl_ice": "星扩散·冰",
 
   "gui.minegenshin.character_select.deploy": "出战",
   "gui.minegenshin.character_select.recall": "换下",

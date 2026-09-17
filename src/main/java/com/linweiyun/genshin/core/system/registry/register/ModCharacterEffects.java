@@ -4,6 +4,7 @@ import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.content.effect.character.artifact.CrimsonWitch2;
 import com.linweiyun.genshin.content.effect.character.artifact.CrimsonWitch4;
 import com.linweiyun.genshin.content.effect.character.impl.DamageBonusEffect;
+import com.linweiyun.genshin.content.effect.character.impl.RadianceStellarSwirlEffect;
 import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import net.neoforged.bus.api.IEventBus;
@@ -21,6 +22,12 @@ public class ModCharacterEffects {
     public static final DeferredHolder<ICharacterEffect, DamageBonusEffect> DAMAGE_BONUS_EFFECT = CHARACTER_EFFECTS.register(
             "damage_bonus",
             () -> new DamageBonusEffect()
+    );
+
+    // ======== 星烁反应效果 ========
+    public static final DeferredHolder<ICharacterEffect, RadianceStellarSwirlEffect> RADIANCE_STELLAR_SWIRL_EFFECT = CHARACTER_EFFECTS.register(
+            "radiance_stellar_swirl",
+            RadianceStellarSwirlEffect::new
     );
 
     // ======= 圣遗物套装效果 =======

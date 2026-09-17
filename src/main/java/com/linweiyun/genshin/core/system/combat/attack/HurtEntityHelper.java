@@ -54,7 +54,7 @@ public class HurtEntityHelper {
                 case LUNAR -> calculateLunarDirectDamage(
                         sourceEntity, attacker, target, spec);
                 case QUICKEN -> 0f;
-                case STELLAR -> 0f;
+                case STELLAR -> calculateStellarDirectDamage(attacker, target, spec);
                 default -> 0f;
             };
             //            LOGGER.info("[{}管线] reaction={} | final={}",
@@ -163,7 +163,12 @@ public class HurtEntityHelper {
 
         if (reactionResult != null && reactionResult.isReacted()
                 && reactionResult.getReactionType() != null) {
-            DamageIndicatorFactory.reaction(target, reactionResult.getReactionType());
+            ElementalReactionType rt = reactionResult.getReactionType();
+            if (rt != ElementalReactionType.LUNAR_CHARGED
+                    && rt != ElementalReactionType.STELLAR_SWIRL_WIND
+                    && rt != ElementalReactionType.STELLAR_SWIRL_ICE) {
+                DamageIndicatorFactory.reaction(target, rt);
+            }
         }
 
         float finalDamage = calculateFinalDamage(
@@ -295,6 +300,16 @@ public class HurtEntityHelper {
         return 1.0f + emBonus + reactionDmgBonus;
     }
 
+    private static float stellarSwirlReactionBonusZone(PGCharacter attacker, ElementalReactionType reactionType) {
+        float emBonus = emBonusZone(attacker, reactionType);
+        float reactionDmgBonus = 0f;
+        return 1.0f + emBonus + reactionDmgBonus;
+    }
+
+    private static float sovereigntyZone(PGCharacter attacker, ElementalReactionType reactionType) {
+        return 1.0f;
+    }
+
     private static float elevationZone() {
         return 1.0f;
     }
@@ -361,17 +376,27 @@ public class HurtEntityHelper {
         if (character == null) {
             character = resolveCharacter(attacker);
         }
-        float atk = character != null
-                ? (float) character.getData().getAttributeTotalValue(ModAttributes.ATK.value())
-                : 0f;
 
-        float base = (float) (ReactionConfig.LUNAR_DIRECT_BASE_COEFFICIENT.get() * atk);
-        float baseBoost = base * (1f + spec.getLunarBaseBonus()) + spec.getLunarBaseFlat();
-        float multiplier = spec.getAtkMultiplier();
         float reactionBonus = lunarReactionBonusZone(character, ElementalReactionType.LUNAR_CHARGED);
         float res = resistanceZone(ModElements.ELECTRO.get(), target, resolveCharacter(target));
         float crit = critZone(character, spec);
         float elevation = elevationZone();
+
+        float base;
+        if (spec.getHpMultiplier() > 0) {
+            float hp = character != null
+                    ? (float) character.getData().getAttributeTotalValue(ModAttributes.MAX_HP.value())
+                    : 0f;
+            base = hp * spec.getHpMultiplier();
+        } else {
+            float atk = character != null
+                    ? (float) character.getData().getAttributeTotalValue(ModAttributes.ATK.value())
+                    : 0f;
+            base = (float) (ReactionConfig.LUNAR_DIRECT_BASE_COEFFICIENT.get() * atk);
+        }
+
+        float baseBoost = base * (1f + spec.getLunarBaseBonus()) + spec.getLunarBaseFlat();
+        float multiplier = spec.getAtkMultiplier();
 
         float damage = baseBoost * multiplier * reactionBonus * res * crit * elevation;
 
@@ -443,5 +468,106 @@ public class HurtEntityHelper {
         LOGGER.info("[月感电合并伤害] contributors={} | total={} | topCrit={}",
                 n, total, crit);
         return new LunarCombinedResult(total, crit);
+    }
+
+    // ============================================================
+    // 星扩散反应伤害计算
+    //  公式：【等级系数 × 星辉基础系数 × (1+基础倍率加成) + 基础附加】× 反应倍率 × (1+精通加成+反应伤害加成) × 抗性区 × 暴击区 × 擢升区 × 大权区
+    //  合并：排序后权重 0.6 / 0.3 / 0.05 / 0.05
+    // ============================================================
+
+    public static float calculateStellarDirectDamage(PGCharacter attacker, LivingEntity target,
+                                                      ModDamageSpec spec) {
+        List<PGCharacter> contributors = spec.getStellarContributors();
+        if (contributors != null && !contributors.isEmpty()) {
+            ElementalReactionType reactionType = spec.getTransformativeReactionType();
+            double coefficient = spec.getStellarCoefficient();
+            float baseBonusMult = spec.getStellarBaseBonusMult();
+            float baseBonusFlat = spec.getStellarBaseBonusFlat();
+
+            List<StellarContributorResult> results = new ArrayList<>();
+            for (PGCharacter ch : contributors) {
+                int level = CombatEntityAccessor.getAttackerLevel(null, ch);
+                results.add(calculateStellarSwirlPerCharacter(
+                        ch, level, target, reactionType, null,
+                        coefficient, baseBonusMult, baseBonusFlat));
+            }
+            StellarCombinedResult combined = combineStellarSwirlDamage(results);
+            spec.setCrit(combined.isCrit);
+            return combined.totalDamage;
+        }
+        return 0f;
+    }
+
+    public static StellarContributorResult calculateStellarSwirlPerCharacter(
+            PGCharacter character, int level, LivingEntity target,
+            ElementalReactionType reactionType, UUID playerUUID,
+            double stellarCoefficient, float baseBonusMult, float baseBonusFlat) {
+
+        double levelCoef = ReactionConfig.getReactionFusion(level);
+        double baseBoost = levelCoef * stellarCoefficient * (1.0 + baseBonusMult) + baseBonusFlat;
+
+        float reactionBonus = stellarSwirlReactionBonusZone(character, reactionType);
+        float res = resistanceZone(
+                reactionType == ElementalReactionType.STELLAR_SWIRL_WIND
+                        ? ModElements.ANEMO.get() : ModElements.CYRO.get(),
+                target, resolveCharacter(target));
+        float crit = critZone(character);
+        float elevation = elevationZone();
+        float sovereignty = sovereigntyZone(character, reactionType);
+
+        float damage = (float) (baseBoost * reactionBonus * res * crit * elevation * sovereignty);
+
+        LOGGER.info("[星扩散单人理论伤害] char={} | level={} | levelCoef={} | coefficient={} | baseBoost={} | reactBonus={} | res={} | crit={} | elev={} | sov={} | final={}",
+                character != null ? character.getName() : "?",
+                level, levelCoef, stellarCoefficient, baseBoost, reactionBonus, res, crit, elevation, sovereignty, damage);
+
+        return new StellarContributorResult(playerUUID, character, damage, crit > 1.0f);
+    }
+
+    public static class StellarContributorResult {
+        public final UUID playerUUID;
+        public final PGCharacter character;
+        public final float theoryDamage;
+        public final boolean isCrit;
+
+        public StellarContributorResult(UUID uuid, PGCharacter ch, float dmg, boolean crit) {
+            this.playerUUID = uuid;
+            this.character = ch;
+            this.theoryDamage = dmg;
+            this.isCrit = crit;
+        }
+    }
+
+    public static class StellarCombinedResult {
+        public final float totalDamage;
+        public final boolean isCrit;
+        public final PGCharacter topCharacter;
+
+        public StellarCombinedResult(float total, boolean crit, PGCharacter topChar) {
+            this.totalDamage = total;
+            this.isCrit = crit;
+            this.topCharacter = topChar;
+        }
+    }
+
+    public static StellarCombinedResult combineStellarSwirlDamage(List<StellarContributorResult> contributors) {
+        if (contributors.isEmpty()) return new StellarCombinedResult(0f, false, null);
+
+        contributors.sort(Comparator.comparingDouble(r -> -r.theoryDamage));
+
+        float total = 0f;
+        int n = contributors.size();
+
+        if (n >= 1) total += contributors.get(0).theoryDamage * 0.6f;
+        if (n >= 2) total += contributors.get(1).theoryDamage * 0.3f;
+        if (n >= 3) total += contributors.get(2).theoryDamage * 0.05f;
+        if (n >= 4) total += contributors.get(3).theoryDamage * 0.05f;
+
+        boolean crit = contributors.get(0).isCrit;
+
+        LOGGER.info("[星扩散合并伤害] contributors={} | total={} | topCrit={}",
+                n, total, crit);
+        return new StellarCombinedResult(total, crit, contributors.get(0).character);
     }
 }

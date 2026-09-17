@@ -16,6 +16,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 /**
  * 伤害飘字工厂 —— 所有飘字的统一入口。
  *
@@ -29,6 +33,8 @@ import org.slf4j.Logger;
  */
 public final class DamageIndicatorFactory {
     public static final Logger LOGGER = LogUtils.getLogger();
+
+    private static final Map<UUID, Vec3> LAST_SPAWN_POS = new HashMap<>();
 
     private DamageIndicatorFactory() {}
 
@@ -56,8 +62,14 @@ public final class DamageIndicatorFactory {
         return switch (type) {
             case ELECTRO_CHARGED, LUNAR_CHARGED -> parseColor(WorldTextColorConfig.ELECTRO_CHARGED_COLOR.get());
             case SWIRL -> parseColor(WorldTextColorConfig.SWIRL_COLOR.get());
+            case STELLAR_SWIRL_WIND -> parseColor(WorldTextColorConfig.STELLAR_BOTTOM_WIND_COLOR.get());
+            case STELLAR_SWIRL_ICE -> parseColor(WorldTextColorConfig.STELLAR_BOTTOM_ICE_COLOR.get());
             default -> parseColor(WorldTextColorConfig.VAPORIZE_COLOR.get());
         };
+    }
+
+    public static int getLunarTopColor() {
+        return parseColor(WorldTextColorConfig.LUNAR_TOP_COLOR.get());
     }
 
     public enum Style {
@@ -321,7 +333,19 @@ public final class DamageIndicatorFactory {
 
     /** 核心 spawn —— 所有方法最终汇聚到这里 */
     private static void spawnRaw(LivingEntity target, Entity attacker, String text,
+                                 int topColor, int bottomColor, Style style, Options options,
+                                 boolean italic) {
+        spawnRawInternal(target, attacker, text, topColor, bottomColor, style, options, italic);
+    }
+
+    private static void spawnRaw(LivingEntity target, Entity attacker, String text,
                                  int topColor, int bottomColor, Style style, Options options) {
+        spawnRawInternal(target, attacker, text, topColor, bottomColor, style, options, false);
+    }
+
+    private static void spawnRawInternal(LivingEntity target, Entity attacker, String text,
+                                 int topColor, int bottomColor, Style style, Options options,
+                                 boolean italic) {
         if (options == null) options = Options.DEFAULT;
         if (target == null) return;
         if (text == null || text.isEmpty()) return;
@@ -333,14 +357,38 @@ public final class DamageIndicatorFactory {
         Vec3 targetCenter = target.position()
                 .add(0, target.getBbHeight() * 0.85, 0);
 
-        // 飘字散布范围
-        // 反应名统一抬高一点，让它和伤害数字在垂直方向错开
-        double extraY = (style == Style.REACTION) ? 0.2 : 0.0;
-        Vec3 finalPos = targetCenter.add(
-                (rand.nextDouble() - 0.5) * 1.6,
-                0.35 + rand.nextDouble() * 0.60 + extraY,
-                (rand.nextDouble() - 0.5) * 1.6
-        );
+        // 飘字散布范围（大幅扩大）
+        // 反应名统一抬高，和伤害数字拉开距离
+        double extraY = (style == Style.REACTION) ? 0.6 : 0.0;
+        double spreadH = 4.0;
+        double verticalBase = 0.35;
+        double verticalRange = 1.2;
+
+        Vec3 finalPos = null;
+        int maxRetries = 8;
+        UUID targetId = target.getUUID();
+        Vec3 lastPos = LAST_SPAWN_POS.get(targetId);
+
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            Vec3 candidate = targetCenter.add(
+                    (rand.nextDouble() - 0.5) * spreadH,
+                    verticalBase + rand.nextDouble() * verticalRange + extraY,
+                    (rand.nextDouble() - 0.5) * spreadH
+            );
+            if (lastPos == null || lastPos.distanceToSqr(candidate) > 0.25) {
+                finalPos = candidate;
+                LAST_SPAWN_POS.put(targetId, finalPos);
+                break;
+            }
+        }
+        if (finalPos == null) {
+            finalPos = targetCenter.add(
+                    (rand.nextDouble() - 0.5) * spreadH,
+                    verticalBase + rand.nextDouble() * verticalRange + extraY,
+                    (rand.nextDouble() - 0.5) * spreadH
+            );
+            LAST_SPAWN_POS.put(targetId, finalPos);
+        }
 
         // 出现位置：攻击者身体与目标之间
         Vec3 originPos;
@@ -363,6 +411,7 @@ public final class DamageIndicatorFactory {
                             text,
                             topColor, bottomColor,
                             (byte) style.ordinal(),
+                            italic,
                             options.baseScale, options.startScale,
                             (int) options.durationMs
                     );
@@ -372,5 +421,77 @@ public final class DamageIndicatorFactory {
                 }
             }
         }
+    }
+
+    // =====================================================================
+    //  月感电 / 星扩散 —— 渐变 + 斜体
+    // =====================================================================
+
+    private static final int WHITE = 0xFFFFFF;
+
+    public static void lunarDamageGradient(LivingEntity target, DamageSource source, float finalDamage) {
+        lunarDamageGradient(target, source, finalDamage, Options.DEFAULT);
+    }
+
+    public static void lunarDamageGradient(LivingEntity target, DamageSource source, float finalDamage, Options options) {
+        if (source == null) return;
+        int topColor = getLunarTopColor();
+        spawnRawInternal(target, source.getEntity(), String.valueOf(Math.round(finalDamage)),
+                topColor, WHITE, Style.NORMAL, options, true);
+    }
+
+    public static void lunarReactionGradient(LivingEntity target, ElementalReactionType type) {
+        lunarReactionGradient(target, type, Options.DEFAULT);
+    }
+
+    public static void lunarReactionGradient(LivingEntity target, ElementalReactionType type, Options options) {
+        if (type == null) return;
+        int topColor = getLunarTopColor();
+        spawnRawInternal(target, null, type.getDisplayName(),
+                topColor, WHITE, Style.REACTION, options, true);
+    }
+
+    public static void stellarWindDamageGradient(LivingEntity target, DamageSource source, float finalDamage) {
+        stellarWindDamageGradient(target, source, finalDamage, Options.DEFAULT);
+    }
+
+    public static void stellarWindDamageGradient(LivingEntity target, DamageSource source, float finalDamage, Options options) {
+        if (source == null) return;
+        int bottomColor = parseColor(WorldTextColorConfig.STELLAR_BOTTOM_WIND_COLOR.get());
+        spawnRawInternal(target, source.getEntity(), String.valueOf(Math.round(finalDamage)),
+                WHITE, bottomColor, Style.NORMAL, options, true);
+    }
+
+    public static void stellarIceDamageGradient(LivingEntity target, DamageSource source, float finalDamage) {
+        stellarIceDamageGradient(target, source, finalDamage, Options.DEFAULT);
+    }
+
+    public static void stellarIceDamageGradient(LivingEntity target, DamageSource source, float finalDamage, Options options) {
+        if (source == null) return;
+        int bottomColor = parseColor(WorldTextColorConfig.STELLAR_BOTTOM_ICE_COLOR.get());
+        spawnRawInternal(target, source.getEntity(), String.valueOf(Math.round(finalDamage)),
+                WHITE, bottomColor, Style.NORMAL, options, true);
+    }
+
+    public static void stellarWindReactionGradient(LivingEntity target, ElementalReactionType type) {
+        stellarWindReactionGradient(target, type, Options.DEFAULT);
+    }
+
+    public static void stellarWindReactionGradient(LivingEntity target, ElementalReactionType type, Options options) {
+        if (type == null) return;
+        int bottomColor = parseColor(WorldTextColorConfig.STELLAR_BOTTOM_WIND_COLOR.get());
+        spawnRawInternal(target, null, type.getDisplayName(),
+                WHITE, bottomColor, Style.REACTION, options, true);
+    }
+
+    public static void stellarIceReactionGradient(LivingEntity target, ElementalReactionType type) {
+        stellarIceReactionGradient(target, type, Options.DEFAULT);
+    }
+
+    public static void stellarIceReactionGradient(LivingEntity target, ElementalReactionType type, Options options) {
+        if (type == null) return;
+        int bottomColor = parseColor(WorldTextColorConfig.STELLAR_BOTTOM_ICE_COLOR.get());
+        spawnRawInternal(target, null, type.getDisplayName(),
+                WHITE, bottomColor, Style.REACTION, options, true);
     }
 }

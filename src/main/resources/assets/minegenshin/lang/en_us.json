@@ -507,6 +507,11 @@
   "reaction.minegenshin.spread": "Spread",
   "reaction.minegenshin.frozen": "Frozen",
   "reaction.minegenshin.crystallize": "Crystallize",
+  "reaction.minegenshin.lunar_charged": "Lunar Charged",
+  "reaction.minegenshin.lunar_bloom": "Lunar Bloom",
+  "reaction.minegenshin.lunar_crystallize": "Lunar Crystallize",
+  "reaction.minegenshin.stellar_swirl_wind": "Stellar Swirl",
+  "reaction.minegenshin.stellar_swirl_ice": "Stellar Swirl: Ice",
 
   "gui.minegenshin.character_select.deploy": "Deploy",
   "gui.minegenshin.character_select.recall": "Recall",
