@@ -30,8 +30,10 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 /**
@@ -62,6 +64,8 @@ public class StatusContainer implements IPersistedSerializable {
 
     @Persisted(key = "electro_charged_tick_state")
     private ElectroChargedTickState electroChargedTickState = new ElectroChargedTickState();
+
+    private transient Map<String, Long> lunarContributors = new HashMap<>();
 
     public StatusContainer() {
         this.instances = new ArrayList<>();
@@ -145,6 +149,18 @@ public class StatusContainer implements IPersistedSerializable {
 
     public ElectroChargedTickState getElectroChargedTickState() {
         return electroChargedTickState;
+    }
+
+    public void recordLunarContributor(String key, long currentTick, long decayTicks) {
+        if (lunarContributors == null) lunarContributors = new HashMap<>();
+        long newExpiry = currentTick + decayTicks;
+        lunarContributors.merge(key, newExpiry, Math::max);
+    }
+
+    public Map<String, Long> getLunarContributors(long currentTick) {
+        if (lunarContributors == null) lunarContributors = new HashMap<>();
+        lunarContributors.entrySet().removeIf(e -> e.getValue() <= currentTick);
+        return lunarContributors;
     }
 
     // ========== 拷贝 ==========

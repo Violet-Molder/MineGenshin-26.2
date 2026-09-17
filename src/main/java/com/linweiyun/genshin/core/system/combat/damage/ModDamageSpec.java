@@ -9,6 +9,7 @@ import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 
 import javax.annotation.Nullable;
+import java.util.List;
 
 /**
  * 伤害规格 —— 定义一次攻击的完整参数规格
@@ -69,6 +70,13 @@ public class ModDamageSpec {
     // ========== 剧变反应标记 ==========
     private final ElementalReactionType transformativeReactionType;
 
+    // ========== 月曜/星烁 附加乘区 ==========
+    private final float lunarBaseBonus;                  // 月反应基础伤害倍率加成 (角色天赋提供, 如基于生命值)
+    private final float lunarBaseFlat;                   // 月反应基础伤害附加
+
+    // ========== 月感电多角色贡献者 ==========
+    private List<PGCharacter> lunarContributors;         // 参与月感电反应的角色列表（雷暴云伤害用）
+
     // ========== 伤害类型 - 决定走哪条计算管线 ==========
     public enum DamageType {
         DIRECT,
@@ -94,7 +102,7 @@ public class ModDamageSpec {
                 skillMultiplierBonus, flatDamageBonus,
                 elementAmount, decayGroup,
                 attackerCharacter,
-                DamageType.DIRECT, null);
+                DamageType.DIRECT, null, 0f, 0f);
     }
 
     private ModDamageSpec(AttackType attackType, GenshinElement element,
@@ -104,6 +112,21 @@ public class ModDamageSpec {
                           PGCharacter attackerCharacter,
                           DamageType damageType,
                           ElementalReactionType reactionType) {
+        this(attackType, element,
+                atkMultiplier, hpMultiplier, defMultiplier, emMultiplier,
+                skillMultiplierBonus, flatDamageBonus,
+                elementAmount, decayGroup,
+                attackerCharacter, damageType, reactionType, 0f, 0f);
+    }
+
+    private ModDamageSpec(AttackType attackType, GenshinElement element,
+                          float atkMultiplier, float hpMultiplier, float defMultiplier, float emMultiplier,
+                          float skillMultiplierBonus, float flatDamageBonus,
+                          float elementAmount, DecayGroup decayGroup,
+                          PGCharacter attackerCharacter,
+                          DamageType damageType,
+                          ElementalReactionType reactionType,
+                          float lunarBaseBonus, float lunarBaseFlat) {
         this.attackType = attackType;
         this.element = element;
         this.atkMultiplier = atkMultiplier;
@@ -117,6 +140,8 @@ public class ModDamageSpec {
         this.attackerCharacter = attackerCharacter;
         this.damageType = damageType;
         this.transformativeReactionType = reactionType;
+        this.lunarBaseBonus = lunarBaseBonus;
+        this.lunarBaseFlat = lunarBaseFlat;
     }
 
     public static ModDamageSpec transformative(ElementalReactionType reactionType, GenshinElement element) {
@@ -126,7 +151,27 @@ public class ModDamageSpec {
                 0f, 0f,
                 0f, null,
                 null,
-                DamageType.TRANSFORMATIVE, reactionType);
+                DamageType.TRANSFORMATIVE, reactionType, 0f, 0f);
+    }
+
+    public static ModDamageSpec lunar(ElementalReactionType reactionType) {
+        return new ModDamageSpec(
+                AttackType.LUNAR_CHARGED, ModElements.ELECTRO.get(),
+                0f, 0f, 0f, 0f,
+                0f, 0f,
+                0f, null,
+                null,
+                DamageType.LUNAR, reactionType, 0f, 0f);
+    }
+
+    public static ModDamageSpec lunarDirect(float atkMultiplier, float elementAmount) {
+        return new ModDamageSpec(
+                AttackType.LUNAR_CHARGED, ModElements.ELECTRO.get(),
+                atkMultiplier, 0f, 0f, 0f,
+                0f, 0f,
+                elementAmount, null,
+                null,
+                DamageType.LUNAR, ElementalReactionType.LUNAR_CHARGED, 0f, 0f);
     }
 
     public DamageType getDamageType() {
@@ -137,9 +182,19 @@ public class ModDamageSpec {
         return damageType == DamageType.TRANSFORMATIVE;
     }
 
+    public boolean isLunar() {
+        return damageType == DamageType.LUNAR;
+    }
+
     public ElementalReactionType getTransformativeReactionType() {
         return transformativeReactionType;
     }
+
+    public float getLunarBaseBonus() { return lunarBaseBonus; }
+    public float getLunarBaseFlat() { return lunarBaseFlat; }
+
+    public List<PGCharacter> getLunarContributors() { return lunarContributors; }
+    public void setLunarContributors(List<PGCharacter> contributors) { this.lunarContributors = contributors; }
 
     public ModDamageSpec withFlatDamageBonus(float newFlatBonus) {
         return new ModDamageSpec(
@@ -147,7 +202,8 @@ public class ModDamageSpec {
                 this.atkMultiplier, this.hpMultiplier, this.defMultiplier, this.emMultiplier,
                 this.skillMultiplierBonus, newFlatBonus,
                 this.elementAmount, this.decayGroup,
-                this.attackerCharacter, this.damageType, this.transformativeReactionType
+                this.attackerCharacter, this.damageType, this.transformativeReactionType,
+                this.lunarBaseBonus, this.lunarBaseFlat
         );
     }
 

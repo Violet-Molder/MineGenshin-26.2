@@ -73,7 +73,7 @@ public class RaidenShogunTalent extends TalentBase {
             if (target != player) {
                 ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.ELECTRO.get())
                         .multiplier(multiplier)
-                        .elementAmount(AttachmentType.WEAK.getInitialAmount())
+                        .elementAmount(AttachmentType.ULTRA_STRONG.getInitialAmount())
                         .attackerCharacter(character)
                         .build();
                 ModDamageSource source = ModDamageSource.from(spec, player);

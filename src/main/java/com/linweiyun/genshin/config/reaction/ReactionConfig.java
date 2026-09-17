@@ -20,6 +20,9 @@ public class ReactionConfig {
     public static StringDoubleValue HYPERBLOOM;
     public static StringDoubleValue BURGEON;
 
+    public static StringDoubleValue LUNAR_CHARGED_MULT;
+    public static StringDoubleValue LUNAR_DIRECT_BASE_COEFFICIENT;
+
     public static StringDoubleValue REACTION_FUSION_01, REACTION_FUSION_02, REACTION_FUSION_03, REACTION_FUSION_04, REACTION_FUSION_05;
     public static StringDoubleValue REACTION_FUSION_06, REACTION_FUSION_07, REACTION_FUSION_08, REACTION_FUSION_09, REACTION_FUSION_10;
     public static StringDoubleValue REACTION_FUSION_11, REACTION_FUSION_12, REACTION_FUSION_13, REACTION_FUSION_14, REACTION_FUSION_15;
@@ -151,10 +154,15 @@ public class ReactionConfig {
         HYPERBLOOM = StringDoubleValue.defineInRange(builder, "reaction-hyper-bloom", 3.0, 0.0, 100.0);
         BURGEON = StringDoubleValue.defineInRange(builder, "reaction-burgeon", 3.0, 0.0, 100.0);
         builder.pop();
+
+        builder.push("reaction-lunar");
+        LUNAR_CHARGED_MULT = StringDoubleValue.defineInRange(builder, "reaction-lunar-charged-mult", 1.8, 0.0, 100.0);
+        LUNAR_DIRECT_BASE_COEFFICIENT = StringDoubleValue.defineInRange(builder, "reaction-lunar-direct-base-coefficient", 3.0, 0.0, 100.0);
+        builder.pop();
     }
 
     public static double getReactionFusion(int level) {
-        return switch (Math.clamp(level, 1, 88)) {
+        return switch (Math.clamp(level, 1, 90)) {
             case 1 -> REACTION_FUSION_01.get();
             case 2 -> REACTION_FUSION_02.get();
             case 3 -> REACTION_FUSION_03.get();

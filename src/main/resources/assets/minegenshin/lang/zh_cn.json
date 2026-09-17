@@ -183,6 +183,7 @@
   "itemGroup.minegenshin.regularItemGroup": "像素原神-常规物品",
 
   "character.name.shenhe": "申鹤",
+  "character.name.test": "测试",
   "character.name.arlecchino": "阿蕾奇诺",
   "character.name.raiden_shogun": "雷电将军",
   "character.name.columbina": "哥伦比娅",
@@ -306,6 +307,9 @@
   "reaction.minegenshin.spread": "蔓激化",
   "reaction.minegenshin.frozen": "冻结",
   "reaction.minegenshin.crystallize": "结晶",
+  "reaction.minegenshin.lunar_charged": "月感电",
+  "reaction.minegenshin.lunar_bloom": "月绽放",
+  "reaction.minegenshin.lunar_crystallize": "月结晶",
 
   "gui.minegenshin.character_select.deploy": "出战",
   "gui.minegenshin.character_select.recall": "换下",

@@ -61,6 +61,10 @@ public class DamageTypeRegistry {
     public static final ResourceKey<DamageType> MONSTER =
             ResourceKey.create(Registries.DAMAGE_TYPE, Minegenshin.id("monster"));
 
+    // 月感电 —— 对应 AttackType.LUNAR_CHARGED
+    public static final ResourceKey<DamageType> LUNAR_CHARGED =
+            ResourceKey.create(Registries.DAMAGE_TYPE, Minegenshin.id("lunar_charged"));
+
     // ========== 解析方法 ==========
 
     /**
@@ -78,6 +82,7 @@ public class DamageTypeRegistry {
             case ELEMENTAL_BURST -> ELEMENTAL_BURST;    // 元素爆发
             case SPECIAL -> SPECIAL;                    // 特殊/环境伤害
             case MONSTER -> MONSTER;                    // 怪物伤害
+            case LUNAR_CHARGED -> LUNAR_CHARGED;        // 月感电
         };
     }
 

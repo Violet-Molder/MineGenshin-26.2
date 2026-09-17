@@ -23,6 +23,9 @@ public enum ElementalReactionType {
   // 星体系
 
   // 月体系
+  LUNAR_CHARGED("reaction.minegenshin.lunar_charged"), // 雷+水 (月感电)
+  LUNAR_BLOOM("reaction.minegenshin.lunar_bloom"), // 草+水 (月绽放) - 占位
+  LUNAR_CRYSTALLIZE("reaction.minegenshin.lunar_crystallize"), // 岩+水 (月结晶) - 占位
 
   // 特殊反应
   FROZEN("reaction.minegenshin.frozen"), // 水+冰

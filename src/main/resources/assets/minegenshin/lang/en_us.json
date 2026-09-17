@@ -222,6 +222,7 @@
   "character.name.arlecchino": "Arlecchino",
   "character.name.raiden_shogun": "Raiden Shogun",
   "character.name.shenhe": "Shenhe",
+  "character.name.test": "Test",
   "character.name.columbina": "Columbina",
 
   "message.minegenshin.wish.draw_character": "Congratulations, you have drawn a new character:%s",
