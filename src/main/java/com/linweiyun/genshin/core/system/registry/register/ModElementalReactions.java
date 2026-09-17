@@ -3,6 +3,7 @@ package com.linweiyun.genshin.core.system.registry.register;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.ElectroChargedReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.FreezeReaction;
+import com.linweiyun.genshin.core.system.reaction.builtin.LunarChargedReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.MeltReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.VaporizeReaction;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
@@ -41,6 +42,15 @@ public class ModElementalReactions {
                     "minegenshin:hydro", "minegenshin:cyro",
                     1f, 1f,
                     0));
+
+    // 月感电：水:雷 = 1:1，拦截感电反应（需要哥伦比娅在场，优先级高于普通感电）
+    public static final DeferredHolder<ElementalReaction, LunarChargedReaction> LUNAR_CHARGED = ELEMENTAL_REACTIONS.register(
+            "lunar_charged",
+            () -> new LunarChargedReaction(
+                    ElementalReactionType.LUNAR_CHARGED,
+                    "minegenshin:hydro", "minegenshin:electro",
+                    1f, 1f,
+                    -1));
 
     // 感电：水:雷 = 1:1，共存反应
     public static final DeferredHolder<ElementalReaction, ElectroChargedReaction> ELECTRO_CHARGED = ELEMENTAL_REACTIONS.register(

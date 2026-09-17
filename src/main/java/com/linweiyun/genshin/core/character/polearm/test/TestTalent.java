@@ -1,7 +1,7 @@
-package com.linweiyun.genshin.core.character.catalyst.columbina;
+package com.linweiyun.genshin.core.character.polearm.test;
 
+import com.linweiyun.genshin.config.character.ShenheTalentConfig;
 import com.linweiyun.genshin.content.skill_node.AreaEntityCollector;
-import com.linweiyun.genshin.content.skill_node.TargetSeeker;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.ModElements;
@@ -19,47 +19,35 @@ import org.slf4j.Logger;
 
 import java.util.List;
 
-public class ColumbinaTalent extends TalentBase {
+public class TestTalent extends TalentBase {
+    public static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-    private static final float[] COMBO_MULTIPLIERS = {0.4f, 0.45f, 0.6f};
-
-    public ColumbinaTalent() {
-        super(3,
-                List.of(0, 0, 0),
-                List.of(0, 0, 0),
-                List.of(15, 15, 0));
+    public TestTalent() {
+        super(5,
+                List.of(1, 1, 1, 1, 1),
+                List.of(2, 2, 2, 2, 2),
+                List.of(15, 15, 15, 15, 0));
     }
 
     @Override
     public void attack(Player player, PGCharacter character, int comboStage) {
+        LOGGER.info("TestTalent attack");
         Level level = player.level();
         if (level.isClientSide()) return;
 
         int stage = comboStage % this.maxCombo;
-        float multiplier = stage < COMBO_MULTIPLIERS.length ? COMBO_MULTIPLIERS[stage] : 1.0f;
+        int naLevel = Math.max(1, character.getData().getNormalAttackLevel());
 
-        LivingEntity primaryTarget = new TargetSeeker(player, 10.0, TargetSeeker.TargetingType.LINE_OF_SIGHT).execute();
+        float multiplier = (float) (
+                ShenheTalentConfig.getNABase(stage)
+                        + ShenheTalentConfig.getNAPerLevel(stage) * (naLevel - 1)
+        );
 
-        if (primaryTarget == null) {
-            LOGGER.info("[哥伦比娅] 索敌未发现目标");
-            return;
-        }
+        Vec3 startPos = player.position();
+        Vec3 lookDir = player.getLookAngle();
+        Vec3 endPos = startPos.add(lookDir.scale(2.5f));
 
-        LOGGER.info("[哥伦比娅] 第{}段 索敌锁定: {} ({})", stage + 1,
-                primaryTarget.getName().getString(),
-                primaryTarget.position().toString());
-
-        float aoeRange = stage == 2 ? 1.0f : 0.5f;
-        Vec3 targetPos = primaryTarget.position();
-        List<LivingEntity> targets = new AreaEntityCollector(level,
-                targetPos.add(-aoeRange, -aoeRange, -aoeRange),
-                targetPos.add(aoeRange, aoeRange, aoeRange),
-                aoeRange).execute();
-
-        LOGGER.info("[哥伦比娅] AoE范围{}格, 命中{}个目标: {}",
-                aoeRange, targets.size(),
-                targets.stream().map(e -> e.getName().getString()).toList());
+        List<LivingEntity> targets = new AreaEntityCollector(level, startPos, endPos, 1.0f).execute();
 
         for (LivingEntity target : targets) {
             if (target != player) {
@@ -71,8 +59,19 @@ public class ColumbinaTalent extends TalentBase {
                 ModDamageSource source = ModDamageSource.from(spec, player);
                 if (target.level() instanceof ServerLevel serverLevel) {
                     target.hurtServer(serverLevel, source, 0f);
+                    if (stage == 4) {
+                        target.hurtServer(serverLevel, source, 0f);
+                    }
                 }
             }
         }
+    }
+
+    @Override
+    public void chargeAttack(Player player, PGCharacter character) {
+    }
+
+    @Override
+    public void elementalSkill(Player player, PGCharacter character, int skillType) {
     }
 }

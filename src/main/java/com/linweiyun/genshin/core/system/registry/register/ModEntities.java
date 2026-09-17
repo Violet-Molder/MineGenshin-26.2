@@ -2,6 +2,7 @@ package com.linweiyun.genshin.core.system.registry.register;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
+import com.linweiyun.genshin.content.entities.area.ThunderCloudEntity;
 import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
 import com.linweiyun.genshin.content.entities.teyvat.monster.slime.SlimeCyro;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -54,6 +55,19 @@ public class ModEntities {
                                             Registries.ENTITY_TYPE,
                                             Minegenshin.id("slime_cyro")
                                     )));
+
+    public static final Supplier<EntityType<ThunderCloudEntity>> THUNDER_CLOUD =
+            ENTITIES.register(
+                    "thunder_cloud",
+                    () -> EntityType.Builder.<ThunderCloudEntity>of(ThunderCloudEntity::new, MobCategory.MISC)
+                            .sized(1.0F, 1.0F)
+                            .clientTrackingRange(8)
+                            .updateInterval(20)
+                            .build(ResourceKey.create(
+                                    Registries.ENTITY_TYPE,
+                                    Minegenshin.id("thunder_cloud"))
+                            ));
+
     public static void register(IEventBus eventBus) {
         ENTITIES.register(eventBus);
         eventBus.addListener(ModEntities::registerEntityAttributes);

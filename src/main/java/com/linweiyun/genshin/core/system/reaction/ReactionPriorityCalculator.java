@@ -1,12 +1,23 @@
 package com.linweiyun.genshin.core.system.reaction;
 
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
+import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.character.catalyst.columbina.Columbina;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
-import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.mojang.logging.LogUtils;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import org.slf4j.Logger;
 
 public class ReactionPriorityCalculator {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final GenshinElement[] DEFAULT_ORDER = {
             ModElements.ANEMO.get(), ModElements.CYRO.get(), ModElements.ELECTRO.get(),
@@ -45,6 +56,27 @@ public class ReactionPriorityCalculator {
             if (inst instanceof ElementalAttachmentInstance ea
                     && ea.getElement() == ModElements.AGGRAVATE.get()) return true;
         }
+        return false;
+    }
+
+    public static boolean hasColumbinaInParty(ReactionContext context) {
+        Entity attacker = context.attackerEntity();
+//        LOGGER.info("[哥伦比娅检测] attacker={}", attacker);
+        if (!(attacker instanceof Player player)) return false;
+        if (!(player.level() instanceof ServerLevel level)) return false;
+
+        for (Player p : level.players()) {
+            PlayerCharactersAttachment att = p.getData(
+                    AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            for (int i = 0; i < 4; i++) {
+                PGCharacter character = att.getPartyCharacter(i);
+                if (character == null) continue;
+//                LOGGER.info("[哥伦比娅检测] player={} slot={} characterClass={}",
+//                        p.getName().getString(), i, character.getClass().getSimpleName());
+                if (character instanceof Columbina) return true;
+            }
+        }
+//        LOGGER.info("[哥伦比娅检测] 未找到哥伦比娅");
         return false;
     }
 }

@@ -81,6 +81,14 @@ public class DamageTypeDataProviderGIM extends DatapackBuiltinEntriesProvider {
                                             DamageEffects.HURT,
                                             DeathMessageType.DEFAULT
                                             ));
+                            bootstrap.register(
+                                    DamageTypeRegistry.LUNAR_CHARGED,
+                                    new DamageType(
+                                            "lunar_charged",
+                                            DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
+                                            0.1f,
+                                            DamageEffects.HURT,
+                                            DeathMessageType.DEFAULT));
                         }),
                 Set.of(Minegenshin.MOD_ID));
     }

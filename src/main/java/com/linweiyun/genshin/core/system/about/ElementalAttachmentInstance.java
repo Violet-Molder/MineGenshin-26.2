@@ -44,11 +44,18 @@ public class ElementalAttachmentInstance extends StatusInstance {
     @Persisted(key = "replenish_timer")
     private int replenishTimer;
 
+    @Persisted(key = "source_character_key")
+    private String sourceCharacterKey;
+
+    @Persisted(key = "attach_tick")
+    private long attachTick;
+
     private transient StatusContainer container;
     private transient LivingEntity owner;
 
     public ElementalAttachmentInstance(GenshinElement element, AttachmentSource source,
-                                       AttachmentProfile profile, float initialUnit) {
+                                       AttachmentProfile profile, float initialUnit,
+                                       String sourceCharacterKey, long attachTick) {
         this.typeId = TYPE_ID;
         this.element = element;
         this.elementId = resolveElementId(element);
@@ -60,6 +67,13 @@ public class ElementalAttachmentInstance extends StatusInstance {
         this.replenishTick = 200;
         this.replenishAmount = 1.0f;
         this.replenishTimer = replenishTick;
+        this.sourceCharacterKey = sourceCharacterKey;
+        this.attachTick = attachTick;
+    }
+
+    public ElementalAttachmentInstance(GenshinElement element, AttachmentSource source,
+                                       AttachmentProfile profile, float initialUnit) {
+        this(element, source, profile, initialUnit, null, 0L);
     }
 
     public ElementalAttachmentInstance() {
@@ -111,6 +125,8 @@ public class ElementalAttachmentInstance extends StatusInstance {
         c.replenishTick = this.replenishTick;
         c.replenishAmount = this.replenishAmount;
         c.replenishTimer = this.replenishTimer;
+        c.sourceCharacterKey = this.sourceCharacterKey;
+        c.attachTick = this.attachTick;
         c.container = null;
         return c;
     }
@@ -134,6 +150,12 @@ public class ElementalAttachmentInstance extends StatusInstance {
     /** 覆盖规则：量多则覆盖，设置新 quantity（衰减速率是否替换由 Helper 决定） */
     public void refreshQuantity(float newQuantity) {
         this.unit = newQuantity;
+    }
+
+    /** 覆盖时同步更新来源角色与附着时间戳 */
+    public void refreshSource(String newSourceCharacterKey, long newAttachTick) {
+        this.sourceCharacterKey = newSourceCharacterKey;
+        this.attachTick = newAttachTick;
     }
 
     /** 覆盖规则：火/激/燃 覆盖时直接替换衰减速率 */
@@ -164,6 +186,8 @@ public class ElementalAttachmentInstance extends StatusInstance {
     public float getCurrentDecayPerSecond() { return currentDecayPerSecond; }
     public boolean isPermanent() { return permanent; }
     public LivingEntity getOwner() { return owner; }
+    public String getSourceCharacterKey() { return sourceCharacterKey; }
+    public long getAttachTick() { return attachTick; }
 
     private static String resolveElementId(GenshinElement element) {
         Identifier key = com.linweiyun.genshin.core.system.registry.ModRegistries.ELEMENT_REGISTRY.getKey(element);

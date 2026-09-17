@@ -44,7 +44,10 @@ public enum AttackType {
     SPECIAL(null, "attack_type.special"),
 
     //怪物伤害
-    MONSTER(null, "attack_type.monster");
+    MONSTER(null, "attack_type.monster"),
+
+    // 月感电 —— 雷暴云造成的月曜反应伤害
+    LUNAR_CHARGED(null, "attack_type.lunar_charged");
 
     // 衰减标签 —— 决定该攻击类型的附着冷却共用关系
     // null表示不使用附着冷却系统（如特殊/环境伤害）

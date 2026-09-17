@@ -60,7 +60,11 @@ public class ElementalReactionManager {
 
             for (ElementalReaction reaction : ModRegistries.ELEMENTAL_REACTIONS_REGISTRY) {
                 if (!reaction.canMatch(attackerMain, defenderMain)) continue;
-                if (reaction.isBlocked(context)) continue;
+
+                boolean blocked = reaction.isBlocked(context);
+                LOGGER.info("[反应匹配] reaction={} canMatch=true isBlocked={} | attacker={} defender={}",
+                        reaction.getReactionType(), blocked, attackerMain.getId(), defenderMain.getId());
+                if (blocked) continue;
 
                 int priority = reaction.getBasePriority();
                 if (priority < 0) {

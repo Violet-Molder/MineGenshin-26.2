@@ -21,7 +21,8 @@ public class ElectroChargedReaction extends ElementalReaction {
 
     @Override
     public boolean isBlocked(ReactionContext context) {
-        return ReactionPriorityCalculator.hasFrozen(context.targetContainer());
+        return ReactionPriorityCalculator.hasFrozen(context.targetContainer())
+                || ReactionPriorityCalculator.hasColumbinaInParty(context);
     }
 
     @Override

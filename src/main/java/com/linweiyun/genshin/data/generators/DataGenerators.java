@@ -10,7 +10,7 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
 public class DataGenerators {
   @SubscribeEvent
   public static void gatherData(GatherDataEvent.Client event) {
-    event.createProvider(ModModeProvider::new);
+//    event.createProvider(ModModeProvider::new);
     event.createProvider(DamageTypeDataProviderGIM::new);
   }
 }

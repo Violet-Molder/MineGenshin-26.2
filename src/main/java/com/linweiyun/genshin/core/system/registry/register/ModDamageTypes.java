@@ -37,6 +37,10 @@ public class ModDamageTypes {
     public static final DeferredHolder<DamageType, DamageType> MONSTER_TYPE =
             DAMAGE_TYPES.register("monster",
                     () -> new DamageType("monster", 0));
+
+    public static final DeferredHolder<DamageType, DamageType> LUNAR_CHARGED_TYPE =
+            DAMAGE_TYPES.register("lunar_charged",
+                    () -> new DamageType("lunar_charged", 0));
     // ========== 注册方法 ==========
 
     /**

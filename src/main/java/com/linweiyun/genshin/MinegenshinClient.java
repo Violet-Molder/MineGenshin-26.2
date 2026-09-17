@@ -3,6 +3,7 @@ package com.linweiyun.genshin;
 import com.geckolib.renderer.GeoEntityRenderer;
 import com.linweiyun.genshin.render.render.entity.ElementalOrbRenderer;
 import com.linweiyun.genshin.render.render.entity.FieldTalismanSpiritRender;
+import com.linweiyun.genshin.render.render.entity.ThunderCloudRenderer;
 import com.linweiyun.genshin.render.gui.screens.ScreenArtifaceInfo;
 import com.linweiyun.genshin.core.attachment.ClientAttachmentSync;
 import com.linweiyun.genshin.core.system.registry.register.ModEntities;
@@ -53,6 +54,8 @@ public class MinegenshinClient {
         );
         event.registerEntityRenderer(
                 ModEntities.ELEMENTAL_ORB.get(), ElementalOrbRenderer::new);
+        event.registerEntityRenderer(
+                ModEntities.THUNDER_CLOUD.get(), ThunderCloudRenderer::new);
     }
 
 

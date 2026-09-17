@@ -14,6 +14,7 @@ import com.linweiyun.genshin.core.system.combat.damage.TeyvatConvertedDamageSour
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
+import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
@@ -128,7 +129,22 @@ public class LivingEntityHurtMixin {
                         ? DamageIndicatorFactory.Options.builder().baseScale(4.4f).startScale(12.4f).build()
                         : DamageIndicatorFactory.Options.DEFAULT;
 
-                if (element == ModElements.HYDRO.get()) {
+                if (spec.getDamageType() == ModDamageSpec.DamageType.LUNAR) {
+                    int electroColor = DamageIndicatorFactory.getColorForElement(ModElements.ELECTRO.get());
+                    DamageIndicatorFactory.reactionGradient(target,
+                            ElementalReactionType.LUNAR_CHARGED, electroColor, 0xFFFFFF);
+
+                    int topColor = 0xAA55FF;
+                    int bottomColor = 0xFFFFFF;
+                    String text = String.format("%.0f", finalDamage);
+                    if (isCrit) {
+                        DamageIndicatorFactory.textGradient(target, text, topColor, bottomColor,
+                                DamageIndicatorFactory.Options.of(2.6f, 7.0f, 1100L));
+                    } else {
+                        DamageIndicatorFactory.textGradient(target, text, topColor, bottomColor,
+                                DamageIndicatorFactory.Options.of(2.2f, 6.2f, 950L));
+                    }
+                } else if (element == ModElements.HYDRO.get()) {
                     int hydroColor = DamageIndicatorFactory.getColorForElement(ModElements.HYDRO.get());
                     if (isCrit) {
                         DamageIndicatorFactory.critGradient(
