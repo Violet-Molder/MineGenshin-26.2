@@ -89,6 +89,14 @@ public class DamageTypeDataProviderGIM extends DatapackBuiltinEntriesProvider {
                                             0.1f,
                                             DamageEffects.HURT,
                                             DeathMessageType.DEFAULT));
+                            bootstrap.register(
+                                    DamageTypeRegistry.SWIRL,
+                                    new DamageType(
+                                            "swirl",
+                                            DamageScaling.WHEN_CAUSED_BY_LIVING_NON_PLAYER,
+                                            0.1f,
+                                            DamageEffects.HURT,
+                                            DeathMessageType.DEFAULT));
                         }),
                 Set.of(Minegenshin.MOD_ID));
     }

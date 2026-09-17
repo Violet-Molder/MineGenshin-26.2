@@ -50,7 +50,7 @@ public class HurtEntityHelper {
             LivingEntity sourceEntity = (LivingEntity) damageSource.getEntity();
             float damage = switch (spec.getDamageType()) {
                 case TRANSFORMATIVE -> calculateTransformativeDamage(
-                        sourceEntity, target, spec.getTransformativeReactionType());
+                        sourceEntity, target, spec.getTransformativeReactionType(), spec.getElement());
                 case LUNAR -> calculateLunarDirectDamage(
                         sourceEntity, attacker, target, spec);
                 case QUICKEN -> 0f;
@@ -120,7 +120,19 @@ public class HurtEntityHelper {
         float elementCoefficient = decayResult.getElementCoefficient();
 
         AttachmentProfile profile = chooseProfile(spec.getElementAmount());
+        if (spec.getElement().isInstant()) {
+            profile = new AttachmentProfile(
+                    profile.getBaseQuantity(), profile.getLossMultiplier(),
+                    1.0f, 0.5f);
+        }
         boolean canAttach = spec.hasAuraPotential() && elementCoefficient > 0;
+        if (canAttach && spec.getElement().isInstant()) {
+            StatusContainer checkContainer = target.getData(AttachmentRegistration.CONTAINER);
+            if (checkContainer == null
+                    || !ElementalReactionManager.canElementReact(spec.getElement(), checkContainer)) {
+                canAttach = false;
+            }
+        }
         if (canAttach) {
             ElementalAttachmentHelper.attach(target,
                     StatusAccessor.of(target), spec.getElement(),
@@ -138,9 +150,10 @@ public class HurtEntityHelper {
             }
         }
 
+        StatusContainer container = null;
         ReactionResult reactionResult = null;
         if (canAttach) {
-            StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
+            container = target.getData(AttachmentRegistration.CONTAINER);
             ReactionContext ctx = new ReactionContext(
                     spec.getElement(), spec.getElementAmount() * elementCoefficient,
                     AttachmentSource.NORMAL_ATTACK, profile, spec,
@@ -262,7 +275,7 @@ public class HurtEntityHelper {
         double em = attacker.getData().getAttributeTotalValue(ModAttributes.ELEMENTAL_MASTERY.value());
         float bonus = switch (reactionType) {
             case MELT, VAPORIZE -> (float) ((2.78 * em) / (em + 1400.0));
-            case OVERLOAD, SUPERCONDUCT, ELECTRO_CHARGED, BURNING, BLOOM, HYPERBLOOM, BURGEON
+            case OVERLOAD, SUPERCONDUCT, ELECTRO_CHARGED, SWIRL, BURNING, BLOOM, HYPERBLOOM, BURGEON
                     -> (float) ((16.0 * em) / (em + 2000.0));
             case LUNAR_CHARGED, LUNAR_BLOOM, LUNAR_CRYSTALLIZE
                     -> (float) ((6.0 * em) / (em + 2000.0));
@@ -291,29 +304,34 @@ public class HurtEntityHelper {
     // ============================================================
 
     public static float calculateTransformativeDamage(LivingEntity attacker, LivingEntity target,
-                                                       ElementalReactionType reactionType) {
+                                                       ElementalReactionType reactionType,
+                                                       GenshinElement dmgElementOverride) {
         PGCharacter character = resolveCharacter(attacker);
         int level = CombatEntityAccessor.getAttackerLevel(attacker, character);
         double levelCoef = ReactionConfig.getReactionFusion(level);
 
         float reactionMult = switch (reactionType) {
             case ELECTRO_CHARGED -> ReactionConfig.ELECTROCHARGED.getFloat();
+            case SWIRL -> ReactionConfig.SWIRL.getFloat();
             default -> 1.0f;
         };
 
         float reactionBonus = reactionBonusZone(character, reactionType);
 
-        GenshinElement dmgElement = switch (reactionType) {
-            case ELECTRO_CHARGED -> ModElements.ELECTRO.get();
-            default -> ModElements.FYSIKOS.get();
-        };
+        GenshinElement dmgElement;
+        if (dmgElementOverride != null) {
+            dmgElement = dmgElementOverride;
+        } else {
+            dmgElement = switch (reactionType) {
+                case ELECTRO_CHARGED -> ModElements.ELECTRO.get();
+                default -> ModElements.FYSIKOS.get();
+            };
+        }
         PGCharacter targetChar = resolveCharacter(target);
         float resZone = resistanceZone(dmgElement, target, targetChar);
 
         float damage = (float) (levelCoef * reactionMult * reactionBonus * resZone);
 
-        //        LOGGER.info("[剧变伤害] attackerLevel={} | levelCoef={} | reactionMult={} | reactionBonus={} | resZone={} | final={}",
-//                level, levelCoef, reactionMult, reactionBonus, resZone, damage);
         return damage;
     }
 

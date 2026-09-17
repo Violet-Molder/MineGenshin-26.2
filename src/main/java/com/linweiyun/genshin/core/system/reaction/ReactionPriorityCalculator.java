@@ -61,22 +61,20 @@ public class ReactionPriorityCalculator {
 
     public static boolean hasColumbinaInParty(ReactionContext context) {
         Entity attacker = context.attackerEntity();
-//        LOGGER.info("[哥伦比娅检测] attacker={}", attacker);
         if (!(attacker instanceof Player player)) return false;
         if (!(player.level() instanceof ServerLevel level)) return false;
+        return hasColumbinaInParty(level);
+    }
 
+    public static boolean hasColumbinaInParty(ServerLevel level) {
         for (Player p : level.players()) {
             PlayerCharactersAttachment att = p.getData(
                     AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             for (int i = 0; i < 4; i++) {
                 PGCharacter character = att.getPartyCharacter(i);
-                if (character == null) continue;
-//                LOGGER.info("[哥伦比娅检测] player={} slot={} characterClass={}",
-//                        p.getName().getString(), i, character.getClass().getSimpleName());
                 if (character instanceof Columbina) return true;
             }
         }
-//        LOGGER.info("[哥伦比娅检测] 未找到哥伦比娅");
         return false;
     }
 }

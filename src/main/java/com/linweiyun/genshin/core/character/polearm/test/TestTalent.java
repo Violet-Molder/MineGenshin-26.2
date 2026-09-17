@@ -51,7 +51,7 @@ public class TestTalent extends TalentBase {
 
         for (LivingEntity target : targets) {
             if (target != player) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.HYDRO.get())
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.ANEMO.get())
                         .multiplier(multiplier)
                         .elementAmount(AttachmentType.ULTRA_STRONG.getInitialAmount())
                         .attackerCharacter(character)

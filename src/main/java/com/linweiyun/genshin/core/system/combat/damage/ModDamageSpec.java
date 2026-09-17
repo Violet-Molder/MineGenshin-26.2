@@ -154,6 +154,17 @@ public class ModDamageSpec {
                 DamageType.TRANSFORMATIVE, reactionType, 0f, 0f);
     }
 
+    public static ModDamageSpec transformative(ElementalReactionType reactionType,
+                                                GenshinElement element, AttackType attackType) {
+        return new ModDamageSpec(
+                attackType, element,
+                0f, 0f, 0f, 0f,
+                0f, 0f,
+                0f, null,
+                null,
+                DamageType.TRANSFORMATIVE, reactionType, 0f, 0f);
+    }
+
     public static ModDamageSpec lunar(ElementalReactionType reactionType) {
         return new ModDamageSpec(
                 AttackType.LUNAR_CHARGED, ModElements.ELECTRO.get(),
