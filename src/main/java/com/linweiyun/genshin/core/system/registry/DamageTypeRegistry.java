@@ -65,6 +65,10 @@ public class DamageTypeRegistry {
     public static final ResourceKey<DamageType> LUNAR_CHARGED =
             ResourceKey.create(Registries.DAMAGE_TYPE, Minegenshin.id("lunar_charged"));
 
+    // 扩散 —— 对应 AttackType.SWIRL
+    public static final ResourceKey<DamageType> SWIRL =
+            ResourceKey.create(Registries.DAMAGE_TYPE, Minegenshin.id("swirl"));
+
     // ========== 解析方法 ==========
 
     /**
@@ -83,6 +87,7 @@ public class DamageTypeRegistry {
             case SPECIAL -> SPECIAL;                    // 特殊/环境伤害
             case MONSTER -> MONSTER;                    // 怪物伤害
             case LUNAR_CHARGED -> LUNAR_CHARGED;        // 月感电
+            case SWIRL -> SWIRL;                        // 扩散
         };
     }
 

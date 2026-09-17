@@ -140,6 +140,7 @@ public class StatusContainer implements IPersistedSerializable {
             }
         }
         frozenDecayState.onTick(hadFrozenAlive);
+        electroChargedTickState.setContainer(this);
         electroChargedTickState.onTick();
     }
 

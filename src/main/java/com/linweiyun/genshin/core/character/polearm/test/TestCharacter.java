@@ -16,7 +16,7 @@ public class TestCharacter extends PolearmCharacter {
 
     public TestCharacter() {
         super(135005, 5, Component.translatable("character.name.test"),
-                ModElements.HYDRO.getId().toString(), CharacterAscendAttribute.ATK,
+                ModElements.ANEMO.getId().toString(), CharacterAscendAttribute.ATK,
                 10 * 20, 10 * 20, 80f, "test",
                 Map.of(
                         ModAttributes.MAX_HP.getId(), ShenheAttributeConfig::getAllHp,

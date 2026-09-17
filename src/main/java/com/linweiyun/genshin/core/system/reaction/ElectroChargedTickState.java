@@ -59,7 +59,12 @@ public class ElectroChargedTickState implements IPersistedSerializable {
     }
 
     public void onTick() {
-        if (!active || container == null) return;
+        if (container == null) return;
+
+        if (!active) {
+            tryAutoActivate();
+            if (!active) return;
+        }
 
         tickCounter++;
         if (tickCounter < TICK_INTERVAL) return;
@@ -97,6 +102,29 @@ public class ElectroChargedTickState implements IPersistedSerializable {
 
         if (hydroInst.getUnit() <= 0 || electroInst.getUnit() <= 0) {
             active = false;
+        }
+    }
+
+    private void tryAutoActivate() {
+        if (ReactionPriorityCalculator.hasFrozen(container)) return;
+
+        LivingEntity target = resolveTarget();
+        if (target == null || !target.isAlive()) return;
+        if (!(target.level() instanceof ServerLevel level)) return;
+
+        if (ReactionPriorityCalculator.hasColumbinaInParty(level)) return;
+
+        ElementalAttachmentInstance hydroInst =
+                ElectroChargedReaction.findElement(container, ModElements.HYDRO.get());
+        ElementalAttachmentInstance electroInst =
+                ElectroChargedReaction.findElement(container, ModElements.ELECTRO.get());
+
+        if (hydroInst != null && electroInst != null
+                && hydroInst.getUnit() > 0 && electroInst.getUnit() > 0) {
+            active = true;
+            tickCounter = TICK_INTERVAL - 1;
+            targetEntity = target;
+            LOGGER.info("[感电自激活] target={}", target.getName().getString());
         }
     }
 

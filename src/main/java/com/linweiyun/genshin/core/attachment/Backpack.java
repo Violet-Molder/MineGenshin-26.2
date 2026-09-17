@@ -62,7 +62,6 @@ public class Backpack implements IPersistedSerializable, Container, IContainerUI
             this.itemClass = itemClass;
         }
     }
-
     @Persisted(key = "weapons")
     private final ArrayList<ItemStack> weapons = new ArrayList<>(Collections.nCopies(Category.WEAPONS.maxCapacity, ItemStack.EMPTY));
     @Persisted(key = "artifacts")

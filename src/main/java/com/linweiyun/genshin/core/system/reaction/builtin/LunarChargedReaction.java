@@ -30,7 +30,8 @@ public class LunarChargedReaction extends ElementalReaction {
 
     @Override
     public boolean isBlocked(ReactionContext context) {
-        return !ReactionPriorityCalculator.hasColumbinaInParty(context);
+        return !ReactionPriorityCalculator.hasColumbinaInParty(context)
+                || ReactionPriorityCalculator.hasFrozen(context.targetContainer());
     }
 
     @Override

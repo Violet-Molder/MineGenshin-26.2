@@ -55,6 +55,7 @@ public final class DamageIndicatorFactory {
     public static int getColorForReaction(ElementalReactionType type) {
         return switch (type) {
             case ELECTRO_CHARGED, LUNAR_CHARGED -> parseColor(WorldTextColorConfig.ELECTRO_CHARGED_COLOR.get());
+            case SWIRL -> parseColor(WorldTextColorConfig.SWIRL_COLOR.get());
             default -> parseColor(WorldTextColorConfig.VAPORIZE_COLOR.get());
         };
     }

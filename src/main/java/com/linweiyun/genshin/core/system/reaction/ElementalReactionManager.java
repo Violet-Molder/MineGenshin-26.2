@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.reaction;
 
+import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
@@ -44,6 +45,29 @@ public class ElementalReactionManager {
         return 99;
     }
 
+    public static boolean canElementReact(GenshinElement attackerElement,
+                                          StatusContainer container) {
+        GenshinElement attackerMain = attackerElement.getMainElement();
+        if (attackerMain == null) return false;
+
+        for (StatusInstance inst : container.getAll()) {
+            if (inst.isFinished()) continue;
+            if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
+            if (ea.getElement().isInstant()) continue;
+            if (ea.getElement() == ModElements.FYSIKOS.get()) continue;
+
+            GenshinElement defenderMain = ea.getElement().getMainElement();
+            if (defenderMain == null) continue;
+
+            for (ElementalReaction reaction : ModRegistries.ELEMENTAL_REACTIONS_REGISTRY) {
+                if (reaction.canMatch(attackerMain, defenderMain)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public static ReactionResult tryReactAfterAttach(ReactionContext context) {
         float remainingAttackerQty = context.attackerUnit();
 
@@ -79,6 +103,7 @@ public class ElementalReactionManager {
         candidates.sort(Comparator.comparingInt(c -> c.priority));
 
         ReactionResult firstAmplified = null;
+        boolean anyReactionOccurred = false;
 
         for (Candidate cand : candidates) {
             if (remainingAttackerQty <= 0f) break;
@@ -98,6 +123,7 @@ public class ElementalReactionManager {
             ReactionResult result = cand.reaction.execute(roundContext);
 
             if (result.isReacted()) {
+                anyReactionOccurred = true;
                 remainingAttackerQty -= result.getConsumedAttacker();
                 if (firstAmplified == null && result.isAmplified()) {
                     firstAmplified = result;
@@ -105,7 +131,9 @@ public class ElementalReactionManager {
             }
         }
 
-        applyAttackerResidual(context, remainingAttackerQty);
+        if (anyReactionOccurred) {
+            applyAttackerResidual(context, remainingAttackerQty);
+        }
 
         return firstAmplified != null ? firstAmplified :
                 ReactionResult.builder(null).build();
@@ -122,6 +150,7 @@ public class ElementalReactionManager {
             GenshinElement defMain = ea.getElement().getMainElement();
             if (defMain == attackerMain) continue;
             if (ea.getElement() == ModElements.FYSIKOS.get()) continue;
+            if (ea.getElement().isInstant()) continue;
 
             result.add(ea);
         }
