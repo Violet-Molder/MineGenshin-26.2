@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.character.attachment.ModCharacterAttachmentTypes;
 import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
@@ -75,6 +76,7 @@ public class Minegenshin {
 
     private void commonSetup(FMLCommonSetupEvent event) {
         ModElements.setupSubElements();
+        NetworkManager.init();
     }
 
     public static Identifier id(String path) {

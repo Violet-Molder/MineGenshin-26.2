@@ -6,12 +6,15 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.sync.ISyncManagedEntity;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.TagValueInput;
+
+import java.util.BitSet;
 
 public class ClientHandler {
 
@@ -159,5 +162,15 @@ public class ClientHandler {
 
     public static void invasionStatusClientHandler(boolean invaded) {
         TeyvatWorldInvasion.setClientInvaded(invaded);
+    }
+
+    public static void entitySyncClientHandler(int entityId, byte[] changedMask, byte[] data, CompoundTag extra) {
+        var mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        var entity = mc.level.getEntity(entityId);
+        if (entity instanceof ISyncManagedEntity syncEntity) {
+            var changed = BitSet.valueOf(changedMask);
+            syncEntity.handleSyncPacket(mc.level.registryAccess(), changed, data, extra);
+        }
     }
 }

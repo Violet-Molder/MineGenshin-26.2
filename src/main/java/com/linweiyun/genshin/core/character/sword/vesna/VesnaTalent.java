@@ -38,7 +38,6 @@ public class VesnaTalent extends TalentBase {
     @Override
     public void attack(Player player, PGCharacter character, int comboStage) {
         Level level = player.level();
-        if (level.isClientSide()) return;
 
         int stage = comboStage % this.maxCombo;
         int naLevel = Math.max(1, character.getData().getNormalAttackLevel());
