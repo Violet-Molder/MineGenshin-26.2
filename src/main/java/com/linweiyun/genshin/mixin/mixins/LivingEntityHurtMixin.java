@@ -73,8 +73,6 @@ public class LivingEntityHurtMixin {
                     float vanillaAttack = (float) livingAttacker.getAttributeBaseValue(Attributes.ATTACK_DAMAGE);
                     if (vanillaAttack > 0) {
                         float convertedDamage = damage / vanillaAttack * teyvatAttack;
-                        LOGGER.info("[世界入侵伤害转化] 攻击者: {} 原版攻击力: {} MOD攻击力: {} 原始伤害: {} 最终伤害: {}",
-                                attacker.getName().getString(), vanillaAttack, teyvatAttack, damage, convertedDamage);
                         cir.cancel();
                         TeyvatConvertedDamageSource newSource = new TeyvatConvertedDamageSource(source);
                         LivingEntity self = (LivingEntity) (Object) this;
@@ -121,7 +119,6 @@ public class LivingEntityHurtMixin {
             target.setHealth(Math.max(target.getHealth() - finalDamage, 0));
         }
 
-        LOGGER.info("[DI-Mixin] about to call DamageIndicatorFactory, finalDamage={} element={}", finalDamage, element);
         if (finalDamage > 0f) {
             try {
                 boolean isCrit = spec.isCrit();
@@ -130,9 +127,12 @@ public class LivingEntityHurtMixin {
                         : DamageIndicatorFactory.Options.DEFAULT;
 
                 if (spec.getDamageType() == ModDamageSpec.DamageType.LUNAR) {
-                    int electroColor = DamageIndicatorFactory.getColorForElement(ModElements.ELECTRO.get());
-                    DamageIndicatorFactory.reactionGradient(target,
-                            ElementalReactionType.LUNAR_CHARGED, electroColor, 0xFFFFFF);
+                    boolean isDirectLunar = spec.getAtkMultiplier() > 0 || spec.getHpMultiplier() > 0;
+                    if (!isDirectLunar) {
+                        int electroColor = DamageIndicatorFactory.getColorForElement(ModElements.ELECTRO.get());
+                        DamageIndicatorFactory.reactionGradient(target,
+                                ElementalReactionType.LUNAR_CHARGED, electroColor, 0xFFFFFF);
+                    }
 
                     int topColor = 0xAA55FF;
                     int bottomColor = 0xFFFFFF;

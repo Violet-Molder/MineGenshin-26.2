@@ -34,6 +34,7 @@ public class CharacterDataSyncEventHandler {
             PlayerCharactersAttachment playerData = serverPlayer.getData(
                     AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             playerData.fixCharacterTypes();
+            playerData.bindAllOwners(serverPlayer);
 
             PGCharacter shenhe = ModCharacters.getByUUID(135001);
             if (shenhe != null && !playerData.hasCharacter(135001)) {

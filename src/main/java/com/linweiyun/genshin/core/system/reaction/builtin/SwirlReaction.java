@@ -28,7 +28,7 @@ import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.linweiyun.genshin.content.entities.area.StellarVortexEntity;
 import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.system.registry.register.ModEntities;
+import com.linweiyun.genshin.content.entities.ModEntities;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -85,9 +85,6 @@ public class SwirlReaction extends ElementalReaction {
         if (last != null && gameTime - last < SWIRL_COOLDOWN_TICKS) {
             return true;
         }
-        if (ReactionPriorityCalculator.hasFrozen(context.targetContainer())) {
-            return !hasHiddenSwirlable(context.targetContainer());
-        }
         return false;
     }
 
@@ -133,6 +130,19 @@ public class SwirlReaction extends ElementalReaction {
             return ReactionResult.builder(reactionType).build();
         }
 
+        // 在消耗元素前收集星扩散贡献者（消耗后 isFinished 会返回 true）
+        ServerLevel serverLevel = ctx.targetEntity().level() instanceof ServerLevel sl ? sl : null;
+        boolean isStellarSwirl = attackerIsAnemo && spreadElement == ModElements.CYRO.get()
+                && serverLevel != null
+                && ReactionPriorityCalculator.hasStellarSwirlParticipant(serverLevel);
+        PGCharacter triggerCharacter = null;
+        List<PGCharacter> preConsumeWindContributors = List.of();
+        if (isStellarSwirl) {
+            triggerCharacter = resolveTriggerCharacter(ctx.attackerEntity());
+            preConsumeWindContributors = new ArrayList<>(ctx.targetContainer().getActiveContributors(
+                    serverLevel.getGameTime(), ModElements.CYRO.get(), ModElements.ANEMO.get()));
+        }
+
         if (attackerIsAnemo) {
             consumeElementUnit(ctx.targetContainer(), defenderTarget, consumedPyroSide);
             consumeElementUnit(ctx.targetContainer(), anemoEl, consumedAnemoSide);
@@ -144,10 +154,8 @@ public class SwirlReaction extends ElementalReaction {
         lastSwirlTick.put(ctx.targetEntity().getUUID(), ctx.targetEntity().level().getGameTime());
 
         // 星扩散转化检测：扩冰 + 队伍有星扩散参与者
-        if (attackerIsAnemo && spreadElement == ModElements.CYRO.get()
-                && ctx.targetEntity().level() instanceof ServerLevel serverLevel
-                && ReactionPriorityCalculator.hasStellarSwirlParticipant(serverLevel)) {
-            handleStellarSwirl(ctx, serverLevel, spreadElement);
+        if (isStellarSwirl) {
+            handleStellarSwirl(ctx, serverLevel, spreadElement, triggerCharacter, preConsumeWindContributors);
         } else {
             float spreadQuantity = calculateSpreadQuantity(consumedAnemoSide);
             applySwirlDamage(ctx, spreadElement, ctx.targetEntity());
@@ -267,38 +275,35 @@ public class SwirlReaction extends ElementalReaction {
     }
 
     private static final Map<UUID, Long> stellarSwirlCooldown = new HashMap<>();
+    private static final int STELLAR_SWIRL_COOLDOWN_TICKS = 4;
 
-    private void handleStellarSwirl(ReactionContext ctx, ServerLevel level, GenshinElement spreadElement) {
-        Entity attacker = ctx.attackerEntity();
-        if (!(attacker instanceof Player player)) return;
+    private void handleStellarSwirl(ReactionContext ctx, ServerLevel level, GenshinElement spreadElement,
+                                      PGCharacter triggerCharacter, List<PGCharacter> windContributorList) {
 
         long gameTime = level.getGameTime();
         UUID targetId = ctx.targetEntity().getUUID();
         Long lastSS = stellarSwirlCooldown.get(targetId);
-        if (lastSS != null && gameTime - lastSS < SWIRL_COOLDOWN_TICKS) {
+        if (lastSS != null && gameTime - lastSS < STELLAR_SWIRL_COOLDOWN_TICKS) {
             return;
         }
         stellarSwirlCooldown.put(targetId, gameTime);
 
         if (ctx.targetEntity() instanceof LivingEntity livingTarget) {
-            DamageIndicatorFactory.stellarWindReactionGradient(livingTarget,
-                    ElementalReactionType.STELLAR_SWIRL_WIND);
+            DamageIndicatorFactory.stellarIceReactionGradient(livingTarget,
+                    ElementalReactionType.STELLAR_SWIRL_ICE);
         }
 
         double x = ctx.targetEntity().getX();
         double y = ctx.targetEntity().getY();
         double z = ctx.targetEntity().getZ();
 
-        List<PGCharacter> stellarContributors = collectStellarParticipants(level);
-
         StellarVortexEntity existing = StellarVortexEntity.findExisting(level, x, y, z, 10.0f);
 
         if (existing != null) {
-            existing.addAllContributors(stellarContributors);
-            existing.incrementLevel();
-            existing.triggerWindDamage();
-            LOGGER.info("[星扩散] 已有风旋，等级+1 -> {} contributors={}",
-                    existing.getVortexLevel(), stellarContributors.size());
+            // 将本次风贡献者加入累积列表（用于后续冰爆炸）
+            existing.addAllContributors(windContributorList);
+            existing.incrementLevel(triggerCharacter);
+            existing.triggerWindDamage(triggerCharacter, windContributorList);
         } else {
             StellarVortexEntity vortex = new StellarVortexEntity(ModEntities.STELLAR_VORTEX.get(), level);
             if (vortex == null) return;
@@ -306,29 +311,21 @@ public class SwirlReaction extends ElementalReaction {
             vortex.setPos(x, y, z);
             vortex.setLevel(1);
             level.addFreshEntity(vortex);
-            vortex.addAllContributors(stellarContributors);
-            vortex.triggerWindDamage();
-
-            LOGGER.info("[星扩散] 创建新星辉风旋 at ({},{},{}) contributors={}",
-                    x, y, z, stellarContributors.size());
+            vortex.addAllContributors(windContributorList);
+            vortex.triggerWindDamage(triggerCharacter, windContributorList);
         }
 
         applyRadianceToParticipants(level);
     }
 
-    private List<PGCharacter> collectStellarParticipants(ServerLevel level) {
-        List<PGCharacter> result = new ArrayList<>();
-        for (Player p : level.players()) {
-            PlayerCharactersAttachment att = p.getData(
-                    AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-            for (int i = 0; i < 4; i++) {
-                PGCharacter character = att.getPartyCharacter(i);
-                if (character instanceof IStellarSwirlParticipant) {
-                    result.add(character);
-                }
-            }
-        }
-        return result;
+    /**
+     * 从攻击者实体解析触发角色的 PGCharacter
+     */
+    private PGCharacter resolveTriggerCharacter(Entity attacker) {
+        if (!(attacker instanceof Player player)) return null;
+        PlayerCharactersAttachment att = player.getData(
+                AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        return att != null ? att.getCurrentCharacter() : null;
     }
 
     private void applyRadianceToParticipants(ServerLevel level) {
@@ -346,7 +343,6 @@ public class SwirlReaction extends ElementalReaction {
                     CharacterEffectInstance instance = new CharacterEffectInstance(
                             radianceEffect, duration, 0, false);
                     CharacterEffectHelper.addEffect(p, character, instance);
-                    LOGGER.info("[辉映-星扩散] 添加至 {} / {}", p.getName().getString(), character.getName());
                 }
             }
         }

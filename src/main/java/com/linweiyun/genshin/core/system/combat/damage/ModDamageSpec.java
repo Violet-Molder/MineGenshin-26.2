@@ -217,13 +217,22 @@ public class ModDamageSpec {
 
     public static ModDamageSpec stellarDirect(ElementalReactionType reactionType,
                                                GenshinElement element, float elementAmount) {
+        return stellarDirect(reactionType, element, elementAmount, 1.0f);
+    }
+
+    /**
+     * @param stellarCoefficient 攻击倍率（直伤=攻击力×倍率）
+     */
+    public static ModDamageSpec stellarDirect(ElementalReactionType reactionType,
+                                               GenshinElement element, float elementAmount,
+                                               float stellarCoefficient) {
         return new ModDamageSpec(
                 AttackType.STELLAR_SWIRL, element,
                 1.0f, 0f, 0f, 0f,
                 0f, 0f,
                 elementAmount, null,
                 null,
-                DamageType.STELLAR, reactionType, 0f, 0f, 0f, 0f, 0f);
+                DamageType.STELLAR, reactionType, 0f, 0f, stellarCoefficient, 0f, 0f);
     }
 
     public DamageType getDamageType() {
@@ -265,6 +274,18 @@ public class ModDamageSpec {
                 this.skillMultiplierBonus, newFlatBonus,
                 this.elementAmount, this.decayGroup,
                 this.attackerCharacter, this.damageType, this.transformativeReactionType,
+                this.lunarBaseBonus, this.lunarBaseFlat,
+                this.stellarCoefficient, this.stellarBaseBonusMult, this.stellarBaseBonusFlat
+        );
+    }
+
+    public ModDamageSpec withAttackerCharacter(PGCharacter character) {
+        return new ModDamageSpec(
+                this.attackType, this.element,
+                this.atkMultiplier, this.hpMultiplier, this.defMultiplier, this.emMultiplier,
+                this.skillMultiplierBonus, this.flatDamageBonus,
+                this.elementAmount, this.decayGroup,
+                character, this.damageType, this.transformativeReactionType,
                 this.lunarBaseBonus, this.lunarBaseFlat,
                 this.stellarCoefficient, this.stellarBaseBonusMult, this.stellarBaseBonusFlat
         );

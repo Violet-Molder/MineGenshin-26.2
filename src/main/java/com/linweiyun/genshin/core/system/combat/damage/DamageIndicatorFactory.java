@@ -38,15 +38,6 @@ public final class DamageIndicatorFactory {
 
     private DamageIndicatorFactory() {}
 
-    private static int parseColor(String hex) {
-        if (hex == null || hex.isEmpty()) return 0xFFFFFF;
-        try {
-            return Integer.parseInt(hex.startsWith("#") ? hex.substring(1) : hex, 16);
-        } catch (NumberFormatException e) {
-            return 0xFFFFFF;
-        }
-    }
-
     public static int getColorForElement(GenshinElement element) {
         if (element == ModElements.PYRO.get()) return parseColor(WorldTextColorConfig.PYRO_COLOR.get());
         if (element == ModElements.HYDRO.get()) return parseColor(WorldTextColorConfig.HYDRO_COLOR.get());
@@ -62,14 +53,21 @@ public final class DamageIndicatorFactory {
         return switch (type) {
             case ELECTRO_CHARGED, LUNAR_CHARGED -> parseColor(WorldTextColorConfig.ELECTRO_CHARGED_COLOR.get());
             case SWIRL -> parseColor(WorldTextColorConfig.SWIRL_COLOR.get());
-            case STELLAR_SWIRL_WIND -> parseColor(WorldTextColorConfig.STELLAR_BOTTOM_WIND_COLOR.get());
-            case STELLAR_SWIRL_ICE -> parseColor(WorldTextColorConfig.STELLAR_BOTTOM_ICE_COLOR.get());
+            case STELLAR_SWIRL_WIND, STELLAR_SWIRL_ICE -> parseColor(WorldTextColorConfig.STELLAR_BOTTOM_WIND_COLOR.get());
             default -> parseColor(WorldTextColorConfig.VAPORIZE_COLOR.get());
         };
     }
 
     public static int getLunarTopColor() {
         return parseColor(WorldTextColorConfig.LUNAR_TOP_COLOR.get());
+    }
+
+    private static int parseColor(String hex) {
+        try {
+            return Integer.decode(hex.startsWith("#") ? hex : "#" + hex);
+        } catch (NumberFormatException e) {
+            return 0xFFFFFF;
+        }
     }
 
     public enum Style {
@@ -360,9 +358,9 @@ public final class DamageIndicatorFactory {
         // 飘字散布范围（大幅扩大）
         // 反应名统一抬高，和伤害数字拉开距离
         double extraY = (style == Style.REACTION) ? 0.6 : 0.0;
-        double spreadH = 4.0;
+        double spreadH = 1.5;
         double verticalBase = 0.35;
-        double verticalRange = 1.2;
+        double verticalRange = 0.6;
 
         Vec3 finalPos = null;
         int maxRetries = 8;

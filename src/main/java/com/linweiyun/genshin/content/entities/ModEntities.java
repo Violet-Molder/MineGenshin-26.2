@@ -1,4 +1,4 @@
-package com.linweiyun.genshin.core.system.registry.register;
+package com.linweiyun.genshin.content.entities;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.entities.area.StellarVortexEntity;
@@ -6,6 +6,7 @@ import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
 import com.linweiyun.genshin.content.entities.area.ThunderCloudEntity;
 import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
 import com.linweiyun.genshin.content.entities.teyvat.monster.slime.SlimeCyro;
+import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProjectile;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -79,6 +80,18 @@ public class ModEntities {
                             .build(ResourceKey.create(
                                     Registries.ENTITY_TYPE,
                                     Minegenshin.id("stellar_vortex"))
+                            ));
+
+    public static final Supplier<EntityType<VesnaAttackProjectile>> VESNA_ATTACK_PROJECTILE =
+            ENTITIES.register(
+                    "vesna_attack_projectile",
+                    () -> EntityType.Builder.<VesnaAttackProjectile>of(VesnaAttackProjectile::new, MobCategory.MISC)
+                            .sized(0.5F, 0.5F)
+                            .clientTrackingRange(8)
+                            .updateInterval(10)
+                            .build(ResourceKey.create(
+                                    Registries.ENTITY_TYPE,
+                                    Minegenshin.id("vesna_attack_projectile"))
                             ));
 
     public static void register(IEventBus eventBus) {

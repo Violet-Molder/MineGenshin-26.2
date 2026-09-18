@@ -1,9 +1,11 @@
 package com.linweiyun.genshin.core.system.about;
 
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
+import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.Identifier;
@@ -19,6 +21,8 @@ public class ElementalAttachmentInstance extends StatusInstance {
     private String elementId;
 
     private transient GenshinElement element;
+
+    private transient PGCharacter sourceCharacter;
 
     @Persisted(key = "source")
     private AttachmentSource source;
@@ -176,7 +180,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
         if (element == null && elementId != null && !elementId.isEmpty()) {
             String[] parts = elementId.split(":", 2);
             Identifier id = Identifier.fromNamespaceAndPath(parts[0], parts[1]);
-            element = com.linweiyun.genshin.core.system.registry.ModRegistries.ELEMENT_REGISTRY.get(id).map(r -> r.value()).orElse(null);
+            element = ModRegistries.ELEMENT_REGISTRY.get(id).map(r -> r.value()).orElse(null);
         }
         return element;
     }
@@ -190,7 +194,37 @@ public class ElementalAttachmentInstance extends StatusInstance {
     public long getAttachTick() { return attachTick; }
 
     private static String resolveElementId(GenshinElement element) {
-        Identifier key = com.linweiyun.genshin.core.system.registry.ModRegistries.ELEMENT_REGISTRY.getKey(element);
+        Identifier key = ModRegistries.ELEMENT_REGISTRY.getKey(element);
         return key != null ? key.toString() : "minegenshin:fysikos";
+    }
+
+    // ========== 角色追踪（反应贡献者系统） ==========
+
+    public void setSourceCharacter(PGCharacter character, long gameTime) {
+        this.sourceCharacter = character;
+        this.sourceCharacterKey = character != null
+                ? character.getCharacterUUID() + "::" + character.getClass().getSimpleName()
+                : null;
+        this.attachTick = gameTime;
+    }
+
+    public PGCharacter getSourceCharacter() {
+        return sourceCharacter;
+    }
+
+    public boolean hasSourceCharacter() {
+        return sourceCharacter != null || (sourceCharacterKey != null && !sourceCharacterKey.isEmpty());
+    }
+
+    /** 计算附着自然衰减完毕的 tick */
+    public long getDecayEndTick() {
+        float decay = currentDecayPerSecond;
+        if (decay <= 0f) return Long.MAX_VALUE;
+        float remainingSeconds = unit / decay;
+        return attachTick + (long) (remainingSeconds * 20f);
+    }
+
+    public void setAttachTick(long tick) {
+        this.attachTick = tick;
     }
 }

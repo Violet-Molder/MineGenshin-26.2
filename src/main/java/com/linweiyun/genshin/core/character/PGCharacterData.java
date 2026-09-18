@@ -5,6 +5,7 @@ import com.linweiyun.genshin.content.attribute.AttributeContainer;
 import com.linweiyun.genshin.content.attribute.AttributeInstance;
 import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
+import com.linweiyun.genshin.core.character.attachment.CharacterAttachmentContainer;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
@@ -70,6 +71,9 @@ public class PGCharacterData implements IPersistedSerializable {
     private ArtifactInventory artifactInventory = new ArtifactInventory();
     @Persisted(key = "weapon_base_atk")
     private double weaponBaseATK = 0;
+    @Persisted(key = "character_attachments")
+    private CharacterAttachmentContainer characterAttachments = new CharacterAttachmentContainer();
+
 
     private Player ownerPlayer;
     // 效果容器的缓存引用，延迟加载，避免每次操作都重新反序列化
@@ -207,6 +211,7 @@ public class PGCharacterData implements IPersistedSerializable {
     public int getSkillLongMaxCooldownTick() { return skillLongMaxCooldownTick; }
     public int getBurstMaxCooldownTick() { return burstMaxCooldownTick; }
     public float getMaxObtainingEnergy() { return maxObtainingEnergy; }
+    public CharacterAttachmentContainer getAttachments() {return characterAttachments;}
 
     public static final int MAX_TALENT_LEVEL = 14;
 

@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.attachment;
 
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
@@ -30,10 +31,10 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -64,8 +65,6 @@ public class StatusContainer implements IPersistedSerializable {
 
     @Persisted(key = "electro_charged_tick_state")
     private ElectroChargedTickState electroChargedTickState = new ElectroChargedTickState();
-
-    private transient Map<String, Long> lunarContributors = new HashMap<>();
 
     public StatusContainer() {
         this.instances = new ArrayList<>();
@@ -135,6 +134,8 @@ public class StatusContainer implements IPersistedSerializable {
             StatusInstance inst = it.next();
             inst.tick();
             if (inst.isFinished()) {
+                if (inst instanceof ElementalAttachmentInstance ea) {
+                }
                 inst.onRemove();
                 it.remove();
             }
@@ -152,16 +153,53 @@ public class StatusContainer implements IPersistedSerializable {
         return electroChargedTickState;
     }
 
-    public void recordLunarContributor(String key, long currentTick, long decayTicks) {
-        if (lunarContributors == null) lunarContributors = new HashMap<>();
-        long newExpiry = currentTick + decayTicks;
-        lunarContributors.merge(key, newExpiry, Math::max);
+    // ========== 全元素附着角色查询 ==========
+
+    /**
+     * 获取所有尚有附着量的角色（按元素过滤）
+     * @param currentTick 当前 game tick
+     * @param elements 要查询的元素（不传则返回全部）
+     * @return 去重后的角色集合
+     */
+    public Set<PGCharacter> getActiveContributors(long currentTick, GenshinElement... elements) {
+        Set<PGCharacter> result = new LinkedHashSet<>();
+        Set<GenshinElement> filter = elements.length == 0 ? null : Set.of(elements);
+        for (StatusInstance inst : instances) {
+            if (inst.isFinished()) continue;
+            if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
+            if (ea.getDecayEndTick() <= currentTick) {
+                continue;
+            }
+            if (filter != null && !filter.contains(ea.getElement())) continue;
+            PGCharacter ch = ea.getSourceCharacter();
+            if (ch != null) {
+                result.add(ch);
+            } else {
+            }
+        }
+        if (result.isEmpty()) {
+        }
+        return result;
     }
 
-    public Map<String, Long> getLunarContributors(long currentTick) {
-        if (lunarContributors == null) lunarContributors = new HashMap<>();
-        lunarContributors.entrySet().removeIf(e -> e.getValue() <= currentTick);
-        return lunarContributors;
+    /**
+     * 获取最后一个附着指定元素的角色（用于伤害源）
+     */
+    public PGCharacter getLastAttacher(long currentTick, GenshinElement... elements) {
+        PGCharacter last = null;
+        long lastTick = 0;
+        Set<GenshinElement> filter = elements.length == 0 ? null : Set.of(elements);
+        for (StatusInstance inst : instances) {
+            if (inst.isFinished()) continue;
+            if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
+            if (ea.getDecayEndTick() <= currentTick) continue;
+            if (filter != null && !filter.contains(ea.getElement())) continue;
+            if (ea.getAttachTick() > lastTick) {
+                last = ea.getSourceCharacter();
+                lastTick = ea.getAttachTick();
+            }
+        }
+        return last;
     }
 
     // ========== 拷贝 ==========

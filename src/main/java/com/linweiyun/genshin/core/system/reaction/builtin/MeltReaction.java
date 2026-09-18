@@ -19,8 +19,8 @@ import com.linweiyun.genshin.enums.ElementalReactionType;
  */
 public class MeltReaction extends ElementalReaction {
 
-    private static float getDominantMultiplier() { return ReactionConfig.MELT.getFloat(); }
-    private static float getSubmissiveMultiplier() { return ReactionConfig.MELT_NEGATIVE.getFloat(); }
+    private static float getDominantMultiplier() { return (float) ReactionConfig.MELT.get(); }
+    private static float getSubmissiveMultiplier() { return (float) ReactionConfig.MELT_NEGATIVE.get(); }
 
     public MeltReaction(ElementalReactionType type,
                         String elementAId, String elementBId,

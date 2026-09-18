@@ -1,8 +1,10 @@
 package com.linweiyun.genshin;
 
 import com.linweiyun.genshin.config.GenshinConfig;
+import com.linweiyun.genshin.content.entities.ModEntities;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
+import com.linweiyun.genshin.core.character.attachment.ModCharacterAttachmentTypes;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
@@ -48,6 +50,7 @@ public class Minegenshin {
         ModElementalReactions.register(modEventBus);
         ArtifactSets.register(modEventBus);
         ModDataComponents.register(modEventBus);
+        ModCharacterAttachmentTypes.register(modEventBus);
 
         ModAttributes.ATTRIBUTES.register(modEventBus);
         ModCharacters.CHARACTERS.register(modEventBus);

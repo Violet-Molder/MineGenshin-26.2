@@ -2,10 +2,12 @@ package com.linweiyun.genshin.content.skill_node;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.LockedTargetData;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -17,25 +19,35 @@ import java.util.List;
 /**
  * 索敌节点——从视野或方圆范围内选取最优目标并锁定。
  * <p>
- * 两种索敌模式：
+ * 索敌源类型：
  * <ul>
- *   <li>{@link TargetingType#LINE_OF_SIGHT LINE_OF_SIGHT}（视野索敌）：以实体视线方向延伸 range 距离，
- *       横截面 5×5 的隧道，适合玩家角色。</li>
- *   <li>{@link TargetingType#RADIUS RADIUS}（方圆索敌）：以实体为中心、range 为半径的球形范围，
- *       适合召唤物。</li>
+ *   <li>{@link SourceType#CHARACTER} 角色索敌：使用锁定附件，支持视野/方圆索敌</li>
+ *   <li>{@link SourceType#ALLY_SUMMON_FREE} 己方召唤物-自由：完全自主索敌，使用锁定附件</li>
+ *   <li>{@link SourceType#ALLY_SUMMON_COOP} 己方召唤物-协同：优先攻击角色正在攻击的目标，使用锁定附件</li>
+ *   <li>{@link SourceType#TRACKING_FREE} 追踪实体-自由：自主索敌，不使用锁定附件，只攻击一次</li>
+ *   <li>{@link SourceType#TRACKING_COOP} 追踪实体-协同：优先攻击角色正在攻击的目标，不使用锁定附件，只攻击一次</li>
  * </ul>
  * <p>
- * 锁定规则：
- * <ol>
- *   <li>敌对生物优先级最高。如果已锁定的是友好生物、但附近出现更近的敌对生物，立即切过去。</li>
- *   <li>锁定通过玩家 Attachment 持久化，不同技能节点共享同一个锁定目标。</li>
- *   <li>每次 execute() 命中锁定目标时，锁定时间<b>重置为 4 秒（80 tick）</b>，保证连续攻击不丢目标。</li>
- *   <li>4 秒不攻击则锁自动解除，下次 execute() 重新索敌。</li>
- * </ol>
- * <p>
- * 用法：{@code LivingEntity target = new TargetSeeker(source, 10.0, LINE_OF_SIGHT).execute();}
+ * 索敌模式：
+ * <ul>
+ *   <li>{@link TargetingType#LINE_OF_SIGHT LINE_OF_SIGHT}（视野索敌）：以实体视线方向延伸 range 距离，横截面 5×5 的隧道</li>
+ *   <li>{@link TargetingType#RADIUS RADIUS}（方圆索敌）：以实体为中心、range 为半径的球形范围</li>
+ * </ul>
  */
 public class TargetSeeker {
+
+    public enum SourceType {
+        /** 角色索敌：使用锁定附件 */
+        CHARACTER,
+        /** 己方召唤物-自由：完全自主索敌，使用锁定附件 */
+        ALLY_SUMMON_FREE,
+        /** 己方召唤物-协同：优先攻击角色正在攻击的目标，使用锁定附件 */
+        ALLY_SUMMON_COOP,
+        /** 追踪实体-自由：自主索敌，不使用锁定附件，只攻击一次 */
+        TRACKING_FREE,
+        /** 追踪实体-协同：优先攻击角色正在攻击的目标，不使用锁定附件，只攻击一次 */
+        TRACKING_COOP
+    }
 
     public enum TargetingType {
         /** 视野索敌：沿视线方向延伸，5×5 隧道 */
@@ -65,32 +77,62 @@ public class TargetSeeker {
     private final double range;
 
     /** 索敌类型 */
-    private final TargetingType type;
+    private final TargetingType targetingType;
+
+    /** 索敌源类型 */
+    private final SourceType sourceType;
+
+    /** 协同模式关联的角色（用于TRACKING_COOP和ALLY_SUMMON_COOP） */
+    private final PGCharacter associatedCharacter;
 
     /**
-     * @param source 发起索敌的实体
-     * @param range  索敌范围（视野模式为延伸距离，方圆模式为半径）
-     * @param type   索敌类型
+     * @param source        发起索敌的实体
+     * @param range         索敌范围（视野模式为延伸距离，方圆模式为半径）
+     * @param targetingType 索敌模式
+     * @param sourceType    索敌源类型
+     * @param associatedChar 协同模式关联的角色（非协同模式传null）
      */
-    public TargetSeeker(Entity source, double range, TargetingType type) {
+    public TargetSeeker(Entity source, double range, TargetingType targetingType, SourceType sourceType, PGCharacter associatedChar) {
         this.source = source;
         this.range = range;
-        this.type = type;
+        this.targetingType = targetingType;
+        this.sourceType = sourceType;
+        this.associatedCharacter = associatedChar;
+    }
+
+    /**
+     * 简化构造函数（默认CHARACTER类型，向后兼容）
+     */
+    public TargetSeeker(Entity source, double range, TargetingType type) {
+        this(source, range, type, SourceType.CHARACTER, null);
     }
 
     // ==================== 主流程 ====================
 
     /**
-     * 执行索敌，返回最优目标（已有锁定时优先返回锁定目标）。
-     *
-     * @return 目标实体，未找到返回 null
+     * 执行索敌，返回最优目标。
      */
     public LivingEntity execute() {
         if (source == null || range <= 0) return null;
+        LOGGER.info("TargetSeeker 执行索敌，源类型: {}, 范围: {}, 模式: {}", sourceType, range, targetingType);
 
         Level level = source.level();
         long tick = level.getGameTime();
 
+        // 根据源类型分发逻辑
+        return switch (sourceType) {
+            case CHARACTER -> executeCharacter(level, tick);
+            case ALLY_SUMMON_FREE -> executeAllySummonFree(level, tick);
+            case ALLY_SUMMON_COOP -> executeAllySummonCoop(level, tick);
+            case TRACKING_FREE -> executeTrackingFree(level);
+            case TRACKING_COOP -> executeTrackingCoop(level);
+        };
+    }
+
+    /**
+     * 角色索敌：使用锁定附件，支持视野/方圆索敌
+     */
+    private LivingEntity executeCharacter(Level level, long tick) {
         // 1. 检查已有锁
         LockedTargetData lockData = source.getData(AttachmentRegistration.LOCKED_TARGET);
         if (lockData.isValid(tick)) {
@@ -100,34 +142,32 @@ public class TargetSeeker {
                     && source.distanceTo(livingLocked) <= range
                     && hasVisionOf(livingLocked)) {
 
-                // 锁定的是敌对生物：直接返回，刷新锁定时间
                 if (livingLocked instanceof Monster) {
                     refreshLock(tick, livingLocked);
+                    LOGGER.info("TargetSeeker [CHARACTER] 锁定敌对生物，返回并刷新");
                     return livingLocked;
                 }
 
-                // 锁定的是友好生物：检查是否有更近的敌对可以抢
                 LivingEntity closerHostile = findClosestHostileInRange();
                 if (closerHostile != null && source.distanceToSqr(closerHostile) < source.distanceToSqr(livingLocked)) {
-                    // 更近的敌对生物抢锁
+                    LOGGER.info("TargetSeeker [CHARACTER] 更近敌对生物抢锁，目标: {}", closerHostile);
                     source.setData(AttachmentRegistration.LOCKED_TARGET,
                             new LockedTargetData(closerHostile.getUUID(), tick + LOCK_DURATION_TICKS));
                     return closerHostile;
                 }
-
-                // 无更近敌对，保持友好锁并刷新
+                LOGGER.info("TargetSeeker [CHARACTER] 无更近敌对，保持友好锁并刷新");
                 refreshLock(tick, livingLocked);
                 return livingLocked;
             }
-            // 目标不在范围内 / 死亡 / 不可见 → 清锁重搜
             source.setData(AttachmentRegistration.LOCKED_TARGET, LockedTargetData.EMPTY);
         }
 
         // 2. 无锁 → 按类型收集候选
-        List<LivingEntity> candidates = switch (type) {
+        List<LivingEntity> candidates = switch (targetingType) {
             case LINE_OF_SIGHT -> collectLineOfSight();
             case RADIUS -> collectRadius();
         };
+        LOGGER.info("TargetSeeker [CHARACTER] 收集到 {} 个候选目标", candidates.size());
 
         if (candidates.isEmpty()) return null;
 
@@ -138,18 +178,110 @@ public class TargetSeeker {
         if (target != null) {
             source.setData(AttachmentRegistration.LOCKED_TARGET,
                     new LockedTargetData(target.getUUID(), tick + LOCK_DURATION_TICKS));
-            LOGGER.debug("[TargetSeeker] 新锁定: {} (过期tick={})", target.getName().getString(), tick + LOCK_DURATION_TICKS);
+        }
+        return target;
+    }
+
+    /**
+     * 己方召唤物-自由：完全自主索敌，使用锁定附件
+     */
+    private LivingEntity executeAllySummonFree(Level level, long tick) {
+        LockedTargetData lockData = source.getData(AttachmentRegistration.LOCKED_TARGET);
+        if (lockData.isValid(tick)) {
+            Entity locked = level.getEntity(lockData.targetId());
+            if (locked instanceof LivingEntity livingLocked
+                    && locked.isAlive()
+                    && source.distanceTo(livingLocked) <= range) {
+                refreshLock(tick, livingLocked);
+                LOGGER.info("TargetSeeker [ALLY_SUMMON_FREE] 返回锁定目标: {}", livingLocked);
+                return livingLocked;
+            }
+            source.setData(AttachmentRegistration.LOCKED_TARGET, LockedTargetData.EMPTY);
         }
 
+        List<LivingEntity> candidates = collectRadius();
+        LOGGER.info("TargetSeeker [ALLY_SUMMON_FREE] 收集到 {} 个候选目标", candidates.size());
+
+        if (candidates.isEmpty()) return null;
+
+        LivingEntity target = selectBestTarget(candidates);
+        if (target != null) {
+            source.setData(AttachmentRegistration.LOCKED_TARGET,
+                    new LockedTargetData(target.getUUID(), tick + LOCK_DURATION_TICKS));
+        }
         return target;
+    }
+
+    /**
+     * 己方召唤物-协同：优先攻击角色正在攻击的目标，使用锁定附件
+     */
+    private LivingEntity executeAllySummonCoop(Level level, long tick) {
+        // 优先获取角色当前攻击的目标
+        LivingEntity charTarget = getCharacterLockedTarget(level, tick);
+        if (charTarget != null && charTarget.isAlive() && source.distanceTo(charTarget) <= range) {
+            source.setData(AttachmentRegistration.LOCKED_TARGET,
+                    new LockedTargetData(charTarget.getUUID(), tick + LOCK_DURATION_TICKS));
+            LOGGER.info("TargetSeeker [ALLY_SUMMON_COOP] 协同角色目标: {}", charTarget);
+            return charTarget;
+        }
+
+        // 角色无目标时，自主索敌
+        return executeAllySummonFree(level, tick);
+    }
+
+    /**
+     * 追踪实体-自由：自主索敌，不使用锁定附件，只攻击一次
+     */
+    private LivingEntity executeTrackingFree(Level level) {
+        List<LivingEntity> candidates = collectRadius();
+        LOGGER.info("TargetSeeker [TRACKING_FREE] 收集到 {} 个候选目标", candidates.size());
+
+        if (candidates.isEmpty()) return null;
+
+        LivingEntity target = selectBestTarget(candidates);
+        LOGGER.info("TargetSeeker [TRACKING_FREE] 返回目标: {}", target);
+        return target;
+    }
+
+    /**
+     * 追踪实体-协同：优先攻击角色正在攻击的目标，不使用锁定附件，只攻击一次
+     */
+    private LivingEntity executeTrackingCoop(Level level) {
+        long tick = level.getGameTime();
+
+        // 优先获取角色当前攻击的目标
+        LivingEntity charTarget = getCharacterLockedTarget(level, tick);
+        if (charTarget != null && charTarget.isAlive()) {
+            LOGGER.info("TargetSeeker [TRACKING_COOP] 协同角色目标: {}", charTarget);
+            return charTarget;
+        }
+
+        // 角色无目标时，自主索敌
+        return executeTrackingFree(level);
+    }
+
+    /**
+     * 获取角色当前锁定的目标
+     */
+    private LivingEntity getCharacterLockedTarget(Level level, long tick) {
+        if (associatedCharacter == null) return null;
+
+        Player ownerPlayer = associatedCharacter.getData().getOwnerPlayer();
+        if (ownerPlayer == null) return null;
+
+        LockedTargetData lockData = ownerPlayer.getData(AttachmentRegistration.LOCKED_TARGET);
+        if (!lockData.isValid(tick)) return null;
+
+        Entity locked = level.getEntity(lockData.targetId());
+        if (locked instanceof LivingEntity livingLocked && livingLocked.isAlive()) {
+            return livingLocked;
+        }
+
+        return null;
     }
 
     // ==================== 锁定 / 刷新 ====================
 
-    /**
-     * 判定实体是否对目标有视线连通（用于锁定状态扩大搜索时使用）。
-     * 条件：无障碍物遮挡 且 目标在正前方。
-     */
     private boolean hasVisionOf(Entity target) {
         if (source instanceof LivingEntity livingSource) {
             if (!livingSource.hasLineOfSight(target)) return false;
@@ -161,31 +293,22 @@ public class TargetSeeker {
         return true;
     }
 
-    /**
-     * 刷新锁定时间为 80 tick，保证连续攻击不丢目标。
-     */
     private void refreshLock(long tick, LivingEntity target) {
         source.setData(AttachmentRegistration.LOCKED_TARGET,
                 new LockedTargetData(target.getUUID(), tick + LOCK_DURATION_TICKS));
     }
 
-    /** 清空锁定，切换技能或目标时调用 */
     public static void clearLock(Entity source) {
         source.setData(AttachmentRegistration.LOCKED_TARGET, LockedTargetData.EMPTY);
     }
 
     // ==================== 候选收集 ====================
 
-    /**
-     * 视野索敌：沿视线方向延伸 range 距离，横截面 5×5 隧道。
-     * 只收集隧道内的活体。
-     */
     private List<LivingEntity> collectLineOfSight() {
         Vec3 eyePos = source.getEyePosition();
         Vec3 lookDir = source.getLookAngle().normalize();
         Vec3 endPos = eyePos.add(lookDir.scale(range));
 
-        // 粗筛：包围盒
         AABB searchBox = new AABB(eyePos, endPos).inflate(TUNNEL_HALF_SIZE);
 
         return source.level().getEntitiesOfClass(LivingEntity.class, searchBox, entity ->
@@ -196,44 +319,36 @@ public class TargetSeeker {
         );
     }
 
-    /**
-     * 精确判断目标是否在视线隧道内：投影到视线方向，垂直偏离 ≤ 2.5 格。
-     */
     private boolean isInForwardTunnel(Entity target) {
         Vec3 eyePos = source.getEyePosition();
         Vec3 lookDir = source.getLookAngle().normalize();
         Vec3 targetCenter = target.getBoundingBox().getCenter();
         Vec3 toTarget = targetCenter.subtract(eyePos);
 
-        // 沿视线方向的投影距离
         double forwardDist = toTarget.dot(lookDir);
         if (forwardDist < 0 || forwardDist > range) return false;
 
-        // 垂直偏离距离
         Vec3 projected = eyePos.add(lookDir.scale(forwardDist));
         Vec3 perpendicular = targetCenter.subtract(projected);
 
         return perpendicular.lengthSqr() <= TUNNEL_HALF_SIZE * TUNNEL_HALF_SIZE;
     }
 
-    /**
-     * 方圆索敌：以实体为中心，range 为半径的球形范围。
-     */
     private List<LivingEntity> collectRadius() {
         double rangeSq = range * range + RANGE_SQ_EPSILON;
         AABB searchBox = source.getBoundingBox().inflate(range);
+
+        Player ownerPlayer = (associatedCharacter != null) ? associatedCharacter.getData().getOwnerPlayer() : null;
 
         return source.level().getEntitiesOfClass(LivingEntity.class, searchBox, entity ->
                 entity.isAlive()
                         && !entity.isSpectator()
                         && entity != source
+                        && entity != ownerPlayer
                         && source.distanceToSqr(entity) <= rangeSq
         );
     }
 
-    /**
-     * 在锁定友好目标时，查找范围内是否有更近的敌对生物可抢锁。
-     */
     private LivingEntity findClosestHostileInRange() {
         double rangeSq = range * range + RANGE_SQ_EPSILON;
         AABB searchBox = source.getBoundingBox().inflate(range);
@@ -251,12 +366,6 @@ public class TargetSeeker {
 
     // ==================== 优先级排序 ====================
 
-    /**
-     * 从候选列表中选出最优目标。
-     * <p>
-     * 规则：敌对优先。唯一例外——友好生物在阈值内（range × 1/2）
-     * 且敌对在阈值外时，选友好。
-     */
     private LivingEntity selectBestTarget(List<LivingEntity> candidates) {
         List<LivingEntity> hostile = candidates.stream()
                 .filter(e -> e instanceof Monster)
@@ -271,7 +380,6 @@ public class TargetSeeker {
         if (hostile.isEmpty()) return friendly.get(0);
         if (friendly.isEmpty()) return hostile.get(0);
 
-        // 友好极近 + 敌对极远 → 选友好，否则选最近的敌对
         double threshold = range * PRIORITY_THRESHOLD;
         double closestHostileDist = hostile.get(0).distanceTo(source);
         double closestFriendlyDist = friendly.get(0).distanceTo(source);

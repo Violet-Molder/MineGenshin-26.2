@@ -1,0 +1,873 @@
+介绍
+自 2.1.5
+Configurable 是 LDLib2 基于注解的属性编辑系统。它可以把普通 Java 对象转换成可编辑 UI，让编辑器工具能够 inspect 当前选中的对象、修改字段，并把修改记录进 history，而不需要为每个属性面板手写 UI。
+
+UI Editor 的元素属性、贴图、渲染器、样式对象、编辑器设置，以及大量 inspector 面板，都是通过这套系统实现的。对于自定义编辑器来说，Configurable 通常就是暴露“当前选中对象属性”的方式。
+
+IDE 支持
+
+推荐安装 IDEA 插件 LDLib Dev Tool。它为 LDLib2 项目提供代码高亮、语法检查、跳转、补全和注解支持。参考 Java Integration。
+
+例如，TestConfigurators 本质上只是一个带注解字段和少量辅助方法的普通数据对象。这里省略了 package/import，但结构与测试源码一致：
+
+
+@LDLRegister(name = "configurators", registry = "ldlib2:menu_test")
+@NoArgsConstructor
+public class TestConfigurators implements IConfigurable, IPersistedSerializable {
+    @Configurable
+    @ConfigNumber(range = {-5, 5})
+    private float numberFloat = 0.0f;
+
+    @Configurable
+    @ConfigColor
+    private int numberColor = -1;
+
+    @Configurable
+    private boolean booleanValue = false;
+
+    @ConfigHeader("Header")
+    @Configurable(tips = "Test tip 0")
+    private String stringValue = "default";
+
+    @Configurable
+    private ResourceLocation resourceLocation = LDLib2.id("test");
+
+    @Configurable
+    private Direction enumValue = Direction.NORTH;
+
+    @Configurable
+    private Vector3f vector3fValue = new Vector3f(0, 0, 0);
+
+    @Configurable
+    private Vector3i vector3iValue = new Vector3i(0, 0, 0);
+
+    @Configurable
+    private Quaternionf quaternionfValue = new Quaternionf(0, 0, 0, 1);
+
+    @Configurable
+    private BlockPos blockPosValue = BlockPos.ZERO;
+
+    @Configurable
+    private AABB aabbValue = new AABB(0, 0, 0, 1, 1, 1);
+
+    @Configurable
+    @ConfigNumber(range = {0, 1}, type = ConfigNumber.Type.FLOAT)
+    private Range rangeValue = Range.of(0, 1);
+
+    @Configurable
+    private TransformRef transformRef = new TransformRef();
+
+    @ConfigHeader("Array Like")
+    @Configurable
+    private int[] intArray = new int[]{1, 2, 3};
+
+    @Configurable
+    private List<Boolean> booleanList = new ArrayList<>(List.of(true, false, true));
+
+    @Configurable
+    private Component componentValue = Component.translatable("ldlib.author");
+
+    @Configurable(subConfigurable = true)
+    private final TestToggleGroup toggleGroup = new TestToggleGroup();
+
+    @Configurable
+    @ConfigList(
+            configuratorMethod = "buildTestGroupConfigurator",
+            addDefaultMethod = "addDefaultTestGroup"
+    )
+    private final List<TestGroup> groupList = new ArrayList<>();
+
+    @Configurable
+    @ConfigSelector(candidate = {"A", "B", "C"})
+    private String stringSelector = "A";
+
+    @Configurable
+    @ConfigSelector(
+            candidate = {"north", "west", "east"},
+            subConfiguratorBuilder = "subConfiguratorBuilder"
+    )
+    private Direction subConfiguratorSelector = Direction.NORTH;
+
+    @Configurable
+    @ConfigSearch(searchConfiguratorMethod = "createBlockSearchConfigurator")
+    private Block blockSearch = Blocks.STONE;
+
+    @Configurable
+    private ItemStack item = new ItemStack(Items.STONE);
+
+    @Configurable
+    private FluidStack fluid = new FluidStack(Fluids.WATER, 1000);
+
+    @Configurable
+    @ConfigRL(ConfigRL.Type.ITEM_TAG_KEY)
+    private ResourceLocation itemTagKey = ItemTags.AXES.location();
+
+    @Configurable
+    private EntityType<?> entityType = EntityType.PIG;
+
+    @Override
+    public ModularUI createUI(Player player) {
+        var root = new ScrollerView();
+        root.layout(layout -> {
+            layout.width(250);
+            layout.height(350);
+        }).setId("root");
+
+        var group = new ConfiguratorGroup("root");
+        group.setCollapse(false);
+        group.setTips("Test tip 0", "Test tip 1", "Test tip 2");
+        buildConfigurator(group);
+
+        return new ModularUI(UI.of(root.addScrollViewChild(group)));
+    }
+
+    private Configurator buildTestGroupConfigurator(
+            Supplier<TestGroup> getter,
+            Consumer<TestGroup> setter
+    ) {
+        var instance = getter.get();
+        return instance != null ? instance.createDirectConfigurator() : new Configurator();
+    }
+
+    private TestGroup addDefaultTestGroup() {
+        return new TestGroup();
+    }
+
+    private void subConfiguratorBuilder(Direction direction, ConfiguratorGroup group) {
+        switch (direction) {
+            case NORTH -> group.addConfigurator(new Configurator("NORTH"));
+            case WEST -> {}
+            case EAST -> group.addConfigurator(new Configurator("EAST"));
+            default -> group.addConfigurator(new Configurator("DEFAULT"));
+        }
+    }
+
+    private SearchComponentConfigurator.ISearchConfigurator<Block> createBlockSearchConfigurator() {
+        return new SearchComponentConfigurator.ISearchConfigurator<>() {
+            @Override
+            public Block defaultValue() {
+                return Blocks.STONE;
+            }
+
+            @Override
+            public void search(String word, IResultHandler<Block> searchHandler) {
+                String lower = word.toLowerCase();
+                for (ResourceLocation key : BuiltInRegistries.BLOCK.keySet()) {
+                    if (key.toString().toLowerCase().contains(lower)) {
+                        searchHandler.acceptResult(BuiltInRegistries.BLOCK.get(key));
+                    }
+                }
+            }
+
+            @Override
+            public String resultText(Block value) {
+                return BuiltInRegistries.BLOCK.getKey(value).toString();
+            }
+        };
+    }
+
+    public static class TestToggleGroup implements IToggleConfigurable {
+        @Getter
+        @Setter
+        private boolean isEnable = false;
+
+        @Configurable
+        @ConfigSelector(candidate = {"north", "west", "south", "east"})
+        private Direction enumValue = Direction.NORTH;
+    }
+
+    public static class TestGroup implements IConfigurable {
+        @Configurable
+        @ConfigNumber(range = {0, 1}, type = ConfigNumber.Type.FLOAT)
+        private Range rangeValue = Range.of(0, 1);
+
+        @Configurable
+        private Direction enumValue = Direction.NORTH;
+
+        @Configurable
+        private Vector3i vector3iValue = new Vector3i(0, 0, 0);
+    }
+}
+调用 buildConfigurator(group) 后，LDLib2 会把这些字段转换成可编辑面板：
+
+Configurator examples
+<code>TestConfigurators</code> 生成的 configurator 面板。
+IConfigurable object
+
+ConfiguratorParser
+
+Configurable fields
+
+IConfiguratorAccessor
+
+Configurator UI
+
+Inspector
+
+章节导航
+快速开始 介绍如何把几个字段暴露到 editor inspector。
+
+注解 介绍 @Configurable 以及用于名称、提示、范围、选择器、列表、搜索字段、setter 和资源路径的辅助注解。
+
+Accessors 介绍 LDLib2 如何根据 Java 类型选择 UI 控件，以及如何为自己的类型注册支持。
+
+Configurator UI 介绍 accessors 创建的实际 UI 节点：Configurator、ConfiguratorGroup、数组/列表组、事件和复制粘贴行为。
+
+Inspector 与 History 介绍 editor 的 InspectorView 如何展示 IConfigurable、监听变更并记录 undo/redo。
+
+源码示例 给出建议阅读的源码入口。
+
+什么时候使用
+当对象有编辑器属性时使用 Configurable：商店条目、动画片段、节点图常量、渲染器设置、UI 元素样式，或者自定义 view 选中的任何数据模型。
+
+如果属性面板主要是普通字段，给字段加注解并让 ConfiguratorParser 构建 UI。如果面板需要自定义布局、条件行或者特殊控件，重写 buildConfigurator(...) 并手动添加 configurators。
+
+@Configurable 字段默认会持久化。PersistedParser 会像处理 @Persisted 字段一样处理它们，除非使用 @Configurable(persisted = false)。序列化部分见 PersistedParser。
+快速开始
+Configurable 从一个实现 IConfigurable 的对象开始。默认的 buildConfigurator(...) 会调用 ConfiguratorParser，扫描对象中的 @Configurable 字段，并为这些字段创建 UI 行。
+
+
+public class ShopEntry implements IConfigurable {
+    @Configurable(name = "Display Name")
+    public String displayName = "Apple";
+
+    @Configurable(name = "Price", tips = "Cost paid by the player")
+    @ConfigNumber(range = {0, 9999}, wheel = 1)
+    public int price = 10;
+
+    @Configurable(name = "Enabled")
+    public boolean enabled = true;
+}
+在 editor inspector 中显示：
+
+
+ShopEntry entry = new ShopEntry();
+editor.inspectorView.inspect(entry);
+也可以直接使用独立的 Inspector 元素：
+
+
+Inspector inspector = new Inspector();
+inspector.inspect(entry);
+对象本身不需要知道 editor 的存在。Inspector 会要求对象构建 configurators，然后把这些 UI 放进可滚动面板。
+
+手动 Configurator
+普通字段编辑优先使用注解。当 UI 需要自定义布局、动态生成行，或者一个控件不适合映射到单个字段时，再重写 buildConfigurator(...)。
+
+
+public class RuntimeInfo implements IConfigurable {
+    @Override
+    public void buildConfigurator(ConfiguratorGroup father) {
+        father.addConfigurator(new StringConfigurator(
+                "Status",
+                () -> "Running",
+                value -> {},
+                "Running",
+                false
+        ));
+    }
+}
+也可以混合使用两种方式：
+
+
+@Override
+public void buildConfigurator(ConfiguratorGroup father) {
+    IConfigurable.super.buildConfigurator(father);
+    father.addConfigurator(new HeaderConfigurator("Runtime", 5));
+}
+手动 configurator 要谨慎使用。一旦绕开字段解析，就需要自己负责 setter、数据更新和变更通知。
+注解
+注解描述字段在生成的属性 UI 中如何显示。ConfiguratorParser 会在运行时读取这些注解，并在 ConfiguratorGroup 下创建 configurators。
+
+@Configurable
+@Configurable 标记一个字段或类型可被编辑。
+
+
+@Configurable(
+        name = "Speed",
+        tips = "Blocks per second",
+        collapse = false,
+        forceUpdate = true
+)
+public float speed = 1.0f;
+常用参数：
+
+name：UI 中显示的标签。为空时使用字段名或类名。
+showName：设为 false 时隐藏标签。
+tips：tooltip 文本。
+collapse：group 或 list-like configurator 的初始折叠状态。
+canCollapse：用户是否可以折叠该 group。
+forceUpdate：传给创建出的 configurator。需要实时从目标对象刷新时使用。
+subConfigurable：把字段值当作嵌套对象，并构建它的字段。
+subFlattenConfigurable：把嵌套对象的字段直接放进父 group。
+subFlattenPersisted：序列化时把嵌套对象的数据展开到父对象。
+persisted：是否参与 PersistedParser 序列化，默认是 true。
+
+@Configurable(name = "Transform", subConfigurable = true)
+public TransformData transform = new TransformData();
+因为 persisted 默认是 true，@Configurable 字段也会像 persisted 字段一样参与序列化：
+
+
+public class ShopEntry implements IPersistedSerializable {
+    @Configurable(name = "Price")
+    public int price = 10; // 会被 PersistedParser 序列化
+
+    @Configurable(name = "Preview Only", persisted = false)
+    public boolean previewOnly = false; // 只用于 editor UI
+}
+字段既需要编辑又需要保存时使用 @Configurable。只需要保存、不需要 editor UI 时使用 @Persisted。序列化行为见 PersistedParser。
+
+默认值
+@DefaultValue 被多种 accessor 支持，不只用于数字。当 configurator 需要 fallback 值，或者数组/列表创建新元素时，它可以提供默认 number、string 或 boolean。
+
+
+@Configurable
+@DefaultValue(stringValue = "minecraft:stone")
+private ResourceLocation texture = ResourceLocation.withDefaultNamespace("stone");
+
+@Configurable
+@DefaultValue(booleanValue = true)
+private boolean enabled = true;
+Accessor 会读取自己支持的部分。数字 accessor 使用 numberValue，字符串类 accessor 使用 stringValue，boolean accessor 使用 booleanValue。
+
+数字
+@ConfigNumber 用于设置数值范围和鼠标滚轮步进。
+
+
+@Configurable(name = "Scale")
+@ConfigNumber(range = {0.1, 8.0}, wheel = 0.1)
+@DefaultValue(numberValue = 1.0)
+public float scale = 1.0f;
+颜色
+@ConfigColor 让一个整数使用颜色选择器。
+
+
+@Configurable(name = "Tint")
+@ConfigColor
+public int color = 0xffffffff;
+@ConfigHDR 用于目标类型支持 HDR color configurator 的情况。
+
+选择器
+Enum 字段会自动变成 selector。@ConfigSelector 可以限制候选项、限制可见数量，或者根据当前选择创建额外配置行。
+
+
+@Configurable(name = "Mode")
+@ConfigSelector(candidate = {"basic", "advanced"}, max = 4)
+public Mode mode = Mode.BASIC;
+条件子配置可以指定一个方法名：
+
+
+@Configurable(name = "Mode")
+@ConfigSelector(subConfiguratorBuilder = "buildModeOptions")
+public Mode mode = Mode.BASIC;
+
+private void buildModeOptions(Mode mode, ConfiguratorGroup group) {
+    if (mode == Mode.ADVANCED) {
+        group.addConfigurator(new BooleanConfigurator("Debug", () -> debug, v -> debug = v, false, true));
+    }
+}
+列表和数组
+数组和集合会显示为 ArrayConfiguratorGroup。@ConfigList 控制添加、删除、重排、默认元素创建，以及自定义元素 UI。
+
+
+@Configurable(name = "Rewards")
+@ConfigList(addDefaultMethod = "newReward", canReorder = true)
+public List<Reward> rewards = new ArrayList<>();
+
+private Reward newReward() {
+    return new Reward();
+}
+不加 @ConfigList 时，LDLib2 仍会构建 list UI。它会找到元素类型，再找到元素 accessor，并为每个元素创建一个子 configurator。比如 List&lt;Boolean&gt; 使用 BooleanAccessor；List&lt;Reward&gt; 则需要 Reward 有支持的 accessor、手动 accessor，或者自定义 item configurator。
+
+@ConfigList 参数：
+
+canAdd：是否显示添加按钮。
+canRemove：是否允许删除行。
+canReorder：是否允许重排。
+addDefaultMethod：owner 对象上用于创建新元素的方法。
+configuratorMethod：owner 对象上用于创建每个元素 UI 的方法。
+configuratorMethod 的签名必须是：
+
+
+private Configurator methodName(Supplier<T> getter, Consumer<T> setter)
+addDefaultMethod 的签名必须是：
+
+
+private T methodName()
+嵌套 configurable values 的常见写法：
+
+
+@Configurable
+@ConfigList(
+        configuratorMethod = "buildEntryConfigurator",
+        addDefaultMethod = "newEntry"
+)
+private final List<Entry> entries = new ArrayList<>();
+
+private Configurator buildEntryConfigurator(Supplier<Entry> getter, Consumer<Entry> setter) {
+    Entry entry = getter.get();
+    return entry == null ? new Configurator() : entry.createDirectConfigurator();
+}
+
+private Entry newEntry() {
+    return new Entry();
+}
+生成出的 list configurator 负责添加、删除和重排 UI。你的 item configurator 只需要编辑单个元素。
+
+搜索字段
+@ConfigSearch 会用 SearchComponentConfigurator 替代普通基于类型的 UI。指定的方法必须返回 SearchComponentConfigurator.ISearchConfigurator。
+
+
+@Configurable(name = "Block")
+@ConfigSearch(searchConfiguratorMethod = "createBlockSearch")
+public Block block = Blocks.STONE;
+适合从大型动态集合中选择值：方块、物品、配方、自定义注册表项、节点、资源，或者任何不适合固定 selector 的数据。
+
+
+private SearchComponentConfigurator.ISearchConfigurator<Block> createBlockSearch() {
+    return new SearchComponentConfigurator.ISearchConfigurator<>() {
+        @Override
+        public Block defaultValue() {
+            return Blocks.STONE;
+        }
+
+        @Override
+        public void search(String word, IResultHandler<Block> handler) {
+            String lower = word.toLowerCase();
+            for (ResourceLocation key : BuiltInRegistries.BLOCK.keySet()) {
+                if (key.toString().toLowerCase().contains(lower)) {
+                    handler.acceptResult(BuiltInRegistries.BLOCK.get(key));
+                }
+            }
+        }
+
+        @Override
+        public String resultText(Block value) {
+            return BuiltInRegistries.BLOCK.getKey(value).toString();
+        }
+    };
+}
+重要方法：
+
+defaultValue()：configurator 使用的 fallback 值。
+search(String, IResultHandler&lt;T&gt;)：把匹配结果推入 handler。
+resultText(T)：选中值或结果行显示的文本。
+candidateUIProvider()：可选的自定义结果行 UI，通常是图标加文本。
+搜索会随着用户输入触发。保持实现轻量；如果实现中检查了 Thread.currentThread().isInterrupted()，应尽快返回。
+
+Setter
+默认情况下，解析出的字段会被直接写入。字段需要校验、副作用或刷新缓存时，使用 @ConfigSetter。
+
+
+@Configurable
+private int size = 16;
+
+@ConfigSetter(field = "size")
+private void setSize(int size) {
+    this.size = Math.max(1, size);
+    rebuildPreview();
+}
+Header 和 ResourceLocation
+@ConfigHeader 会在被标注字段前插入 section 标题。
+
+
+@ConfigHeader("Display")
+@Configurable
+public String title = "";
+@ConfigRL 用于特殊化 ResourceLocation 字段。内置模式包括 font ID，以及 item、block、entity type、fluid 的 tag key。
+
+
+@Configurable(name = "Font")
+@ConfigRL(ConfigRL.Type.FONT)
+public ResourceLocation font = ResourceLocation.withDefaultNamespace("default");
+Accessors
+IConfiguratorAccessor&lt;T&gt; 是 Java 类型和 configurator UI 之间的桥梁。当 ConfiguratorParser 找到普通的 @Configurable 字段时，会执行类似下面的流程：
+
+
+IConfiguratorAccessor accessor = ConfiguratorAccessors.findByType(field.getGenericType());
+Configurator configurator = accessor.create(name, getter, setter, forceUpdate, field, owner);
+Accessor 决定自己是否支持该字段类型，提供默认值，并创建具体的 Configurator。
+
+内置类型支持
+LDLib2 在 ldlib2:configurator_accessor 中注册了许多客户端 accessor。
+
+类型族	Java 类型	说明
+Boolean	boolean, Boolean	使用 toggle。
+Numbers	int, long, float, double, short, byte 以及 boxed 类型	支持 @ConfigNumber、@DefaultValue 和 @ConfigColor。
+String	String, String[]	String[] 会作为多行字符串编辑。
+Enum	任意 enum 类型	支持 @ConfigSelector；实现 StringRepresentable 时使用 serialized name。
+Text	Component	Component 文本 configurator。
+Minecraft registry values	Block, Item, Fluid, EntityType&lt;?&gt;	通常使用 registry search/selector UI。
+Resource IDs	ResourceLocation	支持 @ConfigRL 的 font 和 tag-key 模式。
+Item/fluid stacks	ItemStack, FluidStack	面向物品/流体的 configurator。
+NBT	Tag	编辑原始 NBT/tag 数据。
+Position/shape	BlockPos, AABB, Range	使用数值 group。
+LDLib UI data	Position, Size, Pivot, LengthPercent, Translate2D	常见 UI layout/style 数据类型。
+JOML math	Vector2f, Vector2i, Vector3f, Vector3i, Vector4f, Vector4i, Quaternionf	使用组合数值 configurator。
+Scene refs	TransformRef	Scene editor 相关的 transform reference。
+Render/UI resources	IGuiTexture, IRenderer	选择注册过的实现，并编辑该实现自己的 configurable 数据。
+Arrays	T[]	基于子类型 accessor 的动态 wrapper。
+Collections	Collection&lt;T&gt;，通常是 List&lt;T&gt; 或 Set&lt;T&gt;	基于子类型 accessor 的动态 wrapper；支持 @ConfigList。
+数组和集合是动态处理的。LDLib2 会先找到子类型 accessor，然后用 ArrayConfiguratorAccessor 或 CollectionConfiguratorAccessor 包起来。
+
+如果类型不在表中，仍可以通过这些方式支持：
+
+字段使用 @Configurable(subConfigurable = true)；
+注册自定义 IConfiguratorAccessor；
+在 buildConfigurator(...) 中手动构建 UI；
+list 使用 @ConfigList(configuratorMethod = "...") 提供 item UI。
+自定义 Accessor
+当某个领域类型总是应该使用同一种编辑控件时，创建 accessor。
+
+
+@LDLRegisterClient(name = "shop_currency", registry = "ldlib2:configurator_accessor")
+public class CurrencyAccessor implements IConfiguratorAccessor<Currency> {
+    @Override
+    public boolean test(Class<?> type) {
+        return type == Currency.class;
+    }
+
+    @Override
+    public Currency defaultValue(@Nullable Field field, @Nullable Class<?> type) {
+        return Currency.EMPTY;
+    }
+
+    @Override
+    public Configurator create(
+            String name,
+            Supplier<Currency> supplier,
+            Consumer<Currency> consumer,
+            boolean forceUpdate,
+            @Nullable Field field,
+            @Nullable Object owner
+    ) {
+        return new SelectorConfigurator<>(
+                name,
+                supplier,
+                consumer,
+                Currency.EMPTY,
+                forceUpdate,
+                CurrencyRegistry.getAll(),
+                Currency::id
+        );
+    }
+}
+@LDLRegisterClient 会让这个 accessor 在客户端可被 ConfiguratorAccessors.findByType(...) 找到。
+
+如何选择扩展点
+如果映射是类型级别的，比如所有 Currency 都应该用同一个 selector，就使用自定义 accessor。
+
+如果 UI 依赖某个 owner 对象或某个具体字段，优先使用 @ConfigList(configuratorMethod = "...")、@ConfigSearch 或手动 buildConfigurator(...)。
+
+如果默认 UI 足够，但写入值时需要校验或副作用，使用 @ConfigSetter。
+Configurator UI
+Configurator 是用于编辑一个值或一组值的小型 UI 组件。Accessors 创建 configurators，Inspector 展示它们，Editor 监听它们的变更事件。
+
+Configurator UI structure
+Configurator UI 结构：1. <code>ConfiguratorGroup</code>，2. <code>ArrayConfiguratorGroup</code>，3. 常规 <code>ValueConfigurator</code> 行。
+图中三块是自定义 editor 最常复用的 UI 单元。ConfiguratorGroup 创建可折叠 section，ArrayConfiguratorGroup 编辑数组或集合，ValueConfigurator 行通过一个 inline 控件编辑一个值。
+
+Configurator
+Configurator 是基类，提供：
+
+label 区域；
+inline 内容容器；
+可选 tips 图标；
+右键复制/粘贴菜单支持；
+notifyChanges()；
+Configurator.CHANGE_EVENT 事件。
+大多数具体 configurator 会把自己的控件添加到 inlineContainer。
+
+
+NumberConfigurator speed = new NumberConfigurator(
+        "Speed",
+        () -> model.speed,
+        value -> model.speed = value.floatValue(),
+        1.0f,
+        true
+);
+自定义 configurator 修改模型后，需要调用：
+
+
+notifyChanges();
+Inspector 正是依赖这个事件来运行 listener 和记录 history。
+
+ValueConfigurator
+ValueConfigurator&lt;T&gt; 是大多数可编辑属性行的核心基类。它把一个 UI 控件和一个值连接起来。
+
+构造参数：
+
+
+public ValueConfigurator(
+        String name,
+        Supplier<@Nullable T> supplier,
+        Consumer<@Nullable T> onUpdate,
+        @Nullable T defaultValue,
+        boolean forceUpdate
+)
+每个参数的含义：
+
+supplier：从目标对象读取当前值。
+onUpdate：把修改后的值写回目标对象。
+defaultValue：fallback 值，以及默认 paste/drop 类型。
+forceUpdate：为 true 时，screenTick() 会从 supplier 刷新 configurator。
+ValueConfigurator 区分两种更新方向：
+
+onValueUpdatePassively(newValue)：更新 configurator 内部值和视觉控件，但不通知 listener。
+updateValueActively(newValue)：用户修改控件；更新值，调用 onUpdate，并触发 Configurator.CHANGE_EVENT。
+如果 widget 是从模型刷新，使用 passive 路径。如果是用户编辑 widget，使用 active 路径。
+
+
+protected void onSliderChanged(float value) {
+    updateValueActively(value);
+}
+
+@Override
+protected void onValueUpdatePassively(Float newValue) {
+    super.onValueUpdatePassively(newValue);
+    slider.setValue(newValue == null ? defaultValue : newValue, false);
+}
+它还提供复制/粘贴和拖拽 hook：
+
+setCopiable(...)
+setPastable(...)
+canDropObject(...)
+onDropObject(...)
+大多数简单自定义 configurator 应该继承 ValueConfigurator&lt;T&gt;，而不是直接继承 Configurator。
+
+ConfiguratorGroup
+ConfiguratorGroup 包含其他 configurators。它用于 class-level @Configurable、嵌套 subConfigurable 字段，以及手动 section。
+
+
+ConfiguratorGroup display = new ConfiguratorGroup("Display", false);
+display.addConfigurator(new StringConfigurator("Name", () -> name, v -> name = v, "", true));
+father.addConfigurator(display);
+Group 可以折叠。由注解生成 group 时，@Configurable(collapse = ..., canCollapse = ...) 会映射到同样的行为。
+
+ArrayConfiguratorGroup
+数组和集合使用 ArrayConfiguratorGroup。这个 group 管理一组 child configurators，并可以允许添加、删除和重排。
+
+@ConfigList 是调整该行为的常用方式：
+
+
+@Configurable(name = "Entries")
+@ConfigList(canAdd = true, canRemove = true, canReorder = true)
+public List<Entry> entries = new ArrayList<>();
+常见 Configurator
+Type	Class	Description
+Boolean	BooleanConfigurator	boolean / Boolean 的 toggle 编辑器。
+Number	NumberConfigurator	基于文本框的数字编辑器，支持 range 和鼠标滚轮步进。
+String	StringConfigurator	单行文本编辑器，也可限制为 resource-location 语法。
+Text area	TextAreaConfigurator	多行文本编辑器。
+Color	ColorConfigurator	整数颜色选择器，通常由 @ConfigColor 选择。
+HDR color	HDRColorConfigurator	HDR 颜色编辑器。
+Selector	SelectorConfigurator	固定候选项的下拉选择器，常用于 enum。
+Toggle selector	ToggleSelectorConfigurator	使用 toggle/icon 风格候选项的紧凑选择器。
+Conditional selector	ConfiguratorSelectorConfigurator	选择值变化时重建子 ConfiguratorGroup。
+Search	SearchComponentConfigurator	面向大型或动态候选集合的搜索字段。
+Registry search	RegistrySearchComponent	Minecraft registry values 的搜索 UI。
+Tag key	TagKeySearchComponent	tag-key 类型值的搜索 UI。
+NBT/tag	TagConfigurator	编辑 NBT Tag 值。
+Data component	DataComponentConfigurator, TypedDataComponentConfigurator	编辑 Minecraft data component 值。
+Texture	IGuiTextureConfigurator	选择并配置注册过的 IGuiTexture 实现。
+Renderer	IRendererConfigurator	选择并配置注册过的 IRenderer 实现。
+Transform reference	TransformRefConfigurator	Scene editor 的 transform reference 编辑器。
+Layout value	LengthPercentConfigurator, LPAConfigurator, DimensionConfigurator	layout 相关数值/单位编辑器。
+Optional float	FloatOptionalConfigurator	可以表示空 optional 值的 float 编辑器。
+Group header	HeaderConfigurator	非值类型 header 行，用于分隔 section。
+Array/list	ArrayConfiguratorGroup	数组和集合的添加、删除、重排编辑器。
+不要一开始就为每个字段手写 UI。普通属性交给注解和 accessor，只有需要自定义行为时再添加手动 configurator。
+
+自定义 Configurator
+当某个值需要特殊 widget 时，创建自定义 configurator。基本模式：
+
+继承 ValueConfigurator&lt;T&gt;；
+创建 UI 控件并加入 inlineContainer；
+用户修改控件时调用 updateValueActively(value)；
+重写 onValueUpdatePassively(...)，在模型变化时刷新控件；
+按需提供复制、粘贴和拖拽行为。
+
+public class ToggleNameConfigurator extends ValueConfigurator<Boolean> {
+    private final Toggle toggle;
+
+    public ToggleNameConfigurator(
+            String name,
+            Supplier<Boolean> supplier,
+            Consumer<Boolean> onUpdate,
+            Boolean defaultValue,
+            boolean forceUpdate
+    ) {
+        super(name, supplier, onUpdate, defaultValue, forceUpdate);
+        setCopiable(value -> value);
+
+        toggle = new Toggle();
+        toggle.toggleLabel.setText("");
+        toggle.setOn(value == null ? defaultValue : value, false);
+        toggle.setOnToggleChanged(this::updateValueActively);
+
+        inlineContainer.addChild(toggle);
+    }
+
+    @Override
+    protected void onValueUpdatePassively(Boolean newValue) {
+        if (newValue == null) newValue = defaultValue;
+        if (newValue.equals(value)) return;
+        super.onValueUpdatePassively(newValue);
+        toggle.setOn(newValue, false);
+    }
+}
+手动使用：
+
+
+father.addConfigurator(new ToggleNameConfigurator(
+        "Enabled",
+        () -> model.enabled,
+        value -> model.enabled = value,
+        true,
+        true
+));
+或者在 accessor 中返回：
+
+
+@Override
+public Configurator create(
+        String name,
+        Supplier<Boolean> supplier,
+        Consumer<Boolean> consumer,
+        boolean forceUpdate,
+        @Nullable Field field,
+        @Nullable Object owner
+) {
+    return new ToggleNameConfigurator(name, supplier, consumer, true, forceUpdate);
+}
+只有当 UI 不代表一个单独值时，才直接继承 Configurator，比如 header、action row、preview panel，或者由自己管理多个 child 的复合编辑器。
+
+复制和粘贴
+Configurator 可以在右键菜单中暴露复制和粘贴操作。
+
+
+configurator
+        .setCopiableDirect(model.value)
+        .setPastable(Value.class, value -> {
+            model.value = value;
+            configurator.notifyChanges();
+        });
+这对颜色、向量、贴图和渲染器设置这类会被重复使用的数据很有用。
+Inspector 与 History
+Inspector 可以展示任何 IConfigurable 对象。Editor 中的 InspectorView 只是对同一个组件的 View 包装。
+
+
+editor.inspectorView.inspect(selectedObject);
+被 inspect 的对象会构建一个根 ConfiguratorGroup。Inspector 会把它加入滚动视图，并监听所有 child configurator 发出的 Configurator.CHANGE_EVENT。
+
+监听变更
+当外部 editor 需要响应属性变更时，使用完整重载：
+
+
+editor.inspectorView.inspect(
+        selectedObject,
+        configurator -> markDirty(),
+        () -> clearPreview(),
+        () -> refreshView()
+);
+参数含义：
+
+listener：configurator 变化时调用。
+onClose：当前 inspected object 被清空或替换时调用。
+historyAction：undo/redo 恢复该 configurable 后调用。
+当 inspected object 改变时，Inspector 会按 group path 保留匹配 group 的折叠状态。稳定的 group label 会让状态恢复更自然。
+
+History 记录
+Inspector 把 undo/redo 记录委托给：
+
+
+IConfigurable.createHistoryRecorder()
+默认实现会在对象实现 INBTSerializable 时返回基于快照的 recorder。该 recorder 使用 SerializableRecordAction，所以每次 configurator 变化都可以记录进 editor 的 IHistoryStack。
+
+
+public class ShopEntry implements IConfigurable, INBTSerializable<CompoundTag> {
+    // annotated fields
+}
+返回 null 可以关闭 inspector 自动 history：
+
+
+@Override
+public IConfigurableHistory createHistoryRecorder() {
+    return null;
+}
+当对象需要特殊 history 策略时，返回自定义 recorder。
+
+
+@Override
+public IConfigurableHistory createHistoryRecorder() {
+    return (stack, name, source) -> {
+        var before = captureStateBeforeEdit();
+        var after = captureCurrentState();
+        Runnable[] onExecute = new Runnable[1];
+        Runnable[] onUndo = new Runnable[1];
+
+        stack.pushHistory(name, EditAction.of(
+                () -> {
+                    restore(after);
+                    if (onExecute[0] != null) onExecute[0].run();
+                },
+                () -> {
+                    restore(before);
+                    if (onUndo[0] != null) onUndo[0].run();
+                }
+        ), source, false);
+
+        return new IConfigurableHistory.Handle() {
+            @Override
+            public IConfigurableHistory.Handle setOnExecute(@Nullable Runnable action) {
+                onExecute[0] = action;
+                return this;
+            }
+
+            @Override
+            public IConfigurableHistory.Handle setOnUndo(@Nullable Runnable action) {
+                onUndo[0] = action;
+                return this;
+            }
+        };
+    };
+}
+可序列化数据模型优先使用自动 history。对象修改外部状态、临时 editor 状态，或者不能用 NBT 快照时，再使用手动 history。
+
+Editor 侧 Inspector 用法见 Built-in Views。
+源码示例
+下面这些源码适合作为自定义 configurable editor 数据的参考。
+
+UIElement
+com.lowdragmc.lowdraglib2.gui.ui.UIElement
+
+UIElement 是 UI Editor 中最主要的 inspected object。它实现 IConfigurable，并暴露可见性、active 状态、focus 行为、layout、style、transform 等编辑器属性。
+
+阅读它可以了解一个大型对象如何混合注解字段和自定义行为。
+
+AnimationTexture
+com.lowdragmc.lowdraglib2.gui.texture.AnimationTexture
+
+AnimationTexture 是一个紧凑的贴图属性示例：resource location、cell size、帧范围、动画时间和颜色。
+
+它适合理解简单数据对象如何成为可编辑资源。
+
+EditorSettings
+com.lowdragmc.lowdraglib2.editor.settings.EditorSettings
+
+EditorSettings 展示了 Configurable 在 selected scene object 之外的用法。Settings 页面可以 inspect 临时 configurable group、应用修改、恢复旧值，并独立持久化设置。
+
+IGuiTexture 和 IRenderer
+com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture
+
+com.lowdragmc.lowdraglib2.client.renderer.IRenderer
+
+二者都是客户端注册资源族，并实现 IConfigurable。它们的 accessor 会创建类似 selector 的 UI，用来选择具体注册实现，然后 inspect 该实现自己的 configurable 字段。
+
+当 editor 需要让用户从注册表中选择一个实现，并继续编辑该实现时，可以参考这个模式。
+
+Array 和 Collection Accessors
+com.lowdragmc.lowdraglib2.configurator.accessors.ArrayConfiguratorAccessor
+
+com.lowdragmc.lowdraglib2.configurator.accessors.CollectionConfiguratorAccessor
+
+这些 accessor 展示了父 configurator 如何复用 child accessor 来编辑每个元素。它们也展示了 @ConfigList 如何影响添加、删除、重排、默认元素创建和自定义元素 configurator。

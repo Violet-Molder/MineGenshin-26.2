@@ -18,7 +18,7 @@ import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
-import com.linweiyun.genshin.core.system.registry.register.ModEntities;
+import com.linweiyun.genshin.content.entities.ModEntities;
 import com.linweiyun.genshin.enums.AttachmentType;
 import com.linweiyun.genshin.enums.AttackType;
 import com.mojang.logging.LogUtils;
@@ -49,7 +49,6 @@ public class RaidenShogunTalent extends TalentBase {
 
     @Override
     public void attack(Player player, PGCharacter character, int comboStage) {
-        LOGGER.info("RaidenShogunTalent attack");
         Level level = player.level();
         if (level.isClientSide()) return;
 
@@ -71,7 +70,7 @@ public class RaidenShogunTalent extends TalentBase {
 
         for (LivingEntity target : targets) {
             if (target != player) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.ELECTRO.get())
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.CYRO.get())
                         .multiplier(multiplier)
                         .elementAmount(AttachmentType.ULTRA_STRONG.getInitialAmount())
                         .attackerCharacter(character)

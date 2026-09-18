@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.about;
 
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
@@ -34,7 +35,16 @@ public class ElementalAttachmentHelper {
                               GenshinElement element,
                               AttachmentSource source,
                               AttachmentProfile profile) {
-        doAttach(target, container, element, source, profile);
+        doAttach(target, container, element, source, profile, null, 0L);
+    }
+
+    /** 带角色信息的附着（用于反应贡献者追踪） */
+    public static void attach(LivingEntity target, StatusContainer container,
+                              GenshinElement element,
+                              AttachmentSource source,
+                              AttachmentProfile profile,
+                              PGCharacter character, long gameTime) {
+        doAttach(target, container, element, source, profile, character, gameTime);
     }
 
     // ========== 消耗（元素反应调用）==========
@@ -65,18 +75,24 @@ public class ElementalAttachmentHelper {
     private static void doAttach(LivingEntity target, StatusContainer container,
                                  GenshinElement element,
                                  AttachmentSource source,
-                                 AttachmentProfile profile) {
+                                 AttachmentProfile profile,
+                                 PGCharacter character, long gameTime) {
 
         // 1. 实际附着量 = baseQuantity × lossMultiplier
         float actualQuantity = profile.actualQuantity();
 
-        // 2. 查找容器里"同元素 + 同 source + 未 finished"的已有实例
-        ElementalAttachmentInstance existing = findMatching(container, element, source);
+        // 2. 查找容器里"同元素 + 同 source"的已有实例
+        ElementalAttachmentInstance existing = findMatching(container, element, source, character);
 
         if (existing == null) {
             // 无匹配实例 → 新建
             ElementalAttachmentInstance newInst =
                     new ElementalAttachmentInstance(element, source, profile, actualQuantity);
+            if (character != null) {
+                newInst.setSourceCharacter(character, gameTime);
+            } else if (gameTime > 0L) {
+                newInst.setAttachTick(gameTime);
+            }
             if (target != null && GenshinElement.isNonPlayerLiving(target)) {
                 element.onAttach(target);
             }
@@ -86,13 +102,38 @@ public class ElementalAttachmentHelper {
         }
 
         // 3. 量多则覆盖判断
+        // 主线/支线逻辑：同角色重复附着时，新持续时间超过当前剩余时间则延长
+        if (character != null && existing.hasSourceCharacter()) {
+            long currentTick = gameTime;
+            long existingEnd = existing.getDecayEndTick();
+            float newDurationTicks = profile.getDurationSeconds() * 20f;
+            long newEnd = currentTick + (long) newDurationTicks;
+            if (newEnd > existingEnd) {
+                // 支线超过主线：刷新全量并延长到期时间
+                existing.refreshQuantity(actualQuantity);
+                existing.overrideDecayRate(profile.getDecayPerSecond());
+                existing.setAttachTick(currentTick);
+                return;
+            }
+            // 支线未超过主线：仅刷新角色信息，不改变到期时间
+            existing.setSourceCharacter(character, gameTime);
+            return;
+        }
+
         if (actualQuantity <= existing.getUnit()) {
             // 后手段量 ≤ 先手段量 → 不覆盖
+            // 但仍需记录角色信息
+            if (character != null) {
+                existing.setSourceCharacter(character, gameTime);
+            }
             return;
         }
 
         // 4. 发生覆盖
         existing.refreshQuantity(actualQuantity);
+        if (character != null) {
+            existing.setSourceCharacter(character, gameTime);
+        }
         // 衰减速率分支
         if (element.canOverrideDecay()) {
             // 火/激/燃：直接替换为新的衰减速率
@@ -104,11 +145,17 @@ public class ElementalAttachmentHelper {
     // ========== 查找工具 ==========
 
     private static ElementalAttachmentInstance findMatching(
-            StatusContainer container, GenshinElement element, AttachmentSource source) {
+            StatusContainer container, GenshinElement element, AttachmentSource source,
+            PGCharacter character) {
         return (ElementalAttachmentInstance) container.find(inst -> {
             if (inst.isFinished()) return false;
             if (!(inst instanceof ElementalAttachmentInstance ea)) return false;
-            return ea.getElement() == element && ea.getSource() == source;
+            if (ea.getElement() != element || ea.getSource() != source) return false;
+            if (character != null && ea.hasSourceCharacter()
+                    && ea.getSourceCharacter() != character) {
+                return false;
+            }
+            return true;
         });
     }
 }

@@ -33,6 +33,7 @@ public class KeyInputHandler {
   private static boolean wasCharInfoKeyDown = false;
   private static boolean wasArtifactKeyDown = false;
   private static boolean wasArtifactKey2Down = false;
+  private static boolean wasConfigKeyDown = false;
   private static boolean wasJumpDown = false;
   private static long longPressStartTick = 0;
   private static boolean xSkillTriggered = false;
@@ -65,15 +66,12 @@ public class KeyInputHandler {
         if (maxCombo > 1) {
           int displayStage = ComboSystem.getComboStage(player);
           if (displayStage == 0) displayStage = maxCombo;
-          mc.player.sendSystemMessage(
-                  Component.literal(I18n.get("key.minegenshin.combo_stage", displayStage, maxCombo)));
         }
       }
 
       boolean chargedReady = ComboSystem.consumePendingChargedAttack(player);
       if (chargedReady) {
         mc.player.swing(InteractionHand.MAIN_HAND);
-        mc.player.sendSystemMessage(Component.literal(I18n.get("key.minegenshin.charged_attack")));
         character.performChargedAttack(mc.player);
         NetworkManager.performChargedAttackToServer();
       }
@@ -226,6 +224,10 @@ public class KeyInputHandler {
       GUIServerHelperGIM.openAscensionScreen(player);
     }
     wasArtifactKey2Down = isArtifact2Down;
+
+    boolean isConfigDown = KeyMappingRegistry.CONFIG_SCREEN_KEY.get().isDown();
+
+    wasConfigKeyDown = isConfigDown;
   }
 
   private static void switchToNextAvailableCharacter(Player player, PlayerCharactersAttachment attachment) {

@@ -23,7 +23,7 @@ public class ArtifactStatData {
         reloadFromConfig();
     }
 
-    //TEMP 从 ArtifactMainStatConfig 读取所有主词条数据
+    //TEMP 从 ArtifactConfigurable 读取所有主词条数据
     public static void reloadFromConfig() {
         MAIN_STAT.clear();
 
@@ -94,47 +94,31 @@ public class ArtifactStatData {
 
     private static void readSubStat5() {
         SUB_STAT_TIERS_5.clear();
+        SUB_STAT_TIERS_4.clear();
 
-        putSubStatTier("atk#FLAT",   ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER4.get());
-        putSubStatTier("max_hp#FLAT", ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER4.get());
-        putSubStatTier("def#FLAT",   ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER4.get());
-        putSubStatTier("atk#PERCENT", ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER4.get());
-        putSubStatTier("max_hp#PERCENT", ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER4.get());
-        putSubStatTier("def#PERCENT", ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER4.get());
-        putSubStatTier("elemental_mastery#FLAT", ArtifactSubStatConfig.SUB_5_EM_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_EM_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_EM_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_EM_TIER4.get());
-        putSubStatTier("energy_recharge#PERCENT", ArtifactSubStatConfig.SUB_5_ER_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_ER_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_ER_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_ER_TIER4.get());
-        putSubStatTier("crit_rate#PERCENT", ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER4.get());
-        putSubStatTier("crit_dmg#PERCENT", ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER1.get(),
-                ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER2.get(),
-                ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER3.get(),
-                ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER4.get());
+        // 5-star sub stats
+        putSubStatTier("atk#FLAT",   ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER1.get(), ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER2.get(), ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER3.get(), ArtifactSubStatConfig.SUB_5_ATK_FLAT_TIER4.get());
+        putSubStatTier("max_hp#FLAT", ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER1.get(), ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER2.get(), ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER3.get(), ArtifactSubStatConfig.SUB_5_HP_FLAT_TIER4.get());
+        putSubStatTier("def#FLAT",   ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER1.get(), ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER2.get(), ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER3.get(), ArtifactSubStatConfig.SUB_5_DEF_FLAT_TIER4.get());
+        putSubStatTier("atk#PERCENT", ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER1.get(), ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER2.get(), ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER3.get(), ArtifactSubStatConfig.SUB_5_ATK_PERCENT_TIER4.get());
+        putSubStatTier("max_hp#PERCENT", ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER1.get(), ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER2.get(), ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER3.get(), ArtifactSubStatConfig.SUB_5_HP_PERCENT_TIER4.get());
+        putSubStatTier("def#PERCENT", ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER1.get(), ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER2.get(), ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER3.get(), ArtifactSubStatConfig.SUB_5_DEF_PERCENT_TIER4.get());
+        putSubStatTier("elemental_mastery#FLAT", ArtifactSubStatConfig.SUB_5_EM_TIER1.get(), ArtifactSubStatConfig.SUB_5_EM_TIER2.get(), ArtifactSubStatConfig.SUB_5_EM_TIER3.get(), ArtifactSubStatConfig.SUB_5_EM_TIER4.get());
+        putSubStatTier("energy_recharge#PERCENT", ArtifactSubStatConfig.SUB_5_ER_TIER1.get(), ArtifactSubStatConfig.SUB_5_ER_TIER2.get(), ArtifactSubStatConfig.SUB_5_ER_TIER3.get(), ArtifactSubStatConfig.SUB_5_ER_TIER4.get());
+        putSubStatTier("crit_rate#PERCENT", ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER1.get(), ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER2.get(), ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER3.get(), ArtifactSubStatConfig.SUB_5_CRIT_RATE_TIER4.get());
+        putSubStatTier("crit_dmg#PERCENT", ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER1.get(), ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER2.get(), ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER3.get(), ArtifactSubStatConfig.SUB_5_CRIT_DMG_TIER4.get());
+
+        // 4-star sub stats
+        putSubStatTier4("atk#FLAT",   ArtifactSubStatConfig.SUB_4_ATK_FLAT_TIER1.get(), ArtifactSubStatConfig.SUB_4_ATK_FLAT_TIER2.get(), ArtifactSubStatConfig.SUB_4_ATK_FLAT_TIER3.get(), ArtifactSubStatConfig.SUB_4_ATK_FLAT_TIER4.get());
+        putSubStatTier4("max_hp#FLAT", ArtifactSubStatConfig.SUB_4_HP_FLAT_TIER1.get(), ArtifactSubStatConfig.SUB_4_HP_FLAT_TIER2.get(), ArtifactSubStatConfig.SUB_4_HP_FLAT_TIER3.get(), ArtifactSubStatConfig.SUB_4_HP_FLAT_TIER4.get());
+        putSubStatTier4("def#FLAT",   ArtifactSubStatConfig.SUB_4_DEF_FLAT_TIER1.get(), ArtifactSubStatConfig.SUB_4_DEF_FLAT_TIER2.get(), ArtifactSubStatConfig.SUB_4_DEF_FLAT_TIER3.get(), ArtifactSubStatConfig.SUB_4_DEF_FLAT_TIER4.get());
+        putSubStatTier4("atk#PERCENT", ArtifactSubStatConfig.SUB_4_ATK_PERCENT_TIER1.get(), ArtifactSubStatConfig.SUB_4_ATK_PERCENT_TIER2.get(), ArtifactSubStatConfig.SUB_4_ATK_PERCENT_TIER3.get(), ArtifactSubStatConfig.SUB_4_ATK_PERCENT_TIER4.get());
+        putSubStatTier4("max_hp#PERCENT", ArtifactSubStatConfig.SUB_4_HP_PERCENT_TIER1.get(), ArtifactSubStatConfig.SUB_4_HP_PERCENT_TIER2.get(), ArtifactSubStatConfig.SUB_4_HP_PERCENT_TIER3.get(), ArtifactSubStatConfig.SUB_4_HP_PERCENT_TIER4.get());
+        putSubStatTier4("def#PERCENT", ArtifactSubStatConfig.SUB_4_DEF_PERCENT_TIER1.get(), ArtifactSubStatConfig.SUB_4_DEF_PERCENT_TIER2.get(), ArtifactSubStatConfig.SUB_4_DEF_PERCENT_TIER3.get(), ArtifactSubStatConfig.SUB_4_DEF_PERCENT_TIER4.get());
+        putSubStatTier4("elemental_mastery#FLAT", ArtifactSubStatConfig.SUB_4_EM_TIER1.get(), ArtifactSubStatConfig.SUB_4_EM_TIER2.get(), ArtifactSubStatConfig.SUB_4_EM_TIER3.get(), ArtifactSubStatConfig.SUB_4_EM_TIER4.get());
+        putSubStatTier4("energy_recharge#PERCENT", ArtifactSubStatConfig.SUB_4_ER_TIER1.get(), ArtifactSubStatConfig.SUB_4_ER_TIER2.get(), ArtifactSubStatConfig.SUB_4_ER_TIER3.get(), ArtifactSubStatConfig.SUB_4_ER_TIER4.get());
+        putSubStatTier4("crit_rate#PERCENT", ArtifactSubStatConfig.SUB_4_CRIT_RATE_TIER1.get(), ArtifactSubStatConfig.SUB_4_CRIT_RATE_TIER2.get(), ArtifactSubStatConfig.SUB_4_CRIT_RATE_TIER3.get(), ArtifactSubStatConfig.SUB_4_CRIT_RATE_TIER4.get());
+        putSubStatTier4("crit_dmg#PERCENT", ArtifactSubStatConfig.SUB_4_CRIT_DMG_TIER1.get(), ArtifactSubStatConfig.SUB_4_CRIT_DMG_TIER2.get(), ArtifactSubStatConfig.SUB_4_CRIT_DMG_TIER3.get(), ArtifactSubStatConfig.SUB_4_CRIT_DMG_TIER4.get());
     }
 
     private static void putSubStatTier(String key, double t1, double t2, double t3, double t4) {
@@ -143,6 +127,14 @@ public class ArtifactStatData {
 
     private static void putSubStatTier(String key, int t1, int t2, int t3, int t4) {
         SUB_STAT_TIERS_5.put(key, new double[]{(double)t1, (double)t2, (double)t3, (double)t4});
+    }
+
+    private static void putSubStatTier4(String key, double t1, double t2, double t3, double t4) {
+        SUB_STAT_TIERS_4.put(key, new double[]{t1, t2, t3, t4});
+    }
+
+    private static void putSubStatTier4(String key, int t1, int t2, int t3, int t4) {
+        SUB_STAT_TIERS_4.put(key, new double[]{(double)t1, (double)t2, (double)t3, (double)t4});
     }
 
     private static String keyOf(int star, AttributeType attr, TeyvatItemStat.StatKind kind) {
@@ -198,40 +190,9 @@ public class ArtifactStatData {
         return pair != null ? pair[1] : 0;
     }
 
-    // ====== 副词条数据暂时保留不动 ======
+    // ====== 副词条数据 ======
     private static final Map<String, double[]> SUB_STAT_TIERS_5 = new HashMap<>();
     private static final Map<String, double[]> SUB_STAT_TIERS_4 = new HashMap<>();
-
-    static {
-        putSubStat_5("atk",               TeyvatItemStat.StatKind.FLAT,    new double[]{14, 16, 18, 19});
-        putSubStat_5("max_hp",            TeyvatItemStat.StatKind.FLAT,    new double[]{209, 239, 269, 299});
-        putSubStat_5("def",               TeyvatItemStat.StatKind.FLAT,    new double[]{16, 19, 21, 23});
-        putSubStat_5("elemental_mastery", TeyvatItemStat.StatKind.FLAT,    new double[]{16, 19, 21, 23});
-        putSubStat_5("atk",               TeyvatItemStat.StatKind.PERCENT, new double[]{0.041, 0.047, 0.053, 0.058});
-        putSubStat_5("max_hp",            TeyvatItemStat.StatKind.PERCENT, new double[]{0.041, 0.047, 0.053, 0.058});
-        putSubStat_5("def",               TeyvatItemStat.StatKind.PERCENT, new double[]{0.051, 0.058, 0.066, 0.073});
-        putSubStat_5("energy_recharge",   TeyvatItemStat.StatKind.PERCENT, new double[]{0.045, 0.052, 0.058, 0.065});
-        putSubStat_5("crit_rate",         TeyvatItemStat.StatKind.PERCENT, new double[]{0.027, 0.031, 0.035, 0.039});
-        putSubStat_5("crit_dmg",          TeyvatItemStat.StatKind.PERCENT, new double[]{0.054, 0.062, 0.07, 0.078});
-
-        putSubStat_4("max_hp",            TeyvatItemStat.StatKind.FLAT,    new double[]{167, 191, 215, 239});
-        putSubStat_4("atk",               TeyvatItemStat.StatKind.FLAT,    new double[]{11, 12, 14, 16});
-        putSubStat_4("def",               TeyvatItemStat.StatKind.FLAT,    new double[]{13, 15, 17, 19});
-        putSubStat_4("elemental_mastery", TeyvatItemStat.StatKind.FLAT,    new double[]{13, 15, 17, 19});
-        putSubStat_4("energy_recharge",   TeyvatItemStat.StatKind.PERCENT, new double[]{0.036, 0.041, 0.047, 0.052});
-        putSubStat_4("def",               TeyvatItemStat.StatKind.PERCENT, new double[]{0.041, 0.047, 0.053, 0.058});
-        putSubStat_4("max_hp",            TeyvatItemStat.StatKind.PERCENT, new double[]{0.033, 0.037, 0.042, 0.047});
-        putSubStat_4("atk",               TeyvatItemStat.StatKind.PERCENT, new double[]{0.033, 0.037, 0.042, 0.047});
-        putSubStat_4("crit_rate",         TeyvatItemStat.StatKind.PERCENT, new double[]{0.022, 0.025, 0.028, 0.031});
-        putSubStat_4("crit_dmg",          TeyvatItemStat.StatKind.PERCENT, new double[]{0.044, 0.05, 0.056, 0.062});
-    }
-
-    private static void putSubStat_5(String attrKey, TeyvatItemStat.StatKind kind, double[] tiers) {
-        SUB_STAT_TIERS_5.put(attrKey + "#" + kind.name(), tiers);
-    }
-    private static void putSubStat_4(String attrKey, TeyvatItemStat.StatKind kind, double[] tiers) {
-        SUB_STAT_TIERS_4.put(attrKey + "#" + kind.name(), tiers);
-    }
 
     private static String keyOf(AttributeType attr, TeyvatItemStat.StatKind kind) {
         return attr.id().getPath() + "#" + kind.name();
