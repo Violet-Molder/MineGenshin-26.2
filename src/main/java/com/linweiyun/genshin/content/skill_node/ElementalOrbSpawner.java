@@ -2,7 +2,7 @@ package com.linweiyun.genshin.content.skill_node;
 
 import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
 import com.linweiyun.genshin.core.element.GenshinElement;
-import com.linweiyun.genshin.core.system.registry.register.ModEntities;
+import com.linweiyun.genshin.content.entities.ModEntities;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;

@@ -2,6 +2,7 @@ package com.linweiyun.genshin.core.system.reaction.builtin;
 
 import com.linweiyun.genshin.config.reaction.ReactionConfig;
 import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
@@ -22,8 +23,8 @@ import com.linweiyun.genshin.enums.ElementalReactionType;
  */
 public class VaporizeReaction extends ElementalReaction {
 
-    private static float getDominantMultiplier() { return ReactionConfig.VAPORIZE.getFloat(); }
-    private static float getSubmissiveMultiplier() { return ReactionConfig.VAPORIZE_NEGATIVE.getFloat(); }
+    private static float getDominantMultiplier() { return (float) ReactionConfig.VAPORIZE.get(); }
+    private static float getSubmissiveMultiplier() { return (float) ReactionConfig.VAPORIZE_NEGATIVE.get(); }
 
     public VaporizeReaction(ElementalReactionType type,
                             String elementAId, String elementBId,
@@ -94,7 +95,7 @@ public class VaporizeReaction extends ElementalReaction {
                                                              GenshinElement targetMain) {
         // 遍历容器，找到主元素匹配的先手实例（优先找主元素精确匹配的，再找类元素）
         ElementalAttachmentInstance subElementMatch = null;
-        for (com.linweiyun.genshin.core.status.StatusInstance inst : ctx.targetContainer().getAll()) {
+        for (StatusInstance inst : ctx.targetContainer().getAll()) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
             GenshinElement eaElement = ea.getElement();

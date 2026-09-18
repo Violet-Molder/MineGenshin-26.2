@@ -143,7 +143,6 @@ public class PGCharacter implements IPersistedSerializable {
     };
 
     public void performNormalAttack(Player player, int comboStage) {
-        LOGGER.info("performNormalAttack");
         if (talent != null) talent.attack(player, this, comboStage);
     }
 
@@ -504,22 +503,51 @@ public class PGCharacter implements IPersistedSerializable {
         CharacterAscendAttribute ascendAttr = this.getAscendAttribute();
         AttributeType targetAttrType = getAscendAttributeType(ascendAttr);
 
-        data.removeAttributeModifier(targetAttrType, "ascension_bonus");
+        if (CharacterAscendAttribute.PERCENT_STATS.contains(ascendAttr)) {
+            data.removeAttributeModifier(targetAttrType, "ascension_bonus");
+        } else {
+            data.removeAttributeBaseValue(targetAttrType, "character_ascend");
+        }
 
         int bonusCount = getAscensionBonusCount(newPhase);
         if (bonusCount > 0) {
-            switch (ascendAttr) {
-                case ATK, HP:
-                    data.addAttributePercentModifier(targetAttrType, "ascension_bonus", 0.012f * (starRating + 1) * bonusCount);
-                    break;
-                case DEF:
-                    data.addAttributePercentModifier(targetAttrType, "ascension_bonus", 0.015f * (starRating + 1) * bonusCount);
-                    break;
-            }
+            applyAscendBonus(ascendAttr, targetAttrType, starRating, bonusCount);
         }
 
         // 突破后尝试继续升级
         tryLevelUp();
+    }
+
+    private void applyAscendBonus(CharacterAscendAttribute attr, AttributeType type,
+                                   int starRating, int bonusCount) {
+        int factor = starRating + 1;
+        String baseKey = "character_ascend";
+        switch (attr) {
+            case ATK, HP:
+                data.addAttributePercentModifier(type, "ascension_bonus", 0.012f * factor * bonusCount);
+                break;
+            case DEF:
+                data.addAttributePercentModifier(type, "ascension_bonus", 0.015f * factor * bonusCount);
+                break;
+            case CR:
+                data.setAttributeBaseValue(type, baseKey, 0.008 * factor * bonusCount);
+                break;
+            case CDG:
+                data.setAttributeBaseValue(type, baseKey, 0.016 * factor * bonusCount);
+                break;
+            case HB:
+                data.setAttributeBaseValue(type, baseKey, (starRating == 5 ? 0.056 : 0.047) * bonusCount);
+                break;
+            case ELEMENTAL_BONUS:
+                data.setAttributeBaseValue(type, baseKey, 0.012 * factor * bonusCount);
+                break;
+            case EM:
+                data.setAttributeBaseValue(type, baseKey, (double) (starRating == 5 ? 29 : 24) * bonusCount);
+                break;
+            case ER:
+                data.setAttributeBaseValue(type, baseKey, (0.013333 * factor) * bonusCount);
+                break;
+        }
     }
 
     private static int getAscensionBonusCount(int phase) {
@@ -538,12 +566,37 @@ public class PGCharacter implements IPersistedSerializable {
             case ATK -> ModAttributes.ATK.value();
             case HP -> ModAttributes.MAX_HP.value();
             case DEF -> ModAttributes.DEF.value();
+            case CR -> ModAttributes.CR.value();
+            case CDG -> ModAttributes.CDG.value();
+            case HB -> ModAttributes.HB.value();
+            case ELEMENTAL_BONUS -> getElementalDamageBonusType();
+            case EM -> ModAttributes.ELEMENTAL_MASTERY.value();
+            case ER -> ModAttributes.ER.value();
         };
     }
+    
+    private AttributeType getElementalDamageBonusType() {
+        GenshinElement element = getElemental();
+        if (element == ModElements.PYRO.get()) return ModAttributes.PYRO_BONUS.value();
+        if (element == ModElements.HYDRO.get()) return ModAttributes.HYDRO_BONUS.value();
+        if (element == ModElements.DENDRO.get()) return ModAttributes.DENDRO_BONUS.value();
+        if (element == ModElements.ELECTRO.get()) return ModAttributes.ELECTRO_BONUS.value();
+        if (element == ModElements.ANEMO.get()) return ModAttributes.ANEMO_BONUS.value();
+        if (element == ModElements.CYRO.get()) return ModAttributes.CYRO_BONUS.value();
+        if (element == ModElements.GEO.get()) return ModAttributes.GEO_BONUS.value();
+        if (element == ModElements.FYSIKOS.get()) return ModAttributes.PHYSICAL_BONUS.value();
+        return ModAttributes.PHYSICAL_BONUS.value();
+    }
 
-    public boolean upgradeNormalAttack() { return data.upgradeNormalAttack(); }
-    public boolean upgradeElementalSkill() { return data.upgradeElementalSkill(); }
-    public boolean upgradeElementalBurst() { return data.upgradeElementalBurst(); }
+    public void upgradeNormalAttack() {
+        data.upgradeNormalAttack();
+    }
+    public void upgradeElementalSkill() {
+        data.upgradeElementalSkill();
+    }
+    public void upgradeElementalBurst() {
+        data.upgradeElementalBurst();
+    }
     public int getCharacterUUID() { return characterUUID; }
     public int getStarRating() { return starRating; }
     public Component getName() { return name; }

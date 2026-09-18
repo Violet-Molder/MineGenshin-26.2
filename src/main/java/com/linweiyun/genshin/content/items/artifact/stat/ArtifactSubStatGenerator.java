@@ -1,8 +1,10 @@
 package com.linweiyun.genshin.content.items.artifact.stat;
 
+import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
+import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +13,7 @@ import java.util.List;
 import java.util.Random;
 
 public class ArtifactSubStatGenerator {
-    public static final Logger LOGGER = LoggerFactory.getLogger("Minegenshin/ArtifactSubStatGenerator");
+    public static final Logger LOGGER = LogUtils.getLogger();
 
     // 副词条可选池（原神规则：不能与主词条同属性）
     // 基础4个固定副词条 + 元素精通：固定值ATK/HP/DEF，百分比ATK%/HP%/DEF%/充能/暴击/暴伤
@@ -37,7 +39,7 @@ public class ArtifactSubStatGenerator {
      * @param mainStatKind 主词条形态
      */
     public static List<TeyvatItemStat> generateAll(int star, ArtifactType type,
-                                                   com.linweiyun.genshin.content.attribute.AttributeType mainStatAttribute,
+                                                   AttributeType mainStatAttribute,
                                                    TeyvatItemStat.StatKind mainStatKind,
                                                    Random random) {
 //        LOGGER.info("[ArtifactSubStatGenerator] generateAll | star={} | type={} | mainAttr={} | mainKind={}",
@@ -85,9 +87,9 @@ public class ArtifactSubStatGenerator {
 
     // 内部数据类：词条选项（attribute + kind 组合）
     public static class SubStatOption {
-        public final com.linweiyun.genshin.content.attribute.AttributeType attribute;
+        public final AttributeType attribute;
         public final TeyvatItemStat.StatKind kind;
-        public SubStatOption(com.linweiyun.genshin.content.attribute.AttributeType attribute, TeyvatItemStat.StatKind kind) {
+        public SubStatOption(AttributeType attribute, TeyvatItemStat.StatKind kind) {
             this.attribute = attribute;
             this.kind = kind;
         }

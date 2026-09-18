@@ -43,8 +43,13 @@ public class StellarVortexEntity extends AreaEntity {
     @Persisted(key = "sv_exploded")
     private boolean exploded;
 
-    private final List<PGCharacter> contributors = new ArrayList<>();
+    // 星璇存活期间所有触发过星扩散的角色（只增不减，用于冰伤统计）
+    private final List<PGCharacter> accumulatedContributors = new ArrayList<>();
 
+    // 最后一次星扩散的触发者（作为星扩散-冰的伤害源）
+    private transient PGCharacter lastStellarTriggerCharacter;
+
+    // 伤害最高的贡献者（用于视觉效果等）
     private transient PGCharacter lastTopContributor;
 
     public StellarVortexEntity(EntityType<?> type, Level level) {
@@ -59,9 +64,15 @@ public class StellarVortexEntity extends AreaEntity {
         return lastTopContributor;
     }
 
-    public Player resolveOwnerPlayer(ServerLevel level) {
-        if (lastTopContributor == null) return null;
-        int targetUuid = lastTopContributor.getCharacterUUID();
+    /**
+     * 从玩家队伍中查找指定 PGCharacter 所属的 Player
+     */
+    public Player resolveOwnerPlayer(ServerLevel level, PGCharacter character) {
+        if (character == null) return null;
+        Player directOwner = character.getData().getOwnerPlayer();
+        if (directOwner != null) return directOwner;
+
+        int targetUuid = character.getCharacterUUID();
         for (Player p : level.players()) {
             PlayerCharactersAttachment att = p.getData(
                     AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
@@ -75,15 +86,14 @@ public class StellarVortexEntity extends AreaEntity {
         return null;
     }
 
+    /**
+     * 向累积贡献者列表添加角色（用于星扩散-冰爆炸时统计）
+     */
     public void addContributor(PGCharacter character) {
-        if (character != null && !contributors.contains(character)) {
-            contributors.add(character);
-            LOGGER.info("[星辉风旋] 添加贡献者 char={} total={}", character.getName(), contributors.size());
-        } else {
-            LOGGER.info("[星辉风旋] 跳过贡献者 char={} isNull={} contains={}",
-                    character != null ? character.getName() : "null",
-                    character == null,
-                    character != null ? contributors.contains(character) : "N/A");
+        if (character != null && !accumulatedContributors.contains(character)) {
+            accumulatedContributors.add(character);
+            LOGGER.info("[星辉风旋] 添加累积贡献者 char={} total={}",
+                    character.getName(), accumulatedContributors.size());
         }
     }
 
@@ -93,8 +103,8 @@ public class StellarVortexEntity extends AreaEntity {
         }
     }
 
-    public List<PGCharacter> getContributors() {
-        return Collections.unmodifiableList(contributors);
+    public List<PGCharacter> getAccumulatedContributors() {
+        return Collections.unmodifiableList(accumulatedContributors);
     }
 
     public void setLevel(int level) {
@@ -105,7 +115,14 @@ public class StellarVortexEntity extends AreaEntity {
         return vortexLevel;
     }
 
-    public void incrementLevel() {
+    /**
+     * 每次星扩散触发时调用，升级并记录最后触发者
+     * @param triggerCharacter 本次触发星扩散的角色
+     */
+    public void incrementLevel(PGCharacter triggerCharacter) {
+        if (triggerCharacter != null) {
+            this.lastStellarTriggerCharacter = triggerCharacter;
+        }
         this.vortexLevel = Math.min(MAX_LEVEL, vortexLevel + 1);
         if (this.vortexLevel >= LEVEL3_THRESHOLD) {
             this.horizontalRadius = LEVEL3_HORIZONTAL_RANGE;
@@ -114,7 +131,10 @@ public class StellarVortexEntity extends AreaEntity {
         if (this.vortexLevel >= MAX_LEVEL) {
             explode();
         }
-        LOGGER.info("[星辉风旋] 等级提升至 {} | pos={}", vortexLevel, this.position());
+        LOGGER.info("[星辉风旋] 等级提升至 {} trigger={} pos={}",
+                vortexLevel,
+                triggerCharacter != null ? triggerCharacter.getName() : "none",
+                this.position());
     }
 
     private void explode() {
@@ -131,42 +151,49 @@ public class StellarVortexEntity extends AreaEntity {
         List<LivingEntity> targets = level.getEntitiesOfClass(
                 LivingEntity.class, area, e -> e.isAlive() && !e.equals(this));
 
-        List<PGCharacter> contributorList = new ArrayList<>(contributors);
+        List<PGCharacter> contributorList = new ArrayList<>(accumulatedContributors);
         if (contributorList.isEmpty()) {
             LOGGER.warn("[星辉风旋] 爆炸时无贡献者，跳过");
             this.discard();
             return;
         }
-        this.lastTopContributor = contributorList.isEmpty() ? null : contributorList.get(0);
-        Player ownerPlayer = resolveOwnerPlayer(level);
-        if (ownerPlayer == null) {
-            LOGGER.warn("[星辉风旋] 爆炸时无法解析拥有者玩家，跳过");
+        this.lastTopContributor = contributorList.get(0);
+
+        // 星扩散-冰的伤害源 = 最后一次星扩散的触发者
+        PGCharacter iceSource = lastStellarTriggerCharacter;
+        Player iceSourcePlayer = resolveOwnerPlayer(level, iceSource);
+        if (iceSourcePlayer == null) {
+            iceSourcePlayer = resolveOwnerPlayer(level, contributorList.get(0));
+        }
+        if (iceSourcePlayer == null) {
+            LOGGER.warn("[星辉风旋] 爆炸时无法解析伤害源玩家，跳过");
             this.discard();
             return;
         }
 
         for (LivingEntity target : targets) {
-            ModDamageSpec spec = buildStellarSpec(
-                    ElementalReactionType.STELLAR_SWIRL_ICE,
-                    ModElements.CYRO.get(),
-                    iceCoefficient, contributorList);
-            ModDamageSource source = ModDamageSource.from(spec, ownerPlayer);
+            ModDamageSpec spec = buildIceSpec(iceCoefficient, contributorList);
+            ModDamageSource source = ModDamageSource.from(spec, iceSourcePlayer);
             target.hurtServer(level, source, 0f);
 
             StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
             ElementalAttachmentHelper.attach(
                     target, container, ModElements.CYRO.get(),
                     AttachmentSource.SPECIAL,
-                    createIceAttachmentProfile());
+                    createIceAttachmentProfile(),
+                    null, level.getGameTime());
         }
 
-        LOGGER.info("[星辉风旋] 爆炸 level={} targets={} iceCoefficient={}",
-                vortexLevel, targets.size(), iceCoefficient);
 
         this.discard();
     }
 
-    public void triggerWindDamage() {
+    /**
+     * 触发星扩散-风的区域伤害
+     * @param triggerCharacter 本次触发星扩散的角色（作为伤害源）
+     * @param windContributors  本次触发时目标身上的冰+风附着角色（作为贡献者）
+     */
+    public void triggerWindDamage(PGCharacter triggerCharacter, List<PGCharacter> windContributors) {
         if (!(this.level() instanceof ServerLevel level)) return;
 
         double windCoefficient = ReactionConfig.STELLAR_SWIRL_WIND_COEFFICIENT.get();
@@ -175,54 +202,66 @@ public class StellarVortexEntity extends AreaEntity {
         List<LivingEntity> targets = level.getEntitiesOfClass(
                 LivingEntity.class, area, e -> e.isAlive() && !e.equals(this));
 
-        List<PGCharacter> contributorList = new ArrayList<>(contributors);
+        List<PGCharacter> contributorList = new ArrayList<>(windContributors);
         if (contributorList.isEmpty()) {
             LOGGER.warn("[星辉风旋] 风伤时无贡献者，跳过");
             return;
         }
-        this.lastTopContributor = contributorList.isEmpty() ? null : contributorList.get(0);
-        Player ownerPlayer = resolveOwnerPlayer(level);
-        if (ownerPlayer == null) {
-            LOGGER.warn("[星辉风旋] 风伤时无法解析拥有者玩家，跳过");
+
+        // 星扩散-风的伤害源 = 触发者本人
+        Player windSourcePlayer = resolveOwnerPlayer(level, triggerCharacter);
+        if (windSourcePlayer == null) {
+            windSourcePlayer = resolveOwnerPlayer(level, contributorList.get(0));
+        }
+        if (windSourcePlayer == null) {
+            LOGGER.warn("[星辉风旋] 风伤时无法解析伤害源玩家，跳过");
             return;
         }
 
         for (LivingEntity target : targets) {
-            ModDamageSpec spec = buildStellarSpec(
-                    ElementalReactionType.STELLAR_SWIRL_WIND,
-                    ModElements.ANEMO.get(),
-                    windCoefficient, contributorList);
-            ModDamageSource source = ModDamageSource.from(spec, ownerPlayer);
+            ModDamageSpec spec = buildWindSpec(windCoefficient, contributorList);
+            ModDamageSource source = ModDamageSource.from(spec, windSourcePlayer);
             target.hurtServer(level, source, 0f);
         }
 
-        LOGGER.info("[星辉风旋] 风伤 level={} targets={}", vortexLevel, targets.size());
+        this.lastTopContributor = contributorList.isEmpty() ? null : contributorList.get(0);
+
+        LOGGER.info("[星辉风旋] 星扩散-风伤害 level={} targets={} trigger={} windContributors={}",
+                vortexLevel, targets.size(),
+                triggerCharacter != null ? triggerCharacter.getName() : "none",
+                contributorList.size());
     }
 
-    private static ModDamageSpec buildStellarSpec(ElementalReactionType reactionType,
-                                                   GenshinElement element,
-                                                   double coefficient,
-                                                   List<PGCharacter> contributors) {
-        ModDamageSpec spec = ModDamageSpec.stellar(reactionType, element);
+    private static ModDamageSpec buildWindSpec(double coefficient, List<PGCharacter> contributors) {
+        ModDamageSpec spec = ModDamageSpec.stellar(ElementalReactionType.STELLAR_SWIRL_WIND, ModElements.ANEMO.get());
+        setSpecFields(spec, (float) coefficient, 0f, 0f);
+        spec.setStellarContributors(contributors);
+        return spec;
+    }
 
+    private static ModDamageSpec buildIceSpec(double coefficient, List<PGCharacter> contributors) {
+        ModDamageSpec spec = ModDamageSpec.stellar(ElementalReactionType.STELLAR_SWIRL_ICE, ModElements.CYRO.get());
+        setSpecFields(spec, (float) coefficient, 0f, 0f);
+        spec.setStellarContributors(contributors);
+        return spec;
+    }
+
+    private static void setSpecFields(ModDamageSpec spec, float coefficient, float baseBonusMult, float baseBonusFlat) {
         try {
             java.lang.reflect.Field cField = ModDamageSpec.class.getDeclaredField("stellarCoefficient");
             cField.setAccessible(true);
-            cField.set(spec, (float) coefficient);
+            cField.set(spec, coefficient);
 
             java.lang.reflect.Field bmField = ModDamageSpec.class.getDeclaredField("stellarBaseBonusMult");
             bmField.setAccessible(true);
-            bmField.set(spec, 0f);
+            bmField.set(spec, baseBonusMult);
 
             java.lang.reflect.Field bfField = ModDamageSpec.class.getDeclaredField("stellarBaseBonusFlat");
             bfField.setAccessible(true);
-            bfField.set(spec, 0f);
+            bfField.set(spec, baseBonusFlat);
         } catch (Exception e) {
             LOGGER.error("[星辉风旋] 反射设置spec参数失败", e);
         }
-
-        spec.setStellarContributors(contributors);
-        return spec;
     }
 
     @Override
@@ -252,13 +291,16 @@ public class StellarVortexEntity extends AreaEntity {
                 && z >= position().z - hw && z <= position().z + hw;
     }
 
-    public static StellarVortexEntity findExisting(ServerLevel level, double x, double y, double z, float range) {
+    public static StellarVortexEntity findExisting(ServerLevel level, double x, double y, double z, float reuseRange) {
         List<StellarVortexEntity> all = level.getEntitiesOfClass(
                 StellarVortexEntity.class,
-                new AABB(x - range, y - range, z - range, x + range, y + range, z + range),
+                new AABB(x - reuseRange, y - reuseRange, z - reuseRange, x + reuseRange, y + reuseRange, z + reuseRange),
                 e -> e.isAlive() && !e.exploded);
         for (StellarVortexEntity v : all) {
-            if (v.containsPos(x, y, z)) return v;
+            double dx = x - v.getX();
+            double dy = y - v.getY();
+            double dz = z - v.getZ();
+            if (dx * dx + dy * dy + dz * dz <= reuseRange * reuseRange) return v;
         }
         return null;
     }

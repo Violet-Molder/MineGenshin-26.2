@@ -43,13 +43,9 @@ public class ColumbinaTalent extends TalentBase {
         LivingEntity primaryTarget = new TargetSeeker(player, 10.0, TargetSeeker.TargetingType.LINE_OF_SIGHT).execute();
 
         if (primaryTarget == null) {
-            LOGGER.info("[哥伦比娅] 索敌未发现目标");
             return;
         }
 
-        LOGGER.info("[哥伦比娅] 第{}段 索敌锁定: {} ({})", stage + 1,
-                primaryTarget.getName().getString(),
-                primaryTarget.position().toString());
 
         float aoeRange = stage == 2 ? 1.0f : 0.5f;
         Vec3 targetPos = primaryTarget.position();
@@ -58,13 +54,9 @@ public class ColumbinaTalent extends TalentBase {
                 targetPos.add(aoeRange, aoeRange, aoeRange),
                 aoeRange).execute();
 
-        LOGGER.info("[哥伦比娅] AoE范围{}格, 命中{}个目标: {}",
-                aoeRange, targets.size(),
-                targets.stream().map(e -> e.getName().getString()).toList());
-
         for (LivingEntity target : targets) {
             if (target != player) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.HYDRO.get())
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.ANEMO.get())
                         .multiplier(multiplier)
                         .elementAmount(AttachmentType.ULTRA_STRONG.getInitialAmount())
                         .attackerCharacter(character)
@@ -84,7 +76,6 @@ public class ColumbinaTalent extends TalentBase {
 
         LivingEntity primaryTarget = new TargetSeeker(player, 10.0, TargetSeeker.TargetingType.LINE_OF_SIGHT).execute();
         if (primaryTarget == null) {
-            LOGGER.info("[哥伦比娅重击] 索敌未发现目标");
             return;
         }
 

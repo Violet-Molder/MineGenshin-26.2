@@ -1,8 +1,9 @@
 package com.linweiyun.genshin.content.items.weapon;
 
+import com.linweiyun.genshin.config.weapon.WeaponXpConfig;
 import com.linweiyun.genshin.config.weapon.WeaponConfig;
 import com.linweiyun.genshin.config.weapon.WeaponSubStatConfig;
-import com.linweiyun.genshin.config.weapon.WeaponXpConfig;
+import com.linweiyun.genshin.config.util.StringDoubleValue;
 
 public class WeaponLevelData {
 
@@ -36,6 +37,16 @@ public class WeaponLevelData {
     }
 
     public static double getSubStatMultiplier(int level) {
-        return WeaponSubStatConfig.getMultiplier(level);
+        int idx = Math.max(0, Math.min(level - 1, WeaponSubStatConfig.MULT_01 == null ? 0 : 18));
+        StringDoubleValue[] mults = {
+            WeaponSubStatConfig.MULT_01, WeaponSubStatConfig.MULT_02, WeaponSubStatConfig.MULT_03,
+            WeaponSubStatConfig.MULT_04, WeaponSubStatConfig.MULT_05, WeaponSubStatConfig.MULT_06,
+            WeaponSubStatConfig.MULT_07, WeaponSubStatConfig.MULT_08, WeaponSubStatConfig.MULT_09,
+            WeaponSubStatConfig.MULT_10, WeaponSubStatConfig.MULT_11, WeaponSubStatConfig.MULT_12,
+            WeaponSubStatConfig.MULT_13, WeaponSubStatConfig.MULT_14, WeaponSubStatConfig.MULT_15,
+            WeaponSubStatConfig.MULT_16, WeaponSubStatConfig.MULT_17, WeaponSubStatConfig.MULT_18,
+            WeaponSubStatConfig.MULT_19
+        };
+        return mults[idx].get();
     }
 }

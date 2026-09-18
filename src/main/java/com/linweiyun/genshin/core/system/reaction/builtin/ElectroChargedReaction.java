@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
@@ -58,7 +59,7 @@ public class ElectroChargedReaction extends ElementalReaction {
                 .build();
     }
 
-    public static ElementalAttachmentInstance findElement(StatusContainer container, com.linweiyun.genshin.core.element.GenshinElement element) {
+    public static ElementalAttachmentInstance findElement(StatusContainer container, GenshinElement element) {
         for (StatusInstance inst : container.getAll()) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;

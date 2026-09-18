@@ -133,27 +133,23 @@ public class HurtEntityHelper {
                 canAttach = false;
             }
         }
+        StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
         if (canAttach) {
-            ElementalAttachmentHelper.attach(target,
-                    StatusAccessor.of(target), spec.getElement(),
-                    AttachmentSource.NORMAL_ATTACK, profile);
-
-            GenshinElement elem = spec.getElement();
-            if (attacker != null && sourceEntity != null
-                    && (elem == ModElements.HYDRO.get() || elem == ModElements.ELECTRO.get())) {
-                String key = sourceEntity.getUUID() + "::" + attacker.getClass().getSimpleName();
-                long decayTicks = (long) (profile.getDurationSeconds() * 20);
-                StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
-                if (container != null) {
-                    container.recordLunarContributor(key, target.level().getGameTime(), decayTicks);
-                }
+            long gameTime = target.level().getGameTime();
+            if (attacker != null && container != null) {
+                ElementalAttachmentHelper.attach(target,
+                        container, spec.getElement(),
+                        AttachmentSource.NORMAL_ATTACK, profile,
+                        attacker, gameTime);
+            } else {
+                ElementalAttachmentHelper.attach(target,
+                        StatusAccessor.of(target), spec.getElement(),
+                        AttachmentSource.NORMAL_ATTACK, profile);
             }
         }
 
-        StatusContainer container = null;
         ReactionResult reactionResult = null;
         if (canAttach) {
-            container = target.getData(AttachmentRegistration.CONTAINER);
             ReactionContext ctx = new ReactionContext(
                     spec.getElement(), spec.getElementAmount() * elementCoefficient,
                     AttachmentSource.NORMAL_ATTACK, profile, spec,
@@ -326,8 +322,8 @@ public class HurtEntityHelper {
         double levelCoef = ReactionConfig.getReactionFusion(level);
 
         float reactionMult = switch (reactionType) {
-            case ELECTRO_CHARGED -> ReactionConfig.ELECTROCHARGED.getFloat();
-            case SWIRL -> ReactionConfig.SWIRL.getFloat();
+            case ELECTRO_CHARGED -> (float) ReactionConfig.ELECTROCHARGED.get();
+            case SWIRL -> (float) ReactionConfig.SWIRL.get();
             default -> 1.0f;
         };
 
@@ -471,8 +467,8 @@ public class HurtEntityHelper {
     }
 
     // ============================================================
-    // 星扩散反应伤害计算
-    //  公式：【等级系数 × 星辉基础系数 × (1+基础倍率加成) + 基础附加】× 反应倍率 × (1+精通加成+反应伤害加成) × 抗性区 × 暴击区 × 擢升区 × 大权区
+    // 星扩散直伤计算（重击/E 等技能）
+    //  公式：【攻击力 × 攻击倍率】× 反应倍率 × 抗性区 × 暴击区 × 擢升区 × 大权区
     //  合并：排序后权重 0.6 / 0.3 / 0.05 / 0.05
     // ============================================================
 
@@ -481,16 +477,12 @@ public class HurtEntityHelper {
         List<PGCharacter> contributors = spec.getStellarContributors();
         if (contributors != null && !contributors.isEmpty()) {
             ElementalReactionType reactionType = spec.getTransformativeReactionType();
-            double coefficient = spec.getStellarCoefficient();
-            float baseBonusMult = spec.getStellarBaseBonusMult();
-            float baseBonusFlat = spec.getStellarBaseBonusFlat();
+            double atkMultiplier = spec.getStellarCoefficient();
 
             List<StellarContributorResult> results = new ArrayList<>();
             for (PGCharacter ch : contributors) {
-                int level = CombatEntityAccessor.getAttackerLevel(null, ch);
-                results.add(calculateStellarSwirlPerCharacter(
-                        ch, level, target, reactionType, null,
-                        coefficient, baseBonusMult, baseBonusFlat));
+                results.add(calculateStellarDirectPerCharacter(
+                        ch, target, reactionType, atkMultiplier));
             }
             StellarCombinedResult combined = combineStellarSwirlDamage(results);
             spec.setCrit(combined.isCrit);
@@ -498,6 +490,35 @@ public class HurtEntityHelper {
         }
         return 0f;
     }
+
+    public static StellarContributorResult calculateStellarDirectPerCharacter(
+            PGCharacter character, LivingEntity target,
+            ElementalReactionType reactionType, double atkMultiplier) {
+
+        float atk = (float) character.getData().getAttributeTotalValue(ModAttributes.ATK.value());
+        double baseBoost = atk * atkMultiplier;
+
+        float reactionBonus = stellarSwirlReactionBonusZone(character, reactionType);
+        float res = resistanceZone(
+                reactionType == ElementalReactionType.STELLAR_SWIRL_WIND
+                        ? ModElements.ANEMO.get() : ModElements.CYRO.get(),
+                target, resolveCharacter(target));
+        float crit = critZone(character);
+        float elevation = elevationZone();
+        float sovereignty = sovereigntyZone(character, reactionType);
+
+        float damage = (float) (baseBoost * reactionBonus * res * crit * elevation * sovereignty);
+
+
+
+        return new StellarContributorResult(null, character, damage, crit > 1.0f);
+    }
+
+    // ============================================================
+    // 星扩散反应伤害计算（触发扩散时的区域伤害）
+    //  公式：【等级系数 × 星辉基础系数 × (1+基础倍率加成) + 基础附加】× 反应倍率 × (1+精通加成+反应伤害加成) × 抗性区 × 暴击区 × 擢升区 × 大权区
+    //  合并：排序后权重 0.6 / 0.3 / 0.05 / 0.05
+    // ============================================================
 
     public static StellarContributorResult calculateStellarSwirlPerCharacter(
             PGCharacter character, int level, LivingEntity target,
@@ -566,8 +587,6 @@ public class HurtEntityHelper {
 
         boolean crit = contributors.get(0).isCrit;
 
-        LOGGER.info("[星扩散合并伤害] contributors={} | total={} | topCrit={}",
-                n, total, crit);
         return new StellarCombinedResult(total, crit, contributors.get(0).character);
     }
 }

@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
 import com.linweiyun.genshin.content.entities.area.ThunderCloudEntity;
+import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.combat.damage.DamageIndicatorFactory;
@@ -8,7 +9,7 @@ import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionPriorityCalculator;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
-import com.linweiyun.genshin.core.system.registry.register.ModEntities;
+import com.linweiyun.genshin.content.entities.ModEntities;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
@@ -16,8 +17,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 public class LunarChargedReaction extends ElementalReaction {
     public static final Logger LOGGER = LogUtils.getLogger();
@@ -54,33 +56,32 @@ public class LunarChargedReaction extends ElementalReaction {
             return ReactionResult.builder(reactionType).build();
         }
 
-        Map<String, Long> contributorMap = ctx.targetContainer().getLunarContributors(level.getGameTime());
+        // 从目标实体的 StatusContainer 获取所有活跃的水/雷附着角色
+        long gameTime = level.getGameTime();
+        Set<PGCharacter> activeContributors = ctx.targetContainer().getActiveContributors(
+                gameTime, ModElements.HYDRO.get(), ModElements.ELECTRO.get());
+        List<PGCharacter> contributorList = new ArrayList<>(activeContributors);
 
         ThunderCloudEntity existingCloud = findExistingCloud(target);
 
         if (existingCloud != null) {
-            for (Map.Entry<String, Long> entry : contributorMap.entrySet()) {
-                existingCloud.addContributor(entry.getKey(), entry.getValue());
-            }
+            existingCloud.addContributors(contributorList);
             existingCloud.refreshDuration();
             LOGGER.info("[月感电] 刷新雷暴云 duration={} | contributors={}",
-                    existingCloud.getDuration(), contributorMap.size());
+                    existingCloud.getDuration(), contributorList.size());
         } else {
             ThunderCloudEntity cloud = new ThunderCloudEntity(
                     ModEntities.THUNDER_CLOUD.get(), level);
             cloud.setPos(target.getX(), target.getEyeY() + 2.0, target.getZ());
-            for (Map.Entry<String, Long> entry : contributorMap.entrySet()) {
-                cloud.addContributor(entry.getKey(), entry.getValue());
-            }
+            cloud.setInitialContributors(contributorList);
             level.addFreshEntity(cloud);
 
             cloud.dealLunarDamage(target, level);
 
             LOGGER.info("[月感电] 生成雷暴云 pos={},{},{} | contributors={}",
-                    target.getX(), target.getEyeY() + 2.0, target.getZ(), contributorMap.size());
+                    target.getX(), target.getEyeY() + 2.0, target.getZ(), contributorList.size());
         }
 
-        int electroColor = DamageIndicatorFactory.getColorForElement(ModElements.ELECTRO.get());
         DamageIndicatorFactory.lunarReactionGradient(target, ElementalReactionType.LUNAR_CHARGED);
 
         return ReactionResult.builder(reactionType).reacted()

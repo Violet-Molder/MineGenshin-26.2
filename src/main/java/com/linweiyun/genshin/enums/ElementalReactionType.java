@@ -21,8 +21,8 @@ public enum ElementalReactionType {
   AGGRAVATE("reaction.minegenshin.aggravate"), // 激+雷
   SPREAD("reaction.minegenshin.spread"), // 激+草
   // 星体系
-  STELLAR_SWIRL_WIND("reaction.minegenshin.stellar_swirl_wind"), // 星扩散-风
-  STELLAR_SWIRL_ICE("reaction.minegenshin.stellar_swirl_ice"), // 星扩散-冰
+  STELLAR_SWIRL_WIND("reaction.minegenshin.stellar_swirl"),
+  STELLAR_SWIRL_ICE("reaction.minegenshin.stellar_swirl"),
 
   // 月体系
   LUNAR_CHARGED("reaction.minegenshin.lunar_charged"), // 雷+水 (月感电)

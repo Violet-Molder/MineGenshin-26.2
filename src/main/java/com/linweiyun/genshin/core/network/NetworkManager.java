@@ -8,6 +8,8 @@ import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
+import com.linweiyun.genshin.render.gui.menu.BackpackMenu;
+import com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu;
 import com.linweiyun.genshin.core.system.wish.WishSystem;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
@@ -492,7 +494,7 @@ public class NetworkManager {
         }
         @Override
         public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId, net.minecraft.world.entity.player.Inventory inventory, net.minecraft.world.entity.player.Player p) {
-          return new com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu(containerId, inventory);
+          return new CharacterInfoMenu(containerId, inventory);
         }
       });
     }

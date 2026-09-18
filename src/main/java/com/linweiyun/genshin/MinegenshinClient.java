@@ -1,16 +1,16 @@
 package com.linweiyun.genshin;
 
 import com.geckolib.renderer.GeoEntityRenderer;
+import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProjectileRenderer;
 import com.linweiyun.genshin.render.render.entity.ElementalOrbRenderer;
 import com.linweiyun.genshin.render.render.entity.FieldTalismanSpiritRender;
 import com.linweiyun.genshin.render.render.entity.StellarVortexRenderer;
 import com.linweiyun.genshin.render.render.entity.ThunderCloudRenderer;
 import com.linweiyun.genshin.render.gui.screens.ScreenArtifaceInfo;
 import com.linweiyun.genshin.core.attachment.ClientAttachmentSync;
-import com.linweiyun.genshin.core.system.registry.register.ModEntities;
+import com.linweiyun.genshin.content.entities.ModEntities;
 import com.linweiyun.genshin.core.system.registry.register.ModMenus;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -29,8 +29,7 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 @EventBusSubscriber(modid = Minegenshin.MOD_ID, value = Dist.CLIENT)
 public class MinegenshinClient {
     public MinegenshinClient(ModContainer container) {
-
-        container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+        container.registerExtensionPoint(IConfigScreenFactory.class, (mc, parent) -> new ConfigurationScreen(container, parent));
     }
 
     @SubscribeEvent
@@ -59,6 +58,8 @@ public class MinegenshinClient {
                 ModEntities.THUNDER_CLOUD.get(), ThunderCloudRenderer::new);
         event.registerEntityRenderer(
                 ModEntities.STELLAR_VORTEX.get(), StellarVortexRenderer::new);
+        event.registerEntityRenderer(
+                ModEntities.VESNA_ATTACK_PROJECTILE.get(), VesnaAttackProjectileRenderer::new);
     }
 
 

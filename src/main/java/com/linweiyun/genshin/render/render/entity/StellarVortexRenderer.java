@@ -23,22 +23,20 @@ public class StellarVortexRenderer extends EntityRenderer<StellarVortexEntity, E
     private static final RenderType RENDER_TYPE =
             RenderTypes.entityTranslucentCullItemTarget(ORB_TEXTURE);
 
-    private static int parseConfigColor(java.util.function.Supplier<String> supplier) {
-        String hex = supplier.get();
-        if (hex == null || hex.isEmpty()) return 0xFFFFFF;
-        try {
-            return Integer.parseInt(hex.startsWith("#") ? hex.substring(1) : hex, 16);
-        } catch (NumberFormatException e) {
-            return 0xFFFFFF;
-        }
-    }
-
     private static int getDefaultColor() {
-        return parseConfigColor(WorldTextColorConfig.ANEMO_COLOR::get);
+        return parseColor(WorldTextColorConfig.ANEMO_COLOR.get());
     }
 
     private static int getLevel3Color() {
-        return parseConfigColor(WorldTextColorConfig.CYRO_COLOR::get);
+        return parseColor(WorldTextColorConfig.CYRO_COLOR.get());
+    }
+
+    private static int parseColor(String hex) {
+        try {
+            return Integer.decode(hex.startsWith("#") ? hex : "#" + hex);
+        } catch (NumberFormatException e) {
+            return 0xFFFFFF;
+        }
     }
     private static final float BASE_SCALE = 0.3F;
     private static final float LEVEL3_SCALE = 0.9F;

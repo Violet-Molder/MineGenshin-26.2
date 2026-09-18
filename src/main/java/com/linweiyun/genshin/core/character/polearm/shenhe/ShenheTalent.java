@@ -16,7 +16,7 @@ import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
-import com.linweiyun.genshin.core.system.registry.register.ModEntities;
+import com.linweiyun.genshin.content.entities.ModEntities;
 import com.linweiyun.genshin.enums.AttachmentType;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.enums.AttackType;
@@ -212,7 +212,6 @@ public class ShenheTalent extends TalentBase {
                         CharacterEffectHelper.addEffect(player, partyChar, effect);
                     }
                 }
-
                 // 突破天赋2：长按 - 队伍内所有角色普通攻击、重击、下落攻击伤害+15%，持续15s
                 if (character.getData().getAscensionPhase() >= 4) {
                     Identifier holdBuffId = Identifier.parse("minegenshin:shenhe_ascend2_hold");
@@ -233,7 +232,6 @@ public class ShenheTalent extends TalentBase {
     public void elementalBurst(Player player, PGCharacter character) {
         Level level = player.level();
         int burstLevel = character.getData().getElementalBurstLevel();
-
         // 施放直伤 —— 大范围冰伤
         if (!level.isClientSide()) {
             float castDamage = ShenheTalentConfig.getBurstCastDamage(burstLevel);

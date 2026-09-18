@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 
 public class SuperConductReaction extends ElementalReaction {
     public static final Logger LOGGER = LogUtils.getLogger();
-    private static float getReactionMultiplier() { return ReactionConfig.SUPERCONDUCT.getFloat(); }
+    private static float getReactionMultiplier() { return (float) ReactionConfig.SUPERCONDUCT.get(); }
 
     protected SuperConductReaction(ElementalReactionType reactionType,
                                    String elementAId, String elementBId,
