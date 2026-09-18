@@ -880,13 +880,13 @@ public class NetworkManager {
    * Called by ISyncManagedEntity to sync @DescSynced fields from server to tracking clients.
    */
   @RPCPacket("minegenshin:entity_sync")
-  public static void entitySyncRPCPacket(RPCSender sender, int entityId, byte[] changedMask, byte[] data, CompoundTag extra) {
+  public static void entitySyncRPCPacket(RPCSender sender, int entityId, CompoundTag payload) {
     if (sender.isServer()) {
-      ClientHandler.entitySyncClientHandler(entityId, changedMask, data, extra);
+      ClientHandler.entitySyncClientHandler(entityId, payload);
     }
   }
 
-  public static void sendEntitySyncToPlayer(ServerPlayer player, int entityId, byte[] changedMask, byte[] data, CompoundTag extra) {
-    RPCPacketDistributor.rpcToPlayer(player, "minegenshin:entity_sync", entityId, changedMask, data, extra);
+  public static void sendEntitySyncToPlayer(ServerPlayer player, int entityId, CompoundTag payload) {
+    RPCPacketDistributor.rpcToPlayer(player, "minegenshin:entity_sync", entityId, payload);
   }
 }

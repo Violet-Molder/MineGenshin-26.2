@@ -73,7 +73,7 @@ public class VesnaTalent extends TalentBase {
         VesnaAttackProjectile projectile = VesnaAttackProjectile.create(level, vesna, player.position());
         if (projectile != null) {
             LOGGER.info(String.valueOf(level.addFreshEntity(projectile)));
-            ;
+            projectile.sync(true);
         }
 
     }

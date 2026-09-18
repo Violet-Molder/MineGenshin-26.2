@@ -56,6 +56,16 @@ public class TargetSeeker {
         RADIUS
     }
 
+    /** 索敌对象范围 */
+    public enum TargetFilter {
+        /** 全类型，包括玩家（排除ownerPlayer） */
+        ALL,
+        /** 排除所有玩家，友好生物也会被攻击 */
+        NON_PLAYER,
+        /** 仅敌对生物（Monster） */
+        HOSTILE_ONLY
+    }
+
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /** 视野索敌隧道截面半径的一半（2.5 格） */
@@ -85,19 +95,33 @@ public class TargetSeeker {
     /** 协同模式关联的角色（用于TRACKING_COOP和ALLY_SUMMON_COOP） */
     private final PGCharacter associatedCharacter;
 
+    /** 索敌对象范围 */
+    private final TargetFilter targetFilter;
+
     /**
      * @param source        发起索敌的实体
      * @param range         索敌范围（视野模式为延伸距离，方圆模式为半径）
      * @param targetingType 索敌模式
      * @param sourceType    索敌源类型
      * @param associatedChar 协同模式关联的角色（非协同模式传null）
+     * @param targetFilter  索敌对象范围
      */
-    public TargetSeeker(Entity source, double range, TargetingType targetingType, SourceType sourceType, PGCharacter associatedChar) {
+    public TargetSeeker(Entity source, double range, TargetingType targetingType,
+                        SourceType sourceType, PGCharacter associatedChar, TargetFilter targetFilter) {
         this.source = source;
         this.range = range;
         this.targetingType = targetingType;
         this.sourceType = sourceType;
         this.associatedCharacter = associatedChar;
+        this.targetFilter = targetFilter;
+    }
+
+    /**
+     * 无TargetFilter的构造函数，默认ALL（向后兼容）。
+     */
+    public TargetSeeker(Entity source, double range, TargetingType targetingType,
+                        SourceType sourceType, PGCharacter associatedChar) {
+        this(source, range, targetingType, sourceType, associatedChar, TargetFilter.ALL);
     }
 
     /**
@@ -310,10 +334,14 @@ public class TargetSeeker {
 
         AABB searchBox = new AABB(eyePos, endPos).inflate(TUNNEL_HALF_SIZE);
 
+        Player ownerPlayer = (associatedCharacter != null) ? associatedCharacter.getData().getOwnerPlayer() : null;
+
         return source.level().getEntitiesOfClass(LivingEntity.class, searchBox, entity ->
                 entity.isAlive()
                         && !entity.isSpectator()
                         && entity != source
+                        && entity != ownerPlayer
+                        && matchesFilter(entity)
                         && isInForwardTunnel(entity)
         );
     }
@@ -344,8 +372,17 @@ public class TargetSeeker {
                         && !entity.isSpectator()
                         && entity != source
                         && entity != ownerPlayer
+                        && matchesFilter(entity)
                         && source.distanceToSqr(entity) <= rangeSq
         );
+    }
+
+    private boolean matchesFilter(LivingEntity entity) {
+        return switch (targetFilter) {
+            case ALL -> true;
+            case NON_PLAYER -> !(entity instanceof Player);
+            case HOSTILE_ONLY -> entity instanceof Monster;
+        };
     }
 
     private LivingEntity findClosestHostileInRange() {
@@ -374,6 +411,11 @@ public class TargetSeeker {
                 .filter(e -> !(e instanceof Monster))
                 .sorted(Comparator.comparingDouble(e -> e.distanceToSqr(source)))
                 .toList();
+
+        // HOSTILE_ONLY 模式下不返回友好目标
+        if (targetFilter == TargetFilter.HOSTILE_ONLY) {
+            return hostile.isEmpty() ? null : hostile.get(0);
+        }
 
         if (hostile.isEmpty() && friendly.isEmpty()) return null;
         if (hostile.isEmpty()) return friendly.get(0);

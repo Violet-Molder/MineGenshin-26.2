@@ -164,12 +164,14 @@ public class ClientHandler {
         TeyvatWorldInvasion.setClientInvaded(invaded);
     }
 
-    public static void entitySyncClientHandler(int entityId, byte[] changedMask, byte[] data, CompoundTag extra) {
+    public static void entitySyncClientHandler(int entityId, CompoundTag payload) {
         var mc = Minecraft.getInstance();
         if (mc.level == null) return;
         var entity = mc.level.getEntity(entityId);
         if (entity instanceof ISyncManagedEntity syncEntity) {
-            var changed = BitSet.valueOf(changedMask);
+            var changed = BitSet.valueOf(payload.getLongArray("changed").orElse(new long[0]));
+            var data = payload.getByteArray("data").orElse(new byte[0]);
+            var extra = payload.getCompoundOrEmpty("extra");
             syncEntity.handleSyncPacket(mc.level.registryAccess(), changed, data, extra);
         }
     }
