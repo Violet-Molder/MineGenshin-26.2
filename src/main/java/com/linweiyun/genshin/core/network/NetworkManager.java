@@ -36,6 +36,8 @@ public class NetworkManager {
   private static final Random RANDOM = new Random();
   private static final Logger LOGGER = LogUtils.getLogger();
 
+  public static void init() {}
+
   @RPCPacket("primogemRPCPacket")
   public static void primogemRPCPacket(RPCSender sender, int amount) {
     if (sender.isServer()) {
@@ -871,5 +873,20 @@ public class NetworkManager {
 
   public static void setInvasionStatusToPlayer(ServerPlayer player, boolean invaded) {
     RPCPacketDistributor.rpcToPlayer(player, "invasionStatusRPCPacket", invaded);
+  }
+
+  /**
+   * Server-to-client entity managed field sync via LDLib2 RPC.
+   * Called by ISyncManagedEntity to sync @DescSynced fields from server to tracking clients.
+   */
+  @RPCPacket("minegenshin:entity_sync")
+  public static void entitySyncRPCPacket(RPCSender sender, int entityId, byte[] changedMask, byte[] data, CompoundTag extra) {
+    if (sender.isServer()) {
+      ClientHandler.entitySyncClientHandler(entityId, changedMask, data, extra);
+    }
+  }
+
+  public static void sendEntitySyncToPlayer(ServerPlayer player, int entityId, byte[] changedMask, byte[] data, CompoundTag extra) {
+    RPCPacketDistributor.rpcToPlayer(player, "minegenshin:entity_sync", entityId, changedMask, data, extra);
   }
 }

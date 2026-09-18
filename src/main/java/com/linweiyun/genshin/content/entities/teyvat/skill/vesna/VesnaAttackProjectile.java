@@ -8,10 +8,11 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.content.skill_node.TargetSeeker;
 import com.linweiyun.genshin.core.character.sword.vesna.Vesna;
 import com.linweiyun.genshin.core.character.sword.vesna.VesnaEnergy;
-import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
+import com.linweiyun.genshin.core.sync.ISyncManagedEntity;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.DescSynced;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
-import com.lowdragmc.lowdraglib2.syncdata.holder.blockentity.ISyncPersistRPCBlockEntity;
+import com.lowdragmc.lowdraglib2.syncdata.storage.FieldManagedStorage;
+import com.lowdragmc.lowdraglib2.syncdata.storage.IManagedStorage;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
@@ -38,7 +39,7 @@ import static com.linweiyun.genshin.core.character.sword.vesna.Vesna.VESNA_ENERG
  * <p>
  * 实体绑定召唤者角色（通过UUID），而不是玩家。
  */
-public class VesnaAttackProjectile extends Entity implements IPersistedSerializable {
+public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
     /** 优先追踪目标的距离阈值（10格） */
     private static final double PRIORITY_TARGET_RANGE = 10.0;
@@ -52,6 +53,9 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
     /** 实体最大存活时间（tick），10秒 = 200 tick */
     private static final int MAX_LIFE_TIME = 200;
 
+    /** LDLib2 managed field storage - powers @DescSynced and @Persisted */
+    private final FieldManagedStorage syncStorage = new FieldManagedStorage(this);
+
     /** 召唤者角色（LDLib2自动同步和持久化） */
     @Persisted(key = "character")
     @DescSynced
@@ -62,8 +66,28 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
     @DescSynced
     private LivingEntity target;
 
+    @Persisted(key = "test")
+    @DescSynced
+    private int test = 100;
     /** 是否已经命中过目标 */
     private boolean hasHit = false;
+
+    // ========== ISyncManagedEntity / IManaged implementation ==========
+
+    @Override
+    public Entity getSelf() {
+        return this;
+    }
+
+    @Override
+    public IManagedStorage getSyncStorage() {
+        return syncStorage;
+    }
+
+    @Override
+    public void notifyPersistence() {
+        // Entity persistence is handled by Minecraft's save system
+    }
 
     public VesnaAttackProjectile(EntityType<? extends VesnaAttackProjectile> entityType, Level level) {
         super(entityType, level);
@@ -84,10 +108,10 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
             projectile.setPos(spawnPos.x, spawnPos.y + 1.0, spawnPos.z);
             projectile.character = ownerCharacter;
             projectile.setNoGravity(true);
-            LOGGER.info("VesnaAttackProjectile create success at {}", spawnPos);
+            projectile.test = 15222;
+            projectile.sync(true);
             return projectile;
         }
-        LOGGER.info("VesnaAttackProjectile create failed");
 
         return null;
     }
@@ -105,13 +129,11 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
 
         // 超时销毁
         if (this.tickCount >= MAX_LIFE_TIME) {
-            LOGGER.info("VesnaAttackProjectile 超时销毁");
             this.discard();
             return;
         }
         // 已命中后销毁
         if (this.hasHit) {
-            LOGGER.info("VesnaAttackProjectile 已命中目标");
             this.discard();
             return;
         }
@@ -119,7 +141,6 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
         // 客户端处理移动
         if (this.level().isClientSide()) {
             if (character == null) {
-                LOGGER.info("客户端VesnaAttackProjectile character为null");
                 return;
 
             }
@@ -133,7 +154,6 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
                         character
                 );
                 this.target = seeker.execute();
-                LOGGER.info("VesnaAttackProjectile 客户端索敌完成，目标: {}", this.target);
             }
 
             if (this.target != null && this.target.isAlive()) {
@@ -147,10 +167,9 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
             this.move(MoverType.SELF, this.getDeltaMovement());
             return;
         }
-
         // 服务端只处理逻辑和验证
         if (character == null) {
-            LOGGER.info("VesnaAttackProjectile character为null，销毁");
+
             this.discard();
             return;
         }
@@ -165,7 +184,7 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
                     character
             );
             this.target = seeker.execute();
-            LOGGER.info("VesnaAttackProjectile 服务端索敌完成，目标: {}", this.target);
+//            LOGGER.info("VesnaAttackProjectile 服务端索敌完成，目标: {}", this.target);
         }
 
         // 服务端验证碰撞
@@ -182,12 +201,12 @@ public class VesnaAttackProjectile extends Entity implements IPersistedSerializa
 
     @Override
     protected void readAdditionalSaveData(ValueInput valueInput) {
-
+        loadManagedPersistentData(valueInput);
     }
 
     @Override
     protected void addAdditionalSaveData(ValueOutput valueOutput) {
-
+        saveManagedPersistentData(valueOutput, false);
     }
 
     /**

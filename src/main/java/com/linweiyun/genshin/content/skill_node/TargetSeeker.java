@@ -114,7 +114,6 @@ public class TargetSeeker {
      */
     public LivingEntity execute() {
         if (source == null || range <= 0) return null;
-        LOGGER.info("TargetSeeker 执行索敌，源类型: {}, 范围: {}, 模式: {}", sourceType, range, targetingType);
 
         Level level = source.level();
         long tick = level.getGameTime();
@@ -234,12 +233,12 @@ public class TargetSeeker {
      */
     private LivingEntity executeTrackingFree(Level level) {
         List<LivingEntity> candidates = collectRadius();
-        LOGGER.info("TargetSeeker [TRACKING_FREE] 收集到 {} 个候选目标", candidates.size());
+//        LOGGER.info("TargetSeeker [TRACKING_FREE] 收集到 {} 个候选目标", candidates.size());
 
         if (candidates.isEmpty()) return null;
 
         LivingEntity target = selectBestTarget(candidates);
-        LOGGER.info("TargetSeeker [TRACKING_FREE] 返回目标: {}", target);
+//        LOGGER.info("TargetSeeker [TRACKING_FREE] 返回目标: {}", target);
         return target;
     }
 
