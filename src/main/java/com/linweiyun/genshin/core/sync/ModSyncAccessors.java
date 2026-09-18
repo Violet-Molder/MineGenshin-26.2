@@ -77,16 +77,51 @@ public final class ModSyncAccessors {
         );
     }
 
+    private static final String TAG_CLASS = "_pgchar_class";
+
+    /**
+     * Deserialize a PGCharacter from NBT, creating the correct subclass instance.
+     */
+    private static PGCharacter deserializeFromTag(CompoundTag tag, HolderLookup.Provider access) {
+        var className = tag.getString(TAG_CLASS).orElse("");
+        PGCharacter c;
+        if (!className.isEmpty()) {
+            try {
+                var clazz = Class.forName(className);
+                c = (PGCharacter) clazz.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                c = new PGCharacter();
+            }
+        } else {
+            c = new PGCharacter();
+        }
+        c.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, access, tag));
+        return c;
+    }
+
+    /**
+     * Serialize a PGCharacter to NBT, recording the actual subclass name.
+     */
+    private static CompoundTag serializeToTag(PGCharacter c, HolderLookup.Provider access) {
+        var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, access);
+        c.serialize(output);
+        var tag = output.buildResult();
+        tag.putString(TAG_CLASS, c.getClass().getName());
+        return tag;
+    }
+
     private static void registerPGCharacterAccessor() {
         var streamCodec = new StreamCodec<RegistryFriendlyByteBuf, PGCharacter>() {
             @Override
             public PGCharacter decode(RegistryFriendlyByteBuf buf) {
                 var tag = buf.readNbt();
                 if (tag == null || tag.isEmpty()) return null;
-                var access = getRegistryAccess();
-                var c = new PGCharacter();
-                c.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, access, tag));
-                return c;
+                try {
+                    return deserializeFromTag(tag, buf.registryAccess());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return null;
+                }
             }
 
             @Override
@@ -95,10 +130,12 @@ public final class ModSyncAccessors {
                     buf.writeNbt(null);
                     return;
                 }
-                var access = getRegistryAccess();
-                var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, access);
-                c.serialize(output);
-                buf.writeNbt(output.buildResult());
+                try {
+                    buf.writeNbt(serializeToTag(c, buf.registryAccess()));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    buf.writeNbt(null);
+                }
             }
         };
 
@@ -107,17 +144,21 @@ public final class ModSyncAccessors {
                         .codec(CompoundTag.CODEC.xmap(
                                 tag -> {
                                     if (tag.isEmpty()) return null;
-                                    var access = getRegistryAccess();
-                                    var c = new PGCharacter();
-                                    c.deserialize(TagValueInput.create(ProblemReporter.DISCARDING, access, tag));
-                                    return c;
+                                    try {
+                                        return deserializeFromTag(tag, getRegistryAccess());
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        return null;
+                                    }
                                 },
                                 c -> {
                                     if (c == null) return new CompoundTag();
-                                    var access = getRegistryAccess();
-                                    var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, access);
-                                    c.serialize(output);
-                                    return output.buildResult();
+                                    try {
+                                        return serializeToTag(c, getRegistryAccess());
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        return new CompoundTag();
+                                    }
                                 }
                         ))
                         .streamCodec(streamCodec)

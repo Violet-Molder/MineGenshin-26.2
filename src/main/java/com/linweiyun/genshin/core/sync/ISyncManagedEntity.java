@@ -105,10 +105,16 @@ public interface ISyncManagedEntity extends IManaged, IManagedHolder, IPersistMa
             var extra = new CompoundTag();
             writeCustomSyncData(serverLevel.registryAccess(), extra);
 
-            var changedBytes = changed.toByteArray();
+            var payload = new CompoundTag();
+            payload.putLongArray("changed", changed.toLongArray());
+            payload.putByteArray("data", data);
+            if (!extra.isEmpty()) {
+                payload.put("extra", extra);
+            }
+
             var entityId = entity.getId();
             for (var player : serverLevel.players()) {
-                NetworkManager.sendEntitySyncToPlayer(player, entityId, changedBytes, data, extra);
+                NetworkManager.sendEntitySyncToPlayer(player, entityId, payload);
             }
         }
     }
