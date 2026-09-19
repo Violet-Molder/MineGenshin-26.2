@@ -14,8 +14,6 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
-import com.linweiyun.genshin.core.system.combat.action.ActionDefinition;
-import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.combat.action.ActionSet;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
@@ -41,13 +39,10 @@ import java.util.List;
 public class ShenheTalent extends TalentBase {
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // 冲刺参数
     private static final float CHARGE_DASH_DISTANCE = 10f;
-    private static final int   CHARGE_DASH_TICKS = 10;
+    private static final int   CHARGE_DASH_TICKS    = 10;
     private static final float SKILL_DASH_DISTANCE  = 10f;
-    private static final int   SKILL_DASH_TICKS = 10;
-
-    // ==================== 参数覆盖 ====================
+    private static final int   SKILL_DASH_TICKS     = 10;
 
     @Override
     public int getMaxCombo() { return 5; }
@@ -55,15 +50,12 @@ public class ShenheTalent extends TalentBase {
     @Override
     public int getPrecastTicks(int stage)  { return 1; }
     @Override
-    public int getPostcastTicks(int stage) { return 15; } // 后摇即连招窗口
-
+    public int getPostcastTicks(int stage) { return 15; }
 
     @Override
     public int getSkillPrecastTicks()  { return 3; }
     @Override
-    public int getSkillPostcastTicks() {
-        return super.getSkillPostcastTicks();
-    }
+    public int getSkillPostcastTicks() { return super.getSkillPostcastTicks(); }
 
     @Override
     protected ActionSet buildDefaultActionSet(PGCharacter character) {
@@ -76,17 +68,14 @@ public class ShenheTalent extends TalentBase {
                         timing(1, 1, 2)
                 )
                 .charged(timing(0, 0, 0))
-                .skillTap(timing(3, 1, 0))
+                .skillTap(timing(12, 1, 0))
                 .skillHold(timing(0, 0, 0))
-                .burst(timing(10, 1, 20))
+                .burst(timing(12, 1, 20))
                 .build();
     }
 
-    // ==================== 普攻 ====================
-
     @Override
     public void attack(Player player, PGCharacter character, int comboStage) {
-        LOGGER.info("RAW comboStage={}", comboStage);   // ← 加这一行
         Level level = player.level();
         if (level.isClientSide()) return;
         int stage = comboStage;
@@ -95,8 +84,6 @@ public class ShenheTalent extends TalentBase {
         float multiplier = (float) (
                 ShenheTalentConfig.getNABase(stage)
                         + ShenheTalentConfig.getNAPerLevel(stage) * (naLevel - 1));
-                LOGGER.info("multiplier: {}, stage: {}", multiplier, stage);
-
 
         Vec3 startPos = player.position();
         Vec3 lookDir = player.getLookAngle();
@@ -114,7 +101,7 @@ public class ShenheTalent extends TalentBase {
                 ModDamageSource source = ModDamageSource.from(spec, player);
                 if (target.level() instanceof ServerLevel serverLevel) {
                     target.hurtServer(serverLevel, source, 0f);
-                    if (stage == 4) {
+                    if (stage == 5) {
                         target.hurtServer(serverLevel, source, 0f);
                     }
                 }
@@ -122,17 +109,15 @@ public class ShenheTalent extends TalentBase {
         }
     }
 
-    // ==================== 重击：突进 + 逐 tick 扫掠伤害 ====================
-
     @Override
     public void chargeAttack(Player player, PGCharacter character) {
         Vec3 delta = new RushesForward(player, CHARGE_DASH_DISTANCE).execute();
+        String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
+        LOGGER.info("[ShenheTalent.chargeAttack] [{}] delta={}", side, delta);
 
         if (player.level().isClientSide()) {
-            // 客户端：只做视觉位移，不带伤害
             DashSystem.startDash(player, delta, CHARGE_DASH_TICKS);
         } else {
-            // 服务端：只做伤害扫掠
             DashSystem.startDamageDash(player, delta, CHARGE_DASH_TICKS, hitEntity -> {
                 ModDamageSpec spec = ModDamageSpec.builder(
                                 AttackType.ELEMENTAL_SKILL, ModElements.PYRO.get())
@@ -149,21 +134,22 @@ public class ShenheTalent extends TalentBase {
         }
     }
 
-    // ==================== E ====================
-
     @Override
     public void elementalSkill(Player player, PGCharacter character, int skillType) {
         Level level = player.level();
+        String side = level.isClientSide() ? "CLIENT" : "SERVER";
+        LOGGER.info("[ShenheTalent.elementalSkill] [{}] enter skillType={}", side, skillType);
 
         int skillLevel = character.getData().getElementalSkillLevel();
 
         if (skillType < 1000) {
-            // ========== 点按：两端都启动冲刺 ==========
             float pressDamage = ShenheTalentConfig.getSkillPressDamage(skillLevel);
             Vec3 delta = new RushesForward(player, SKILL_DASH_DISTANCE).execute();
+            LOGGER.info("[ShenheTalent.elementalSkill] [{}] delta={}", side, delta);
 
             if (level.isClientSide()) {
                 DashSystem.startDash(player, delta, SKILL_DASH_TICKS);
+                LOGGER.info("[ShenheTalent.elementalSkill] [{}] startDash called", side);
             } else {
                 DashSystem.startDamageDash(player, delta, SKILL_DASH_TICKS, hitEntity -> {
                     ModDamageSpec spec = ModDamageSpec.builder(
@@ -178,9 +164,9 @@ public class ShenheTalent extends TalentBase {
                         hitEntity.hurtServer(serverLevel, source, 0f);
                     }
                 });
+                LOGGER.info("[ShenheTalent.elementalSkill] [{}] startDamageDash called", side);
             }
 
-            // ========== 后续效果只在服务端 ==========
             if (level.isClientSide()) return;
 
             PlayerCharactersAttachment attachment =
@@ -213,7 +199,6 @@ public class ShenheTalent extends TalentBase {
             new SkillHelper(player, 10).addStun();
 
         } else {
-            // ========== 长按：只在服务端 ==========
             if (level.isClientSide()) return;
 
             float holdDamage = ShenheTalentConfig.getSkillHoldDamage(skillLevel);
@@ -264,7 +249,6 @@ public class ShenheTalent extends TalentBase {
             new SkillHelper(player, 10).addStun();
         }
     }
-    // ==================== Q ====================
 
     @Override
     public void elementalBurst(Player player, PGCharacter character) {
@@ -273,7 +257,6 @@ public class ShenheTalent extends TalentBase {
 
         int burstLevel = character.getData().getElementalBurstLevel();
 
-        // 施放直伤 —— 大范围冰伤
         float castDamage = ShenheTalentConfig.getBurstCastDamage(burstLevel);
         AABB castBox = new AABB(
                 player.getX() - 6.0, player.getY() - 2.0, player.getZ() - 6.0,
@@ -293,7 +276,6 @@ public class ShenheTalent extends TalentBase {
             }
         }
 
-        // 生成领域
         PlayerCharactersAttachment attachment =
                 player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         PGCharacter currentChar = attachment.getCurrentCharacter();

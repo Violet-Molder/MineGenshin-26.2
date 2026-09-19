@@ -2,7 +2,6 @@ package com.linweiyun.genshin.core.system.combat.action;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.mojang.logging.LogUtils;
-import lombok.Getter;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
@@ -12,60 +11,129 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ActionManager {
 
-    public static final Logger LOGGER = LogUtils.getLogger();
+    private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final Map<UUID, ActionManager> MANAGERS = new ConcurrentHashMap<>();
+    /**
+     * key = "C:UUID" / "S:UUID"
+     * 单机时客户端和服务端在同一个 JVM，UUID 相同，必须用 side 区分。
+     */
+    private static final Map<String, ActionManager> MANAGERS = new ConcurrentHashMap<>();
 
-    @Getter
     private ActionState current;
     private ActionDefinition buffered;
 
     private String cachedStateKey;
-    /** 0 = 无上一段；1..N = 上一段是第 N 段 */
     private int lastComboIndex = 0;
     private long lastComboEndTick = Long.MIN_VALUE;
 
     public static ActionManager get(Player player) {
-        return MANAGERS.computeIfAbsent(player.getUUID(), k -> new ActionManager());
+        String key = (player.level().isClientSide() ? "C:" : "S:") + player.getUUID();
+        return MANAGERS.computeIfAbsent(key, k -> new ActionManager());
     }
 
     public static void remove(Player player) {
-        MANAGERS.remove(player.getUUID());
+        String key = (player.level().isClientSide() ? "C:" : "S:") + player.getUUID();
+        MANAGERS.remove(key);
     }
 
     public boolean requestNormalAttack(Player player, PGCharacter character) {
+        String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
         refreshStateKey(player, character);
         ActionSet set = character.getActionSet(player);
-        if (set == null || set.getNormalComboSize() == 0) return false;
+        if (set == null) {
+            LOGGER.warn("[ActionManager] [{}] requestNormalAttack: actionSet=null (talent={})",
+                    side, character.getTalentDebugInfo());
+            return false;
+        }
+        if (set.getNormalComboSize() == 0) {
+            LOGGER.warn("[ActionManager] [{}] requestNormalAttack: comboSize=0", side);
+            return false;
+        }
         int idx = resolveNextComboIndex(player, set);
         return request(player, character, set.getNormalAttack(idx));
     }
 
     public boolean requestChargedAttack(Player player, PGCharacter character) {
+        String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
         refreshStateKey(player, character);
         ActionSet set = character.getActionSet(player);
-        return set != null && request(player, character, set.getChargedAttack());
+        if (set == null) {
+            LOGGER.warn("[ActionManager] [{}] requestChargedAttack: actionSet=null", side);
+            return false;
+        }
+        return request(player, character, set.getChargedAttack());
     }
 
-    public boolean requestElementalSkill(Player player, PGCharacter character, boolean longPress) {
+    public boolean requestElementalSkill(Player player, PGCharacter character, int skillTime) {
+        String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
+        LOGGER.info("[ActionManager] [{}] requestElementalSkill skillTime={}", side, skillTime);
+
         refreshStateKey(player, character);
         ActionSet set = character.getActionSet(player);
-        if (set == null) return false;
+        if (set == null) {
+            LOGGER.warn("[ActionManager] [{}] actionSet=null (talent={})",
+                    side, character.getTalentDebugInfo());
+            return false;
+        }
+        boolean longPress = skillTime >= 1000;
         ActionDefinition def = longPress ? set.getElementalSkillHold() : set.getElementalSkillTap();
-        return request(player, character, def);
+        if (def == null) {
+            LOGGER.warn("[ActionManager] [{}] elementalSkill{} def=null (comboSize={})",
+                    side, longPress ? "Hold" : "Tap", set.getNormalComboSize());
+            return false;
+        }
+
+        // 1. CD / 能量检查
+        if (!character.canUseElementalSkill(player, skillTime)) {
+            LOGGER.info("[ActionManager] [{}] canUse=false, rejected", side);
+            character.sendSkillCooldownMessage(player);
+            return false;
+        }
+
+        // 2. 启动动作
+        if (!request(player, character, def)) {
+            LOGGER.info("[ActionManager] [{}] request() rejected (busy?)", side);
+            return false;
+        }
+
+        // 3. 立即设 CD
+        character.applyElementalSkillCooldown(player, skillTime);
+        LOGGER.info("[ActionManager] [{}] elementalSkill STARTED", side);
+        return true;
     }
 
     public boolean requestElementalBurst(Player player, PGCharacter character) {
+        String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
+        LOGGER.info("[ActionManager] [{}] requestElementalBurst", side);
+
         refreshStateKey(player, character);
         ActionSet set = character.getActionSet(player);
-        return set != null && request(player, character, set.getElementalBurst());
+        if (set == null) {
+            LOGGER.warn("[ActionManager] [{}] actionSet=null", side);
+            return false;
+        }
+        ActionDefinition def = set.getElementalBurst();
+        if (def == null) {
+            LOGGER.warn("[ActionManager] [{}] burst def=null", side);
+            return false;
+        }
+
+        if (!character.canUseElementalBurst(player)) {
+            LOGGER.info("[ActionManager] [{}] burst canUse=false", side);
+            character.sendBurstCooldownMessage(player);
+            return false;
+        }
+
+        if (!request(player, character, def)) {
+            LOGGER.info("[ActionManager] [{}] burst request() rejected", side);
+            return false;
+        }
+
+        character.applyElementalBurstCooldown(player);
+        LOGGER.info("[ActionManager] [{}] burst STARTED", side);
+        return true;
     }
 
-    /**
-     * 前摇 / 执行期：拒绝一切新请求（包括普攻缓冲）。
-     * 后摇：普攻可缓冲（接下一段），其他拒绝。
-     * 空闲：直接启动。
-     */
     private boolean request(Player player, PGCharacter character, ActionDefinition def) {
         if (def == null) return false;
 
@@ -144,7 +212,8 @@ public class ActionManager {
 
     public boolean isAttackBlocked() { return getPhase() == ActionPhase.ACTIVE; }
 
-    /** 返回下一段段号（1-based）。 */
+    public ActionState getCurrent() { return current; }
+
     private int resolveNextComboIndex(Player player, ActionSet set) {
         if (current != null && !current.isFinished() && current.getDefinition().isCombo()) {
             return current.getDefinition().comboIndex + 1;

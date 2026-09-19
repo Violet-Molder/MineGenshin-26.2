@@ -1,10 +1,6 @@
 package com.linweiyun.genshin.content.entities.teyvat.skill.vesna;
 
 import com.linweiyun.genshin.content.entities.ModEntities;
-import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
-import com.linweiyun.genshin.core.attachment.LockedTargetData;
-import com.linweiyun.genshin.core.character.CharacterHelper;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.content.skill_node.TargetSeeker;
 import com.linweiyun.genshin.core.character.sword.vesna.Vesna;
 import com.linweiyun.genshin.core.sync.ISyncManagedEntity;
@@ -17,214 +13,368 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
-import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
-
-import java.util.UUID;
 
 /**
  * 薇斯娜特殊状态下普通攻击产生的追踪实体。
  * <p>
- * 索敌逻辑：
- * <ol>
- *   <li>优先追踪玩家最近攻击的实体（5秒内，通过LockedTargetData记录）</li>
- *   <li>如果目标为null或距离超过10格，则切换为自主索敌（方圆索敌，半径10格）</li>
- * </ol>
+ * 两阶段：
+ * <ul>
+ *   <li><b>生成阶段</b>：位置沿二次贝塞尔曲线 C→P1→E 精确移动。
+ *       每 tick 用 {@code setDeltaMovement} 写入本 tick 位移（让客户端能预测插值），
+ *       用 {@code setPos} 直接定位（避免 move 的碰撞）。</li>
+ *   <li><b>攻击阶段</b>：位置直接朝目标匀速移动（物理方向永远朝目标，绝不绕圈）。
+ *       视觉朝向用限速旋转慢慢逼近移动方向，只影响 {@code setYRot} 渲染。</li>
+ * </ul>
  * <p>
- * 实体绑定召唤者角色（通过UUID），而不是玩家。
+ * 卡顿原因（已修）：
+ * <ul>
+ *   <li>生成阶段用 smoothstep 缓动 → 末速度 = 0 → 最后几 tick 几乎不动。</li>
+ *   <li>生成阶段 {@code setDeltaMovement(ZERO)} → 客户端不预测位置 → 位置包到之前不动。</li>
+ * </ul>
+ * 现在改为线性插值 + 写入真实速度。
  */
 public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
-    /** 优先追踪目标的距离阈值（10格） */
-    private static final double PRIORITY_TARGET_RANGE = 10.0;
 
-    /** 自主索敌半径（10格） */
-    private static final double AUTONOMOUS_SEARCH_RADIUS = 10.0;
+    // ==================== 参数 ====================
 
-    /** 飞行速度 */
+    private static final double SEARCH_RADIUS = 10.0;
     private static final double FLY_SPEED = 0.8;
 
-    /** 跟随玩家时的环绕距离 */
-    private static final double ORBIT_DISTANCE = 1.5;
+    /** 生成阶段持续 tick */
+    private static final int SPAWN_DURATION = 16;
 
-    /** 跟随玩家时距离目标位置多近就停止移动 */
-    private static final double FOLLOW_STOP_DISTANCE = 0.3;
+    /** 散布点距玩家的水平半径 */
+    private static final double SPAWN_RADIUS = 3.2;
 
-    /** 实体最大存活时间（tick），10秒 = 200 tick */
+    /** 背后控制点距玩家的距离（越大弧线越鼓） */
+    private static final double BACK_DISTANCE = 3.5;
+
+    /** 控制点抬高多少 */
+    private static final double BACK_HEIGHT = 0.9;
+
+    /** 攻击阶段视觉朝向每 tick 最大转向角度 */
+    private static final float MAX_TURN_RATE = 12f;
+
     private static final int MAX_LIFE_TIME = 200;
 
-    /** LDLib2 managed field storage - powers @DescSynced and @Persisted */
+    private static final int PHASE_SPAWNING = 0;
+    private static final int PHASE_ATTACKING = 1;
+
+    // ==================== LDLib2 同步字段 ====================
+
     private final FieldManagedStorage syncStorage = new FieldManagedStorage(this);
 
-    /** 召唤者角色（LDLib2自动同步和持久化） */
-    @Persisted(key = "character")
-    @DescSynced
+    @Override public Entity getSelf() { return this; }
+    @Override public IManagedStorage getSyncStorage() { return syncStorage; }
+    @Override public void notifyPersistence() {}
+
+    @Persisted(key = "character") @DescSynced
     private Vesna character;
 
-    /** 当前追踪的目标（LDLib2自动同步和持久化，一旦锁定不再改变） */
-    @Persisted(key = "target")
-    @DescSynced
+    @Persisted(key = "target") @DescSynced
     private LivingEntity target;
 
-    @Persisted(key = "test")
-    @DescSynced
+    @Persisted(key = "test") @DescSynced
     private int test = 100;
-    /** 是否已经命中过目标 */
-    private boolean hasHit = false;
 
-    /** 初始同步标记：首次服务端 tick 时执行全量同步 */
+    @Persisted(key = "phase") @DescSynced
+    private int phase = PHASE_SPAWNING;
+
+    @Persisted(key = "spawn_age") @DescSynced
+    private int spawnAge = 0;
+
+    @Persisted(key = "spawn_yaw") @DescSynced
+    private float spawnYaw = 0f;
+
+    @Persisted(key = "c_x") @DescSynced private double cx;
+    @Persisted(key = "c_y") @DescSynced private double cy;
+    @Persisted(key = "c_z") @DescSynced private double cz;
+
+    @Persisted(key = "p1_x") @DescSynced private double p1x;
+    @Persisted(key = "p1_y") @DescSynced private double p1y;
+    @Persisted(key = "p1_z") @DescSynced private double p1z;
+
+    @Persisted(key = "e_x") @DescSynced private double ex;
+    @Persisted(key = "e_y") @DescSynced private double ey;
+    @Persisted(key = "e_z") @DescSynced private double ez;
+
+    @Persisted(key = "lock_yaw") @DescSynced
+    private float attackLockYaw = 0f;
+
+    @Persisted(key = "scatter") @DescSynced
+    private float scatterAngleOffset = 0f;
+
+    // ==================== 瞬态 ====================
+
+    private boolean hasHit = false;
     private boolean initialSynced = false;
 
-    // ========== ISyncManagedEntity / IManaged implementation ==========
-
-    @Override
-    public Entity getSelf() {
-        return this;
-    }
-
-    @Override
-    public IManagedStorage getSyncStorage() {
-        return syncStorage;
-    }
-
-    @Override
-    public void notifyPersistence() {
-        // Entity persistence is handled by Minecraft's save system
-    }
+    // ==================== 构造 / 工厂 ====================
 
     public VesnaAttackProjectile(EntityType<? extends VesnaAttackProjectile> entityType, Level level) {
         super(entityType, level);
         this.noPhysics = false;
     }
 
-    /**
-     * 创建实体并绑定召唤者角色。
-     *
-     * @param level          世界
-     * @param ownerCharacter 召唤者角色（不是玩家）
-     */
     public static VesnaAttackProjectile create(Level level, Vesna ownerCharacter, Vec3 pos) {
-        VesnaAttackProjectile projectile = ModEntities.VESNA_ATTACK_PROJECTILE.get().create(level, EntitySpawnReason.EVENT);
-        if (projectile != null) {
-            var ownerPlayer = ownerCharacter.getData().getOwnerPlayer();
-            // 在玩家后方/侧方生成（避开前方120°扇形），距离1.5格
-            double baseYaw = ownerPlayer.getYRot() * Math.PI / 180.0;
-            double angle = baseYaw + Math.PI / 3.0 + level.getRandom().nextDouble() * (Math.PI * 4.0 / 3.0);
-            Vec3 spawnPos = pos.add(
-                    Math.cos(angle) * 1.5,
-                    0.5,
-                    Math.sin(angle) * 1.5
-            );
-            projectile.setPos(spawnPos.x, spawnPos.y + 1.0, spawnPos.z);
-            projectile.character = ownerCharacter;
-            projectile.setNoGravity(true);
-            projectile.test = 15222;
-            return projectile;
-        }
+        VesnaAttackProjectile p = ModEntities.VESNA_ATTACK_PROJECTILE.get()
+                .create(level, EntitySpawnReason.EVENT);
+        if (p == null) return null;
 
-        return null;
+        Player ownerPlayer = ownerCharacter.getData().getOwnerPlayer();
+        if (ownerPlayer == null) return null;
+
+        p.character = ownerCharacter;
+        p.setNoGravity(true);
+        p.test = 15222;
+
+        // C：玩家中心
+        p.cx = pos.x;
+        p.cy = pos.y + 1.0;
+        p.cz = pos.z;
+
+        p.spawnYaw = ownerPlayer.getYRot();
+        p.scatterAngleOffset = -60f + level.getRandom().nextFloat() * 120f;
+
+        // E：散布点
+        float targetAngle = p.spawnYaw + p.scatterAngleOffset;
+        double targetRad = Math.toRadians(targetAngle);
+        p.ex = p.cx + (-Math.sin(targetRad)) * SPAWN_RADIUS;
+        p.ey = p.cy;
+        p.ez = p.cz + Math.cos(targetRad) * SPAWN_RADIUS;
+
+        // P1：背后远处控制点
+        float backAngle = p.spawnYaw + 180f;
+        double backRad = Math.toRadians(backAngle);
+        p.p1x = p.cx + (-Math.sin(backRad)) * BACK_DISTANCE;
+        p.p1y = p.cy + BACK_HEIGHT;
+        p.p1z = p.cz + Math.cos(backRad) * BACK_DISTANCE;
+
+        p.setPos(p.cx, p.cy, p.cz);
+        p.setYRot(backAngle);
+        p.setXRot(0f);
+
+        p.attackLockYaw = p.spawnYaw;
+        p.phase = PHASE_SPAWNING;
+        p.spawnAge = 0;
+
+        return p;
     }
 
     @Override
-    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {}
 
-    }
-
-
+    // ==================== tick ====================
 
     @Override
     public void tick() {
         super.tick();
 
-        // 超时销毁
-        if (this.tickCount >= MAX_LIFE_TIME) {
-            this.discard();
-            return;
-        }
-        // 已命中后销毁
-        if (this.hasHit) {
-            this.discard();
-            return;
-        }
+        if (tickCount >= MAX_LIFE_TIME) { discard(); return; }
+        if (hasHit) { discard(); return; }
 
-        // ========== 服务端：索敌 + 移动 + 碰撞 ==========
-        if (!this.level().isClientSide()) {
-            if (character == null) {
-                this.discard();
-                return;
-            }
-
-            // 首次 tick 执行全量同步
+        if (!level().isClientSide()) {
+            if (character == null) { discard(); return; }
             if (!initialSynced) {
                 initialSynced = true;
                 sync(true);
             }
 
-            // 寻找敌人目标
-            if (this.target == null || !this.target.isAlive() || !(this.target instanceof Monster)) {
-                TargetSeeker seeker = new TargetSeeker(
-                        this,
-                        AUTONOMOUS_SEARCH_RADIUS,
-                        TargetSeeker.TargetingType.RADIUS,
-                        TargetSeeker.SourceType.TRACKING_COOP,
-                        character,
-                        TargetSeeker.TargetFilter.HOSTILE_ONLY
-                );
-                LivingEntity result = seeker.execute();
-                if (result != null) {
-                    this.target = result;
-                } else {
-                    // 没找到敌人 → 跟随玩家
-                    this.target = getOwnerPlayer();
-                }
-            }
+            target = new TargetSeeker(
+                    this,
+                    SEARCH_RADIUS,
+                    TargetSeeker.TargetingType.RADIUS,
+                    TargetSeeker.SourceType.TRACKING_COOP,
+                    character,
+                    TargetSeeker.TargetFilter.HOSTILE_ONLY,
+                    new Vec3(cx, cy, cz)
+            ).execute();
+        } else {
+            if (character == null) return;
+        }
 
-            if (this.target != null && this.target.isAlive()) {
-                flyTowardsTarget();
-                this.move(MoverType.SELF, this.getDeltaMovement());
-                // 仅对锁定的索敌目标触发碰撞销毁
-                boolean isEnemyTarget = this.target instanceof Monster;
-                if (isEnemyTarget && this.getBoundingBox().intersects(this.target.getBoundingBox())) {
-                    onHitTarget(this.target);
-                }
-            }
+        if (phase == PHASE_SPAWNING) {
+            tickSpawning();
+        } else {
+            tickAttacking();
+        }
 
+        if (!level().isClientSide()) {
             passivelySync();
-            return;
         }
-
-        // ========== 客户端：仅移动渲染 ==========
-        if (character == null) {
-            return;
-        }
-        if (this.target != null && this.target.isAlive()) {
-            flyTowardsTarget();
-        }
-        this.move(MoverType.SELF, this.getDeltaMovement());
     }
 
+    // ==================== 阶段 1：生成 ====================
+
+    /**
+     * 位置精确沿贝塞尔曲线；朝向 = 曲线切线。
+     * <p>
+     * 关键：
+     * <ul>
+     *   <li>用 <b>线性</b> u（不缓动），保证每 tick 位移恒定，末速度不为 0。</li>
+     *   <li>每 tick 写入 {@code setDeltaMovement(delta)}，让客户端能预测插值，避免等位置包。</li>
+     *   <li>用 {@code setPos} 直接定位，不用 move（避免被方块阻挡）。</li>
+     * </ul>
+     */
+    private void tickSpawning() {
+        spawnAge++;
+        float u = Math.min(1f, (float) spawnAge / SPAWN_DURATION);
+
+        Vec3 prevPos = position();
+        Vec3 newPos = bezier(u);
+        Vec3 delta = newPos.subtract(prevPos);
+
+        // 写入真实速度，客户端可预测
+        setDeltaMovement(delta);
+        // 直接定位（客户端在下一 tick 前用速度平滑预测）
+        setPos(newPos.x, newPos.y, newPos.z);
+
+        // 朝向 = 曲线切线
+        Vec3 tangent = bezierTangent(u);
+        if (tangent.lengthSqr() > 1e-6) {
+            Vec3 dir = tangent.normalize();
+            setYRot((float) Math.toDegrees(Math.atan2(-dir.x, dir.z)));
+        }
+
+        if (spawnAge >= SPAWN_DURATION) {
+            enterAttackPhase();
+        }
+    }
+
+    private Vec3 bezier(float t) {
+        float omt = 1f - t;
+        return new Vec3(cx, cy, cz).scale(omt * omt)
+                .add(new Vec3(p1x, p1y, p1z).scale(2 * omt * t))
+                .add(new Vec3(ex, ey, ez).scale(t * t));
+    }
+
+    private Vec3 bezierTangent(float t) {
+        float omt = 1f - t;
+        return new Vec3(p1x - cx, p1y - cy, p1z - cz).scale(2 * omt)
+                .add(new Vec3(ex - p1x, ey - p1y, ez - p1z).scale(2 * t));
+    }
+
+    private void enterAttackPhase() {
+        phase = PHASE_ATTACKING;
+        Player ownerPlayer = getOwnerPlayer();
+        attackLockYaw = (ownerPlayer != null) ? ownerPlayer.getYRot() : spawnYaw;
+    }
+
+    // ==================== 阶段 2：攻击 ====================
+
+    private void tickAttacking() {
+        boolean hasTarget = (target != null && target.isAlive());
+
+        // 物理方向：直接朝目标
+        Vec3 moveDir;
+        if (hasTarget) {
+            Vec3 toTarget = target.getBoundingBox().getCenter().subtract(position());
+            moveDir = (toTarget.lengthSqr() > 1e-6) ? toTarget.normalize() : yawToDir(attackLockYaw);
+        } else {
+            moveDir = yawToDir(attackLockYaw);
+        }
+
+        // 有目标 + 前方撞墙 → 45° 绕行（只影响本 tick 移动方向）
+        if (hasTarget) {
+            Vec3 ahead = position().add(moveDir.scale(FLY_SPEED * 3));
+            if (isBlocked(position(), ahead)) {
+                Vec3 left = rotateDirY(moveDir, +45f);
+                Vec3 right = rotateDirY(moveDir, -45f);
+                if (!isBlocked(position(), position().add(left.scale(FLY_SPEED * 3)))) {
+                    moveDir = left;
+                } else if (!isBlocked(position(), position().add(right.scale(FLY_SPEED * 3)))) {
+                    moveDir = right;
+                }
+            }
+        }
+
+        // 视觉朝向：限速旋转逼近 moveDir（不影响物理）
+        float desiredYaw = (float) Math.toDegrees(Math.atan2(-moveDir.x, moveDir.z));
+        float newYaw = rotateTowards(getYRot(), desiredYaw, MAX_TURN_RATE);
+        setYRot(newYaw);
+
+        // 移动
+        setDeltaMovement(moveDir.scale(FLY_SPEED));
+        Vec3 beforePos = position();
+        move(MoverType.SELF, getDeltaMovement());
+
+        // 消散 / 命中
+        if (!hasTarget) {
+            double dx = getX() - cx;
+            double dy = getY() - cy;
+            double dz = getZ() - cz;
+            if (dx * dx + dy * dy + dz * dz >= SEARCH_RADIUS * SEARCH_RADIUS) {
+                discard();
+                return;
+            }
+            if (horizontalCollision && position().distanceToSqr(beforePos) < 1e-4) {
+                discard();
+                return;
+            }
+        } else {
+            if (getBoundingBox().intersects(target.getBoundingBox())) {
+                onHitTarget(target);
+            }
+        }
+    }
+
+    private static Vec3 yawToDir(float yaw) {
+        double rad = Math.toRadians(yaw);
+        return new Vec3(-Math.sin(rad), 0, Math.cos(rad));
+    }
+
+    private static Vec3 rotateDirY(Vec3 dir, float deltaYaw) {
+        double rad = Math.toRadians(deltaYaw);
+        double c = Math.cos(rad);
+        double s = Math.sin(rad);
+        return new Vec3(dir.x * c - dir.z * s, 0, dir.x * s + dir.z * c);
+    }
+
+    private static float rotateTowards(float current, float target, float maxDelta) {
+        float diff = target - current;
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
+        if (Math.abs(diff) <= maxDelta) return target;
+        return current + Math.signum(diff) * maxDelta;
+    }
+
+    private boolean isBlocked(Vec3 from, Vec3 to) {
+        HitResult hit = level().clip(new ClipContext(
+                from, to,
+                ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE,
+                this));
+        return hit.getType() != HitResult.Type.MISS;
+    }
+
+    // ==================== 命中 ====================
 
     @Override
     public boolean hurtServer(ServerLevel serverLevel, DamageSource damageSource, float v) {
         return false;
     }
 
+    private void onHitTarget(LivingEntity target) {
+        if (hasHit) return;
+        hasHit = true;
+        if (character == null) { discard(); return; }
+        discard();
+    }
+
+    // ==================== 持久化 ====================
+
     @Override
     protected void readAdditionalSaveData(ValueInput valueInput) {
         loadManagedPersistentData(valueInput);
-    }
-
-    /**
-     * 获取角色对应的玩家。
-     */
-    private Player getOwnerPlayer() {
-        if (character == null) return null;
-        return character.getData().getOwnerPlayer();
     }
 
     @Override
@@ -232,116 +382,8 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
         saveManagedPersistentData(valueOutput, false);
     }
 
-    /**
-     * 获取优先目标：玩家最近攻击的实体（5秒内）。
-     */
-    private LivingEntity getPriorityTarget(net.minecraft.world.entity.player.Player player) {
-        long currentTick = this.level().getGameTime();
-        LockedTargetData lockData = player.getData(AttachmentRegistration.LOCKED_TARGET);
-
-        if (!lockData.isValid(currentTick)) {
-            return null;
-        }
-
-        Entity lockedEntity = this.level().getEntity(lockData.targetId());
-        if (lockedEntity instanceof LivingEntity livingEntity && livingEntity.isAlive()) {
-            return livingEntity;
-        }
-
-        return null;
+    private Player getOwnerPlayer() {
+        if (character == null) return null;
+        return character.getData().getOwnerPlayer();
     }
-
-
-    /**
-     * 飞向目标。若目标为玩家则绕圈，足够近时停止移动避免抖动。
-     */
-    private void flyTowardsTarget() {
-        if (this.target == null) {
-            return;
-        }
-
-        Vec3 targetPos;
-        if (this.target instanceof Player player) {
-            targetPos = getOrbitPosition(player);
-        } else {
-            targetPos = this.target.getBoundingBox().getCenter();
-        }
-
-        Vec3 currentPos = this.position();
-        double dist = currentPos.distanceTo(targetPos);
-
-        // 跟随玩家且已足够接近 → 停住，避免来回抖动
-        if (this.target instanceof Player && dist < FOLLOW_STOP_DISTANCE) {
-            this.setDeltaMovement(Vec3.ZERO);
-            return;
-        }
-
-        // 追玩家时速度不超过剩余距离，防止冲过头回弹
-        double speed = this.target instanceof Player ? Math.min(FLY_SPEED, dist) : FLY_SPEED;
-        Vec3 direction = targetPos.subtract(currentPos).normalize();
-        Vec3 velocity = direction.scale(speed);
-        this.setDeltaMovement(velocity);
-    }
-
-    /**
-     * 计算绕玩家分散环绕的目标位置。每个实体根据自己的 UUID 分散到不同角度。
-     */
-    private Vec3 getOrbitPosition(Player player) {
-        // 使用实体 UUID 的低位决定角度，保证同一实体始终在同一个位置
-        int hash = this.getUUID().hashCode();
-        double angle = ((double)(hash & 0xFFFF) / 0xFFFF) * Math.PI * 2.0;
-
-        Vec3 playerPos = player.position();
-        return new Vec3(
-                playerPos.x + Math.cos(angle) * ORBIT_DISTANCE,
-                playerPos.y + player.getEyeHeight() * 0.6,
-                playerPos.z + Math.sin(angle) * ORBIT_DISTANCE
-        );
-    }
-
-    /**
-     * 客户端命中处理（只播放特效，不处理伤害）。
-     */
-    private void onHitTargetClient() {
-        this.hasHit = true;
-        // 客户端只播放特效，伤害由服务端处理
-    }
-
-    /**
-     * 命中目标时调用（服务端执行）。
-     */
-    private void onHitTarget(LivingEntity target) {
-        if (this.hasHit) {
-            return;
-        }
-
-        this.hasHit = true;
-        if (character == null) {
-            this.discard();
-            return;
-        }
-        spawnHitEffects();
-        this.discard();
-    }
-
-
-    /**
-     * 计算伤害（根据你的角色属性系统实现）。
-     */
-    private float calculateDamage(PGCharacter ownerCharacter) {
-        // 根据角色攻击力、技能倍率等计算伤害
-        // return ownerCharacter.getAttack() * skillMultiplier;
-        return 10.0f; // 占位
-    }
-
-    /**
-     * 生成命中特效。
-     */
-    private void spawnHitEffects() {
-        if (this.level() instanceof ServerLevel serverLevel) {
-            LOGGER.info("VesnaAttackProjectile hit target: {}", this.target);
-            character.addEnergy(1);
-        }
-    }
-
 }

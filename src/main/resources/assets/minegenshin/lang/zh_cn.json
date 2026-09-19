@@ -1,10 +1,9 @@
 {
-  "character.name.arlecchino": "Arlecchino",
-  "character.name.raiden_shogun": "Raiden Shogun",
-  "character.name.shenhe": "Shenhe",
-  "character.name.test": "Test",
-  "character.name.columbina": "Columbina",
-  "character.name.vesna": "Vesna",
+  "character.name.arlecchino": "阿蕾奇诺",
+  "character.name.raiden_shogun": "雷电将军",
+  "character.name.shenhe": "申鹤",
+  "character.name.columbina": "哥伦比娅",
+  "character.name.vesna": "薇斯娜",
 
   "minegenshin.configuration.section.minegenshin.title": "原神配置",
   "minegenshin.configuration.section.minegenshin.character.toml": "角色配置",
