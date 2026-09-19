@@ -8,6 +8,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.ActionServer;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.combat.action.ActionManager;
+import com.linweiyun.genshin.core.system.combat.action.InterruptReason;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
@@ -109,8 +110,7 @@ public class KeyInputHandler {
     boolean isJumpDown = mc.options.keyJump.isDown();
     if (isJumpDown && !wasJumpDown && isInGenshinMode && character != null) {
       ClientActionLock.clear();
-      ActionServer.interruptActionToServer(
-              com.linweiyun.genshin.core.system.combat.action.InterruptReason.JUMP.ordinal());
+      ActionServer.interruptActionToServer(InterruptReason.JUMP.ordinal());
     }
     wasJumpDown = isJumpDown;
 
@@ -228,6 +228,10 @@ public class KeyInputHandler {
     longPressStartTick = 0;
     xSkillTriggered = false;
     ClientActionLock.clear();
+
+    // ⭐ 切换角色：无条件打断当前动作
+    // 客户端立即生效；服务端收到 characterSelectionRPCPacket 后也会打断一次。
+    ActionManager.get(player).interrupt(InterruptReason.SWITCH_CHARACTER);
 
     int currentIndex = attachment.getCurrentCharacterIndex();
     for (int i = 1; i <= 4; i++) {

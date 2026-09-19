@@ -6,7 +6,6 @@ import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ActionManager {
@@ -22,7 +21,21 @@ public class ActionManager {
     private ActionState current;
     private ActionDefinition buffered;
 
-    private String cachedStateKey;
+    /**
+     * 当前正在驱动状态机的角色实例。
+     * <p>
+     * 一个 ActionManager 是 per-player 的，但一个玩家有多个 party 角色。
+     * 服务端的 CharacterTickEvent 会 tick 所有 party 成员——如果每个成员的 tick
+     * 都无条件推进状态机，会导致 party 之间的动作互相打断。
+     * <p>
+     * activeCharacter 记录"当前动作属于哪个角色"，只有它的 tick / request 才会
+     * 驱动状态机；其他角色的 tick 直接忽略。
+     * <p>
+     * 玩家切换角色通过显式的 {@link #interrupt(InterruptReason)} 打断；request 时
+     * 如果传入的 character 与 activeCharacter 不同，也会自动打断（兜底）。
+     */
+    private PGCharacter activeCharacter;
+
     private int lastComboIndex = 0;
     private long lastComboEndTick = Long.MIN_VALUE;
 
@@ -38,7 +51,6 @@ public class ActionManager {
 
     public boolean requestNormalAttack(Player player, PGCharacter character) {
         String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
-        refreshStateKey(player, character);
         ActionSet set = character.getActionSet(player);
         if (set == null) {
             LOGGER.warn("[ActionManager] [{}] requestNormalAttack: actionSet=null (talent={})",
@@ -55,7 +67,6 @@ public class ActionManager {
 
     public boolean requestChargedAttack(Player player, PGCharacter character) {
         String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
-        refreshStateKey(player, character);
         ActionSet set = character.getActionSet(player);
         if (set == null) {
             LOGGER.warn("[ActionManager] [{}] requestChargedAttack: actionSet=null", side);
@@ -68,7 +79,6 @@ public class ActionManager {
         String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
         LOGGER.info("[ActionManager] [{}] requestElementalSkill skillTime={}", side, skillTime);
 
-        refreshStateKey(player, character);
         ActionSet set = character.getActionSet(player);
         if (set == null) {
             LOGGER.warn("[ActionManager] [{}] actionSet=null (talent={})",
@@ -106,7 +116,6 @@ public class ActionManager {
         String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
         LOGGER.info("[ActionManager] [{}] requestElementalBurst", side);
 
-        refreshStateKey(player, character);
         ActionSet set = character.getActionSet(player);
         if (set == null) {
             LOGGER.warn("[ActionManager] [{}] actionSet=null", side);
@@ -137,6 +146,16 @@ public class ActionManager {
     private boolean request(Player player, PGCharacter character, ActionDefinition def) {
         if (def == null) return false;
 
+        // ⭐ 请求的角色与当前活跃角色不同 → 视为角色切换，打断旧动作
+        if (activeCharacter != null && activeCharacter != character) {
+            if (current != null && !current.isFinished()) {
+                current.interrupt(InterruptReason.SWITCH_CHARACTER);
+            }
+            buffered = null;
+            resetCombo();
+        }
+        activeCharacter = character;
+
         if (current != null && !current.isFinished()) {
             ActionPhase phase = current.getPhase();
             if (phase == ActionPhase.POSTCAST && def.isCombo()) {
@@ -156,7 +175,11 @@ public class ActionManager {
     }
 
     public void tick(Player player, PGCharacter character) {
-        refreshStateKey(player, character);
+        // ⭐ 只有当前活跃角色的 tick 才驱动状态机；
+        //    party 里其他成员的 tick 直接忽略，避免互相打断。
+        if (activeCharacter != null && activeCharacter != character) {
+            return;
+        }
 
         if (current == null || current.isFinished()) {
             if (buffered != null) {
@@ -189,6 +212,7 @@ public class ActionManager {
             current.interrupt(reason);
             buffered = null;
             resetCombo();
+            activeCharacter = null;   // 让新角色可以正常请求
             return;
         }
         ActionPhase phase = current.getPhase();
@@ -230,17 +254,5 @@ public class ActionManager {
         lastComboIndex = 0;
         lastComboEndTick = Long.MIN_VALUE;
         buffered = null;
-    }
-
-    private void refreshStateKey(Player player, PGCharacter character) {
-        String key = character.getActionStateKey(player);
-        if (!key.equals(cachedStateKey)) {
-            cachedStateKey = key;
-            if (current != null && !current.isFinished()) {
-                current.interrupt(InterruptReason.MANUAL);
-            }
-            buffered = null;
-            resetCombo();
-        }
     }
 }

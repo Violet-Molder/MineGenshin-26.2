@@ -101,4 +101,21 @@ public final class ActionServer {
     public static void interruptActionToServer(int reasonOrdinal) {
         RPCPacketDistributor.rpcToServer("characterInterruptRPCPacket", reasonOrdinal);
     }
+
+    // ========================================================================
+    // 【服务端 → 客户端】播放挥剑动画
+    // 由 ActionState 在服务端进入 ACTIVE 阶段时调用，让动画与伤害同 tick 触发。
+    // ========================================================================
+
+    @RPCPacket("actionSwingRPCPacket")
+    public static void actionSwingRPCPacket(RPCSender sender) {
+        if (sender.isServer()) {
+            ActionClient.actionSwingClientHandler();
+        }
+    }
+
+    /** 服务端主动调用：让指定玩家播放一次挥剑动画 */
+    public static void actionSwingToPlayer(ServerPlayer player) {
+        RPCPacketDistributor.rpcToPlayer(player, "actionSwingRPCPacket");
+    }
 }
