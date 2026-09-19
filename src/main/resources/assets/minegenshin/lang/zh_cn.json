@@ -1,4 +1,11 @@
 {
+  "character.name.arlecchino": "Arlecchino",
+  "character.name.raiden_shogun": "Raiden Shogun",
+  "character.name.shenhe": "Shenhe",
+  "character.name.test": "Test",
+  "character.name.columbina": "Columbina",
+  "character.name.vesna": "Vesna",
+
   "minegenshin.configuration.section.minegenshin.title": "原神配置",
   "minegenshin.configuration.section.minegenshin.character.toml": "角色配置",
   "minegenshin.configuration.section.minegenshin.character.toml.title": "角色配置",
@@ -182,11 +189,6 @@
   "itemGroup.minegenshin.foodGroup": "像素原神-食物",
   "itemGroup.minegenshin.regularItemGroup": "像素原神-常规物品",
 
-  "character.name.shenhe": "申鹤",
-  "character.name.test": "测试",
-  "character.name.arlecchino": "阿蕾奇诺",
-  "character.name.raiden_shogun": "雷电将军",
-  "character.name.columbina": "哥伦比娅",
 
   "attribute.minegenshin.max_hp": "生命值上限",
   "attribute.minegenshin.atk": "攻击力",
@@ -252,44 +254,6 @@
   "button.tutorial.one": "一",
 
   "item.minegenshin.dark_fragment": "漆黑碎片",
-
-
-  "minegenshin.config.weapon.xp.5star": "五星武器升级经验",
-  "minegenshin.config.weapon.xp.4star": "四星武器升级经验",
-  "minegenshin.config.weapon.xp.3star": "三星武器升级经验",
-
-  "minegenshin.config.weapon.ascension.5star": "五星突破攻击力奖励",
-  "minegenshin.config.weapon.ascension.4star": "四星突破攻击力奖励",
-  "minegenshin.config.weapon.ascension.3star": "三星突破攻击力奖励",
-  "minegenshin.config.weapon.ascension.2star": "二星突破攻击力奖励",
-  "minegenshin.config.weapon.ascension.1star": "一星突破攻击力奖励",
-
-  "minegenshin.config.weapon.substat.multiplier": "副词条等级乘数表 (Lv.1,5,10,...,90共19级)",
-
-  "minegenshin.config.weapon.substat.crit_rate": "副词条-暴击率",
-  "minegenshin.config.weapon.substat.crit_dmg": "副词条-暴击伤害",
-  "minegenshin.config.weapon.substat.energy_recharge": "副词条-元素充能效率",
-  "minegenshin.config.weapon.substat.atk_percent": "副词条-攻击力%",
-  "minegenshin.config.weapon.substat.physical_percent": "副词条-物理伤害%",
-  "minegenshin.config.weapon.substat.elemental_mastery": "副词条-元素精通",
-
-  "minegenshin.config.weapon.mainstat.tier41": "41基值-突破前基础攻击力",
-  "minegenshin.config.weapon.mainstat.tier42": "42基值-突破前基础攻击力",
-  "minegenshin.config.weapon.mainstat.tier44": "44基值-突破前基础攻击力",
-  "minegenshin.config.weapon.mainstat.tier45": "45基值-突破前基础攻击力",
-  "minegenshin.config.weapon.mainstat.tier38": "38基值-突破前基础攻击力",
-  "minegenshin.config.weapon.mainstat.tier39": "39基值-突破前基础攻击力",
-  "minegenshin.config.weapon.mainstat.tier40": "40基值-突破前基础攻击力",
-  "minegenshin.config.weapon.mainstat.tier33": "33基值-突破前基础攻击力",
-  "minegenshin.config.weapon.mainstat.tier23": "23基值-突破前基础攻击力",
-
-  "minegenshin.config.weapon.growth.tier41": "41基值-各区间每级成长值",
-  "minegenshin.config.weapon.growth.tier42": "42基值-各区间每级成长值",
-  "minegenshin.config.weapon.growth.tier44": "44基值-各区间每级成长值",
-  "minegenshin.config.weapon.growth.tier45": "45基值-各区间每级成长值",
-  "minegenshin.config.weapon.growth.tier38": "38基值-各区间每级成长值",
-  "minegenshin.config.weapon.growth.tier39": "39基值-各区间每级成长值",
-  "minegenshin.config.weapon.growth.tier40": "40基值-各区间每级成长值",
 
   "reaction.minegenshin.melt": "融化",
   "reaction.minegenshin.vaporize": "蒸发",

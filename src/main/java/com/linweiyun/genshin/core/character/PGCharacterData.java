@@ -6,79 +6,133 @@ import com.linweiyun.genshin.content.attribute.AttributeInstance;
 import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.core.character.attachment.CharacterAttachmentContainer;
+import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
+import com.lowdragmc.lowdraglib2.syncdata.IManaged;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
+import com.lowdragmc.lowdraglib2.syncdata.annotation.DescSynced;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.lowdragmc.lowdraglib2.syncdata.storage.FieldManagedStorage;
+import com.lowdragmc.lowdraglib2.syncdata.storage.IManagedStorage;
+import com.lowdragmc.lowdraglib2.utils.ByteBufUtil;
+import lombok.Getter;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.UUID;
 
-public class PGCharacterData implements IPersistedSerializable {
+public class PGCharacterData implements IPersistedSerializable, IManaged {
+
+    private PGCharacter parentCharacter;
+    private final FieldManagedStorage syncStorage = new FieldManagedStorage(this);
+
+    @Override public IManagedStorage getSyncStorage() { return syncStorage; }
+    @Override public void notifyPersistence() { /* persistence handled by IPersistedSerializable */ }
+
+    void setParentCharacter(PGCharacter parentCharacter) { this.parentCharacter = parentCharacter; }
     @Persisted(key = "character_level")
     private int characterLevel;
+    @Getter
     @Persisted(key = "max_exp")
     private int maxExp;
+    @Getter
     @Persisted(key = "current_exp")
     private int currentExp;
+    @Getter
     @Persisted(key = "current_hp")
+    @DescSynced
     private double currentHP;
+    @Getter
     @Persisted(key = "ascension_phase")
     private int ascensionPhase;
     @Persisted(key = "constellation")
     private int constellation;
     @Persisted(key = "attributes")
     private AttributeContainer attributes = new AttributeContainer();
+    @Getter
     @Persisted(key = "normal_attack_level")
     private int normalAttackLevel;
+    @Getter
     @Persisted(key = "elemental_skill_level")
     private int elementalSkillLevel;
+    @Getter
     @Persisted(key = "elemental_burst_level")
     private int elementalBurstLevel;
+    @Getter
     @Persisted(key = "current_obtaining_energy")
+    @DescSynced
     private float currentObtainingEnergy;
+    @Getter
     @Persisted(key = "skill_short_max_cooldown")
+    @DescSynced
     private int skillShortMaxCooldownTick;
+    @Getter
     @Persisted(key = "skill_long_max_cooldown")
+    @DescSynced
     private int skillLongMaxCooldownTick;
+    @Getter
     @Persisted(key = "burst_max_cooldown")
+    @DescSynced
     private int burstMaxCooldownTick;
+    @Getter
     @Persisted(key = "max_obtaining_energy")
+    @DescSynced
     private float maxObtainingEnergy;
+    @Getter
     @Persisted(key = "elemental_skill_cooldown_tick")
+    @DescSynced
     private float elementalSkillCooldownTick;
+    @Getter
     @Persisted(key = "elemental_burst_cooldown_tick")
+    @DescSynced
     private float elementalBurstCooldownTick;
+    @Getter
     @Persisted(key = "effect_data")
     private ListTag effectDataList = new ListTag();
+    @Getter
     @Persisted(key = "elemental_skill_max_stacks")
     private int elementalSkillMaxStacks;
+    @Getter
     @Persisted(key = "elemental_skill_stacks")
+    @DescSynced
     private int elementalSkillStacks;
+    @Getter
     @Persisted(key = "skill_list")
     protected List<Integer> skillCoolList;
+    @Getter
     @Persisted(key = "status_container")
     private StatusContainer statusContainer = new StatusContainer();
+    //AI 所属玩家的序列化 UUID
+    @Getter
     @Persisted(key = "owner_uuid")
     private UUID ownerUUID;
 
+    @Getter
     @Persisted(key = "artifact_inventory")
     private ArtifactInventory artifactInventory = new ArtifactInventory();
+    @Getter
     @Persisted(key = "weapon_base_atk")
     private double weaponBaseATK = 0;
     @Persisted(key = "character_attachments")
     private CharacterAttachmentContainer characterAttachments = new CharacterAttachmentContainer();
 
 
+    //AI 运行时 Player 引用，设置时自动同步 UUID
+    @Getter
     private Player ownerPlayer;
     // 效果容器的缓存引用，延迟加载，避免每次操作都重新反序列化
     private CharacterEffectContainer effectContainer;
 
+    @Getter
     private boolean dirty = false;
 
     public PGCharacterData() {
@@ -194,23 +248,7 @@ public class PGCharacterData implements IPersistedSerializable {
     }
 
     public int getLevel() { return characterLevel; }
-    public int getCurrentExp() { return currentExp; }
-    public int getMaxExp() { return maxExp; }
-    public double getCurrentHP() { return currentHP; }
-    public int getAscensionPhase() { return ascensionPhase; }
-    public float getCurrentObtainingEnergy() { return currentObtainingEnergy; }
-    public float getElementalSkillCooldownTick() { return elementalSkillCooldownTick; }
-    public float getElementalBurstCooldownTick() { return elementalBurstCooldownTick; }
-    public int getElementalSkillMaxStacks() { return elementalSkillMaxStacks; }
-    public int getElementalSkillStacks() { return elementalSkillStacks; }
-    public StatusContainer getStatusContainer() { return statusContainer; }
-    public int getNormalAttackLevel() { return normalAttackLevel; }
-    public int getElementalSkillLevel() { return elementalSkillLevel; }
-    public int getElementalBurstLevel() { return elementalBurstLevel; }
-    public int getSkillShortMaxCooldownTick() { return skillShortMaxCooldownTick; }
-    public int getSkillLongMaxCooldownTick() { return skillLongMaxCooldownTick; }
-    public int getBurstMaxCooldownTick() { return burstMaxCooldownTick; }
-    public float getMaxObtainingEnergy() { return maxObtainingEnergy; }
+
     public CharacterAttachmentContainer getAttachments() {return characterAttachments;}
 
     public static final int MAX_TALENT_LEVEL = 14;
@@ -248,8 +286,6 @@ public class PGCharacterData implements IPersistedSerializable {
         return true;
     }
 
-    public ArtifactInventory getArtifactInventory() { return artifactInventory; }
-    public double getWeaponBaseATK() { return weaponBaseATK; }
     public void setWeaponBaseATK(double value) { weaponBaseATK = value; markDirty(); }
 
     public ItemStack getFlower() { return artifactInventory.getItem(ArtifactInventory.SLOT_FLOWER); }
@@ -261,11 +297,6 @@ public class PGCharacterData implements IPersistedSerializable {
 
     public List<ItemStack> getAllArtifactsAsList() {
         return artifactInventory.getAllArtifactsAsList();
-    }
-
-
-    public List<Integer> getSkillCoolList() {
-        return skillCoolList;
     }
 
 
@@ -299,11 +330,8 @@ public class PGCharacterData implements IPersistedSerializable {
     public void healHP(double amount) {this.currentHP = Math.min(this.currentHP + amount, getAttributeTotalValue(ModAttributes.MAX_HP.value()));markDirty();}
     public void hurtHP(float amount) {this.currentHP = Math.max(0, this.currentHP - amount);markDirty();}
 
-    //AI 所属玩家的序列化 UUID
-    public UUID getOwnerUUID() { return ownerUUID; }
     public void setOwnerUUID(UUID ownerUUID) { this.ownerUUID = ownerUUID; markDirty(); }
-    //AI 运行时 Player 引用，设置时自动同步 UUID
-    public Player getOwnerPlayer() { return ownerPlayer; }
+
     public void setOwnerPlayer(Player ownerPlayer) {
         this.ownerPlayer = ownerPlayer;
         if (ownerPlayer != null) this.ownerUUID = ownerPlayer.getUUID();
@@ -346,7 +374,7 @@ public class PGCharacterData implements IPersistedSerializable {
         }
         return effectContainer;                                            // 返回缓存
     }
-    public ListTag getEffectDataList() { return effectDataList; }
+
     /**
      * 将效果容器的当前状态同步写回NBT标签
      * 在修改效果数据后必须调用此方法，确保下次持久化时数据正确
@@ -388,6 +416,59 @@ public class PGCharacterData implements IPersistedSerializable {
     private void markDirty() {
         this.dirty = true;
     }
-    public boolean isDirty() { return dirty; }
+
     public void clearDirty() { dirty = false; }
+
+    /**
+     * Sync dirty @DescSynced fields to the owning player's client.
+     * Call after any state change (hurtHP, healHP, setCurrentObtainingEnergy, tick, etc.)
+     */
+    public void syncToClient() {
+        if (parentCharacter == null) return;
+        var player = getOwnerPlayer();
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        ServerLevel serverLevel = serverPlayer.level();
+
+        for (var field : syncStorage.getNonLazyFields()) {
+            field.update();
+        }
+        if (!syncStorage.hasDirtySyncFields()) return;
+
+        var syncedFields = syncStorage.getSyncFields();
+        if (syncedFields.length == 0) return;
+
+        var changed = new BitSet();
+        var data = ByteBufUtil.writeCustomData(buffer -> {
+            for (int i = 0; i < syncedFields.length; i++) {
+                var field = syncedFields[i];
+                if (field.isSyncDirty()) {
+                    changed.set(i);
+                    field.readSyncToStream(buffer);
+                    field.clearSyncDirty();
+                }
+            }
+        }, serverLevel.registryAccess());
+
+        if (changed.isEmpty()) return;
+
+        var payload = new CompoundTag();
+        payload.putLongArray("changed", changed.toLongArray());
+        payload.putByteArray("data", data);
+
+        NetworkManager.sendCharacterSyncToPlayer(serverPlayer, parentCharacter.getCharacterUUID(), payload);
+    }
+
+    void receiveFromServer(CompoundTag payload, net.minecraft.core.RegistryAccess registryAccess) {
+        var changed = BitSet.valueOf(payload.getLongArray("changed").orElse(new long[0]));
+        var buf = payload.getByteArray("data").orElse(new byte[0]);
+
+        ByteBufUtil.readCustomData(buf, buffer -> {
+            var syncedFields = syncStorage.getSyncFields();
+            for (int i = 0; i < syncedFields.length; i++) {
+                if (changed.get(i)) {
+                    syncedFields[i].writeSyncFromStream(buffer);
+                }
+            }
+        }, registryAccess);
+    }
 }

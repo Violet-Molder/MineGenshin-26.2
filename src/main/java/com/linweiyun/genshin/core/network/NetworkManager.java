@@ -264,69 +264,9 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "removeCharacterRPCPacket", uuid);
   }
 
-  @RPCPacket("characterActiveSkillRPCPacket")
-  public static void characterActiveSkillRPCPacket(RPCSender sender, int isLong) {
-    if (!sender.isServer()) {
-      ServerPlayer serverPlayer = sender.asPlayer();
-      PlayerCharactersAttachment attachment =
-              serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-      PGCharacter currentChar = attachment.getCurrentCharacter();
-      if (currentChar != null) {
-        currentChar.performElementalSkill(serverPlayer, isLong);
-      }
-    }
-  }
-  public static void triggerCharacterSkill(int isLong) {
-    RPCPacketDistributor.rpcToServer("characterActiveSkillRPCPacket", isLong);
-  }
-
-  @RPCPacket("characterActiveBurstRPCPacket")
-  public static void characterActiveBurstRPCPacket(RPCSender sender) {
-    if (!sender.isServer()) {
-      ServerPlayer serverPlayer = sender.asPlayer();
-      PlayerCharactersAttachment attachment =
-              serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-      PGCharacter currentChar = attachment.getCurrentCharacter();
-      if (currentChar != null) {
-        currentChar.performElementalBurst(serverPlayer);
-      }
-    }
-  }
-  public static void triggerCharacterBurst() {
-    RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket");
-  }
-
-  @RPCPacket("characterNormalAttackRPCPacket")
-  public static void characterNormalAttackRPCPacket(RPCSender sender, int comboStage) {
-    if (!sender.isServer()) {
-      ServerPlayer serverPlayer = sender.asPlayer();
-      PlayerCharactersAttachment attachment =
-              serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-      PGCharacter currentChar = attachment.getCurrentCharacter();
-      if (currentChar != null) {
-        currentChar.performNormalAttack(serverPlayer, comboStage);
-      }
-    }
-  }
-  public static void performNormalAttackToServer(int comboStage) {
-    RPCPacketDistributor.rpcToServer("characterNormalAttackRPCPacket", comboStage);
-  }
-
-  @RPCPacket("characterChargedAttackRPCPacket")
-  public static void characterChargedAttackRPCPacket(RPCSender sender) {
-    if (!sender.isServer()) {
-      ServerPlayer serverPlayer = sender.asPlayer();
-      PlayerCharactersAttachment attachment =
-              serverPlayer.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-      PGCharacter currentChar = attachment.getCurrentCharacter();
-      if (currentChar != null) {
-        currentChar.performChargedAttack(serverPlayer);
-      }
-    }
-  }
-  public static void performChargedAttackToServer() {
-    RPCPacketDistributor.rpcToServer("characterChargedAttackRPCPacket");
-  }
+  // ===== 注意：characterActiveSkillRPCPacket / characterActiveBurstRPCPacket /
+  //       characterNormalAttackRPCPacket / characterChargedAttackRPCPacket
+  //       已迁移至 ActionServer。 =====
 
   @RPCPacket("artifactLevelUpRPCPacket")
   public static void artifactLevelUpRPCPacket(RPCSender sender, ItemStack stack, int expAmount) {
@@ -455,9 +395,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToServer("unequipArtifactRPCPacket", artifactSlotIndex);
   }
 
-//
-  
-
   @RPCPacket("openBackpackRPCPacket")
   public static void openBackpackRPCPacket(RPCSender sender) {
     if (!sender.isServer()) {
@@ -509,10 +446,8 @@ public class NetworkManager {
   @RPCPacket("activateArtifactRPCPacket")
   public static void activateArtifactRPCPacket(RPCSender sender, int inventorySlotIndex) {
     if (sender.isServer()) {
-      // 服务端 → 客户端的同步分支：服务端完成激活后，把结果同步回客户端
       ClientHandler.activateArtifactClientHandler(inventorySlotIndex);
     } else {
-      // 客户端 → 服务端：请求服务端权威执行激活
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
       int globalSlot = getCategoryOffset(Backpack.Category.ARTIFACTS) + inventorySlotIndex;
@@ -521,12 +456,9 @@ public class NetworkManager {
 
       ArtifactStatsComponent stats = stack.getOrDefault(
               ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
-      // 已激活的不重复激活
       if (stats.activated) return;
 
-      // 抽取词条并标记为已激活
       ArtifactItem.initializeArtifactStackIfNeeded(stack);
-      // 写回背包（持久化）
       backpack.setItem(globalSlot, stack);
 
       LOGGER.info("服务端激活圣遗物: 背包索引 {}", inventorySlotIndex);
@@ -541,10 +473,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "activateArtifactRPCPacket", inventorySlotIndex);
   }
 
-  /**
-   * 计算某分类在 Backpack 中的全局起始槽位索引。
-   * 与 BackpackMenu 里的同名方法保持一致。
-   */
   private static int getCategoryOffset(Backpack.Category target) {
     int offset = 0;
     for (var category : Backpack.Category.values()) {
@@ -570,7 +498,7 @@ public class NetworkManager {
   public static void sendBackpackTakeOutFromSlotToServer(int slotIndex) {
     RPCPacketDistributor.rpcToServer("backpackTakeOutFromSlotRPCPacket", slotIndex);
   }
-  
+
   public static void giveItemToPlayer(ServerPlayer player, ItemStack stack) {
     int remaining = stack.getCount();
 
@@ -597,7 +525,6 @@ public class NetworkManager {
         if (existing.isEmpty()) {
           int toAdd = Math.min(remaining, stack.getMaxStackSize());
           inventory.setItem(i, stack.copyWithCount(toAdd));
-//          LOGGER.info("NetSetItem4");
           remaining -= toAdd;
         }
       }
@@ -875,10 +802,6 @@ public class NetworkManager {
     RPCPacketDistributor.rpcToPlayer(player, "invasionStatusRPCPacket", invaded);
   }
 
-  /**
-   * Server-to-client entity managed field sync via LDLib2 RPC.
-   * Called by ISyncManagedEntity to sync @DescSynced fields from server to tracking clients.
-   */
   @RPCPacket("minegenshin:entity_sync")
   public static void entitySyncRPCPacket(RPCSender sender, int entityId, CompoundTag payload) {
     if (sender.isServer()) {
@@ -888,5 +811,16 @@ public class NetworkManager {
 
   public static void sendEntitySyncToPlayer(ServerPlayer player, int entityId, CompoundTag payload) {
     RPCPacketDistributor.rpcToPlayer(player, "minegenshin:entity_sync", entityId, payload);
+  }
+
+  @RPCPacket("minegenshin:character_sync")
+  public static void characterSyncRPCPacket(RPCSender sender, int characterUUID, CompoundTag payload) {
+    if (sender.isServer()) {
+      ClientHandler.characterSyncClientHandler(characterUUID, payload);
+    }
+  }
+
+  public static void sendCharacterSyncToPlayer(ServerPlayer player, int characterUUID, CompoundTag payload) {
+    RPCPacketDistributor.rpcToPlayer(player, "minegenshin:character_sync", characterUUID, payload);
   }
 }

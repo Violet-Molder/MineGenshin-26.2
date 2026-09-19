@@ -5,7 +5,7 @@ import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 
 public class VesnaEnergy extends CharacterAttachment {
 
-    public static final String TYPE_ID = Vesna.VESNA_ENERGY;
+    public static final String TYPE_ID = "vesna_energy";
 
     @Persisted(key = "energy")
     private float energy;

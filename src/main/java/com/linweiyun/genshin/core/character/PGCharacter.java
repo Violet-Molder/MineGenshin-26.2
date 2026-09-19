@@ -21,14 +21,22 @@ import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.system.combat.action.ActionManager;
+import com.linweiyun.genshin.core.system.combat.action.ActionSet;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
+import com.linweiyun.genshin.core.sync.ISyncCharacter;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.lowdragmc.lowdraglib2.syncdata.storage.FieldManagedStorage;
+import com.lowdragmc.lowdraglib2.syncdata.storage.IManagedStorage;
 import com.mojang.logging.LogUtils;
 
+import lombok.Getter;
+import lombok.Setter;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -43,20 +51,39 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public class PGCharacter implements IPersistedSerializable {
+public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
+
+    private final FieldManagedStorage syncStorage = new FieldManagedStorage(this);
+
+    @Override public IManagedStorage getSyncStorage() { return syncStorage; }
+    @Override public PGCharacter getSelfCharacter() { return this; }
+    @Override public void notifyPersistence() { }
+
+    @Getter
+    @Setter
     @Persisted(key = "character_uuid")
     protected int characterUUID;
+    @Getter
+    @Setter
     @Persisted(key = "star_rating")
     protected int starRating;
+    @Getter
+    @Setter
     @Persisted(key = "name")
     protected Component name;
     @Persisted(key = "elemental")
     protected String elementalId;
     private transient GenshinElement elemental;
+    @Getter
+    @Setter
     @Persisted(key = "ascend_attribute")
     protected CharacterAscendAttribute ascendAttribute;
+    @Getter
+    @Setter
     @Persisted(key = "texture_id")
     protected String textureId;
+    @Getter
+    @Setter
     @Persisted(key = "data")
     protected PGCharacterData data;
 
@@ -65,8 +92,13 @@ public class PGCharacter implements IPersistedSerializable {
     protected transient TalentBase talent;
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    // ============ 动作集缓存 ============
+    private final Map<String, ActionSet> actionSetCache = new HashMap<>();
+
     public PGCharacter() {
         this.data = new PGCharacterData();
+        this.data.setParentCharacter(this);
     }
 
     public PGCharacter(
@@ -81,16 +113,18 @@ public class PGCharacter implements IPersistedSerializable {
         this.elementalId = elementalId;
         this.ascendAttribute = ascendAttribute;
         this.data = new PGCharacterData();
+        this.data.setParentCharacter(this);
         this.data.setSkillShortMaxCooldownTick(skillMaxCooldownTick);
         this.data.setSkillLongMaxCooldownTick(skillMaxCooldownTick);
         this.data.setBurstMaxCooldownTick(burstMaxCooldownTick);
         this.data.setMaxObtainingEnergy(maxObtainingEnergy);
         this.textureId = textureId;
     }
+
     public PGCharacter(
             int characterUUID, int starRating, Component name,
             String elementalId, CharacterAscendAttribute ascendAttribute,
-            int skillShortMaxCooldownTick,int skillLongMaxCooldownTick, int burstMaxCooldownTick,
+            int skillShortMaxCooldownTick, int skillLongMaxCooldownTick, int burstMaxCooldownTick,
             float maxObtainingEnergy, String textureId,
             Map<Identifier, Supplier<List<? extends Integer>>> statGrowthMap) {
         this.characterUUID = characterUUID;
@@ -99,12 +133,14 @@ public class PGCharacter implements IPersistedSerializable {
         this.elementalId = elementalId;
         this.ascendAttribute = ascendAttribute;
         this.data = new PGCharacterData();
+        this.data.setParentCharacter(this);
         this.data.setSkillShortMaxCooldownTick(skillShortMaxCooldownTick);
         this.data.setSkillLongMaxCooldownTick(skillLongMaxCooldownTick);
         this.data.setBurstMaxCooldownTick(burstMaxCooldownTick);
         this.data.setMaxObtainingEnergy(maxObtainingEnergy);
         this.textureId = textureId;
     }
+
     private AttributeType resolveType(Identifier id) {
         return ModAttributes.ATTRIBUTES.getRegistry().get().getValue(id);
     }
@@ -112,6 +148,31 @@ public class PGCharacter implements IPersistedSerializable {
     public Class<? extends WeaponItem> getAllowedWeaponClass() {
         return WeaponItem.class;
     }
+
+    // ============ 动作系统扩展点 ============
+
+    public String getActionStateKey(Player player) {
+        return "default";
+    }
+
+    public final ActionSet getActionSet(Player player) {
+        String key = getActionStateKey(player);
+        return actionSetCache.computeIfAbsent(key, k -> {
+            ActionSet built = (talent != null) ? talent.buildActionSet(this, k) : null;
+            return built != null ? built : buildFallbackActionSet();
+        });
+    }
+
+    protected ActionSet buildFallbackActionSet() {
+        return ActionSet.builder().build();
+    }
+
+    protected void invalidateActionSetCache() {
+        actionSetCache.clear();
+    }
+
+    // ============ 动作逻辑（由 ActionManager 触发） ============
+
     public void performElementalSkill(Player player, int skillTime) {
         if (data.getElementalSkillCooldownTick() == 0) {
             if (talent != null) talent.elementalSkill(player, this, skillTime);
@@ -122,11 +183,12 @@ public class PGCharacter implements IPersistedSerializable {
             } else {
                 data.setElementalSkillCooldownTick(data.getSkillLongMaxCooldownTick());
             }
+            syncRealtimeState();
         } else {
             player.sendSystemMessage(Component.translatable("message.minegenshin.skill_cooldown", data.getElementalSkillCooldownTick()));
-               }
+        }
+    }
 
-    };
     public void performElementalBurst(Player player) {
         if (data.getElementalBurstCooldownTick() > 0) {
             player.sendSystemMessage(Component.translatable("message.minegenshin.skill_cooldown"));
@@ -140,7 +202,8 @@ public class PGCharacter implements IPersistedSerializable {
         if (player.level().isClientSide()) return;
         data.setCurrentObtainingEnergy(0);
         data.setElementalBurstCooldownTick(data.getBurstMaxCooldownTick());
-    };
+        syncRealtimeState();
+    }
 
     public void performNormalAttack(Player player, int comboStage) {
         if (talent != null) talent.attack(player, this, comboStage);
@@ -165,11 +228,6 @@ public class PGCharacter implements IPersistedSerializable {
         return 0;
     }
 
-    public int getNormalAttackWindowTicks(int stage) {
-        if (talent != null) return talent.getWindowTicks(stage);
-        return 0;
-    }
-
     public int getChargedAttackChargeTicks() {
         if (talent != null) return talent.getChargeTicks();
         return 20;
@@ -185,20 +243,42 @@ public class PGCharacter implements IPersistedSerializable {
         return 15;
     }
 
-    public void frontTick(Player player) {
-
+    public int getSkillPrecastTicks() {
+        if (talent != null) return talent.getSkillPrecastTicks();
+        return 5;
     }
 
-    public void backTick(Player player) {
-
+    public int getSkillPostcastTicks() {
+        if (talent != null) return talent.getSkillPostcastTicks();
+        return 10;
     }
+
+    public int getBurstPrecastTicks() {
+        if (talent != null) return talent.getBurstPrecastTicks();
+        return 10;
+    }
+
+    public int getBurstPostcastTicks() {
+        if (talent != null) return talent.getBurstPostcastTicks();
+        return 20;
+    }
+
+    public void frontTick(Player player) {}
+
+    public void backTick(Player player) {}
 
     public void tick(Player player) {
         data.tick();
         recalculateDirtyArtifactSlots();
         frontTick(player);
         backTick(player);
+        if (!player.level().isClientSide()) {
+            ActionManager.get(player).tick(player, this);
+            syncRealtimeState();
+        }
     }
+
+    // ============ 圣遗物 / 武器 ============
 
     public void equipArtifact(ArtifactType type, ItemStack artifactStack) {
         if (artifactStack.getItem() instanceof ArtifactItem artifactItem) {
@@ -207,6 +287,7 @@ public class PGCharacter implements IPersistedSerializable {
             data.getArtifactInventory().setItem(slot, artifactStack.copy());
         }
     }
+
     public void unequipArtifact(ArtifactType type) {
         int slot = ArtifactInventory.typeToSlot(type);
         data.getArtifactInventory().setItem(slot, ItemStack.EMPTY);
@@ -230,7 +311,10 @@ public class PGCharacter implements IPersistedSerializable {
             return;
         }
         ArtifactType type = ArtifactInventory.slotToType(slotIndex);
-        String source = type.name().toLowerCase();
+        String source = null;
+        if (type != null) {
+            source = type.name().toLowerCase();
+        }
 
         for (AttributeType attrType : ModRegistries.ATTRIBUTE_TYPE_REGISTRY) {
             data.removeAttributeModifier(attrType, source);
@@ -309,8 +393,8 @@ public class PGCharacter implements IPersistedSerializable {
     private void refreshArtifactSetEffects() {
         CharacterEffectContainer container = data.getEffectContainer();
         List<ICharacterEffect> toRemove = container.getEffects().stream()
-                .filter(inst -> inst.getEffect() instanceof ArtifactSetEffect)
                 .map(CharacterEffectInstance::getEffect)
+                .filter(effect -> effect instanceof ArtifactSetEffect)
                 .toList();
         for (ICharacterEffect effect : toRemove) {
             CharacterEffectHelper.removeEffect(this.data.getOwnerPlayer(), this, effect);
@@ -322,7 +406,7 @@ public class PGCharacter implements IPersistedSerializable {
             setCountMap.merge(set, 1, Integer::sum);
         }
         setCountMap.forEach((set, count) -> {
-            if (count >= 2){
+            if (count >= 2) {
                 CharacterEffectInstance inst = new CharacterEffectInstance(
                         set.twoPcEffect().get(),
                         CharacterEffectInstance.INFINITE, 1, true
@@ -338,22 +422,17 @@ public class PGCharacter implements IPersistedSerializable {
             }
             data.syncEffectsToTag();
         });
-
     }
 
-
-    public boolean hurt(float amount) {
+    public void hurt(float amount) {
         double before = data.getCurrentHP();
         data.hurtHP(amount);
-        // 扣血后若血量归0且之前活着，则直接处理倒下逻辑
+        syncRealtimeState();
         if (data.getCurrentHP() <= 0 && before > 0) {
             incapacitate();
-            return true;
         }
-        return false;
     }
 
-    // 改为无参，从 data 里获取所属 Player；不操作血量（hurt() 已将 currentHP 置 0），只处理切换和全队阵亡时关闭原神模式
     public void incapacitate() {
         Player player = data.getOwnerPlayer();
         if (player == null) return;
@@ -381,18 +460,21 @@ public class PGCharacter implements IPersistedSerializable {
         float maxHp = (float) data.getAttributeTotalValue(ModAttributes.MAX_HP.value());
         data.setCurrentHP(Math.min(hp, maxHp));
         enableDeployIfNeeded();
+        syncRealtimeState();
     }
 
     public void revive(float percent) {
         float maxHp = (float) data.getAttributeTotalValue(ModAttributes.MAX_HP.value());
         data.setCurrentHP(Math.min(maxHp * percent, maxHp));
         enableDeployIfNeeded();
+        syncRealtimeState();
     }
 
     public void revive(float percent, int extraHp) {
         float maxHp = (float) data.getAttributeTotalValue(ModAttributes.MAX_HP.value());
         data.setCurrentHP(Math.min(maxHp * percent + extraHp, maxHp));
         enableDeployIfNeeded();
+        syncRealtimeState();
     }
 
     private void enableDeployIfNeeded() {
@@ -400,7 +482,7 @@ public class PGCharacter implements IPersistedSerializable {
         Player player = data.getOwnerPlayer();
         if (player == null) return;
         Boolean genshinMode = player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT);
-        if (genshinMode != null && !genshinMode) {
+        if (!genshinMode) {
             player.setData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT, true);
             if (player instanceof ServerPlayer sp) {
                 NetworkManager.setGenshinModeToPlayer(sp, true);
@@ -411,6 +493,7 @@ public class PGCharacter implements IPersistedSerializable {
     public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {
         return Map.of();
     }
+
     public int getStatAtLevel(AttributeType type, int levelIndex) {
         Supplier<List<? extends Integer>> supplier = getStatGrowthMap().get(type.id());
         if (supplier == null) return 0;
@@ -424,7 +507,7 @@ public class PGCharacter implements IPersistedSerializable {
         if (supplier == null) return type.defaultValue();
         List<? extends Integer> list = supplier.get();
         if (list.isEmpty()) return type.defaultValue();
-        return list.get(0);
+        return list.getFirst();
     }
 
     public Set<AttributeType> getStatGrowthTypes() {
@@ -432,6 +515,7 @@ public class PGCharacter implements IPersistedSerializable {
                 .map(this::resolveType)
                 .collect(Collectors.toSet());
     }
+
     public void addExp(int amount) {
         if (data.getLevel() >= 90) {
             return;
@@ -453,19 +537,19 @@ public class PGCharacter implements IPersistedSerializable {
         }
         tryLevelUp();
     }
+
     public void tryLevelUp() {
         var expList = CharacterXpConfig.getAllXp();
-        // ===== 计算阶段：遍历计算可升级级数，不修改状态 =====
-        int totalExpConsumed = 0; //将要消耗的经验值的总数
+        int totalExpConsumed = 0;
         int levelsToGain = 0;
         int oldLevel = data.getLevel();
         int currentAscensionPhase = data.getAscensionPhase();
         while (oldLevel < 90) {
-            int expNeeded = expList.get(oldLevel - 1); //获取升至下一级所需经验值
-            if (data.getCurrentExp() - totalExpConsumed < expNeeded) break; //在循环模拟计算中若当前经验值减去将要消耗的经验值总数后小于升级需要的经验值则跳出循环，根据模拟数据执行真正的升级
+            int expNeeded = expList.get(oldLevel - 1);
+            if (data.getCurrentExp() - totalExpConsumed < expNeeded) break;
             int maxLevelForPhase = currentAscensionPhase == 0
                     ? 20
-                    : Math.min((currentAscensionPhase + 3) * 10, 90);//计算当前突破等级最高可升至几级
+                    : Math.min((currentAscensionPhase + 3) * 10, 90);
             if (oldLevel >= maxLevelForPhase) break;
             totalExpConsumed += expNeeded;
             levelsToGain++;
@@ -474,19 +558,15 @@ public class PGCharacter implements IPersistedSerializable {
         if (levelsToGain == 0) return;
         data.setCurrentExp(data.getCurrentExp() - totalExpConsumed);
         data.addLevel(levelsToGain);
-        // ========== 通过 AttributeType 设置基础值 ==========
         int statIndex = data.getLevel() - 1 + data.getAscensionPhase();
         updateBaseStatsFromConfig(statIndex);
-        // 升级回满血
         data.setCurrentHP(data.getAttributeTotalValue(ModAttributes.MAX_HP.value()));
 
         if (data.getLevel() < 90) {
             data.setMaxExp(expList.get(data.getLevel() - 1));
         }
-        // TODO: 发布角色升级事件
-
     }
-    // ========== 突破逻辑 ==========
+
     public void ascend() {
         int maxLevelForPhase = data.getAscensionPhase() == 0
                 ? 20
@@ -514,12 +594,11 @@ public class PGCharacter implements IPersistedSerializable {
             applyAscendBonus(ascendAttr, targetAttrType, starRating, bonusCount);
         }
 
-        // 突破后尝试继续升级
         tryLevelUp();
     }
 
     private void applyAscendBonus(CharacterAscendAttribute attr, AttributeType type,
-                                   int starRating, int bonusCount) {
+                                  int starRating, int bonusCount) {
         int factor = starRating + 1;
         String baseKey = "character_ascend";
         switch (attr) {
@@ -574,7 +653,7 @@ public class PGCharacter implements IPersistedSerializable {
             case ER -> ModAttributes.ER.value();
         };
     }
-    
+
     private AttributeType getElementalDamageBonusType() {
         GenshinElement element = getElemental();
         if (element == ModElements.PYRO.get()) return ModAttributes.PYRO_BONUS.value();
@@ -588,44 +667,26 @@ public class PGCharacter implements IPersistedSerializable {
         return ModAttributes.PHYSICAL_BONUS.value();
     }
 
-    public void upgradeNormalAttack() {
-        data.upgradeNormalAttack();
-    }
-    public void upgradeElementalSkill() {
-        data.upgradeElementalSkill();
-    }
-    public void upgradeElementalBurst() {
-        data.upgradeElementalBurst();
-    }
-    public int getCharacterUUID() { return characterUUID; }
-    public int getStarRating() { return starRating; }
-    public Component getName() { return name; }
+    public void upgradeNormalAttack() { data.upgradeNormalAttack(); }
+    public void upgradeElementalSkill() { data.upgradeElementalSkill(); }
+    public void upgradeElementalBurst() { data.upgradeElementalBurst(); }
+
     public GenshinElement getElemental() {
         if (elemental != null) return elemental;
         if (elementalId != null && !elementalId.isEmpty()) {
             String[] parts = elementalId.split(":", 2);
             Identifier id = Identifier.fromNamespaceAndPath(parts[0], parts[1]);
-            elemental = ModRegistries.ELEMENT_REGISTRY.get(id).map(r -> r.value()).orElse(null);
+            elemental = ModRegistries.ELEMENT_REGISTRY.get(id).map(Holder.Reference::value).orElse(null);
             return elemental;
         }
         return ModElements.FYSIKOS.get();
     }
-    public CharacterAscendAttribute getAscendAttribute() { return ascendAttribute; }
+
     public int getSkillShortMaxCooldownTick() { return data.getSkillShortMaxCooldownTick(); }
     public int getSkillLongMaxCooldownTick() { return data.getSkillLongMaxCooldownTick(); }
     public int getBurstMaxCooldownTick() { return data.getBurstMaxCooldownTick(); }
     public float getMaxObtainingEnergy() { return data.getMaxObtainingEnergy(); }
-    public String getTextureId() { return textureId; }
 
-    public PGCharacterData getData() {
-        return data;
-    }
-
-    public void setData(PGCharacterData data) {
-        this.data = data;
-    }
-
-    // 从 Config 列表中读取指定等级的属性值，设置到 AttributeContainer
     private void updateBaseStatsFromConfig(int statIndex) {
         for (AttributeType type : this.getStatGrowthTypes()) {
             int value = this.getStatAtLevel(type, statIndex);
@@ -633,5 +694,8 @@ public class PGCharacter implements IPersistedSerializable {
         }
     }
 
-
+    public void syncRealtimeState() {
+        data.syncToClient();
+        syncToClient();
+    }
 }

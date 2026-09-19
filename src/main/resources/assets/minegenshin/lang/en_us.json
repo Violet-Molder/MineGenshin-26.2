@@ -1,4 +1,11 @@
 {
+  "character.name.arlecchino": "Arlecchino",
+  "character.name.raiden_shogun": "Raiden Shogun",
+  "character.name.shenhe": "Shenhe",
+  "character.name.test": "Test",
+  "character.name.columbina": "Columbina",
+  "character.name.vesna": "Vesna",
+
   "minegenshin.configuration.section.minegenshin.title": "MineGenshin Config",
   "minegenshin.configuration.section.minegenshin.character.toml": "Character Config",
   "minegenshin.configuration.section.minegenshin.character.toml.title": "Character Config",
@@ -76,6 +83,7 @@
 
   "minegenshin.configuration.columbina": "Columbina",
   "minegenshin.configuration.arlecchino": "Arlecchino",
+
 
   "minegenshin.configuration.elemental-color": "Elemental Color",
   "minegenshin.configuration.elemental.physical_color": "Physical Color",
@@ -182,11 +190,6 @@
   "itemGroup.minegenshin.foodGroup": "Minegenshin-Foods",
   "itemGroup.minegenshin.regularItemGroup": "Minegenshin-Regular Item",
 
-  "item.minegenshin.shenhe": "Shenhe",
-  "item.minegenshin.arlecchino": "Arlecchino",
-  "item.minegenshin.raiden_shogun": "Raiden Shogun",
-  "item.minegenshin.columbina": "Columbina",
-
   "attribute.minegenshin.max_hp": "Max HP",
   "attribute.minegenshin.atk": "ATK",
   "attribute.minegenshin.def": "DEF",
@@ -219,11 +222,7 @@
 
 
 
-  "character.name.arlecchino": "Arlecchino",
-  "character.name.raiden_shogun": "Raiden Shogun",
-  "character.name.shenhe": "Shenhe",
-  "character.name.test": "Test",
-  "character.name.columbina": "Columbina",
+
 
   "message.minegenshin.wish.draw_character": "Congratulations, you have drawn a new character:%s",
   "message.minegenshin.wish.owned_character": "Congratulations, you have drawn the character: %s, but you already possess this role. It will be replaced with: %sx3",

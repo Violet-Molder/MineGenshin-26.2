@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.sync.ISyncCharacter;
 import com.linweiyun.genshin.core.sync.ISyncManagedEntity;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.client.Minecraft;
@@ -173,6 +174,16 @@ public class ClientHandler {
             var data = payload.getByteArray("data").orElse(new byte[0]);
             var extra = payload.getCompoundOrEmpty("extra");
             syncEntity.handleSyncPacket(mc.level.registryAccess(), changed, data, extra);
+        }
+    }
+
+    public static void characterSyncClientHandler(int characterUUID, CompoundTag payload) {
+        var mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+        var attachment = mc.player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        var character = attachment.getCharacterByUUID(characterUUID);
+        if (character instanceof ISyncCharacter syncChar) {
+            syncChar.handleCharacterSyncPacket(payload);
         }
     }
 }
