@@ -1,5 +1,8 @@
 package com.linweiyun.genshin.core.network;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.InteractionHand;
+
 /**
  * 动作系统 —— 客户端 RPC 入口。
  * <p>
@@ -10,5 +13,15 @@ package com.linweiyun.genshin.core.network;
  * 在此添加 {@code @RPCPacket} 并只处理 {@code sender.isServer() == true} 分支。
  */
 public final class ActionClient {
-    private ActionClient() {}
+
+    /**
+     * 服务端通知：播放挥剑动画。
+     * 由 {@code ActionServer.actionSwingRPCPacket} 调用。
+     */
+    public static void actionSwingClientHandler() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && !mc.player.isRemoved()) {
+            mc.player.swing(InteractionHand.MAIN_HAND);
+        }
+    }
 }

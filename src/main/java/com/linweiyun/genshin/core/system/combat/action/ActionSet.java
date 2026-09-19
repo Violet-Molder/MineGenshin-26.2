@@ -5,10 +5,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 一组动作。一个角色在某个状态下持有其中一份。
- * 用 {@link #deriveFrom(ActionSet)} 继承已有集合再覆盖部分动作。
- */
 public class ActionSet {
 
     private final List<ActionDefinition> normalCombo;
@@ -19,14 +15,15 @@ public class ActionSet {
         this.singles = new EnumMap<>(b.singles);
     }
 
-    public ActionDefinition get(ActionKind kind, int comboIndex) {
-        if (kind == ActionKind.NORMAL_ATTACK) return getNormalAttack(comboIndex);
+    public ActionDefinition get(ActionKind kind, int stage) {
+        if (kind == ActionKind.NORMAL_ATTACK) return getNormalAttack(stage);
         return singles.get(kind);
     }
 
-    public ActionDefinition getNormalAttack(int comboIndex) {
+    /** stage 从 1 开始（第 1 段 = 1，第 N 段 = N） */
+    public ActionDefinition getNormalAttack(int stage) {
         if (normalCombo.isEmpty()) return null;
-        int idx = comboIndex % normalCombo.size();
+        int idx = (stage - 1) % normalCombo.size();
         if (idx < 0) idx += normalCombo.size();
         return normalCombo.get(idx);
     }
@@ -39,7 +36,6 @@ public class ActionSet {
 
     public static Builder builder() { return new Builder(); }
 
-    /** 从已有集合派生出 builder，用于"继承 + 覆盖" */
     public static Builder deriveFrom(ActionSet parent) {
         Builder b = new Builder();
         b.normalCombo.addAll(parent.normalCombo);

@@ -10,19 +10,10 @@ import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
 import net.minecraft.server.level.ServerPlayer;
 
-/**
- * 动作系统 —— 服务端 RPC 入口。
- * <p>
- * 客户端所有战斗动作请求都通过这里进入服务端，由 {@link ActionManager} 权威处理。
- * 参数类型与旧 NetworkManager 一致（int isLong / int comboStage），保证客户端不变。
- */
 public final class ActionServer {
 
     private ActionServer() {}
 
-    // ============================================================
-    // 普攻
-    // ============================================================
     @RPCPacket("characterNormalAttackRPCPacket")
     public static void characterNormalAttackRPCPacket(RPCSender sender, int comboStage) {
         if (!sender.isServer()) {
@@ -41,9 +32,6 @@ public final class ActionServer {
         RPCPacketDistributor.rpcToServer("characterNormalAttackRPCPacket", comboStage);
     }
 
-    // ============================================================
-    // 重击
-    // ============================================================
     @RPCPacket("characterChargedAttackRPCPacket")
     public static void characterChargedAttackRPCPacket(RPCSender sender) {
         if (!sender.isServer()) {
@@ -62,9 +50,6 @@ public final class ActionServer {
         RPCPacketDistributor.rpcToServer("characterChargedAttackRPCPacket");
     }
 
-    // ============================================================
-    // E 短按 / 长按（保留 int isLong 语义：-1 或 <1000 为短按，>=1000 为长按）
-    // ============================================================
     @RPCPacket("characterActiveSkillRPCPacket")
     public static void characterActiveSkillRPCPacket(RPCSender sender, int isLong) {
         if (!sender.isServer()) {
@@ -84,9 +69,6 @@ public final class ActionServer {
         RPCPacketDistributor.rpcToServer("characterActiveSkillRPCPacket", isLong);
     }
 
-    // ============================================================
-    // Q
-    // ============================================================
     @RPCPacket("characterActiveBurstRPCPacket")
     public static void characterActiveBurstRPCPacket(RPCSender sender) {
         if (!sender.isServer()) {
@@ -105,9 +87,6 @@ public final class ActionServer {
         RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket");
     }
 
-    // ============================================================
-    // 打断（跳跃 / 击退 / 手动）
-    // ============================================================
     @RPCPacket("characterInterruptRPCPacket")
     public static void characterInterruptRPCPacket(RPCSender sender, int reasonOrdinal) {
         if (!sender.isServer()) {
@@ -121,5 +100,26 @@ public final class ActionServer {
 
     public static void interruptActionToServer(int reasonOrdinal) {
         RPCPacketDistributor.rpcToServer("characterInterruptRPCPacket", reasonOrdinal);
+    }
+
+    // ============================================================
+    // 服务端 → 客户端：播放挥剑动画
+    // ============================================================
+
+    /**
+     * 服务端在 ACTIVE 开始时调这个，广播给持有该玩家的客户端（包括玩家自己）。
+     * 客户端收到后调用 {@code player.swing(MAIN_HAND)}。
+     * <p>
+     * 和伤害在同一个 tick 触发，RPC 延迟一致，动画和伤害完全同步。
+     */
+    @RPCPacket("actionSwingRPCPacket")
+    public static void actionSwingRPCPacket(RPCSender sender) {
+        if (sender.isServer()) {
+            ActionClient.actionSwingClientHandler();
+        }
+    }
+
+    public static void sendSwingToPlayer(ServerPlayer player) {
+        RPCPacketDistributor.rpcToPlayer(player, "actionSwingRPCPacket");
     }
 }

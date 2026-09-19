@@ -69,14 +69,14 @@ public class ShenheTalent extends TalentBase {
     protected ActionSet buildDefaultActionSet(PGCharacter character) {
         return setBuilder()
                 .normalCombo(
-                        timing(1, 1, 17),
+                        timing(15, 1, 17),
                         timing(1, 1, 17),
                         timing(1, 1, 17),
                         timing(1, 1, 17),
                         timing(1, 1, 2)
                 )
                 .charged(timing(0, 0, 0))
-                .skillTap(timing(0, 0, 0))
+                .skillTap(timing(3, 1, 0))
                 .skillHold(timing(0, 0, 0))
                 .burst(timing(10, 1, 20))
                 .build();
@@ -86,10 +86,10 @@ public class ShenheTalent extends TalentBase {
 
     @Override
     public void attack(Player player, PGCharacter character, int comboStage) {
-
+        LOGGER.info("RAW comboStage={}", comboStage);   // ← 加这一行
         Level level = player.level();
         if (level.isClientSide()) return;
-        int stage = comboStage % this.getMaxCombo() + 1;
+        int stage = comboStage;
         int naLevel = Math.max(1, character.getData().getNormalAttackLevel());
 
         float multiplier = (float) (
