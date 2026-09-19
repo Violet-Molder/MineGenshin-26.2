@@ -687,6 +687,28 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
     public int getBurstMaxCooldownTick() { return data.getBurstMaxCooldownTick(); }
     public float getMaxObtainingEnergy() { return data.getMaxObtainingEnergy(); }
 
+    // ==================== HUD 显示 CD（角色可覆写） ====================
+
+    /** HUD 显示用的战技剩余 CD。默认返回内部真实值。 */
+    public float getSkillDisplayCooldown() {
+        return data.getElementalSkillCooldownTick();
+    }
+
+    /** HUD 显示用的战技 CD 上限，用于进度条比例。 */
+    public int getSkillDisplayMaxCooldown() {
+        return data.getSkillShortMaxCooldownTick();
+    }
+
+    /** HUD 显示用的元素爆发剩余 CD。 */
+    public float getBurstDisplayCooldown() {
+        return data.getElementalBurstCooldownTick();
+    }
+
+    /** HUD 显示用的元素爆发 CD 上限。 */
+    public int getBurstDisplayMaxCooldown() {
+        return data.getBurstMaxCooldownTick();
+    }
+
     private void updateBaseStatsFromConfig(int statIndex) {
         for (AttributeType type : this.getStatGrowthTypes()) {
             int value = this.getStatAtLevel(type, statIndex);

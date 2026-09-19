@@ -1,28 +1,62 @@
 /* ============================================================
- * 薇斯娜巡风列装模式 - 特殊能量条 HUD 样式表
- * ============================================================ */
+   Vesna 风骑能量条 HUD
+   三个 ProgressBar 竖直排列，从下往上填充。
+   第一人称位置固定；第三人称位置由 Java 每帧投影计算。
+   ============================================================ */
 
 #vesna-energy-root {
     position: absolute;
     width: 100%;
     height: 100%;
-    clip: none;
 }
 
-.vesna-energy-stack {
+/* 第一人称：屏幕左中偏下 */
+#vesna-energy-first-person {
     position: absolute;
-    width: 12px;
-    height: 24px;
+    left: 37%;
+    bottom: 34;
+    flex-direction: column;
+    gap: 2;
 }
 
-.vesna-energy-stack.filled {
-    background: rect(#FF00FFAA);
+/* 第三人称：位置由 Java 每帧设置 left/top */
+#vesna-energy-third-person {
+    position: absolute;
+    flex-direction: column;
+    gap: 2;
 }
 
-.vesna-energy-stack.empty {
-    background: rect(#40FFFFFF);
+/* 每一格 */
+.vesna-energy-segment {
+    width: 20;
+    height: 14;
 }
 
-.vesna-energy-stack.partial {
-    background: rect(#FF00FFAA);
+/* ProgressBar 内部：填充方向 + 关闭插值 */
+.vesna-energy-segment progress-bar {
+    fill-direction: DOWN_TO_UP;
+    interpolate: false;
+}
+
+/* 外容器（背景） */
+.vesna-energy-segment .__progress-bar_bar-container__ {
+    background-color: #40000000;
+}
+
+/* 填充部分 */
+.vesna-energy-segment .__progress-bar_bar__ {
+    background-color: #ffcf5d;
+}
+
+/* 隐藏默认标签 */
+.vesna-energy-segment .__progress-bar_label__ {
+    display: none;
+}
+
+/* BooleanDisplayBindUIElement 的显示 / 隐藏 */
+boolean-bind-uie.__selected__ {
+    opacity: 1;
+}
+boolean-bind-uie.__unselected__ {
+    opacity: 0;
 }

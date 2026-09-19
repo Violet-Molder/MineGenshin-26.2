@@ -76,7 +76,7 @@ public class RaidenShogunTalent extends TalentBase {
     protected ActionSet buildDefaultActionSet(PGCharacter character) {
         ActionSet.Builder b = ActionSet.builder();
 
-        for (int i = 0; i < getMaxCombo(); i++) {
+        for (int i = 1; i <= getMaxCombo(); i++) {
             final int stage = i;
             b.addNormalAttack(
                     ActionDefinition.builder(ActionKind.NORMAL_ATTACK)

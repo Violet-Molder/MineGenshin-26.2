@@ -10,7 +10,6 @@ import com.linweiyun.genshin.core.character.polearm.arlecchino.Arlecchino;
 import com.linweiyun.genshin.core.character.polearm.raiden_shogun.RaidenShogun;
 import com.linweiyun.genshin.core.character.polearm.shenhe.Shenhe;
 import com.linweiyun.genshin.core.character.sword.vesna.Vesna;
-import com.linweiyun.genshin.core.character.sword.vesna.VesnaEnergy;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;

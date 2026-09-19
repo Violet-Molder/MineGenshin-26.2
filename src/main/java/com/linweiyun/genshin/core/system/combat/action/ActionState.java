@@ -1,6 +1,8 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
+import com.mojang.logging.LogUtils;
 import lombok.Getter;
+import org.slf4j.Logger;
 
 import java.util.function.Consumer;
 
@@ -18,6 +20,7 @@ import java.util.function.Consumer;
  * </pre>
  */
 public class ActionState {
+    public static final Logger LOGGER = LogUtils.getLogger();
     @Getter
     private final ActionDefinition definition;
     @Getter
