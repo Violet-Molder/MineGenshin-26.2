@@ -7,7 +7,6 @@ import com.linweiyun.genshin.core.character.CharacterHelper;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.content.skill_node.TargetSeeker;
 import com.linweiyun.genshin.core.character.sword.vesna.Vesna;
-import com.linweiyun.genshin.core.character.sword.vesna.VesnaEnergy;
 import com.linweiyun.genshin.core.sync.ISyncManagedEntity;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.DescSynced;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
@@ -27,8 +26,6 @@ import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 
 import java.util.UUID;
-
-import static com.linweiyun.genshin.core.character.sword.vesna.Vesna.VESNA_ENERGY;
 
 /**
  * 薇斯娜特殊状态下普通攻击产生的追踪实体。
@@ -143,7 +140,6 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
     @Override
     public void tick() {
         super.tick();
-        LOGGER.info("VesnaAttackProjectile tick: {}", character);
 
         // 超时销毁
         if (this.tickCount >= MAX_LIFE_TIME) {

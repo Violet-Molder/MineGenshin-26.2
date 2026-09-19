@@ -14,7 +14,7 @@ import java.util.function.Supplier;
 
 public class Arlecchino extends PolearmCharacter {
     public Arlecchino() {
-        super(                   135002, 5, Component.translatable("character.name.arlecchino"),
+        super(135002, 5, Component.translatable("character.name.arlecchino"),
                 ModElements.PYRO.getId().toString(), CharacterAscendAttribute.ATK,
                 20 * 20, 20 * 20, 80f, "arlecchino",
                 Map.of(
@@ -22,7 +22,7 @@ public class Arlecchino extends PolearmCharacter {
                         ModAttributes.ATK.getId(), ArlecchinoAttributeConfig::getAllAtk,
                         ModAttributes.DEF.getId(), ArlecchinoAttributeConfig::getAllDef
                 ));
-
+        this.talent = new ArlecchinoTalent();
     }
 
     @Override

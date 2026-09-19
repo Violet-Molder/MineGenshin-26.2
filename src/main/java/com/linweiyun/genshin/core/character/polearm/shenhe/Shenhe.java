@@ -16,12 +16,12 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class Shenhe extends PolearmCharacter implements IStellarSwirlParticipant {
-    private static final Logger LOGGER= LogUtils.getLogger();
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     public Shenhe() {
         super(135001, 5, Component.translatable("character.name.shenhe"),
                 ModElements.CYRO.getId().toString(), CharacterAscendAttribute.ATK,
-                10 * 20, 15*20, 10 * 20, 80f, "shenhe",
+                10 * 20, 15 * 20, 10 * 20, 80f, "shenhe",
                 Map.of(
                         ModAttributes.MAX_HP.getId(), ShenheAttributeConfig::getAllHp,
                         ModAttributes.ATK.getId(), ShenheAttributeConfig::getAllAtk,

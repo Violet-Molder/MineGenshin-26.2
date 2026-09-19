@@ -34,7 +34,7 @@ public class ModCharacters {
     public static final DeferredHolder<PGCharacter, Arlecchino> ARLECCHINO = register("arlecchino", 135002, Arlecchino::new);
     public static final DeferredHolder<PGCharacter, Columbina> COLUMBINA = register("columbina", 145001, Columbina::new);
     public static final DeferredHolder<PGCharacter, RaidenShogun> RAIDEN_SHOGUN = register("raiden_shogun", 135003, RaidenShogun::new);
-    public static final DeferredHolder<PGCharacter, Vesna> VESNA = register(Vesna.ID, Vesna.UID, Vesna::new, VesnaEnergy.class);
+    public static final DeferredHolder<PGCharacter, Vesna> VESNA = register(Vesna.ID, Vesna.UID, Vesna::new);
 
     @SuppressWarnings("unchecked")
     private static <T extends PGCharacter> DeferredHolder<PGCharacter, T> register(

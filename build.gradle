@@ -43,6 +43,8 @@ repositories {
 dependencies {
     implementation("com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2_version}")
     implementation "com.geckolib:geckolib-neoforge-${minecraft_version}:${geckolibVersion}"
+    compileOnly "org.projectlombok:lombok:1.18.38"
+    annotationProcessor "org.projectlombok:lombok:1.18.38"
 }
 base {
     archivesName = mod_id

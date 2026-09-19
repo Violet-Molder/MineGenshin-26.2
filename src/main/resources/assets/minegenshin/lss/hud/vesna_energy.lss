@@ -1,0 +1,28 @@
+/* ============================================================
+ * 薇斯娜巡风列装模式 - 特殊能量条 HUD 样式表
+ * ============================================================ */
+
+#vesna-energy-root {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    clip: none;
+}
+
+.vesna-energy-stack {
+    position: absolute;
+    width: 12px;
+    height: 24px;
+}
+
+.vesna-energy-stack.filled {
+    background: rect(#FF00FFAA);
+}
+
+.vesna-energy-stack.empty {
+    background: rect(#40FFFFFF);
+}
+
+.vesna-energy-stack.partial {
+    background: rect(#FF00FFAA);
+}

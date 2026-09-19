@@ -3,6 +3,7 @@ package com.linweiyun.genshin.client;
 import com.google.common.base.Suppliers;
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.client.damage.DamageIndicatorRenderer;
+import com.linweiyun.genshin.client.hud.VesnaEnergyHud;
 import com.lowdragmc.lowdraglib2.gui.hud.ModularHudLayer;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
@@ -19,7 +20,7 @@ public class ClientHudRegistration {
 
     @SubscribeEvent
     public static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
-        var hudUICache = Suppliers.memoize(() -> {
+        var damageHudCache = Suppliers.memoize(() -> {
             var stylesheet = StylesheetManager.INSTANCE.getStylesheetSafe(
                     Minegenshin.id("lss/hud/damage_indicator.lss"));
             var ui = UI.of(DamageIndicatorRenderer.buildHudRoot(), stylesheet);
@@ -28,6 +29,17 @@ public class ClientHudRegistration {
 
         event.registerAboveAll(
                 Minegenshin.id("damage_indicator_hud"),
-                (ModularHudLayer) hudUICache::get);
+                (ModularHudLayer) damageHudCache::get);
+
+        var vesnaEnergyHudCache = Suppliers.memoize(() -> {
+            var stylesheet = StylesheetManager.INSTANCE.getStylesheetSafe(
+                    Minegenshin.id("lss/hud/vesna_energy.lss"));
+            var ui = UI.of(VesnaEnergyHud.buildHudRoot(), stylesheet);
+            return ModularUI.of(ui);
+        });
+
+        event.registerAboveAll(
+                Minegenshin.id("vesna_energy_hud"),
+                (ModularHudLayer) vesnaEnergyHudCache::get);
     }
 }
