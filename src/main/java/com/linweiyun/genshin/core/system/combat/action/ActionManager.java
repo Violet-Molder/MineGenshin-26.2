@@ -1,14 +1,18 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.mojang.logging.LogUtils;
 import lombok.Getter;
 import net.minecraft.world.entity.player.Player;
+import org.slf4j.Logger;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ActionManager {
+
+    public static final Logger LOGGER = LogUtils.getLogger();
 
     private static final Map<UUID, ActionManager> MANAGERS = new ConcurrentHashMap<>();
 
@@ -17,7 +21,8 @@ public class ActionManager {
     private ActionDefinition buffered;
 
     private String cachedStateKey;
-    private int lastComboIndex = -1;
+    /** 0 = 无上一段；1..N = 上一段是第 N 段 */
+    private int lastComboIndex = 0;
     private long lastComboEndTick = Long.MIN_VALUE;
 
     public static ActionManager get(Player player) {
@@ -56,12 +61,23 @@ public class ActionManager {
         return set != null && request(player, character, set.getElementalBurst());
     }
 
+    /**
+     * 前摇 / 执行期：拒绝一切新请求（包括普攻缓冲）。
+     * 后摇：普攻可缓冲（接下一段），其他拒绝。
+     * 空闲：直接启动。
+     */
     private boolean request(Player player, PGCharacter character, ActionDefinition def) {
         if (def == null) return false;
+
         if (current != null && !current.isFinished()) {
-            if (def.isCombo()) { buffered = def; return true; }
+            ActionPhase phase = current.getPhase();
+            if (phase == ActionPhase.POSTCAST && def.isCombo()) {
+                buffered = def;
+                return true;
+            }
             return false;
         }
+
         start(player, character, def);
         return true;
     }
@@ -128,20 +144,21 @@ public class ActionManager {
 
     public boolean isAttackBlocked() { return getPhase() == ActionPhase.ACTIVE; }
 
+    /** 返回下一段段号（1-based）。 */
     private int resolveNextComboIndex(Player player, ActionSet set) {
         if (current != null && !current.isFinished() && current.getDefinition().isCombo()) {
             return current.getDefinition().comboIndex + 1;
         }
-        if (lastComboIndex < 0) return 0;
+        if (lastComboIndex <= 0) return 1;
         ActionDefinition lastDef = set.getNormalAttack(lastComboIndex);
-        if (lastDef == null) return 0;
+        if (lastDef == null) return 1;
         long elapsed = player.level().getGameTime() - lastComboEndTick;
-        if (elapsed > lastDef.postcastTicks) return 0;
+        if (elapsed > lastDef.postcastTicks) return 1;
         return lastComboIndex + 1;
     }
 
     public void resetCombo() {
-        lastComboIndex = -1;
+        lastComboIndex = 0;
         lastComboEndTick = Long.MIN_VALUE;
         buffered = null;
     }

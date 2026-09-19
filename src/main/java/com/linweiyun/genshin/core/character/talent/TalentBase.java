@@ -1,14 +1,14 @@
 package com.linweiyun.genshin.core.character.talent;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.network.ActionServer;
 import com.linweiyun.genshin.core.system.combat.action.ActionDefinition;
 import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.combat.action.ActionSet;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
 public class TalentBase {
-
-    // ==================== 参数（子类可覆写） ====================
 
     public int getMaxCombo() { return 1; }
 
@@ -29,23 +29,17 @@ public class TalentBase {
     public int getBurstActiveTicks()   { return 1; }
     public int getBurstPostcastTicks() { return 20; }
 
-    // ==================== 逻辑钩子（子类覆写） ====================
-
     /** comboStage 从 1 开始 */
     public void attack(Player player, PGCharacter character, int comboStage) {}
     public void chargeAttack(Player player, PGCharacter character) {}
     public void elementalSkill(Player player, PGCharacter character, int skillTime) {}
     public void elementalBurst(Player player, PGCharacter character) {}
 
-    // ==================== Timing ====================
-
     public record Timing(int precast, int active, int postcast) {}
 
     protected Timing timing(int precast, int active, int postcast) {
         return new Timing(precast, active, postcast);
     }
-
-    // ==================== SetBuilder ====================
 
     protected SetBuilder setBuilder() { return new SetBuilder(null); }
     protected SetBuilder setBuilder(ActionSet parent) { return new SetBuilder(parent); }
@@ -55,6 +49,13 @@ public class TalentBase {
 
         private SetBuilder(ActionSet parent) {
             this.inner = (parent != null) ? ActionSet.deriveFrom(parent) : ActionSet.builder();
+        }
+
+        /** 服务端 swing 广播（仅玩家自己） */
+        private void broadcastSwing(Player player) {
+            if (player instanceof ServerPlayer sp) {
+                ActionServer.sendSwingToPlayer(sp);
+            }
         }
 
         public SetBuilder normalCombo(Timing... timings) {
@@ -68,7 +69,10 @@ public class TalentBase {
                                 .precast(t.precast())
                                 .active(t.active())
                                 .postcast(t.postcast())
-                                .onActiveStart(ctx -> attack(ctx.player, ctx.character, stage))
+                                .onActiveStart(ctx -> {
+                                    broadcastSwing(ctx.player);
+                                    attack(ctx.player, ctx.character, stage);
+                                })
                                 .build()
                 );
             }
@@ -78,10 +82,11 @@ public class TalentBase {
         public SetBuilder charged(Timing t) {
             inner.chargedAttack(
                     ActionDefinition.builder(ActionKind.CHARGED_ATTACK)
-                            .precast(t.precast())
-                            .active(t.active())
-                            .postcast(t.postcast())
-                            .onActiveStart(ctx -> chargeAttack(ctx.player, ctx.character))
+                            .precast(t.precast()).active(t.active()).postcast(t.postcast())
+                            .onActiveStart(ctx -> {
+                                broadcastSwing(ctx.player);
+                                chargeAttack(ctx.player, ctx.character);
+                            })
                             .build()
             );
             return this;
@@ -90,9 +95,7 @@ public class TalentBase {
         public SetBuilder skillTap(Timing t) {
             inner.elementalSkillTap(
                     ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_TAP)
-                            .precast(t.precast())
-                            .active(t.active())
-                            .postcast(t.postcast())
+                            .precast(t.precast()).active(t.active()).postcast(t.postcast())
                             .onActiveStart(ctx -> ctx.character.performElementalSkill(ctx.player, 0))
                             .build()
             );
@@ -102,9 +105,7 @@ public class TalentBase {
         public SetBuilder skillHold(Timing t) {
             inner.elementalSkillHold(
                     ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_HOLD)
-                            .precast(t.precast())
-                            .active(t.active())
-                            .postcast(t.postcast())
+                            .precast(t.precast()).active(t.active()).postcast(t.postcast())
                             .onActiveStart(ctx -> ctx.character.performElementalSkill(ctx.player, 1000))
                             .build()
             );
@@ -114,9 +115,7 @@ public class TalentBase {
         public SetBuilder burst(Timing t) {
             inner.elementalBurst(
                     ActionDefinition.builder(ActionKind.ELEMENTAL_BURST)
-                            .precast(t.precast())
-                            .active(t.active())
-                            .postcast(t.postcast())
+                            .precast(t.precast()).active(t.active()).postcast(t.postcast())
                             .onActiveStart(ctx -> ctx.character.performElementalBurst(ctx.player))
                             .build()
             );
@@ -125,8 +124,6 @@ public class TalentBase {
 
         public ActionSet build() { return inner.build(); }
     }
-
-    // ==================== 默认动作集 ====================
 
     public ActionSet buildActionSet(PGCharacter character, String stateKey) {
         return buildDefaultActionSet(character);
