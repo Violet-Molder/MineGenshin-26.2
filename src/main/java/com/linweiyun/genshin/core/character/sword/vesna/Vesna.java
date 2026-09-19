@@ -26,20 +26,29 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final int WIND_RIDER_DURATION_TICKS = 15 * 20;
-    public static final int SPECIAL_SKILL_ENERGY_COST = 6;
+    /** 每层剑气 = 6 点能量 */
+    public static final float ENERGY_PER_QIQI = 6f;
+    /** 翔风剑一次消耗 1 层剑气 */
+    public static final float SPECIAL_SKILL_ENERGY_COST = ENERGY_PER_QIQI;
+    /** 开 E 获得两层剑气 */
+    public static final float WIND_RIDER_ENTER_ENERGY = ENERGY_PER_QIQI * 2;
 
-    @DescSynced
-    @Persisted(key = "vesnaEnergy")
+    @DescSynced @Persisted(key = "vesnaEnergy")
     protected float vesnaEnergy;
-    @DescSynced
-    @Persisted(key = "vesnaMaxEnergy")
+    @DescSynced @Persisted(key = "vesnaMaxEnergy")
     protected float vesnaMaxEnergy;
-    @DescSynced
-    @Persisted(key = "windriderActive")
+    @DescSynced @Persisted(key = "windriderActive")
     protected boolean windriderActive;
-    @DescSynced
-    @Persisted(key = "windriderRemainingTicks")
+    @DescSynced @Persisted(key = "windriderRemainingTicks")
     protected int windriderRemainingTicks;
+
+    /** 下一次施放的翔风剑阶级（1~3）。talent 读取它当本次施放等级。 */
+    @DescSynced @Persisted(key = "xiangfengJianLevel")
+    protected int xiangfengJianLevel = 1;
+
+    /** 本次巡风列装已施放的三阶次数，达到 3 次退出模式。 */
+    @DescSynced @Persisted(key = "lv3UsesInWindrider")
+    protected int lv3UsesInWindrider = 0;
 
     public Vesna() {
         super(UID, 5, Component.translatable("character.name.vesna"),
@@ -64,9 +73,10 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
         );
     }
 
+    // ==================== 能量 ====================
+
     public void addEnergy(float value) {
         this.vesnaEnergy = Math.min(vesnaEnergy + value, vesnaMaxEnergy);
-        LOGGER.info("Vesna energy: {}", vesnaEnergy);
         syncRealtimeState();
     }
 
@@ -75,35 +85,43 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
         syncRealtimeState();
     }
 
-    @Override
-    public void tick(Player player) {
-        super.tick(player);
-        if (player.level().isClientSide()) return;
-
-        if (windriderActive && windriderRemainingTicks > 0) {
-            windriderRemainingTicks--;
-            if (windriderRemainingTicks <= 0) {
-                windriderActive = false;
-                windriderRemainingTicks = 0;
-            }
-        }
-
-        if (windriderActive) {
-            syncRealtimeState();
-        }
-    }
+    // ==================== 模式切换 ====================
 
     public void activateWindriderMode() {
         this.windriderActive = true;
         this.windriderRemainingTicks = WIND_RIDER_DURATION_TICKS;
+        this.vesnaEnergy = WIND_RIDER_ENTER_ENERGY;
+        this.xiangfengJianLevel = 1;
+        this.lv3UsesInWindrider = 0;
     }
+
+    public void exitWindriderMode() {
+        this.windriderActive = false;
+        this.windriderRemainingTicks = 0;
+        this.vesnaEnergy = 0f;
+        this.xiangfengJianLevel = 1;
+        this.lv3UsesInWindrider = 0;
+    }
+
+    // ==================== 字段 setter（供 talent 修改） ====================
+
+    public void setXiangfengJianLevel(int level) {
+        this.xiangfengJianLevel = Math.max(1, Math.min(3, level));
+        syncRealtimeState();
+    }
+
+    public void setLv3UsesInWindrider(int n) {
+        this.lv3UsesInWindrider = Math.max(0, n);
+        syncRealtimeState();
+    }
+
+    // ==================== action state ====================
 
     @Override
     public String getActionStateKey(Player player) {
         return windriderActive ? "windrider" : "default";
     }
 
-    /** 风骑模式下特殊战技无 CD，HUD 显示 0 */
     @Override
     public float getSkillDisplayCooldown() {
         if (windriderActive) return 0f;
@@ -112,22 +130,12 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
 
     // ==================== E 钩子覆写 ====================
 
-    /**
-     * 风骑内：只要能量够就能放，不看 CD。
-     * 非风骑：走父类默认（CD == 0）。
-     */
     @Override
     public boolean canUseElementalSkill(Player player, int skillTime) {
-        if (windriderActive) {
-            return vesnaEnergy >= SPECIAL_SKILL_ENERGY_COST;
-        }
+        if (windriderActive) return vesnaEnergy >= SPECIAL_SKILL_ENERGY_COST;
         return super.canUseElementalSkill(player, skillTime);
     }
 
-    /**
-     * 风骑内：扣能量，不设 CD。
-     * 非风骑：进风骑模式 + 设 18s CD（前摇还没结束，CD 已经在跑）。
-     */
     @Override
     public void applyElementalSkillCooldown(Player player, int skillTime) {
         if (windriderActive) {
@@ -145,6 +153,26 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
             player.sendSystemMessage(Component.translatable("message.minegenshin.not_enough_energy"));
         } else {
             super.sendSkillCooldownMessage(player);
+        }
+    }
+
+    // ==================== tick ====================
+
+    @Override
+    public void tick(Player player) {
+        super.tick(player);
+
+        if (player.level().isClientSide()) return;
+
+        if (windriderActive && windriderRemainingTicks > 0) {
+            windriderRemainingTicks--;
+            if (windriderRemainingTicks <= 0) {
+                exitWindriderMode();
+            }
+        }
+
+        if (windriderActive) {
+            syncRealtimeState();
         }
     }
 }

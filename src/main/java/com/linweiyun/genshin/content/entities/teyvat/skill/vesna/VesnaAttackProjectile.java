@@ -3,7 +3,14 @@ package com.linweiyun.genshin.content.entities.teyvat.skill.vesna;
 import com.linweiyun.genshin.content.entities.ModEntities;
 import com.linweiyun.genshin.content.skill_node.TargetSeeker;
 import com.linweiyun.genshin.core.character.sword.vesna.Vesna;
+import com.linweiyun.genshin.core.character.sword.vesna.VesnaTalent;
+import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
+import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
+import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.core.sync.ISyncManagedEntity;
+import com.linweiyun.genshin.enums.AttachmentType;
+import com.linweiyun.genshin.enums.AttackType;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.DescSynced;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib2.syncdata.storage.FieldManagedStorage;
@@ -22,48 +29,17 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 
-/**
- * 薇斯娜特殊状态下普通攻击产生的追踪实体。
- * <p>
- * 两阶段：
- * <ul>
- *   <li><b>生成阶段</b>：位置沿二次贝塞尔曲线 C→P1→E 精确移动。
- *       每 tick 用 {@code setDeltaMovement} 写入本 tick 位移（让客户端能预测插值），
- *       用 {@code setPos} 直接定位（避免 move 的碰撞）。</li>
- *   <li><b>攻击阶段</b>：位置直接朝目标匀速移动（物理方向永远朝目标，绝不绕圈）。
- *       视觉朝向用限速旋转慢慢逼近移动方向，只影响 {@code setYRot} 渲染。</li>
- * </ul>
- * <p>
- * 卡顿原因（已修）：
- * <ul>
- *   <li>生成阶段用 smoothstep 缓动 → 末速度 = 0 → 最后几 tick 几乎不动。</li>
- *   <li>生成阶段 {@code setDeltaMovement(ZERO)} → 客户端不预测位置 → 位置包到之前不动。</li>
- * </ul>
- * 现在改为线性插值 + 写入真实速度。
- */
 public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     // ==================== 参数 ====================
-
     private static final double SEARCH_RADIUS = 10.0;
     private static final double FLY_SPEED = 0.8;
-
-    /** 生成阶段持续 tick */
     private static final int SPAWN_DURATION = 16;
-
-    /** 散布点距玩家的水平半径 */
     private static final double SPAWN_RADIUS = 3.2;
-
-    /** 背后控制点距玩家的距离（越大弧线越鼓） */
     private static final double BACK_DISTANCE = 3.5;
-
-    /** 控制点抬高多少 */
     private static final double BACK_HEIGHT = 0.9;
-
-    /** 攻击阶段视觉朝向每 tick 最大转向角度 */
     private static final float MAX_TURN_RATE = 12f;
-
     private static final int MAX_LIFE_TIME = 200;
 
     private static final int PHASE_SPAWNING = 0;
@@ -113,6 +89,10 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
     @Persisted(key = "scatter") @DescSynced
     private float scatterAngleOffset = 0f;
 
+    /** 生成时的技能等级（用于命中伤害） */
+    @Persisted(key = "skill_level") @DescSynced
+    private int skillLevel = 1;
+
     // ==================== 瞬态 ====================
 
     private boolean hasHit = false;
@@ -125,7 +105,7 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
         this.noPhysics = false;
     }
 
-    public static VesnaAttackProjectile create(Level level, Vesna ownerCharacter, Vec3 pos) {
+    public static VesnaAttackProjectile create(Level level, Vesna ownerCharacter, Vec3 pos, int skillLevel) {
         VesnaAttackProjectile p = ModEntities.VESNA_ATTACK_PROJECTILE.get()
                 .create(level, EntitySpawnReason.EVENT);
         if (p == null) return null;
@@ -136,8 +116,8 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
         p.character = ownerCharacter;
         p.setNoGravity(true);
         p.test = 15222;
+        p.skillLevel = skillLevel;
 
-        // C：玩家中心
         p.cx = pos.x;
         p.cy = pos.y + 1.0;
         p.cz = pos.z;
@@ -145,14 +125,12 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
         p.spawnYaw = ownerPlayer.getYRot();
         p.scatterAngleOffset = -60f + level.getRandom().nextFloat() * 120f;
 
-        // E：散布点
         float targetAngle = p.spawnYaw + p.scatterAngleOffset;
         double targetRad = Math.toRadians(targetAngle);
         p.ex = p.cx + (-Math.sin(targetRad)) * SPAWN_RADIUS;
         p.ey = p.cy;
         p.ez = p.cz + Math.cos(targetRad) * SPAWN_RADIUS;
 
-        // P1：背后远处控制点
         float backAngle = p.spawnYaw + 180f;
         double backRad = Math.toRadians(backAngle);
         p.p1x = p.cx + (-Math.sin(backRad)) * BACK_DISTANCE;
@@ -215,16 +193,6 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
 
     // ==================== 阶段 1：生成 ====================
 
-    /**
-     * 位置精确沿贝塞尔曲线；朝向 = 曲线切线。
-     * <p>
-     * 关键：
-     * <ul>
-     *   <li>用 <b>线性</b> u（不缓动），保证每 tick 位移恒定，末速度不为 0。</li>
-     *   <li>每 tick 写入 {@code setDeltaMovement(delta)}，让客户端能预测插值，避免等位置包。</li>
-     *   <li>用 {@code setPos} 直接定位，不用 move（避免被方块阻挡）。</li>
-     * </ul>
-     */
     private void tickSpawning() {
         spawnAge++;
         float u = Math.min(1f, (float) spawnAge / SPAWN_DURATION);
@@ -233,12 +201,9 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
         Vec3 newPos = bezier(u);
         Vec3 delta = newPos.subtract(prevPos);
 
-        // 写入真实速度，客户端可预测
         setDeltaMovement(delta);
-        // 直接定位（客户端在下一 tick 前用速度平滑预测）
         setPos(newPos.x, newPos.y, newPos.z);
 
-        // 朝向 = 曲线切线
         Vec3 tangent = bezierTangent(u);
         if (tangent.lengthSqr() > 1e-6) {
             Vec3 dir = tangent.normalize();
@@ -274,7 +239,6 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
     private void tickAttacking() {
         boolean hasTarget = (target != null && target.isAlive());
 
-        // 物理方向：直接朝目标
         Vec3 moveDir;
         if (hasTarget) {
             Vec3 toTarget = target.getBoundingBox().getCenter().subtract(position());
@@ -283,7 +247,6 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
             moveDir = yawToDir(attackLockYaw);
         }
 
-        // 有目标 + 前方撞墙 → 45° 绕行（只影响本 tick 移动方向）
         if (hasTarget) {
             Vec3 ahead = position().add(moveDir.scale(FLY_SPEED * 3));
             if (isBlocked(position(), ahead)) {
@@ -297,17 +260,14 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
             }
         }
 
-        // 视觉朝向：限速旋转逼近 moveDir（不影响物理）
         float desiredYaw = (float) Math.toDegrees(Math.atan2(-moveDir.x, moveDir.z));
         float newYaw = rotateTowards(getYRot(), desiredYaw, MAX_TURN_RATE);
         setYRot(newYaw);
 
-        // 移动
         setDeltaMovement(moveDir.scale(FLY_SPEED));
         Vec3 beforePos = position();
         move(MoverType.SELF, getDeltaMovement());
 
-        // 消散 / 命中
         if (!hasTarget) {
             double dx = getX() - cx;
             double dy = getY() - cy;
@@ -366,7 +326,23 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
     private void onHitTarget(LivingEntity target) {
         if (hasHit) return;
         hasHit = true;
+
         if (character == null) { discard(); return; }
+        if (!(level() instanceof ServerLevel serverLevel)) { discard(); return; }
+
+        Player ownerPlayer = getOwnerPlayer();
+        if (ownerPlayer == null) { discard(); return; }
+
+        float mult = VesnaTalent.getWindBellDamageMultiplier(skillLevel);
+        ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.ANEMO.get())
+                .multiplier(mult)
+                .elementAmount(AttachmentType.WEAK.getInitialAmount())
+                .decayGroup(VesnaTalent.VESNA_WIND_BELL_DECAY)
+                .attackerCharacter(character)
+                .build();
+        ModDamageSource source = ModDamageSource.from(spec, ownerPlayer);
+        target.hurtServer(serverLevel, source, 0f);
+
         discard();
     }
 

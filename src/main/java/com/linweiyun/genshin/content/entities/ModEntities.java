@@ -7,6 +7,7 @@ import com.linweiyun.genshin.content.entities.area.ThunderCloudEntity;
 import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
 import com.linweiyun.genshin.content.entities.teyvat.monster.slime.SlimeCyro;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProjectile;
+import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaSpiritSwordEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -14,6 +15,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.function.Supplier;
@@ -92,6 +94,18 @@ public class ModEntities {
                             .build(ResourceKey.create(
                                     Registries.ENTITY_TYPE,
                                     Minegenshin.id("vesna_attack_projectile"))
+                            ));
+
+    public static final Supplier<EntityType<VesnaSpiritSwordEntity>> VESNA_SPIRIT_SWORD =
+            ENTITIES.register(
+                    "vesna_spirit_sword",
+                    () -> EntityType.Builder.<VesnaSpiritSwordEntity>of(VesnaSpiritSwordEntity::new, MobCategory.MISC)
+                            .sized(0.5F, 0.5F)
+                            .clientTrackingRange(8)
+                            .updateInterval(10)
+                            .build(ResourceKey.create(
+                                    Registries.ENTITY_TYPE,
+                                    Minegenshin.id("vesna_spirit_sword"))
                             ));
 
     public static void register(IEventBus eventBus) {

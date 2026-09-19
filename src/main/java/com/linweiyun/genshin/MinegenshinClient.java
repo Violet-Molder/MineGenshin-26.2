@@ -2,6 +2,7 @@ package com.linweiyun.genshin;
 
 import com.geckolib.renderer.GeoEntityRenderer;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProjectileRenderer;
+import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaSpiritSwordRenderer;
 import com.linweiyun.genshin.render.render.entity.ElementalOrbRenderer;
 import com.linweiyun.genshin.render.render.entity.FieldTalismanSpiritRender;
 import com.linweiyun.genshin.render.render.entity.StellarVortexRenderer;
@@ -60,6 +61,7 @@ public class MinegenshinClient {
                 ModEntities.STELLAR_VORTEX.get(), StellarVortexRenderer::new);
         event.registerEntityRenderer(
                 ModEntities.VESNA_ATTACK_PROJECTILE.get(), VesnaAttackProjectileRenderer::new);
+        event.registerEntityRenderer(ModEntities.VESNA_SPIRIT_SWORD.get(), VesnaSpiritSwordRenderer::new);
     }
 
 
