@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
+import lombok.Getter;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.Map;
@@ -11,6 +12,7 @@ public class ActionManager {
 
     private static final Map<UUID, ActionManager> MANAGERS = new ConcurrentHashMap<>();
 
+    @Getter
     private ActionState current;
     private ActionDefinition buffered;
 
@@ -125,8 +127,6 @@ public class ActionManager {
     }
 
     public boolean isAttackBlocked() { return getPhase() == ActionPhase.ACTIVE; }
-
-    public ActionState getCurrent() { return current; }
 
     private int resolveNextComboIndex(Player player, ActionSet set) {
         if (current != null && !current.isFinished() && current.getDefinition().isCombo()) {

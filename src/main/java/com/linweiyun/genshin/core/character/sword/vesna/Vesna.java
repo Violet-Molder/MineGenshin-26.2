@@ -8,6 +8,7 @@ import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.DescSynced;
+import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import lombok.Getter;
 import net.minecraft.network.chat.Component;
@@ -29,18 +30,22 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
     public static final int SPECIAL_SKILL_ENERGY_COST = 6;
 
     @DescSynced
+    @Persisted(key = "vesnaEnergy")
     protected float vesnaEnergy;
     @DescSynced
+    @Persisted(key = "vesnaMaxEnergy")
     protected float vesnaMaxEnergy;
     @DescSynced
+    @Persisted(key = "windriderActive")
     protected boolean windriderActive;
     @DescSynced
+    @Persisted(key = "windriderRemainingTicks")
     protected int windriderRemainingTicks;
 
     public Vesna() {
         super(UID, 5, Component.translatable("character.name.vesna"),
                 ModElements.ANEMO.getId().toString(), CharacterAscendAttribute.ATK,
-                10 * 20, 10 * 20, 80f, ID,
+                18 * 20, 10 * 20, 80f, ID,
                 Map.of(
                         ModAttributes.MAX_HP.getId(), ShenheAttributeConfig::getAllHp,
                         ModAttributes.ATK.getId(), ShenheAttributeConfig::getAllAtk,
@@ -62,7 +67,7 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
 
     public void addEnergy(float value) {
         this.vesnaEnergy = Math.min(vesnaEnergy + value, vesnaMaxEnergy);
-        LOGGER.info("TestTalent attack energy: {}", vesnaEnergy);
+        LOGGER.info("Vesna energy: {}", vesnaEnergy);
         syncRealtimeState();
     }
 
@@ -78,7 +83,6 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
 
         if (windriderActive && windriderRemainingTicks > 0) {
             windriderRemainingTicks--;
-            LOGGER.info("TestTalent windrider active: {}", windriderRemainingTicks);
             if (windriderRemainingTicks <= 0) {
                 windriderActive = false;
                 windriderRemainingTicks = 0;
@@ -98,6 +102,20 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
     @Override
     public String getActionStateKey(Player player) {
         return windriderActive ? "windrider" : "default";
+    }
+
+    // ==================== HUD 显示 CD 覆写 ====================
+
+    /**
+     * 风骑模式下特殊战技无 CD，HUD 显示 0。
+     * 内部 elementalSkillCooldownTick 照常计时，只是不显示。
+     */
+    @Override
+    public float getSkillDisplayCooldown() {
+        if (windriderActive) {
+            return 0f;
+        }
+        return super.getSkillDisplayCooldown();
     }
 
     @Override

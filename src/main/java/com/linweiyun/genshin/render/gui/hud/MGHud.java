@@ -207,10 +207,8 @@ public class MGHud {
                                             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
                                     var character = attachment.getCurrentCharacter();
                                     if (character != null) {
-                                        var data = character.getData();
-                                        if (data != null) {
-                                            return data.getElementalSkillCooldownTick() / character.getSkillShortMaxCooldownTick();
-                                        }
+                                        return character.getSkillDisplayCooldown()
+                                                / character.getSkillDisplayMaxCooldown();
                                     }
                                     return 0f;
                                 }))
@@ -242,14 +240,10 @@ public class MGHud {
                                     player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
                             var character = attachment.getCurrentCharacter();
                             if (character != null) {
-                                var data = character.getData();
-                                if (data != null) {
-                                    float currentSkillCD =
-                                            Math.round(data.getElementalSkillCooldownTick() / 20 * 10f) / 10f;
-                                    if (currentSkillCD <= 0) return Component.literal("");
-                                    return Component.literal(String.valueOf(currentSkillCD));
-                                }
-
+                                float currentSkillCD =
+                                        Math.round(character.getSkillDisplayCooldown() / 20 * 10f) / 10f;
+                                if (currentSkillCD <= 0) return Component.literal("");
+                                return Component.literal(String.valueOf(currentSkillCD));
                             }
                             return Component.literal("");
                         }));
@@ -264,10 +258,8 @@ public class MGHud {
                                             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
                                     var character = attachment.getCurrentCharacter();
                                     if (character != null) {
-                                        var data = character.getData();
-                                        if (data != null) {
-                                            return data.getElementalBurstCooldownTick() / character.getBurstMaxCooldownTick();
-                                        }
+                                        return character.getBurstDisplayCooldown()
+                                                / character.getBurstDisplayMaxCooldown();
                                     }
                                     return 0f;
                                 }))
@@ -299,9 +291,8 @@ public class MGHud {
                                     player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
                             var character = attachment.getCurrentCharacter();
                             if (character != null) {
-                                var data = character.getData();
                                 float currentBurstCD =
-                                        Math.round(data.getElementalBurstCooldownTick() / 20 * 10f) / 10f;
+                                        Math.round(character.getBurstDisplayCooldown() / 20 * 10f) / 10f;
                                 if (currentBurstCD <= 0) return Component.literal("");
                                 return Component.literal(String.valueOf(currentBurstCD));
                             }

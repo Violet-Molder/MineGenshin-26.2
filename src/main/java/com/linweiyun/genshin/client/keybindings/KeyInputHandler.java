@@ -8,6 +8,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.ActionServer;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
+import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -17,6 +18,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import org.slf4j.Logger;
 
 /**
  * 客户端按键处理。
@@ -25,7 +27,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
  * <ul>
  *   <li>把按键转成 ActionServer 的 RPC（战斗动作）</li>
  *   <li>本地立即锁移动（ClientActionLock），不依赖服务端同步</li>
- *   <li>本地立即响应（swing 手、提前返回等）让手感跟手</li>
+ *   <li>本地延迟挥剑（等 precast 结束），让动画和伤害对齐</li>
+ *   <li>前摇/执行期阻塞非连招输入（E/Q）</li>
  * </ul>
  * <p>
  * 【设计原则】
@@ -34,6 +37,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
  */
 @EventBusSubscriber(value = Dist.CLIENT)
 public class KeyInputHandler {
+  private static final Logger LOGGER = LogUtils.getLogger();
 
   // ============================================================
   // 按键的"上一 tick 状态"记录 —— 用于边沿检测（按下瞬间才触发一次）
@@ -72,7 +76,7 @@ public class KeyInputHandler {
   public static void onClientTickPre(ClientTickEvent.Pre event) {
     Minecraft mc = Minecraft.getInstance();
     LocalPlayer player = mc.player;
-    if (player == null) return;
+      if (player == null) return;
     // 未入侵时原神模式不生效，直接跳过
     if (!TeyvatWorldInvasion.isClientInvaded()) return;
 
@@ -84,6 +88,11 @@ public class KeyInputHandler {
 
     // 本地动作锁倒计时递减。这是唯一驱动 ClientActionLock 生命周期的地方。
     ClientActionLock.tick();
+
+    // 到 precast 结束的那一 tick 才 swing —— 让动画和伤害对齐
+    if (ClientActionLock.consumeSwingFlag()) {
+      player.swing(InteractionHand.MAIN_HAND);
+    }
   }
 
   // ============================================================
@@ -167,7 +176,7 @@ public class KeyInputHandler {
 
         if (elapsed >= chargeMs) {
           // 触发重击
-          mc.player.swing(InteractionHand.MAIN_HAND);
+          character.performChargedAttack(player);
           ActionServer.performChargedAttackToServer();
           attackChargedTriggered = true;
           // 复位 E 键长按状态（避免跨按键串扰）
@@ -176,13 +185,16 @@ public class KeyInputHandler {
           xSkillTriggered = false;
           // 重击的锁时长可能和普攻不同，重新锁一次
           ClientActionLock.lockForChargedAttack(player, character);
+          // 挥剑等 precast 结束 —— 不在这里立即 swing
+          ClientActionLock.scheduleChargedSwing(player, character);
         }
 
       } else if (!isAttackDown && wasAttackDown) {
         // ---- 松开：如果没触发重击，视为普攻 ----
         if (!attackChargedTriggered) {
-          mc.player.swing(InteractionHand.MAIN_HAND);
           ActionServer.performNormalAttackToServer(0);
+          // 挥剑等 precast 结束 —— 不在这里立即 swing
+          ClientActionLock.scheduleNormalSwing(player, character);
         }
         attackPressStartTick = 0;
       }
@@ -191,9 +203,11 @@ public class KeyInputHandler {
 
     // ========================================================
     // X 键：短按 E / 长按 E
+    // 前摇/执行期直接被阻塞（isActionInputBlocked），不进入判定逻辑
     // ========================================================
     boolean isXDown = KeyMappingRegistry.X_KEY.get().isDown();
-    if (isInGenshinMode && character != null) {
+    if (isInGenshinMode && character != null
+            && !ClientActionLock.isActionInputBlocked()) {
 
       // 情况一：角色没有"长按区分"（技能短/长按 CD 相同）→ 一律短按
       if (character.getSkillShortMaxCooldownTick() == character.getSkillLongMaxCooldownTick()) {
@@ -234,9 +248,11 @@ public class KeyInputHandler {
 
     // ========================================================
     // C：元素爆发
+    // 前摇/执行期直接被阻塞
     // ========================================================
     boolean isCDown = KeyMappingRegistry.C_KEY.get().isDown();
-    if (isCDown && !wasCKeyDown && isInGenshinMode) {
+    if (isCDown && !wasCKeyDown && isInGenshinMode
+            && !ClientActionLock.isActionInputBlocked()) {
       if (character != null) {
         ClientActionLock.lockForBurst(player, character);
       }
@@ -295,7 +311,7 @@ public class KeyInputHandler {
     wasXKeyDown = false;
     longPressStartTick = 0;
     xSkillTriggered = false;
-    // 切人时清除本地移动锁，新角色立即能动
+    // 切人时清除本地移动锁 + 待挥剑，新角色立即能动
     ClientActionLock.clear();
 
     int currentIndex = attachment.getCurrentCharacterIndex();

@@ -54,95 +54,31 @@ public class VesnaTalent extends TalentBase {
 
     @Override
     public ActionSet buildActionSet(PGCharacter character, String stateKey) {
-        if ("windrider".equals(stateKey)) {
-            return buildWindriderActionSet(character);
-        }
         return buildDefaultActionSet(character);
     }
 
     @Override
     protected ActionSet buildDefaultActionSet(PGCharacter character) {
-        ActionSet.Builder b = ActionSet.builder();
-
-        for (int i = 0; i < getMaxCombo(); i++) {
-            final int stage = i;
-            b.addNormalAttack(
-                    ActionDefinition.builder(ActionKind.NORMAL_ATTACK)
-                            .comboIndex(i)
-                            .precast(getPrecastTicks(i))
-                            .active(getActiveTicks(i))
-                            .postcast(getPostcastTicks(i))
-                            .onActiveStart(ctx -> attack(ctx.player, ctx.character, stage))
-                            .build()
-            );
-        }
-
-        b.chargedAttack(
-                ActionDefinition.builder(ActionKind.CHARGED_ATTACK)
-                        .precast(getChargedPrecastTicks())
-                        .active(getChargedActiveTicks())
-                        .postcast(getChargedPostcastTicks())
-                        .onActiveStart(ctx -> chargeAttack(ctx.player, ctx.character))
-                        .build()
-        );
-
-        b.elementalSkillTap(
-                ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_TAP)
-                        .precast(getSkillPrecastTicks())
-                        .active(getSkillActiveTicks())
-                        .postcast(getSkillPostcastTicks())
-                        .onActiveStart(ctx -> elementalSkill(ctx.player, ctx.character, 0))
-                        .build()
-        );
-
-        b.elementalSkillHold(
-                ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_HOLD)
-                        .precast(getSkillPrecastTicks())
-                        .active(getSkillActiveTicks())
-                        .postcast(getSkillPostcastTicks())
-                        .onActiveStart(ctx -> elementalSkill(ctx.player, ctx.character, 1000))
-                        .build()
-        );
-
-        b.elementalBurst(
-                ActionDefinition.builder(ActionKind.ELEMENTAL_BURST)
-                        .precast(getBurstPrecastTicks())
-                        .active(getBurstActiveTicks())
-                        .postcast(getBurstPostcastTicks())
-                        .onActiveStart(ctx -> elementalBurst(ctx.player, ctx.character))
-                        .build()
-        );
-
-        return b.build();
+        return setBuilder()
+                .normalCombo(
+                        timing(1, 2, 15),
+                        timing(1, 2, 15),
+                        timing(1, 2, 15),
+                        timing(1, 2, 15),
+                        timing(1, 2, 0)
+                )
+                .charged(timing(5, 1, 15))
+                .skillTap(timing(3, 1, 10))
+                .skillHold(timing(3, 1, 10))
+                .burst(timing(10, 1, 20))
+                .build();
     }
-
-    private ActionSet buildWindriderActionSet(PGCharacter character) {
-        ActionSet.Builder b = ActionSet.deriveFrom(buildDefaultActionSet(character));
-
-        b.clearNormalCombo();
-        for (int i = 0; i < 8; i++) {
-            final int stage = i;
-            b.addNormalAttack(
-                    ActionDefinition.builder(ActionKind.NORMAL_ATTACK)
-                            .comboIndex(i)
-                            .precast(1)
-                            .active(2)
-                            .postcast(stage == 7 ? 0 : 12)
-                            .onActiveStart(ctx -> attack(ctx.player, ctx.character, stage))
-                            .build()
-            );
-        }
-
-        return b.build();
-    }
-
     // ==================== 普攻 ====================
 
     @Override
-    public void attack(Player player, PGCharacter character, int comboStage) {
+    public void attack(Player player, PGCharacter character, int stage) {
         Level level = player.level();
 
-        int stage = comboStage % getMaxCombo();
         int naLevel = Math.max(1, character.getData().getNormalAttackLevel());
 
         float multiplier = (float) (
@@ -176,6 +112,7 @@ public class VesnaTalent extends TalentBase {
         VesnaAttackProjectile projectile = VesnaAttackProjectile.create(level, vesna, player.position());
         if (projectile != null) {
             level.addFreshEntity(projectile);
+            vesna.addEnergy(1);
         }
 
     }
@@ -220,6 +157,7 @@ public class VesnaTalent extends TalentBase {
             if (vesna.getVesnaEnergy() < Vesna.SPECIAL_SKILL_ENERGY_COST) return;
             vesna.consumeEnergy(Vesna.SPECIAL_SKILL_ENERGY_COST);
         } else {
+            LOGGER.info("Vesna windrider inactive, activate windrider mode");
             vesna.activateWindriderMode();
         }
 
