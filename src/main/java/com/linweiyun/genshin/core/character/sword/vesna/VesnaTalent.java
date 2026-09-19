@@ -9,8 +9,6 @@ import com.linweiyun.genshin.content.skill_node.TargetSeeker;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.ModElements;
-import com.linweiyun.genshin.core.system.combat.action.ActionDefinition;
-import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.combat.action.ActionSet;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
@@ -27,8 +25,6 @@ import org.slf4j.Logger;
 
 public class VesnaTalent extends TalentBase {
     public static final Logger LOGGER = LogUtils.getLogger();
-
-    // ==================== 参数覆盖 ====================
 
     @Override
     public int getMaxCombo() { return 5; }
@@ -49,8 +45,6 @@ public class VesnaTalent extends TalentBase {
     public int getBurstPrecastTicks()  { return 10; }
     @Override
     public int getBurstPostcastTicks() { return 20; }
-
-    // ==================== 动作集 ====================
 
     @Override
     public ActionSet buildActionSet(PGCharacter character, String stateKey) {
@@ -73,6 +67,7 @@ public class VesnaTalent extends TalentBase {
                 .burst(timing(10, 1, 20))
                 .build();
     }
+
     // ==================== 普攻 ====================
 
     @Override
@@ -114,8 +109,9 @@ public class VesnaTalent extends TalentBase {
             level.addFreshEntity(projectile);
             vesna.addEnergy(1);
         }
-
     }
+
+    // ==================== 重击 ====================
 
     @Override
     public void chargeAttack(Player player, PGCharacter character) {
@@ -123,9 +119,7 @@ public class VesnaTalent extends TalentBase {
         if (level.isClientSide()) return;
 
         LivingEntity primaryTarget = new TargetSeeker(player, 10.0, TargetSeeker.TargetingType.LINE_OF_SIGHT).execute();
-        if (primaryTarget == null) {
-            return;
-        }
+        if (primaryTarget == null) return;
 
         float aoeRange = 1.5f;
         Vec3 center = primaryTarget.position();
@@ -146,25 +140,17 @@ public class VesnaTalent extends TalentBase {
         }
     }
 
+    // ==================== E ====================
+    // 状态切换 / 扣能量已经在 Vesna.applyElementalSkillCooldown 里做了
+    // 这里只做伤害
+
     @Override
     public void elementalSkill(Player player, PGCharacter character, int skillTime) {
         Level level = player.level();
         if (level.isClientSide()) return;
 
-        Vesna vesna = (Vesna) character;
-
-        if (vesna.isWindriderActive()) {
-            if (vesna.getVesnaEnergy() < Vesna.SPECIAL_SKILL_ENERGY_COST) return;
-            vesna.consumeEnergy(Vesna.SPECIAL_SKILL_ENERGY_COST);
-        } else {
-            LOGGER.info("Vesna windrider inactive, activate windrider mode");
-            vesna.activateWindriderMode();
-        }
-
         LivingEntity primaryTarget = new TargetSeeker(player, 10.0, TargetSeeker.TargetingType.LINE_OF_SIGHT).execute();
-        if (primaryTarget == null) {
-            return;
-        }
+        if (primaryTarget == null) return;
 
         float aoeRange = 2.0f;
         Vec3 center = primaryTarget.position();

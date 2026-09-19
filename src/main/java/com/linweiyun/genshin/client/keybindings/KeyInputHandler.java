@@ -7,6 +7,7 @@ import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.ActionServer;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.system.combat.action.ActionManager;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
@@ -55,6 +56,19 @@ public class KeyInputHandler {
     }
 
     ClientActionLock.tick();
+
+    // ⭐ 客户端也推进 ActionManager
+    // 服务端由 CharacterTickEvent → PGCharacter.tick → ActionManager.tick 推进。
+    // 客户端 PGCharacter.tick 没有被触发，所以这里手动推进本地 ActionManager，
+    // 让客户端的 ActionState 能从前摇走到执行期。
+    PlayerCharactersAttachment attachment =
+            player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+    if (attachment != null) {
+      PGCharacter currentChar = attachment.getCurrentCharacter();
+      if (currentChar != null) {
+        ActionManager.get(player).tick(player, currentChar);
+      }
+    }
   }
 
   @SubscribeEvent
@@ -70,24 +84,28 @@ public class KeyInputHandler {
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     var character = charactersAttachment.getCurrentCharacter();
 
+    // R：抽卡
     boolean isRDown = KeyMappingRegistry.R_KEY.get().isDown();
     if (isRDown && !wasRKeyDown) {
       NetworkManager.wishEventToServer();
     }
     wasRKeyDown = isRDown;
 
+    // G：切换原神模式
     boolean isGDown = KeyMappingRegistry.G_KEY.get().isDown();
     if (isGDown && !wasGKeyDown) {
       NetworkManager.setGenshinModeToServer(!isInGenshinMode);
     }
     wasGKeyDown = isGDown;
 
+    // V：切换队伍角色
     boolean isVDown = KeyMappingRegistry.V_KEY.get().isDown();
     if (isVDown && !wasVKeyDown && isInGenshinMode) {
       switchToNextAvailableCharacter(player, charactersAttachment);
     }
     wasVKeyDown = isVDown;
 
+    // 跳跃：打断
     boolean isJumpDown = mc.options.keyJump.isDown();
     if (isJumpDown && !wasJumpDown && isInGenshinMode && character != null) {
       ClientActionLock.clear();
@@ -133,10 +151,9 @@ public class KeyInputHandler {
       wasAttackDown = isAttackDown;
     }
 
-    // X：E
+    // X：E（外层不再检查 isActionInputBlocked）
     boolean isXDown = KeyMappingRegistry.X_KEY.get().isDown();
-    if (isInGenshinMode && character != null
-            && !ClientActionLock.isActionInputBlocked()) {
+    if (isInGenshinMode && character != null) {
 
       if (character.getSkillShortMaxCooldownTick() == character.getSkillLongMaxCooldownTick()) {
         if (isXDown && !wasXKeyDown) {
@@ -167,10 +184,9 @@ public class KeyInputHandler {
     }
     wasXKeyDown = isXDown;
 
-    // C：Q
+    // C：Q（外层不再检查 isActionInputBlocked）
     boolean isCDown = KeyMappingRegistry.C_KEY.get().isDown();
-    if (isCDown && !wasCKeyDown && isInGenshinMode
-            && !ClientActionLock.isActionInputBlocked()) {
+    if (isCDown && !wasCKeyDown && isInGenshinMode) {
       if (character != null) {
         ClientActionLock.lockForBurst(player, character);
       }
@@ -178,6 +194,7 @@ public class KeyInputHandler {
     }
     wasCKeyDown = isCDown;
 
+    // O/U/B/N/K
     boolean isODown = KeyMappingRegistry.O_KEY.get().isDown();
     if (isODown && !wasOKeyDown) {
       GUIServerHelperGIM.openCharacterPartyScreen(player);
@@ -230,9 +247,9 @@ public class KeyInputHandler {
   private static void triggerCharacterSkill(Player player, int isLong) {
     PlayerCharactersAttachment attachment =
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-    var currentChar = attachment.getCurrentCharacter();
+    PGCharacter currentChar = attachment.getCurrentCharacter();
     if (currentChar != null) {
-      currentChar.performElementalSkill(player, isLong);
+      ActionManager.get(player).requestElementalSkill(player, currentChar, isLong);
     }
     ActionServer.triggerCharacterSkill(isLong);
   }
@@ -242,7 +259,7 @@ public class KeyInputHandler {
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     PGCharacter currentChar = attachment.getCurrentCharacter();
     if (currentChar != null) {
-      currentChar.performElementalBurst(player);
+      ActionManager.get(player).requestElementalBurst(player, currentChar);
     }
     ActionServer.triggerCharacterBurst();
   }

@@ -6,30 +6,14 @@ import org.slf4j.Logger;
 
 import java.util.function.Consumer;
 
-/**
- * 运行时状态机 —— 管理一次动作的阶段推进。
- * <p>
- * 时序示例（precast=3, active=1, postcast=2）：
- * <pre>
- * tick 0 : PRECAST (onPrecastStart 已调)  phaseTicks=1
- * tick 1 : PRECAST                        phaseTicks=2
- * tick 2 : PRECAST → ACTIVE (onActiveStart) phaseTicks=0
- * tick 3 : ACTIVE → POSTCAST (onActiveTick, onActiveEnd, onPostcastStart)
- * tick 4 : POSTCAST                       phaseTicks=1
- * tick 5 : POSTCAST → IDLE (onComplete)   结束
- * </pre>
- */
 public class ActionState {
-    public static final Logger LOGGER = LogUtils.getLogger();
-    @Getter
-    private final ActionDefinition definition;
-    @Getter
-    private final ActionContext context;
-    @Getter
-    private ActionPhase phase;
+    private static final Logger LOGGER = LogUtils.getLogger();
+
+    @Getter private final ActionDefinition definition;
+    @Getter private final ActionContext context;
+    @Getter private ActionPhase phase;
     private int phaseTicks;
-    @Getter
-    private boolean finished;
+    @Getter private boolean finished;
 
     public ActionState(ActionDefinition definition, ActionContext context) {
         this.definition = definition;
@@ -38,6 +22,10 @@ public class ActionState {
         this.phaseTicks = 0;
         this.finished = false;
         context.setPhase(ActionPhase.PRECAST);
+        LOGGER.info("[ActionState] START kind={} comboIndex={} precast={} active={} postcast={} side={}",
+                definition.kind, definition.comboIndex,
+                definition.precastTicks, definition.activeTicks, definition.postcastTicks,
+                context.player.level().isClientSide() ? "CLIENT" : "SERVER");
         fire(definition.getOnPrecastStart());
 
         if (definition.precastTicks <= 0) {
@@ -53,20 +41,14 @@ public class ActionState {
 
         switch (phase) {
             case PRECAST -> {
-                if (phaseTicks >= definition.precastTicks) {
-                    transitionTo(ActionPhase.ACTIVE);
-                }
+                if (phaseTicks >= definition.precastTicks) transitionTo(ActionPhase.ACTIVE);
             }
             case ACTIVE -> {
                 fire(definition.getOnActiveTick());
-                if (phaseTicks >= definition.activeTicks) {
-                    transitionTo(ActionPhase.POSTCAST);
-                }
+                if (phaseTicks >= definition.activeTicks) transitionTo(ActionPhase.POSTCAST);
             }
             case POSTCAST -> {
-                if (phaseTicks >= definition.postcastTicks) {
-                    transitionTo(ActionPhase.IDLE);
-                }
+                if (phaseTicks >= definition.postcastTicks) transitionTo(ActionPhase.IDLE);
             }
             default -> {}
         }
@@ -79,6 +61,10 @@ public class ActionState {
         phaseTicks = 0;
         context.setPhase(next);
         context.resetPhaseElapsed();
+
+        LOGGER.info("[ActionState] PHASE -> {} kind={} side={}",
+                next, definition.kind,
+                context.player.level().isClientSide() ? "CLIENT" : "SERVER");
 
         switch (next) {
             case ACTIVE -> {
@@ -99,18 +85,24 @@ public class ActionState {
 
     public void interrupt(InterruptReason reason) {
         if (finished) return;
+        LOGGER.info("[ActionState] INTERRUPT reason={} kind={} side={}",
+                reason, definition.kind,
+                context.player.level().isClientSide() ? "CLIENT" : "SERVER");
         context.markInterrupted(reason);
         fire(definition.getOnInterrupt());
         finished = true;
     }
 
+    /**
+     * 触发 hook。
+     * null hook = 该阶段没有回调，静默跳过（不是错误）。
+     */
     private void fire(Consumer<ActionContext> hook) {
         if (hook == null) return;
         try {
             hook.accept(context);
-        } catch (Exception ignored) {
-            // TODO: log
+        } catch (Exception e) {
+            LOGGER.error("[ActionState] hook threw kind={} phase={}", definition.kind, phase, e);
         }
     }
-
 }

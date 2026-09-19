@@ -1,7 +1,6 @@
 package com.linweiyun.genshin.core.character.sword.vesna;
 
 import com.linweiyun.genshin.config.character.ShenheAttributeConfig;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.IStellarSwirlParticipant;
 import com.linweiyun.genshin.core.character.sword.SwordCharacter;
 import com.linweiyun.genshin.core.element.ModElements;
@@ -104,31 +103,48 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
         return windriderActive ? "windrider" : "default";
     }
 
-    // ==================== HUD 显示 CD 覆写 ====================
-
-    /**
-     * 风骑模式下特殊战技无 CD，HUD 显示 0。
-     * 内部 elementalSkillCooldownTick 照常计时，只是不显示。
-     */
+    /** 风骑模式下特殊战技无 CD，HUD 显示 0 */
     @Override
     public float getSkillDisplayCooldown() {
-        if (windriderActive) {
-            return 0f;
-        }
+        if (windriderActive) return 0f;
         return super.getSkillDisplayCooldown();
     }
 
-    @Override
-    public void performElementalSkill(Player player, int skillTime) {
-        if (player.level().isClientSide()) return;
+    // ==================== E 钩子覆写 ====================
 
+    /**
+     * 风骑内：只要能量够就能放，不看 CD。
+     * 非风骑：走父类默认（CD == 0）。
+     */
+    @Override
+    public boolean canUseElementalSkill(Player player, int skillTime) {
         if (windriderActive) {
-            if (talent != null) {
-                talent.elementalSkill(player, this, skillTime);
-            }
-        } else {
-            super.performElementalSkill(player, skillTime);
+            return vesnaEnergy >= SPECIAL_SKILL_ENERGY_COST;
         }
-        syncRealtimeState();
+        return super.canUseElementalSkill(player, skillTime);
+    }
+
+    /**
+     * 风骑内：扣能量，不设 CD。
+     * 非风骑：进风骑模式 + 设 18s CD（前摇还没结束，CD 已经在跑）。
+     */
+    @Override
+    public void applyElementalSkillCooldown(Player player, int skillTime) {
+        if (windriderActive) {
+            consumeEnergy(SPECIAL_SKILL_ENERGY_COST);
+        } else {
+            activateWindriderMode();
+            getData().setElementalSkillCooldownTick(18 * 20);
+            syncRealtimeState();
+        }
+    }
+
+    @Override
+    public void sendSkillCooldownMessage(Player player) {
+        if (windriderActive) {
+            player.sendSystemMessage(Component.translatable("message.minegenshin.not_enough_energy"));
+        } else {
+            super.sendSkillCooldownMessage(player);
+        }
     }
 }

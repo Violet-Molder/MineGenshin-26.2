@@ -93,7 +93,6 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    // ============ 动作集缓存 ============
     private final Map<String, ActionSet> actionSetCache = new HashMap<>();
 
     public PGCharacter() {
@@ -171,39 +170,60 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
         actionSetCache.clear();
     }
 
-    // ============ 动作逻辑（由 ActionManager 触发） ============
-
-    public void performElementalSkill(Player player, int skillTime) {
-        if (data.getElementalSkillCooldownTick() == 0) {
-            if (talent != null) talent.elementalSkill(player, this, skillTime);
-            data.setElementalSkillStacks(data.getElementalSkillStacks() - 1);
-            if (player.level().isClientSide()) return;
-            if (skillTime < 1000) {
-                data.setElementalSkillCooldownTick(data.getSkillShortMaxCooldownTick());
-            } else {
-                data.setElementalSkillCooldownTick(data.getSkillLongMaxCooldownTick());
-            }
-            syncRealtimeState();
-        } else {
-            player.sendSystemMessage(Component.translatable("message.minegenshin.skill_cooldown", data.getElementalSkillCooldownTick()));
-        }
+    /**
+     * 调试用：返回 talent 是否已初始化。
+     * <p>
+     * 客户端从网络反序列化角色时不走子类构造函数，
+     * {@code talent} 是 transient 字段 → 客户端永远 null。
+     */
+    public String getTalentDebugInfo() {
+        return talent == null
+                ? "null(class=" + this.getClass().getSimpleName() + ")"
+                : talent.getClass().getSimpleName();
     }
 
-    public void performElementalBurst(Player player) {
-        if (data.getElementalBurstCooldownTick() > 0) {
-            player.sendSystemMessage(Component.translatable("message.minegenshin.skill_cooldown"));
-            return;
+    // ============ E / Q 钩子（由 ActionManager 调用） ============
+
+    public boolean canUseElementalSkill(Player player, int skillTime) {
+        return data.getElementalSkillCooldownTick() == 0;
+    }
+
+    public void applyElementalSkillCooldown(Player player, int skillTime) {
+        data.setElementalSkillStacks(data.getElementalSkillStacks() - 1);
+        if (skillTime < 1000) {
+            data.setElementalSkillCooldownTick(data.getSkillShortMaxCooldownTick());
+        } else {
+            data.setElementalSkillCooldownTick(data.getSkillLongMaxCooldownTick());
         }
-        if (data.getCurrentObtainingEnergy() < data.getMaxObtainingEnergy()) {
-            player.sendSystemMessage(Component.translatable("message.minegenshin.not_enough_energy"));
-            return;
-        }
-        if (talent != null) talent.elementalBurst(player, this);
-        if (player.level().isClientSide()) return;
+        syncRealtimeState();
+    }
+
+    public void sendSkillCooldownMessage(Player player) {
+        player.sendSystemMessage(Component.translatable(
+                "message.minegenshin.skill_cooldown",
+                data.getElementalSkillCooldownTick()));
+    }
+
+    public boolean canUseElementalBurst(Player player) {
+        if (data.getElementalBurstCooldownTick() > 0) return false;
+        return data.getCurrentObtainingEnergy() >= data.getMaxObtainingEnergy();
+    }
+
+    public void applyElementalBurstCooldown(Player player) {
         data.setCurrentObtainingEnergy(0);
         data.setElementalBurstCooldownTick(data.getBurstMaxCooldownTick());
         syncRealtimeState();
     }
+
+    public void sendBurstCooldownMessage(Player player) {
+        if (data.getElementalBurstCooldownTick() > 0) {
+            player.sendSystemMessage(Component.translatable("message.minegenshin.skill_cooldown"));
+        } else {
+            player.sendSystemMessage(Component.translatable("message.minegenshin.not_enough_energy"));
+        }
+    }
+
+    // ============ 普攻 / 重击 ============
 
     public void performNormalAttack(Player player, int comboStage) {
         if (talent != null) talent.attack(player, this, comboStage);
@@ -267,13 +287,22 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
 
     public void backTick(Player player) {}
 
+    /**
+     * 两端都推进 ActionManager：
+     * <ul>
+     *   <li>客户端：本地跑动作状态机</li>
+     *   <li>服务端：权威跑动作状态机</li>
+     * </ul>
+     */
     public void tick(Player player) {
         data.tick();
         recalculateDirtyArtifactSlots();
         frontTick(player);
         backTick(player);
+
+        ActionManager.get(player).tick(player, this);
+
         if (!player.level().isClientSide()) {
-            ActionManager.get(player).tick(player, this);
             syncRealtimeState();
         }
     }
@@ -687,24 +716,18 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
     public int getBurstMaxCooldownTick() { return data.getBurstMaxCooldownTick(); }
     public float getMaxObtainingEnergy() { return data.getMaxObtainingEnergy(); }
 
-    // ==================== HUD 显示 CD（角色可覆写） ====================
-
-    /** HUD 显示用的战技剩余 CD。默认返回内部真实值。 */
     public float getSkillDisplayCooldown() {
         return data.getElementalSkillCooldownTick();
     }
 
-    /** HUD 显示用的战技 CD 上限，用于进度条比例。 */
     public int getSkillDisplayMaxCooldown() {
         return data.getSkillShortMaxCooldownTick();
     }
 
-    /** HUD 显示用的元素爆发剩余 CD。 */
     public float getBurstDisplayCooldown() {
         return data.getElementalBurstCooldownTick();
     }
 
-    /** HUD 显示用的元素爆发 CD 上限。 */
     public int getBurstDisplayMaxCooldown() {
         return data.getBurstMaxCooldownTick();
     }
