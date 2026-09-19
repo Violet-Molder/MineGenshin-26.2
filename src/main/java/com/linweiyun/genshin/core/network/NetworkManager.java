@@ -7,6 +7,8 @@ import com.linweiyun.genshin.core.attachment.*;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.system.combat.action.ActionManager;
+import com.linweiyun.genshin.core.system.combat.action.InterruptReason;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.linweiyun.genshin.render.gui.menu.BackpackMenu;
 import com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu;
@@ -193,6 +195,11 @@ public class NetworkManager {
     } else {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+
+      // ⭐ 切换角色：服务端无条件打断当前动作
+      // 防止"服务端还没同步新角色、普攻 RPC 先到、request() 被旧角色动作拒绝"的情况
+      ActionManager.get(player).interrupt(InterruptReason.SWITCH_CHARACTER);
+
       attachment.setCurrentCharacterIndex(index);
     }
   }
