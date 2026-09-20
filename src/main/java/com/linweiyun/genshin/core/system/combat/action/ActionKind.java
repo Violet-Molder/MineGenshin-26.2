@@ -13,6 +13,7 @@ public enum ActionKind {
     ELEMENTAL_SKILL_TAP,
     ELEMENTAL_SKILL_HOLD,
     ELEMENTAL_BURST,
+    DODGE,
     SPECIAL;
 
     /** 是否参与连招（可在后摇期间缓冲下一段） */

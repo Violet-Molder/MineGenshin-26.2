@@ -76,6 +76,21 @@ public class AttachmentRegistration {
                     .build()
     );
 
+    /**
+     * 玩家当前动作动画状态（参考2 的 {@code anime_state}）。
+     *
+     * <p>{@code serialize} + {@code sync} 两个调用就够了：服务端 setData 后调一次
+     * {@code syncData}，NeoForge 会把它推给所有能收到这个玩家的客户端（含本人）。
+     */
+    public static final Supplier<AttachmentType<AnimationState>> ANIMATION_STATE_ATTACHMENT =
+            ATTACHMENTS.register(
+                    "animation_state",
+                    () -> AttachmentType.builder(AnimationState::new)
+                            .serialize(AnimationState.CODEC.fieldOf("animation_state"))
+                            .sync(AnimationState.STREAM_CODEC)
+                            .build()
+            );
+
     public static final Supplier<AttachmentType<LockedTargetData>> LOCKED_TARGET =
             ATTACHMENTS.register("locked_target",
                     () -> AttachmentType.builder(() -> LockedTargetData.EMPTY)

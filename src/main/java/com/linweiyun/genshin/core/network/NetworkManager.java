@@ -9,6 +9,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.system.combat.action.ActionManager;
 import com.linweiyun.genshin.core.system.combat.action.InterruptReason;
+import com.linweiyun.genshin.core.system.combat.action.ServerAnimationTicker;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.linweiyun.genshin.render.gui.menu.BackpackMenu;
 import com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu;
@@ -829,5 +830,25 @@ public class NetworkManager {
 
   public static void sendCharacterSyncToPlayer(ServerPlayer player, int characterUUID, CompoundTag payload) {
     RPCPacketDistributor.rpcToPlayer(player, "minegenshin:character_sync", characterUUID, payload);
+  }
+
+  // ========================================================================
+  // 动作动画状态同步
+  // 客户端 → 服务端：状态机每次切状态/复位都上报一次。
+  // 服务端 → 客户端：不再走包，直接写 ANIMATION_STATE_ATTACHMENT 后 syncData，
+  // NeoForge 会把它推给所有能收到这个玩家的客户端（含玩家自己）。
+  // ========================================================================
+
+  @RPCPacket("minegenshin:animation_state")
+  public static void animationStateRPCPacket(RPCSender sender, String stateName, int totalTicks) {
+    if (!sender.isServer()) {
+      ServerPlayer player = sender.asPlayer();
+      if (player == null) return;
+      ServerAnimationTicker.apply(player, stateName, totalTicks);
+    }
+  }
+
+  public static void sendAnimationStateToServer(String stateName, int totalTicks) {
+    RPCPacketDistributor.rpcToServer("minegenshin:animation_state", stateName, totalTicks);
   }
 }

@@ -104,6 +104,7 @@ public final class CharacterActionData {
         public final float finalCharge;          // 大招能量回复
         public final int cooldown;               // 冷却（刻），0 表示无冷却
         public final int comboWindow;            // 连击窗口（刻），后摇结束后可接下一段的窗口
+        public String comboEndAnim = null;       // 最后一段连招结束后的收尾动画（仅最终段生效）
 
         public ActionStep(String animation, int duration, int protectDuration, int priority,
                           List<Move> moves, List<Hit> hits, List<SoundRef> sounds,

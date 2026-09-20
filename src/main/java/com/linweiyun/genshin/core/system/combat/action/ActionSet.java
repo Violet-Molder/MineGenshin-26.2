@@ -33,6 +33,7 @@ public class ActionSet {
     public ActionDefinition getElementalSkillTap()  { return singles.get(ActionKind.ELEMENTAL_SKILL_TAP); }
     public ActionDefinition getElementalSkillHold() { return singles.get(ActionKind.ELEMENTAL_SKILL_HOLD); }
     public ActionDefinition getElementalBurst()     { return singles.get(ActionKind.ELEMENTAL_BURST); }
+    public ActionDefinition getDodge()              { return singles.get(ActionKind.DODGE); }
 
     public static Builder builder() { return new Builder(); }
 
@@ -62,6 +63,7 @@ public class ActionSet {
         public Builder elementalSkillTap(ActionDefinition def) { return set(ActionKind.ELEMENTAL_SKILL_TAP, def); }
         public Builder elementalSkillHold(ActionDefinition def){ return set(ActionKind.ELEMENTAL_SKILL_HOLD, def); }
         public Builder elementalBurst(ActionDefinition def)    { return set(ActionKind.ELEMENTAL_BURST, def); }
+        public Builder dodge(ActionDefinition def)             { return set(ActionKind.DODGE, def); }
 
         public ActionSet build() { return new ActionSet(this); }
     }

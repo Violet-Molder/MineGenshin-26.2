@@ -23,7 +23,7 @@ public final class ActionServer {
                     sp.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter character = attachment.getCurrentCharacter();
             if (character != null) {
-                ActionManager.get(sp).requestNormalAttack(sp, character);
+                ActionManager.get(sp).requestNormalAttack(sp, character, comboStage);
             }
         }
     }
@@ -101,19 +101,21 @@ public final class ActionServer {
         RPCPacketDistributor.rpcToServer("characterInterruptRPCPacket", reasonOrdinal);
     }
 
-    // ========================================================================
-    // 【服务端 → 客户端】动画同步 RPC
-    // 替代旧 actionSwing，携带动画名由客户端直接播放。
-    // ========================================================================
-
-    @RPCPacket("syncAnimationRPCPacket")
-    public static void syncAnimationRPCPacket(RPCSender sender, String animationName) {
-        if (sender.isServer()) {
-            ActionClient.syncAnimationClientHandler(animationName);
+    @RPCPacket("characterDodgeRPCPacket")
+    public static void characterDodgeRPCPacket(RPCSender sender) {
+        if (!sender.isServer()) {
+            ServerPlayer sp = sender.asPlayer();
+            if (sp == null) return;
+            PlayerCharactersAttachment attachment =
+                    sp.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            PGCharacter character = attachment.getCurrentCharacter();
+            if (character != null) {
+                ActionManager.get(sp).requestDodge(sp, character);
+            }
         }
     }
 
-    public static void syncAnimationToPlayer(ServerPlayer player, String animationName) {
-        RPCPacketDistributor.rpcToPlayer(player, "syncAnimationRPCPacket", animationName);
+    public static void triggerCharacterDodge() {
+        RPCPacketDistributor.rpcToServer("characterDodgeRPCPacket");
     }
 }

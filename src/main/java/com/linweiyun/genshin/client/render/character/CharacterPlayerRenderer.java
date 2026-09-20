@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.client.render.character;
 
 import com.geckolib.renderer.GeoReplacedEntityRenderer;
-import com.linweiyun.genshin.Minegenshin;
+import com.linweiyun.genshin.config.character.CharacterSystemConfig;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderRepository;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -50,12 +50,10 @@ public class CharacterPlayerRenderer extends GeoReplacedEntityRenderer<GenshinRe
 
         if (!this.isGenshinMode) {
             if (wasGenshin || tickCounter == 1) {
-                LOGGER.warn("[CharacterPlayerRenderer] extractRenderState: isGenshinMode=false, "
-                        + "玩家={}, tick={}", entity.getName().getString(), tickCounter);
-            } else if (tickCounter % 100 == 0) {
-                LOGGER.warn("[CharacterPlayerRenderer] extractRenderState: 持续走 vanilla fallback, "
+                LOGGER.debug("[CharacterPlayerRenderer] extractRenderState: isGenshinMode=false, "
                         + "玩家={}, tick={}", entity.getName().getString(), tickCounter);
             }
+            this.animatable.setPlayerEntity(null);
             return;
         }
 
@@ -65,10 +63,14 @@ public class CharacterPlayerRenderer extends GeoReplacedEntityRenderer<GenshinRe
         }
 
         String charId = AttachmentHelper.getActiveCharacterId(clientPlayer);
-        if (charId == null) {
-            if (tickCounter % 60 == 0) {
-                LOGGER.warn("[CharacterPlayerRenderer] getActiveCharacterId 返回 null, 玩家={}",
-                        entity.getName().getString());
+
+        // 角色没有专属模型时，走原版渲染：模型替换和动画全部关掉
+        if (charId == null || !CharacterSystemConfig.customModel(charId)) {
+            this.animatable.setPlayerEntity(null);
+
+            // 角色换了（或者这次才是第一次判定）→ 把模型和动画路径清掉，避免残留上一个角色的资源
+            if (this.currentCharId != null) {
+                this.currentCharId = null;
             }
             return;
         }
@@ -79,16 +81,17 @@ public class CharacterPlayerRenderer extends GeoReplacedEntityRenderer<GenshinRe
             if (data != null) {
                 this.characterModel.updateRenderData(data);
                 this.currentCharId = charId;
-                this.animatable.renderData = data;
+                this.animatable.setCharacterId(charId);
                 LOGGER.info("[CharacterPlayerRenderer] 模型更新完成: model={}, texture={}, anim={}",
                         data.modelPath(), data.texturePath, data.animationPath);
             } else {
                 LOGGER.error("[CharacterPlayerRenderer] CharacterRenderRepository 中找不到 '{}', "
                         + "已注册的角色: size={}", charId, CharacterRenderRepository.size());
+                return;
             }
         }
 
-        this.animatable.playerEntity = entity;
+        this.animatable.setPlayerEntity(entity);
         super.extractRenderState(entity, renderState, partialTick);
     }
 

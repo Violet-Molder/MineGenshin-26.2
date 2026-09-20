@@ -26,6 +26,7 @@ public class TalentBase {
     public void chargeAttack(Player player, PGCharacter character) {}
     public void elementalSkill(Player player, PGCharacter character, int skillTime) {}
     public void elementalBurst(Player player, PGCharacter character) {}
+    public void dodge(Player player, PGCharacter character) {}
 
     // ==================== ActionSet 构建 ====================
 
@@ -86,6 +87,16 @@ public class TalentBase {
                                 .build()
                 );
             }
+
+            CharacterActionData.DodgeData dodgeData = actionData.dodge();
+            if (dodgeData != null && dodgeData.step() != null) {
+                sb.addDodge(
+                        ActionDefinition.builder(ActionKind.DODGE)
+                                .step(dodgeData.step())
+                                .onActiveStart(ctx -> dodge(ctx.player, ctx.character))
+                                .build()
+                );
+            }
         }
 
         // 兜底：重击用基础步（子类可覆盖 buildActionSet 自定义）
@@ -118,6 +129,7 @@ public class TalentBase {
         public SetBuilder addSkillTap(ActionDefinition def)     { inner.elementalSkillTap(def); return this; }
         public SetBuilder addSkillHold(ActionDefinition def)    { inner.elementalSkillHold(def); return this; }
         public SetBuilder addBurst(ActionDefinition def)        { inner.elementalBurst(def); return this; }
+        public SetBuilder addDodge(ActionDefinition def)        { inner.dodge(def); return this; }
         public SetBuilder clearNormalCombo()                    { inner.clearNormalCombo(); return this; }
 
         public ActionSet build() { return inner.build(); }

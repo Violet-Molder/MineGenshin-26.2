@@ -13,7 +13,10 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.system.combat.action.ActionDefinition;
+import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.combat.action.ActionSet;
+import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
 import com.linweiyun.genshin.core.system.combat.damage.DecaySequence;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
@@ -102,11 +105,41 @@ public class VesnaTalent extends TalentBase {
     public int getMaxCombo() { return 6; }
 
     // ──── action set 构建 ────
-    // 时序全部来自 CharacterActionData，这里只处理不同 stateKey 下的回调差异。
+    // 时序全部来自 CharacterActionData，这里只处理不同 stateKey 下的动画名差异。
 
     @Override
     public ActionSet buildActionSet(PGCharacter character, String stateKey) {
-        return buildDefaultActionSet(character);
+        ActionSet base = super.buildActionSet(character, stateKey);
+
+        String skillAnim = switch (stateKey) {
+            case "windrider_0" -> "skill_energy";
+            case "windrider_1" -> "skill_energy_continue";
+            case "windrider_2" -> "heavy_3";
+            default -> null;
+        };
+
+        if (skillAnim == null) return base;
+
+        CharacterActionData actionData = character.getActionData();
+        if (actionData == null || actionData.skill() == null || actionData.skill().tap() == null)
+            return base;
+
+        CharacterActionData.ActionStep oldTap = actionData.skill().tap();
+        CharacterActionData.ActionStep newTap = new CharacterActionData.ActionStep(
+                skillAnim,
+                oldTap.duration, oldTap.protectDuration, oldTap.priority,
+                oldTap.moves, oldTap.hits, oldTap.sounds,
+                oldTap.skillCharge, oldTap.finalCharge, oldTap.cooldown, oldTap.comboWindow
+        );
+
+        return setBuilder(base)
+                .addSkillTap(
+                        ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_TAP)
+                                .step(newTap)
+                                .onActiveStart(ctx -> elementalSkill(ctx.player, ctx.character, 0))
+                                .build()
+                )
+                .build();
     }
 
     // ==================== 普攻 ====================

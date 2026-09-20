@@ -1,12 +1,15 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
+import com.linweiyun.genshin.config.character.CharacterSystemConfig;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class ActionManager {
 
@@ -50,6 +53,15 @@ public class ActionManager {
     }
 
     public boolean requestNormalAttack(Player player, PGCharacter character) {
+        return requestNormalAttack(player, character, -1);
+    }
+
+    /**
+     * @param requestedStage 客户端算好的连段段数（1 起）；传 {@code <= 0} 表示让服务端自己推。
+     *                       开启动作系统时客户端和服务端步伐一致，用客户端段数可以避免两边
+     *                       因为丢包/延迟而错位；关闭动作系统时服务端状态机不推进，必须靠它。
+     */
+    public boolean requestNormalAttack(Player player, PGCharacter character, int requestedStage) {
         String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
         ActionSet set = character.getActionSet(player);
         if (set == null) {
@@ -61,7 +73,8 @@ public class ActionManager {
             LOGGER.warn("[ActionManager] [{}] requestNormalAttack: comboSize=0", side);
             return false;
         }
-        int idx = resolveNextComboIndex(player, set);
+
+        int idx = resolveNextComboIndex(player, set, requestedStage);
         return request(player, character, set.getNormalAttack(idx));
     }
 
@@ -143,8 +156,25 @@ public class ActionManager {
         return true;
     }
 
+    /** 闪避：只有表现和位移，没有 CD/能量门槛，所以直接进状态机。 */
+    public boolean requestDodge(Player player, PGCharacter character) {
+        ActionSet set = character.getActionSet(player);
+        if (set == null) return false;
+
+        ActionDefinition def = set.getDodge();
+        if (def == null) return false;
+
+        return request(player, character, def);
+    }
+
     private boolean request(Player player, PGCharacter character, ActionDefinition def) {
         if (def == null) return false;
+
+        // 动作系统关闭：不排状态机，直接把这次动作的效果结算掉（无前摇、无延迟伤害）
+        if (!CharacterSystemConfig.actionSystem(character.getTextureId())) {
+            fireImmediately(player, character, def);
+            return true;
+        }
 
         if (activeCharacter != null && activeCharacter != character) {
             if (current != null && !current.isFinished()) {
@@ -182,6 +212,47 @@ public class ActionManager {
     private void start(Player player, PGCharacter character, ActionDefinition def) {
         ActionContext ctx = new ActionContext(player, character, def);
         current = new ActionState(def, ctx);
+        scheduleStepMovement(player, character, def);
+    }
+
+    /**
+     * 把 {@code ActionStep.moves}（前冲/后撤位移）排进服务端时间轴。
+     *
+     * <p>伤害不在这里做 —— 伤害是角色天赋的事（{@link ActionDefinition#getOnActiveStart()}）。
+     * {@link ServerActionExecutor} 只负责位移，所以 {@code hits} 列表在那边只用于记录。
+     */
+    private void scheduleStepMovement(Player player, PGCharacter character, ActionDefinition def) {
+        if (player.level().isClientSide() || def.step == null) return;
+        ServerActionExecutor.execute(player, def.step, character.getTextureId());
+    }
+
+    /**
+     * 「动作系统开关」关闭时的结算方式：不进 {@link ActionState}，当场把这一段的
+     * 伤害全部结算掉，也不占用状态机 —— 按键按下即出结果。
+     *
+     * <p>按 {@code ActionStep.hits} 的条数重复触发（多段攻击照旧打满，
+     * 只是不再分散在时间轴上）；{@code moves}（冲刺位移）属于前后摇表现，这一模式下跳过。
+     */
+    private void fireImmediately(Player player, PGCharacter character, ActionDefinition def) {
+        Consumer<ActionContext> hook = def.getOnActiveStart();
+        if (hook == null) return;
+
+        ActionContext ctx = new ActionContext(player, character, def);
+        CharacterActionData.ActionStep step = def.step;
+        int times = (step == null || step.hits == null || step.hits.isEmpty()) ? 1 : step.hits.size();
+
+        for (int i = 0; i < times; i++) {
+            try {
+                hook.accept(ctx);
+                ctx.tickTotal();
+            } catch (Exception e) {
+                LOGGER.error("[ActionManager] 即时结算回调抛异常 kind={}", def.kind, e);
+                return;
+            }
+        }
+
+        // 位移照常排期：它是表现，不是前后摇
+        scheduleStepMovement(player, character, def);
     }
 
     public void tick(Player player, PGCharacter character) {
@@ -249,6 +320,15 @@ public class ActionManager {
     public ActionState getCurrent() { return current; }
 
     private int resolveNextComboIndex(Player player, ActionSet set) {
+        return resolveNextComboIndex(player, set, -1);
+    }
+
+    private int resolveNextComboIndex(Player player, ActionSet set, int requestedStage) {
+        // 客户端给了段数就直接用它（越界会被 mod 回环），两端步伐保持一致
+        if (requestedStage >= 1) {
+            return ((requestedStage - 1) % set.getNormalComboSize()) + 1;
+        }
+
         if (current != null && !current.isFinished() && current.getDefinition().isCombo()) {
             return current.getDefinition().comboIndex + 1;
         }

@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.client.render.character;
 
 import com.linweiyun.genshin.Minegenshin;
+import com.linweiyun.genshin.config.character.CharacterSystemConfig;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderRepository;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -47,10 +48,17 @@ public final class CharacterRenderDispatcher {
         String charId = AttachmentHelper.getActiveCharacterId(player);
         if (charId == null || charId.isEmpty()) return false;
 
+        // 角色没有专属模型 → 不做模型替换，交回原版渲染（攻击延迟仍在，见 ResourceDrivenActionHandler）
+        if (!CharacterSystemConfig.customModel(charId)) {
+            GenshinReplacedPlayer cached = ANIMATABLES.get(player);
+            if (cached != null) {
+                cached.setPlayerEntity(null);
+            }
+            return false;
+        }
+
         CharacterRenderData data = CharacterRenderRepository.get(charId);
         if (data == null) {
-            if (renderCount <= 3 || renderCount % 200 == 0) {
-            }
             return false;
         }
 
@@ -80,8 +88,8 @@ public final class CharacterRenderDispatcher {
         );
 
         GenshinReplacedPlayer animatable = ANIMATABLES.computeIfAbsent(player, k -> new GenshinReplacedPlayer());
-        animatable.playerEntity = player;
-        animatable.renderData = data;
+        animatable.setPlayerEntity(player);
+        animatable.setCharacterId(charId);
 
         float partialTick = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
 

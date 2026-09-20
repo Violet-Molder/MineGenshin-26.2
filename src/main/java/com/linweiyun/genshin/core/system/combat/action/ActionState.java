@@ -1,11 +1,9 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
-import com.linweiyun.genshin.core.network.ActionServer;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.ActionStep;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.Hit;
 import com.mojang.logging.LogUtils;
 import lombok.Getter;
-import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -35,6 +33,9 @@ public class ActionState {
     private final int[] hitDelays;
     private final BitSet hitsFired;
 
+    /** 这个动作没有配 hits：{@code onActiveStart} 只在 tick 0 触发一次。 */
+    private final boolean firesWithoutHits;
+
     private int tickCount;
     @Getter private boolean finished;
 
@@ -54,7 +55,10 @@ public class ActionState {
         } else {
             this.hitDelays = new int[0];
         }
-        this.hitsFired = new BitSet(hitDelays.length);
+
+        // 没有配 hits 的动作（例如闪避）没有触发点，补一个 tick 0 —— 否则 onActiveStart 永远不会被调用
+        this.firesWithoutHits = this.hitDelays.length == 0;
+        this.hitsFired = new BitSet(Math.max(1, hitDelays.length));
 
         this.tickCount = 0;
         this.finished = false;
@@ -86,18 +90,18 @@ public class ActionState {
     }
 
     private void checkHits() {
+        // 没有 hits 的动作：只在 tick 0 触发一次
+        if (firesWithoutHits) {
+            if (tickCount == 0 && !hitsFired.get(0)) {
+                hitsFired.set(0);
+                fire(definition.getOnActiveStart());
+            }
+            return;
+        }
+
         for (int i = 0; i < hitDelays.length; i++) {
             if (!hitsFired.get(i) && tickCount >= hitDelays[i]) {
                 hitsFired.set(i);
-                LOGGER.info("[ActionState] HIT kind={} tick={} delay={} side={}",
-                        definition.kind, tickCount, hitDelays[i],
-                        context.player.level().isClientSide() ? "CLIENT" : "SERVER");
-
-                // 第一个 hit → 服务端发动画同步 RPC
-                if (i == 0) {
-                    syncAnimationToClient();
-                }
-
                 fire(definition.getOnActiveStart());
             }
         }
@@ -112,11 +116,13 @@ public class ActionState {
     }
 
     private void syncAnimationToClient() {
-        if (!context.player.level().isClientSide()
-                && context.player instanceof ServerPlayer sp
-                && definition.step != null) {
-            ActionServer.syncAnimationToPlayer(sp, definition.animationName());
-        }
+        // 已移除：动画由客户端状态机自己驱动，服务端不再回推动画名。
+        //
+        // 旧实现会在第一段伤害命中时给施法者自己发一个 syncAnimationRPCPacket，
+        // 客户端收到后走 forceRequest(priority=99, 30 刻, 硬直 15, 定身 15)，
+        // 把本地刚按下的动作整个覆盖掉 —— 表现就是「按下去没反应、必须等动画播完」。
+        // 远端表现现在由 ActionStateMachine → NetworkManager.animationStateRPCPacket →
+        // ANIMATION_STATE_ATTACHMENT 同步，见 ServerAnimationTicker。
     }
 
     public void interrupt(InterruptReason reason) {

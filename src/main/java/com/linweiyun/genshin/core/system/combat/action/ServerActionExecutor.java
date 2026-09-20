@@ -17,10 +17,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 服务端动作执行器。
- * <p>
- * 根据 ActionStep 配置，按延时（刻）触发位移和 AOE 伤害检测。
- * 延时通过 {@link ServerTickScheduler} 实现，主线程安全。
+ * 服务端动作执行器 —— 只负责 {@code ActionStep.moves} 的延时位移。
+ *
+ * <p>延时通过 {@link ServerTickScheduler} 实现，主线程安全。
+ *
+ * <p><b>伤害不在这里结算</b>：伤害由角色天赋负责（{@code ActionDefinition.onActiveStart} →
+ * {@code TalentBase.attack / elementalSkill / ...}），{@code ActionStep.hits} 只在
+ * {@link ActionState} 里当时间轴用。这里对 hits 只做日志记录，方便排查时序。
  */
 public final class ServerActionExecutor {
 
@@ -29,7 +32,7 @@ public final class ServerActionExecutor {
     private ServerActionExecutor() {}
 
     /**
-     * 执行一个 ActionStep 的所有延时/即时任务。
+     * 排入一个 ActionStep 的位移任务。
      * @param player 动作发起玩家
      * @param step   动作步骤配置
      * @param characterId 角色 ID (textureId)，用于日志追踪
@@ -45,12 +48,13 @@ public final class ServerActionExecutor {
             }
         }
 
-        for (Hit hit : step.hits) {
-            if (hit.delay > 0) {
-                ServerTickScheduler.schedule(hit.delay, () -> applyHit(player, hit, characterId));
-            } else {
-                applyHit(player, hit, characterId);
+        if (!step.hits.isEmpty()) {
+            int total = 0;
+            for (Hit hit : step.hits) {
+                total += previewHitTargets(player, hit);
             }
+            LOGGER.debug("[ActionExecutor] character={} hits={} 预估命中目标数={}（伤害由天赋结算）",
+                    characterId, step.hits.size(), total);
         }
     }
 
@@ -66,8 +70,14 @@ public final class ServerActionExecutor {
 
     // ==================== AOE 伤害检测 ====================
 
-    private static void applyHit(Entity source, Hit hit, String characterId) {
-        if (!source.isAlive() || source.isRemoved()) return;
+    /**
+     * 预览一次伤害点会命中几个目标，只用于日志。
+     *
+     * <p>真正的伤害由角色天赋结算（那里才有倍率、附着、衰减、反应），
+     * 这里算出来的目标列表不能当作结算依据，否则就会变成两套伤害。
+     */
+    public static int previewHitTargets(Entity source, Hit hit) {
+        if (!source.isAlive() || source.isRemoved()) return 0;
 
         Vec3 look = source.getLookAngle();
         Vec3 center = source.position().add(
@@ -84,8 +94,6 @@ public final class ServerActionExecutor {
             if (!e.isAlive()) continue;
             targets.add(e);
         }
-
-        LOGGER.debug("[ActionExecutor] Hit {} targets for {}, damage={}, scope={}",
-                targets.size(), characterId, hit.damage, hit.scope);
+        return targets.size();
     }
 }

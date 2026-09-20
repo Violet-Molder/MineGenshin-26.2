@@ -3,51 +3,33 @@ package com.linweiyun.genshin.client.render.character;
 import com.geckolib.animatable.GeoReplacedEntity;
 import com.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.geckolib.animatable.manager.AnimatableManager;
-import com.geckolib.animation.AnimationController;
-import com.geckolib.animation.RawAnimation;
-import com.geckolib.animation.object.PlayState;
 import com.geckolib.util.GeckoLibUtil;
-import com.linweiyun.genshin.core.system.combat.action.ClientActionStateMachine;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData;
+import com.linweiyun.genshin.client.animation.animatable.IPlayerAnimatableProxy;
+import com.linweiyun.genshin.client.animation.state.PlayerAnimationController;
 import com.mojang.logging.LogUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
-import java.util.Map;
-
-public class GenshinReplacedPlayer implements GeoReplacedEntity {
+/**
+ * 玩家变身角色的 GeckoLib 动画代理。
+ *
+ * <p>动画决策全部交给 {@link PlayerAnimationController}（照搬参考2），
+ * 这个类只负责「把玩家引用递给控制器」和「注册控制器」两件事 ——
+ * 以前内嵌的那份 {@code resolveState()} 运动判定已经删除，避免两套状态机互相打架。
+ */
+public class GenshinReplacedPlayer implements GeoReplacedEntity, IPlayerAnimatableProxy {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final Map<String, String> DEFAULT_ANIMS = Map.ofEntries(
-            Map.entry("idle", "idle"),
-            Map.entry("walk", "walk"),
-            Map.entry("run", "run"),
-            Map.entry("walk_back", "walk_back"),
-            Map.entry("crouch", "crouch"),
-            Map.entry("crouch_walk", "crouch_walk"),
-            Map.entry("sleep", "sleep"),
-            Map.entry("climb", "climb"),
-            Map.entry("water", "water"),
-            Map.entry("water_walk", "water_walk"),
-            Map.entry("water_walk_back", "water_walk_back"),
-            Map.entry("swim", "swim"),
-            Map.entry("jump", "jump"),
-            Map.entry("jump_down", "jump_down"),
-            Map.entry("air_idle", "idle"),
-            Map.entry("air_move", "walk"),
-            Map.entry("air_sprint", "run"),
-            Map.entry("elytra", "elytra"),
-            Map.entry("fly", "fly")
-    );
-
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
-    public Player playerEntity;
-    public CharacterRenderData renderData;
+    @Nullable
+    private Player playerEntity;
+
+    /** 当前角色 ID，仅用于日志与调试（渲染数据由模型自己拿）。 */
+    @Nullable
+    private String characterId;
 
     private boolean registeredControllers;
     private boolean loggedNullPlayer;
@@ -55,28 +37,8 @@ public class GenshinReplacedPlayer implements GeoReplacedEntity {
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         registeredControllers = true;
-        controllers.add(new AnimationController<>("movement", 5, state -> {
-            if (this.playerEntity == null) {
-                if (!loggedNullPlayer) {
-                    loggedNullPlayer = true;
-                    LOGGER.error("[GenshinReplacedPlayer] playerEntity 为 null! renderData={}",
-                            this.renderData);
-                }
-                return PlayState.STOP;
-            }
-            loggedNullPlayer = false;
-
-            String specialAnim = resolveSpecialAnim(this.playerEntity);
-            if (specialAnim != null) {
-                state.controller().setTransitionTicks(0);
-                return state.setAndContinue(RawAnimation.begin().thenPlay(specialAnim));
-            }
-
-            state.controller().setTransitionTicks(5);
-            String animName = resolveMovementAnim(this.playerEntity);
-            return state.setAndContinue(RawAnimation.begin().thenLoop(animName));
-        }));
-        LOGGER.info("[GenshinReplacedPlayer] AnimationController 已注册");
+        controllers.add(PlayerAnimationController.create(this));
+        LOGGER.debug("[GenshinReplacedPlayer] AnimationController 已注册");
     }
 
     @Override
@@ -84,72 +46,30 @@ public class GenshinReplacedPlayer implements GeoReplacedEntity {
         return cache;
     }
 
-    private static String resolveSpecialAnim(Player player) {
-        if (player.level().isClientSide() && player == Minecraft.getInstance().player) {
-            String targetAnim = ClientActionStateMachine.currentAnimation();
-            if (targetAnim != null && !targetAnim.isEmpty() && !"default".equals(targetAnim)) {
-                return targetAnim;
-            }
-        }
-        return null;
+    @Override
+    public @Nullable Player getPlayerEntity() {
+        return this.playerEntity;
     }
 
-    private String resolveMovementAnim(Player player) {
-        String state = resolveState(player);
-        Map<String, String> mapping = renderData != null ? renderData.animMapping() : null;
-        if (mapping != null) {
-            String configured = mapping.get(state);
-            if (configured != null && !configured.isEmpty()) return configured;
+    @Override
+    public void setPlayerEntity(@Nullable Player player) {
+        this.playerEntity = player;
+        if (player == null && !loggedNullPlayer) {
+            loggedNullPlayer = true;
+            LOGGER.debug("[GenshinReplacedPlayer] playerEntity 置空（退出原神模式或玩家卸载）");
         }
-        return DEFAULT_ANIMS.getOrDefault(state, "idle");
     }
 
-    private static String resolveState(Player player) {
-        boolean onGround = player.onGround();
-        boolean crouching = player.isCrouching();
-        boolean sprinting = player.isSprinting();
+    @Nullable
+    public String getCharacterId() {
+        return characterId;
+    }
 
-        double dx = player.getX() - player.xo;
-        double dz = player.getZ() - player.zo;
+    public void setCharacterId(@Nullable String characterId) {
+        this.characterId = characterId;
+    }
 
-        boolean moving;
-        if (player.level().isClientSide() && player instanceof LocalPlayer localPlayer) {
-            moving = localPlayer.xxa != 0 || localPlayer.zza != 0;
-        } else {
-            moving = (dx * dx + dz * dz) > 0.00005;
-        }
-
-        Vec3 look = player.getLookAngle();
-        double dot = dx * look.x + dz * look.z;
-        boolean backward = dot < -0.01;
-
-        if (player.isSleeping()) return "sleep";
-        if (player.onClimbable()) return "climb";
-
-        if (player.isInWater()) {
-            if (player.isSwimming()) return "swim";
-            if (moving) return backward ? "water_walk_back" : "water_walk";
-            return "water";
-        }
-
-        double dy = player.getY() - player.yo;
-        if (!onGround) {
-            if (player.getAbilities().flying) {
-                return sprinting ? "fly" : "elytra";
-            }
-            if (dy > 0.01) return "jump";
-            if (dy < -0.01) return "jump_down";
-            if (moving) return sprinting ? "air_sprint" : "air_move";
-            return "air_idle";
-        }
-
-        if (moving) {
-            if (crouching) return "crouch_walk";
-            if (sprinting) return "run";
-            if (backward) return "walk_back";
-            return "walk";
-        }
-        if (crouching) return "crouch";
-        return "idle";
+    public boolean hasRegisteredControllers() {
+        return registeredControllers;
     }
 }

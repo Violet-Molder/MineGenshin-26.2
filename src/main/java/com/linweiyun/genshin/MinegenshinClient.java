@@ -1,6 +1,7 @@
 package com.linweiyun.genshin;
 
 import com.geckolib.renderer.GeoEntityRenderer;
+import com.linweiyun.genshin.client.animation.CharacterAnimationRegistry;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProjectileRenderer;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaSpiritSwordRenderer;
 import com.linweiyun.genshin.render.render.entity.ElementalOrbRenderer;
@@ -36,6 +37,9 @@ public class MinegenshinClient {
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
         ClientAttachmentSync.init(() -> Minecraft.getInstance().player);
+
+        // 角色动作系统：加角色在 CharacterAnimationRegistry 里加一行
+        CharacterAnimationRegistry.registerAll();
     }
 
     @SubscribeEvent
