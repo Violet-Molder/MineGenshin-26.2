@@ -146,7 +146,6 @@ public class ActionManager {
     private boolean request(Player player, PGCharacter character, ActionDefinition def) {
         if (def == null) return false;
 
-        // ⭐ 请求的角色与当前活跃角色不同 → 视为角色切换，打断旧动作
         if (activeCharacter != null && activeCharacter != character) {
             if (current != null && !current.isFinished()) {
                 current.interrupt(InterruptReason.SWITCH_CHARACTER);
@@ -157,12 +156,23 @@ public class ActionManager {
         activeCharacter = character;
 
         if (current != null && !current.isFinished()) {
-            ActionPhase phase = current.getPhase();
-            if (phase == ActionPhase.POSTCAST && def.isCombo()) {
-                buffered = def;
-                return true;
+            boolean isSkill = def.kind == ActionKind.ELEMENTAL_SKILL_TAP
+                    || def.kind == ActionKind.ELEMENTAL_SKILL_HOLD
+                    || def.kind == ActionKind.ELEMENTAL_BURST;
+
+            if (current.isProtected()) {
+                // 保护期内：仅技能可打断
+                if (isSkill) {
+                    current.interrupt(InterruptReason.MANUAL);
+                    buffered = null;
+                } else {
+                    return false;
+                }
+            } else {
+                // 非保护期（comboWindow 或收尾）：直接替换
+                current.interrupt(InterruptReason.MANUAL);
+                if (!def.isCombo()) resetCombo();
             }
-            return false;
         }
 
         start(player, character, def);
@@ -208,15 +218,19 @@ public class ActionManager {
 
     public void interrupt(InterruptReason reason) {
         if (current == null || current.isFinished()) return;
-        if (reason == InterruptReason.SWITCH_CHARACTER || reason == InterruptReason.DEATH) {
+        boolean forced = reason == InterruptReason.SWITCH_CHARACTER
+                || reason == InterruptReason.DEATH
+                || reason == InterruptReason.JUMP;
+        if (forced) {
             current.interrupt(reason);
             buffered = null;
             resetCombo();
-            activeCharacter = null;   // 让新角色可以正常请求
+            if (reason == InterruptReason.SWITCH_CHARACTER || reason == InterruptReason.DEATH) {
+                activeCharacter = null;
+            }
             return;
         }
-        ActionPhase phase = current.getPhase();
-        if (phase == ActionPhase.PRECAST || phase == ActionPhase.POSTCAST) {
+        if (!current.isProtected()) {
             current.interrupt(reason);
             buffered = null;
         }
@@ -224,17 +238,13 @@ public class ActionManager {
 
     public boolean isBusy() { return current != null && !current.isFinished(); }
 
-    public ActionPhase getPhase() {
-        if (current == null || current.isFinished()) return ActionPhase.IDLE;
-        return current.getPhase();
-    }
-
     public boolean isMovementBlocked() {
-        ActionPhase p = getPhase();
-        return p == ActionPhase.PRECAST || p == ActionPhase.ACTIVE;
+        return current != null && !current.isFinished() && current.isProtected();
     }
 
-    public boolean isAttackBlocked() { return getPhase() == ActionPhase.ACTIVE; }
+    public boolean isAttackBlocked() {
+        return current != null && !current.isFinished() && current.isProtected();
+    }
 
     public ActionState getCurrent() { return current; }
 
@@ -246,7 +256,7 @@ public class ActionManager {
         ActionDefinition lastDef = set.getNormalAttack(lastComboIndex);
         if (lastDef == null) return 1;
         long elapsed = player.level().getGameTime() - lastComboEndTick;
-        if (elapsed > lastDef.postcastTicks) return 1;
+        if (elapsed > lastDef.comboWindow()) return 1;
         return lastComboIndex + 1;
     }
 

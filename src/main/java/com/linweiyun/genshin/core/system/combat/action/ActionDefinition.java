@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
+import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.ActionStep;
 import lombok.Getter;
 
 import java.util.function.Consumer;
@@ -7,30 +8,18 @@ import java.util.function.Consumer;
 /**
  * 一次动作的完整定义。不可变，用 Builder 构建。
  * <p>
- * 3 个时长：
- * <ul>
- *     <li>precastTicks 前摇 —— 可为 0（立即进入 ACTIVE）</li>
- *     <li>activeTicks 执行期 —— 至少 1</li>
- *     <li>postcastTicks 后摇 —— 可为 0；后摇期间是连招窗口</li>
- * </ul>
+ * 时序来自 {@link ActionStep}（CharacterActionData），不再自行定义前摇/执行/后摇。
+ * 回调链：onActiveStart（伤害/特效）→ onComplete（收尾）→ onInterrupt（打断清理）。
  */
 public class ActionDefinition {
     public final ActionKind kind;
-    public final int comboIndex;      // 连招索引，非连招为 -1
-    public final int precastTicks;
-    public final int activeTicks;
-    public final int postcastTicks;
+    public final int comboIndex;
+
+    /** 数据驱动的时序配置（动画名/时长/攻击点/保护期/连击窗口） */
+    public final ActionStep step;
 
     @Getter
-    private final Consumer<ActionContext> onPrecastStart;
-    @Getter
     private final Consumer<ActionContext> onActiveStart;
-    @Getter
-    private final Consumer<ActionContext> onActiveTick;
-    @Getter
-    private final Consumer<ActionContext> onActiveEnd;
-    @Getter
-    private final Consumer<ActionContext> onPostcastStart;
     @Getter
     private final Consumer<ActionContext> onComplete;
     @Getter
@@ -38,53 +27,42 @@ public class ActionDefinition {
 
     private ActionDefinition(Builder b) {
         this.kind = b.kind;
-        this.comboIndex = b.comboIndex;
-        this.precastTicks = Math.max(0, b.precastTicks);
-        this.activeTicks = Math.max(1, b.activeTicks);
-        this.postcastTicks = Math.max(0, b.postcastTicks);
-        this.onPrecastStart = b.onPrecastStart;
+        this.comboIndex = b.comboIndex >= 0 ? b.comboIndex : -1;
+        this.step = b.step;
         this.onActiveStart = b.onActiveStart;
-        this.onActiveTick = b.onActiveTick;
-        this.onActiveEnd = b.onActiveEnd;
-        this.onPostcastStart = b.onPostcastStart;
         this.onComplete = b.onComplete;
         this.onInterrupt = b.onInterrupt;
     }
 
     public boolean isCombo() { return kind.isCombo(); }
-    public int getTotalDurationTicks() { return precastTicks + activeTicks + postcastTicks; }
+
+    public String animationName() { return step != null ? step.animation : "default"; }
+
+    public int totalDuration() { return step != null ? step.duration : 1; }
+
+    public int protectDuration() { return step != null ? step.protectDuration : 0; }
+
+    public int comboWindow() { return step != null ? step.comboWindow : 0; }
 
     public static Builder builder(ActionKind kind) { return new Builder(kind); }
 
     public static final class Builder {
         private final ActionKind kind;
         private int comboIndex = -1;
-        private int precastTicks = 0;
-        private int activeTicks = 1;
-        private int postcastTicks = 0;
+        private ActionStep step;
 
-        private Consumer<ActionContext> onPrecastStart;
         private Consumer<ActionContext> onActiveStart;
-        private Consumer<ActionContext> onActiveTick;
-        private Consumer<ActionContext> onActiveEnd;
-        private Consumer<ActionContext> onPostcastStart;
         private Consumer<ActionContext> onComplete;
         private Consumer<ActionContext> onInterrupt;
 
         private Builder(ActionKind kind) { this.kind = kind; }
 
-        public Builder comboIndex(int i)      { this.comboIndex = i; return this; }
-        public Builder precast(int ticks)     { this.precastTicks = ticks; return this; }
-        public Builder active(int ticks)      { this.activeTicks = ticks; return this; }
-        public Builder postcast(int ticks)    { this.postcastTicks = ticks; return this; }
+        public Builder comboIndex(int i)          { this.comboIndex = i; return this; }
+        public Builder step(ActionStep s)         { this.step = s; return this; }
 
-        public Builder onPrecastStart(Consumer<ActionContext> h)  { this.onPrecastStart = h; return this; }
-        public Builder onActiveStart(Consumer<ActionContext> h)   { this.onActiveStart = h; return this; }
-        public Builder onActiveTick(Consumer<ActionContext> h)    { this.onActiveTick = h; return this; }
-        public Builder onActiveEnd(Consumer<ActionContext> h)     { this.onActiveEnd = h; return this; }
-        public Builder onPostcastStart(Consumer<ActionContext> h) { this.onPostcastStart = h; return this; }
-        public Builder onComplete(Consumer<ActionContext> h)      { this.onComplete = h; return this; }
-        public Builder onInterrupt(Consumer<ActionContext> h)     { this.onInterrupt = h; return this; }
+        public Builder onActiveStart(Consumer<ActionContext> h)  { this.onActiveStart = h; return this; }
+        public Builder onComplete(Consumer<ActionContext> h)     { this.onComplete = h; return this; }
+        public Builder onInterrupt(Consumer<ActionContext> h)    { this.onInterrupt = h; return this; }
 
         public ActionDefinition build() { return new ActionDefinition(this); }
     }

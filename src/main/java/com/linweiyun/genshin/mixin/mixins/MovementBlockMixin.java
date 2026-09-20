@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.mixin.mixins;
 
-import com.linweiyun.genshin.client.action.ClientActionLock;
+import com.linweiyun.genshin.core.system.combat.action.ClientActionStateMachine;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 玩家应该能"跳起来时被前摇锁在原地水平"，也能"被打飞出去"。
  * <p>
  * 【查询对象】
- * 用 {@link ClientActionLock} 而不是服务端的 ActionManager ——
+ * 用 {@link ClientActionStateMachine} 而不是服务端的 ActionManager ——
  * 客户端本地状态，零延迟，同 tick 生效。
  */
 @Mixin(LocalPlayer.class)
@@ -36,7 +36,7 @@ public abstract class MovementBlockMixin {
      */
     @Inject(method = "aiStep", at = @At("HEAD"))
     private void beforeAiStep(CallbackInfo ci) {
-        if (ClientActionLock.isMovementBlocked()) {
+        if (ClientActionStateMachine.isMovementLocked()) {
             LocalPlayer self = (LocalPlayer) (Object) this;
             mineGenshin$preAiStepPos = self.position();
         }

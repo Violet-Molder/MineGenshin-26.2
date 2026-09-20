@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
+import com.linweiyun.genshin.core.network.ActionServer;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -14,9 +15,8 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
  * <p>
  * 生效范围：
  * <ul>
- *   <li>PRECAST（前摇）→ 打断，本次动作不执行（伤害/位移不结算）</li>
- *   <li>POSTCAST（后摇）→ 打断，连招窗口消失，下次按键从第 0 段重来</li>
- *   <li>ACTIVE（执行期）→ <b>忽略</b>，见 {@link ActionManager#interrupt} 的规则</li>
+ *   <li>保护期（protectDuration 内）→ <b>忽略</b>，不打断</li>
+ *   <li>非保护期 → 打断，当前动作取消，连招窗口消失</li>
  * </ul>
  * <p>
  * 想额外加"击退打断"？复制一份 onKnockback，把事件换成
@@ -36,7 +36,7 @@ public final class ActionInterruptHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         // 只在服务端处理（客户端由 @DescSynced 同步状态，不需要打断自己）
         if (player.level().isClientSide()) return;
-        // 交给 ActionManager，内部会自动判断当前 phase 是否允许打断
+        // 交给 ActionManager，内部会根据当前是否在保护期判断是否允许打断
         ActionManager.get(player).interrupt(InterruptReason.DAMAGE);
     }
 

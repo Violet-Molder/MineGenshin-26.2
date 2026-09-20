@@ -8,12 +8,14 @@ import com.linweiyun.genshin.core.character.attachment.ModCharacterAttachmentTyp
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
+import com.linweiyun.genshin.core.system.combat.action.ServerTickScheduler;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -87,6 +89,11 @@ public class Minegenshin {
     public void onServerStarting(ServerStartingEvent event) {
         DecayCounterService.initOnServer(event.getServer().getLevel(net.minecraft.world.level.Level.OVERWORLD));
         LOGGER.info("DecayCounter Worker started");
+    }
+
+    @SubscribeEvent
+    public void onServerTick(ServerTickEvent.Post event) {
+        ServerTickScheduler.tick();
     }
 
     @SubscribeEvent

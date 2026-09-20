@@ -14,8 +14,6 @@ import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.ModElements;
-import com.linweiyun.genshin.core.system.combat.action.ActionDefinition;
-import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.combat.action.ActionSet;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
@@ -49,83 +47,8 @@ public class RaidenShogunTalent extends TalentBase {
     public int getMaxCombo() { return 5; }
 
     @Override
-    public int getPrecastTicks(int stage)  { return 1; }
-    @Override
-    public int getActiveTicks(int stage)   { return 2; }
-    @Override
-    public int getPostcastTicks(int stage) { return stage == 4 ? 0 : 15; }
-
-    @Override
-    public int getChargedPrecastTicks()  { return 5; }
-    @Override
-    public int getChargedPostcastTicks() { return 15; }
-
-    @Override
-    public int getSkillPrecastTicks()  { return 3; }
-    @Override
-    public int getSkillPostcastTicks() { return 10; }
-
-    @Override
-    public int getBurstPrecastTicks()  { return 10; }
-    @Override
-    public int getBurstPostcastTicks() { return 20; }
-
-    // ==================== 动作集 ====================
-
-    @Override
     protected ActionSet buildDefaultActionSet(PGCharacter character) {
-        ActionSet.Builder b = ActionSet.builder();
-
-        for (int i = 1; i <= getMaxCombo(); i++) {
-            final int stage = i;
-            b.addNormalAttack(
-                    ActionDefinition.builder(ActionKind.NORMAL_ATTACK)
-                            .comboIndex(i)
-                            .precast(getPrecastTicks(i))
-                            .active(getActiveTicks(i))
-                            .postcast(getPostcastTicks(i))
-                            .onActiveStart(ctx -> attack(ctx.player, ctx.character, stage))
-                            .build()
-            );
-        }
-
-        b.chargedAttack(
-                ActionDefinition.builder(ActionKind.CHARGED_ATTACK)
-                        .precast(getChargedPrecastTicks())
-                        .active(getChargedActiveTicks())
-                        .postcast(getChargedPostcastTicks())
-                        .onActiveStart(ctx -> chargeAttack(ctx.player, ctx.character))
-                        .build()
-        );
-
-        b.elementalSkillTap(
-                ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_TAP)
-                        .precast(getSkillPrecastTicks())
-                        .active(getSkillActiveTicks())
-                        .postcast(getSkillPostcastTicks())
-                        .onActiveStart(ctx -> elementalSkill(ctx.player, ctx.character, 0))
-                        .build()
-        );
-
-        b.elementalSkillHold(
-                ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_HOLD)
-                        .precast(getSkillPrecastTicks())
-                        .active(getSkillActiveTicks())
-                        .postcast(getSkillPostcastTicks())
-                        .onActiveStart(ctx -> elementalSkill(ctx.player, ctx.character, 1000))
-                        .build()
-        );
-
-        b.elementalBurst(
-                ActionDefinition.builder(ActionKind.ELEMENTAL_BURST)
-                        .precast(getBurstPrecastTicks())
-                        .active(getBurstActiveTicks())
-                        .postcast(getBurstPostcastTicks())
-                        .onActiveStart(ctx -> elementalBurst(ctx.player, ctx.character))
-                        .build()
-        );
-
-        return b.build();
+        return super.buildDefaultActionSet(character);
     }
 
     @Override

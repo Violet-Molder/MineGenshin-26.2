@@ -49,7 +49,7 @@ public interface ISyncCharacter extends IManaged, IManagedHolder, IPersistManage
         var character = getSelfCharacter();
         var player = character.getData().getOwnerPlayer();
         if (!(player instanceof ServerPlayer serverPlayer)) return;
-        if (!(serverPlayer.level() instanceof ServerLevel serverLevel)) return;
+        ServerLevel serverLevel = serverPlayer.level();
 
         var rootStorage = getRootStorage();
         for (var field : rootStorage.getNonLazyFields()) {

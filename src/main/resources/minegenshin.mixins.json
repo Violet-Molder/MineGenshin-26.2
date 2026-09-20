@@ -15,7 +15,8 @@
     "PlayerHurtInterceptor"
   ],
   "client": [
-    "MovementBlockMixin"
+    "MovementBlockMixin",
+    "AvatarRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

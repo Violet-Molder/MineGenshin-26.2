@@ -48,30 +48,8 @@ public class ShenheTalent extends TalentBase {
     public int getMaxCombo() { return 5; }
 
     @Override
-    public int getPrecastTicks(int stage)  { return 1; }
-    @Override
-    public int getPostcastTicks(int stage) { return 15; }
-
-    @Override
-    public int getSkillPrecastTicks()  { return 3; }
-    @Override
-    public int getSkillPostcastTicks() { return super.getSkillPostcastTicks(); }
-
-    @Override
     protected ActionSet buildDefaultActionSet(PGCharacter character) {
-        return setBuilder()
-                .normalCombo(
-                        timing(15, 1, 17),
-                        timing(1, 1, 17),
-                        timing(1, 1, 17),
-                        timing(1, 1, 17),
-                        timing(1, 1, 2)
-                )
-                .charged(timing(0, 0, 0))
-                .skillTap(timing(12, 1, 0))
-                .skillHold(timing(0, 0, 0))
-                .burst(timing(12, 1, 20))
-                .build();
+        return super.buildDefaultActionSet(character);
     }
 
     @Override

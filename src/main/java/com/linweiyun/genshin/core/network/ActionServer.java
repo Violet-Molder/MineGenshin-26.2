@@ -50,7 +50,6 @@ public final class ActionServer {
         RPCPacketDistributor.rpcToServer("characterChargedAttackRPCPacket");
     }
 
-    /** E 短按/长按：直接传 int isLong 给 ActionManager（-1 或 <1000 短按，>=1000 长按） */
     @RPCPacket("characterActiveSkillRPCPacket")
     public static void characterActiveSkillRPCPacket(RPCSender sender, int isLong) {
         if (!sender.isServer()) {
@@ -103,19 +102,18 @@ public final class ActionServer {
     }
 
     // ========================================================================
-    // 【服务端 → 客户端】播放挥剑动画
-    // 由 ActionState 在服务端进入 ACTIVE 阶段时调用，让动画与伤害同 tick 触发。
+    // 【服务端 → 客户端】动画同步 RPC
+    // 替代旧 actionSwing，携带动画名由客户端直接播放。
     // ========================================================================
 
-    @RPCPacket("actionSwingRPCPacket")
-    public static void actionSwingRPCPacket(RPCSender sender) {
+    @RPCPacket("syncAnimationRPCPacket")
+    public static void syncAnimationRPCPacket(RPCSender sender, String animationName) {
         if (sender.isServer()) {
-            ActionClient.actionSwingClientHandler();
+            ActionClient.syncAnimationClientHandler(animationName);
         }
     }
 
-    /** 服务端主动调用：让指定玩家播放一次挥剑动画 */
-    public static void actionSwingToPlayer(ServerPlayer player) {
-        RPCPacketDistributor.rpcToPlayer(player, "actionSwingRPCPacket");
+    public static void syncAnimationToPlayer(ServerPlayer player, String animationName) {
+        RPCPacketDistributor.rpcToPlayer(player, "syncAnimationRPCPacket", animationName);
     }
 }

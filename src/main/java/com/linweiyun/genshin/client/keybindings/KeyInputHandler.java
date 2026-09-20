@@ -1,13 +1,15 @@
 package com.linweiyun.genshin.client.keybindings;
 
-import com.linweiyun.genshin.client.action.ClientActionLock;
+import com.linweiyun.genshin.core.system.combat.action.ClientActionStateMachine;
 import com.linweiyun.genshin.render.gui.screens.GUIServerHelperGIM;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.ActionServer;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.system.combat.action.ActionDefinition;
 import com.linweiyun.genshin.core.system.combat.action.ActionManager;
+import com.linweiyun.genshin.core.system.combat.action.ActionSet;
 import com.linweiyun.genshin.core.system.combat.action.InterruptReason;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.mojang.logging.LogUtils;
@@ -56,7 +58,7 @@ public class KeyInputHandler {
       mc.options.keyAttack.consumeClick();
     }
 
-    ClientActionLock.tick();
+    ClientActionStateMachine.tick();
 
     // ⭐ 客户端也推进 ActionManager
     // 服务端由 CharacterTickEvent → PGCharacter.tick → ActionManager.tick 推进。
@@ -109,7 +111,7 @@ public class KeyInputHandler {
     // 跳跃：打断
     boolean isJumpDown = mc.options.keyJump.isDown();
     if (isJumpDown && !wasJumpDown && isInGenshinMode && character != null) {
-      ClientActionLock.clear();
+      ClientActionStateMachine.clear();
       ActionServer.interruptActionToServer(InterruptReason.JUMP.ordinal());
     }
     wasJumpDown = isJumpDown;
@@ -119,10 +121,16 @@ public class KeyInputHandler {
       boolean isAttackDown = mc.options.keyAttack.isDown();
 
       if (isAttackDown && !wasAttackDown) {
-        if (!ClientActionLock.isActionInputBlocked()) {
+        if (!ClientActionStateMachine.isInputBlocked()) {
           attackPressStartTick = System.currentTimeMillis();
           attackChargedTriggered = false;
-          ClientActionLock.lockForNormalAttack(player, character);
+          ActionSet set = character.getActionSet(player);
+          if (set != null) {
+            ActionDefinition def = set.getNormalAttack(1);
+            if (def != null && def.step != null) {
+              ClientActionStateMachine.request(def.animationName(), def.step, def.kind);
+            }
+          }
         } else {
           attackPressStartTick = 0;
         }
@@ -138,7 +146,13 @@ public class KeyInputHandler {
             wasXKeyDown = false;
             longPressStartTick = 0;
             xSkillTriggered = false;
-            ClientActionLock.lockForChargedAttack(player, character);
+            ActionSet chargedSet = character.getActionSet(player);
+            if (chargedSet != null) {
+              ActionDefinition chargedDef = chargedSet.getChargedAttack();
+              if (chargedDef != null && chargedDef.step != null) {
+                ClientActionStateMachine.request(chargedDef.animationName(), chargedDef.step, chargedDef.kind);
+              }
+            }
           }
         }
 
@@ -157,12 +171,10 @@ public class KeyInputHandler {
 
       if (character.getSkillShortMaxCooldownTick() == character.getSkillLongMaxCooldownTick()) {
         if (isXDown && !wasXKeyDown) {
-          ClientActionLock.lockForSkill(player, character, false);
           triggerCharacterSkill(player, -1);
         }
       } else {
         if (isXDown && !wasXKeyDown) {
-          ClientActionLock.lockForSkill(player, character, false);
           longPressStartTick = System.currentTimeMillis();
           xSkillTriggered = false;
         } else if (isXDown && !xSkillTriggered) {
@@ -187,9 +199,6 @@ public class KeyInputHandler {
     // C：Q（外层不再检查 isActionInputBlocked）
     boolean isCDown = KeyMappingRegistry.C_KEY.get().isDown();
     if (isCDown && !wasCKeyDown && isInGenshinMode) {
-      if (character != null) {
-        ClientActionLock.lockForBurst(player, character);
-      }
       triggerCharacterBurst(player);
     }
     wasCKeyDown = isCDown;
@@ -227,7 +236,7 @@ public class KeyInputHandler {
     wasXKeyDown = false;
     longPressStartTick = 0;
     xSkillTriggered = false;
-    ClientActionLock.clear();
+    ClientActionStateMachine.clear();
 
     // ⭐ 切换角色：无条件打断当前动作
     // 客户端立即生效；服务端收到 characterSelectionRPCPacket 后也会打断一次。
@@ -253,9 +262,10 @@ public class KeyInputHandler {
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     PGCharacter currentChar = attachment.getCurrentCharacter();
     if (currentChar != null) {
-      ActionManager.get(player).requestElementalSkill(player, currentChar, isLong);
+      if (ActionManager.get(player).requestElementalSkill(player, currentChar, isLong)) {
+        ActionServer.triggerCharacterSkill(isLong);
+      }
     }
-    ActionServer.triggerCharacterSkill(isLong);
   }
 
   private static void triggerCharacterBurst(Player player) {
@@ -263,8 +273,9 @@ public class KeyInputHandler {
             player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
     PGCharacter currentChar = attachment.getCurrentCharacter();
     if (currentChar != null) {
-      ActionManager.get(player).requestElementalBurst(player, currentChar);
+      if (ActionManager.get(player).requestElementalBurst(player, currentChar)) {
+        ActionServer.triggerCharacterBurst();
+      }
     }
-    ActionServer.triggerCharacterBurst();
   }
 }

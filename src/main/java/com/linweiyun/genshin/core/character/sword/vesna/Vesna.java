@@ -4,6 +4,9 @@ import com.linweiyun.genshin.config.character.ShenheAttributeConfig;
 import com.linweiyun.genshin.core.character.IStellarSwirlParticipant;
 import com.linweiyun.genshin.core.character.sword.SwordCharacter;
 import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
+import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData;
+import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderRepository;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.enums.CharacterAscendAttribute;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.DescSynced;
@@ -44,7 +47,7 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
 
     /** 下一次施放的翔风剑阶级（1~3）。talent 读取它当本次施放等级。 */
     @DescSynced @Persisted(key = "xiangfengJianLevel")
-    protected int xiangfengJianLevel = 1;
+    protected int xiangfengJianLevel = 0;
 
     /** 本次巡风列装已施放的三阶次数，达到 3 次退出模式。 */
     @DescSynced @Persisted(key = "lv3UsesInWindrider")
@@ -59,9 +62,15 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
                         ModAttributes.ATK.getId(), ShenheAttributeConfig::getAllAtk,
                         ModAttributes.DEF.getId(), ShenheAttributeConfig::getAllDef
                 ));
+        CharacterRenderRepository.register(VesnaResources.RENDER_DATA);
         this.talent = new VesnaTalent();
         this.vesnaEnergy = 0;
         this.vesnaMaxEnergy = 18;
+    }
+
+    @Override
+    public CharacterActionData getActionData() {
+        return VesnaResources.ACTION_DATA;
     }
 
     @Override
@@ -91,22 +100,24 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
         this.windriderActive = true;
         this.windriderRemainingTicks = WIND_RIDER_DURATION_TICKS;
         this.vesnaEnergy = WIND_RIDER_ENTER_ENERGY;
-        this.xiangfengJianLevel = 1;
+        this.xiangfengJianLevel = 0;
         this.lv3UsesInWindrider = 0;
+        syncRealtimeState();
     }
 
     public void exitWindriderMode() {
         this.windriderActive = false;
         this.windriderRemainingTicks = 0;
         this.vesnaEnergy = 0f;
-        this.xiangfengJianLevel = 1;
+        this.xiangfengJianLevel = 0;
         this.lv3UsesInWindrider = 0;
+        syncRealtimeState();
     }
 
     // ==================== 字段 setter（供 talent 修改） ====================
 
     public void setXiangfengJianLevel(int level) {
-        this.xiangfengJianLevel = Math.max(1, Math.min(3, level));
+        this.xiangfengJianLevel = Math.max(0, Math.min(3, level));
         syncRealtimeState();
     }
 
@@ -119,7 +130,8 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
 
     @Override
     public String getActionStateKey(Player player) {
-        return windriderActive ? "windrider" : "default";
+        if (!windriderActive) return "default";
+        return "windrider_" + xiangfengJianLevel;
     }
 
     @Override
@@ -138,10 +150,9 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
 
     @Override
     public void applyElementalSkillCooldown(Player player, int skillTime) {
-        if (windriderActive) {
-            consumeEnergy(SPECIAL_SKILL_ENERGY_COST);
-        } else {
-            activateWindriderMode();
+        if (player.level().isClientSide()) return;
+        if (!windriderActive) {
+            // 第一次 E：只设 CD，模式激活和能量交给 talent 在 ACTIVE 时处理
             getData().setElementalSkillCooldownTick(18 * 20);
             syncRealtimeState();
         }

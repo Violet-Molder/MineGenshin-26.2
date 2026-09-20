@@ -9,6 +9,7 @@ import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProj
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaSpiritSwordEntity;
 import com.linweiyun.genshin.content.skill_node.AreaEntityCollector;
 import com.linweiyun.genshin.content.skill_node.TargetSeeker;
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.ModElements;
@@ -22,6 +23,7 @@ import com.linweiyun.genshin.enums.AttachmentType;
 import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -99,44 +101,12 @@ public class VesnaTalent extends TalentBase {
     @Override
     public int getMaxCombo() { return 6; }
 
-    @Override
-    public int getPrecastTicks(int stage)  { return 1; }
-    @Override
-    public int getActiveTicks(int stage)   { return 2; }
-    @Override
-    public int getPostcastTicks(int stage) { return stage == 6 ? 0 : 15; }
-
-    @Override
-    public int getSkillPrecastTicks()  { return 3; }
-    @Override
-    public int getSkillPostcastTicks() { return 10; }
-
-    @Override
-    public int getBurstPrecastTicks()  { return 10; }
-    @Override
-    public int getBurstPostcastTicks() { return 20; }
+    // ──── action set 构建 ────
+    // 时序全部来自 CharacterActionData，这里只处理不同 stateKey 下的回调差异。
 
     @Override
     public ActionSet buildActionSet(PGCharacter character, String stateKey) {
         return buildDefaultActionSet(character);
-    }
-
-    @Override
-    protected ActionSet buildDefaultActionSet(PGCharacter character) {
-        return setBuilder()
-                .normalCombo(
-                        timing(1, 2, 15),
-                        timing(1, 2, 15),
-                        timing(1, 2, 15),
-                        timing(1, 2, 15),
-                        timing(1, 2, 15),
-                        timing(1, 2, 0)
-                )
-                .charged(timing(5, 1, 15))
-                .skillTap(timing(3, 1, 10))
-                .skillHold(timing(3, 1, 10))
-                .burst(timing(10, 1, 20))
-                .build();
     }
 
     // ==================== 普攻 ====================
@@ -251,20 +221,33 @@ public class VesnaTalent extends TalentBase {
         int skillLevel = character.getData().getElementalSkillLevel();
 
         if (vesna.isWindriderActive()) {
+            vesna.consumeEnergy(Vesna.SPECIAL_SKILL_ENERGY_COST);
             int castLevel = vesna.getXiangfengJianLevel();
             castXiangFengJian(player, vesna, skillLevel, castLevel);
             advanceAfterCast(vesna, castLevel);
+            sendXiangfengMsg(player, castLevel);
         } else {
             castWindriderEnter(player, vesna, skillLevel);
+            player.sendSystemMessage(Component.literal("§a进入巡风列装"));
         }
     }
 
     private void castWindriderEnter(Player player, Vesna vesna, int skillLevel) {
+        vesna.activateWindriderMode();
         Vec3 center = player.position().add(player.getLookAngle().scale(2.0));
         float aoeRange = 2.5f;
         float mult = at(SKILL_DAMAGE, skillLevel);
         dealAoeAnemoDamage(player, vesna, center, aoeRange, mult,
                 AttachmentType.WEAK.getInitialAmount(), false);
+    }
+    private static void sendXiangfengMsg(Player player, int castLevel) {
+        String name = switch (castLevel) {
+            case 0 -> "一阶";
+            case 1 -> "二阶";
+            case 2 -> "三阶";
+            default -> "";
+        };
+        player.sendSystemMessage(Component.literal("§e翔风剑·" + name));
     }
 
     private void castXiangFengJian(Player player, Vesna vesna, int skillLevel, int castLevel) {
@@ -278,12 +261,12 @@ public class VesnaTalent extends TalentBase {
         Vec3 center = primaryTarget.position();
 
         switch (castLevel) {
-            case 1 -> {
+            case 0 -> {
                 float mult = at(XFJ_LV1, skillLevel);
                 dealAoeAnemoDamage(player, vesna, center, aoeRange, mult,
                         AttachmentType.WEAK.getInitialAmount(), false);
             }
-            case 2 -> {
+            case 1 -> {
                 float mainMult = at(XFJ_LV2_MAIN, skillLevel);
                 dealAoeAnemoDamage(player, vesna, center, aoeRange, mainMult,
                         AttachmentType.WEAK.getInitialAmount(), false);
@@ -292,7 +275,7 @@ public class VesnaTalent extends TalentBase {
                 spawnSpiritSword(player, vesna, center, aoeRange, swordMult,
                         stellarSwirl, 0f);
             }
-            case 3 -> {
+            case 2 -> {
                 float swordMult = at(XFJ_LV3_SWORD, skillLevel);
                 for (int i = 0; i < 4; i++) {
                     float attach = (i == 0) ? AttachmentType.WEAK.getInitialAmount() : 0f;
@@ -309,7 +292,7 @@ public class VesnaTalent extends TalentBase {
     }
 
     private void advanceAfterCast(Vesna vesna, int castLevel) {
-        if (castLevel >= 3) {
+        if (castLevel >= 2) {
             int used = vesna.getLv3UsesInWindrider() + 1;
             if (used >= 3) {
                 vesna.exitWindriderMode();

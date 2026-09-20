@@ -42,6 +42,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -154,6 +155,14 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
         return "default";
     }
 
+    /**
+     * 获取数据驱动的动作配置（来自角色资源的 CharacterActionData）。
+     * 子类可覆盖以返回角色专属配置。
+     */
+    public com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData getActionData() {
+        return null;
+    }
+
     public final ActionSet getActionSet(Player player) {
         String key = getActionStateKey(player);
         return actionSetCache.computeIfAbsent(key, k -> {
@@ -233,60 +242,14 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
         if (talent != null) talent.chargeAttack(player, this);
     }
 
-    public int getMaxComboCount() {
-        if (talent != null) return talent.getMaxCombo();
-        return 1;
-    }
-
-    public int getNormalAttackPrecastTicks(int stage) {
-        if (talent != null) return talent.getPrecastTicks(stage);
-        return 0;
-    }
-
-    public int getNormalAttackPostcastTicks(int stage) {
-        if (talent != null) return talent.getPostcastTicks(stage);
-        return 0;
-    }
-
     public int getChargedAttackChargeTicks() {
         if (talent != null) return talent.getChargeTicks();
-        return 20;
-    }
-
-    public int getChargedAttackPrecastTicks() {
-        if (talent != null) return talent.getChargedPrecastTicks();
-        return 5;
-    }
-
-    public int getChargedAttackPostcastTicks() {
-        if (talent != null) return talent.getChargedPostcastTicks();
-        return 15;
-    }
-
-    public int getSkillPrecastTicks() {
-        if (talent != null) return talent.getSkillPrecastTicks();
-        return 5;
-    }
-
-    public int getSkillPostcastTicks() {
-        if (talent != null) return talent.getSkillPostcastTicks();
-        return 10;
-    }
-
-    public int getBurstPrecastTicks() {
-        if (talent != null) return talent.getBurstPrecastTicks();
-        return 10;
-    }
-
-    public int getBurstPostcastTicks() {
-        if (talent != null) return talent.getBurstPostcastTicks();
         return 20;
     }
 
     public void frontTick(Player player) {}
 
     public void backTick(Player player) {}
-
     /**
      * 两端都推进 ActionManager：
      * <ul>
@@ -294,6 +257,7 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
      *   <li>服务端：权威跑动作状态机</li>
      * </ul>
      */
+
     public void tick(Player player) {
         data.tick();
         recalculateDirtyArtifactSlots();

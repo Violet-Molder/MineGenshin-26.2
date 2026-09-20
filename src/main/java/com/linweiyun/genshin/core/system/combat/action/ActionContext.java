@@ -5,7 +5,7 @@ import lombok.Getter;
 import net.minecraft.world.entity.player.Player;
 
 /**
- * 动作运行时上下文。所有 hook 都能读到当前阶段和已过 tick 数。
+ * 动作运行时上下文。所有 hook 都能读到当前 tick 数和状态。
  */
 public class ActionContext {
     public final Player player;
@@ -14,11 +14,7 @@ public class ActionContext {
     public final long startTick;
 
     @Getter
-    private ActionPhase phase = ActionPhase.IDLE;
-    @Getter
     private int totalElapsed;
-    @Getter
-    private int phaseElapsed;
     @Getter
     private boolean interrupted;
     @Getter
@@ -31,9 +27,6 @@ public class ActionContext {
         this.startTick = player.level().getGameTime();
     }
 
-    void setPhase(ActionPhase p)             { this.phase = p; }
     void tickTotal()                         { totalElapsed++; }
-    void tickPhase()                         { phaseElapsed++; }
-    void resetPhaseElapsed()                 { phaseElapsed = 0; }
     void markInterrupted(InterruptReason r)  { interrupted = true; interruptReason = r; }
 }
