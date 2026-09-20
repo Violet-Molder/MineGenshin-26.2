@@ -13,6 +13,13 @@ import net.minecraft.world.entity.player.Player;
  * <p>
  * 时序由 {@link CharacterActionData.ActionStep} 提供（唯一来源），不再自行定义前摇/执行/后摇。
  * 子类只需覆盖回调方法和 maxCombo。
+ *
+ * <h2>「这一招能不能放」写在别处</h2>
+ * 出手的前置判断（能量、CD、姿态…）不在这里，而在
+ * {@link PGCharacter#canCast(net.minecraft.world.entity.player.Player, ActionKind, int)} ——
+ * 因为<b>客户端也要问一次</b>（不通过就不播动画），而天赋实例在客户端是 {@code null}
+ * （反序列化不走子类构造器，{@code talent} 字段是 transient）。
+ * 所以凡是<b>双端都需要的条件</b>都放角色那边；天赋只负责「放出来之后干什么」。
  */
 public class TalentBase {
 
@@ -37,6 +44,12 @@ public class TalentBase {
     protected ActionSet buildDefaultActionSet(PGCharacter character) {
         int maxCombo = getMaxCombo();
         CharacterActionData actionData = character.getActionData();
+
+        // 没有专属 ACTION_DATA 的角色（大部分角色现在还只有壳）走一套通用兜底，
+        // 否则 buildActionSet 会返回空集，普攻/战技/大招全部静默失效。
+        if (actionData == null) {
+            actionData = CharacterActionData.fallback(maxCombo);
+        }
 
         SetBuilder sb = setBuilder();
         if (actionData != null) {

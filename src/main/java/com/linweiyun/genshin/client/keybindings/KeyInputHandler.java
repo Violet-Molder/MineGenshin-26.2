@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.client.keybindings;
 
-import com.linweiyun.genshin.client.animation.state.ActionStateMachine;
+import com.linweiyun.genshin.core.system.combat.animation.state.ActionStateMachine;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;

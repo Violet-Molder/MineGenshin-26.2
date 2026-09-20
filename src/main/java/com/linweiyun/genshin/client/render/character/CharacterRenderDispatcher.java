@@ -15,6 +15,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.common.EventBusSubscriber;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -29,8 +30,6 @@ public final class CharacterRenderDispatcher {
     private static final Map<String, CharacterPlayerModel> MODELS = new HashMap<>();
     private static final Map<String, CharacterRenderer> RENDERERS = new HashMap<>();
     private static final Map<Player, GenshinReplacedPlayer> ANIMATABLES = new WeakHashMap<>();
-
-    private static int renderCount;
 
     private CharacterRenderDispatcher() {}
 
@@ -62,13 +61,10 @@ public final class CharacterRenderDispatcher {
             return false;
         }
 
-        renderCount++;
-        if (renderCount <= 5 || renderCount % 200 == 0) {
-        }
-
         try {
             doRender(poseStack, submitNodeCollector, cameraState, player, charId, data);
         } catch (Exception e) {
+            LOGGER.error("[CharacterRenderDispatcher] 渲染角色 '{}' 失败", charId, e);
         }
 
         return true;
@@ -77,19 +73,10 @@ public final class CharacterRenderDispatcher {
     private static void doRender(PoseStack poseStack, SubmitNodeCollector bufferSource,
                                   CameraRenderState cameraState, Player player,
                                   String charId, CharacterRenderData data) {
-        CharacterPlayerModel model = MODELS.computeIfAbsent(charId, k -> {
-            CharacterPlayerModel m = new CharacterPlayerModel();
-            m.updateRenderData(data);
-            return m;
-        });
-
-        CharacterRenderer renderer = RENDERERS.computeIfAbsent(charId, k ->
-                new CharacterRenderer(model)
-        );
-
-        GenshinReplacedPlayer animatable = ANIMATABLES.computeIfAbsent(player, k -> new GenshinReplacedPlayer());
-        animatable.setPlayerEntity(player);
-        animatable.setCharacterId(charId);
+        RenderTarget target = targetFor(player, charId, data);
+        if (target == null) {
+            return;
+        }
 
         float partialTick = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
@@ -104,9 +91,51 @@ public final class CharacterRenderDispatcher {
         poseStack.mulPose(Axis.YP.rotationDegrees(-bodyYaw));
         poseStack.mulPose(Axis.YP.rotationDegrees(180));
 
-        renderer.performRenderPass(animatable, player, poseStack, bufferSource, cameraState,
+        target.renderer().performRenderPass(target.animatable(), player, poseStack, bufferSource, cameraState,
                 15728880, partialTick);
 
         poseStack.popPose();
+    }
+
+    // ==================== 渲染三件套 ====================
+
+    /**
+     * 一个角色的「模型 + 渲染器 + 动画实例」。
+     *
+     * <p><b>动画实例必须共用</b>：当前播到哪、过渡到哪都存在 {@code animatable} 里，
+     * 第三人称和第一人称各拿一份的话，切视角就会看到动画跳一下。
+     */
+    public record RenderTarget(CharacterPlayerModel model, CharacterRenderer renderer,
+                               GenshinReplacedPlayer animatable) {
+    }
+
+    /**
+     * 取（必要时创建）某个角色的渲染三件套 —— 第三人称和第一人称都从这里拿。
+     *
+     * <p>按角色 id 缓存模型与渲染器（含骨骼替换层），按玩家缓存动画实例。
+     */
+    @Nullable
+    public static RenderTarget targetFor(Player player, String charId, CharacterRenderData data) {
+        if (player == null || charId == null || charId.isEmpty() || data == null) {
+            return null;
+        }
+
+        CharacterPlayerModel model = MODELS.computeIfAbsent(charId, k -> {
+            CharacterPlayerModel m = new CharacterPlayerModel();
+            m.updateRenderData(data);
+            return m;
+        });
+
+        CharacterRenderer renderer = RENDERERS.computeIfAbsent(charId, k -> {
+            CharacterRenderer created = new CharacterRenderer(model);
+            // 骨骼替换层：按角色的挂点声明，把内容画到指定骨骼上
+            created.withRenderLayer(new BoneMountGeoLayer<>(created));
+            return created;
+        });
+
+        GenshinReplacedPlayer animatable = ANIMATABLES.computeIfAbsent(player, k -> new GenshinReplacedPlayer());
+        animatable.setPlayerEntity(player);
+
+        return new RenderTarget(model, renderer, animatable);
     }
 }

@@ -1,0 +1,54 @@
+package com.linweiyun.genshin.client.render.geo;
+
+import com.geckolib.animatable.GeoAnimatable;
+import com.geckolib.renderer.base.GeoRenderState;
+import com.linweiyun.genshin.core.asset.GenshinAssets;
+import net.minecraft.resources.Identifier;
+
+/**
+ * MOD 自己的 GeckoLib <b>物品</b>模型基类 —— 路径按 {@code item/<物品名>/<物品名>.*} 推。
+ *
+ * <p>布局（由 {@link GenshinGeoCache} 扫描，所以不受 GeckoLib「只能放 geckolib/ 下」的限制）：
+ * <pre>
+ * assets/minegenshin/item/test_sword/test_sword.geo.json
+ * assets/minegenshin/item/test_sword/test_sword.animation.json   ← 可选
+ * assets/minegenshin/item/test_sword/test_sword.png
+ * </pre>
+ *
+ * <p>路径同样会过 {@link com.linweiyun.genshin.core.asset.GeoPathOverrides} 的规则链，
+ * 需要临时改某个物品的模型时不用动这个类。
+ */
+public abstract class GenshinItemGeoModel<T extends GeoAnimatable> extends GenshinGeoModel<T> {
+
+    private final Identifier modelId;
+    private final Identifier textureId;
+    private final Identifier animationId;
+
+    /**
+     * @param itemName 物品名（注册名去掉命名空间），如 {@code test_sword}
+     */
+    protected GenshinItemGeoModel(String itemName) {
+        this.modelId = GenshinAssets.itemModel(itemName, GenshinAssets.defaultItemModelFile(itemName));
+        this.textureId = GenshinAssets.itemTexture(itemName, GenshinAssets.defaultItemTextureFile(itemName));
+        this.animationId = GenshinAssets.itemAnimation(itemName, GenshinAssets.defaultItemAnimationFile(itemName));
+        setPaths(modelId, textureId, animationId);
+    }
+
+    @Override
+    public Identifier getModelResource(GeoRenderState renderState) {
+        return com.linweiyun.genshin.core.asset.GeoPathOverrides.resolve(
+                com.linweiyun.genshin.core.asset.GeoAssetKind.MODEL, this, modelId);
+    }
+
+    @Override
+    public Identifier getTextureResource(GeoRenderState renderState) {
+        return com.linweiyun.genshin.core.asset.GeoPathOverrides.resolve(
+                com.linweiyun.genshin.core.asset.GeoAssetKind.TEXTURE, this, textureId);
+    }
+
+    @Override
+    public Identifier getAnimationResource(T animatable) {
+        return com.linweiyun.genshin.core.asset.GeoPathOverrides.resolve(
+                com.linweiyun.genshin.core.asset.GeoAssetKind.ANIMATION, this, animationId);
+    }
+}

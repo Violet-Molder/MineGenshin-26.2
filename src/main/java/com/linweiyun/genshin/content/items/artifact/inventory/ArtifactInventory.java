@@ -33,7 +33,7 @@ import java.util.List;
  * - 空之杯（Goblet）
  * - 理之冠（Circlet）
  */
-public class ArtifactInventory implements Container, IPersistedSerializable {
+    public class ArtifactInventory implements Container, IPersistedSerializable {
 
     /** 日志记录器，用于输出调试信息 */
     private static final Logger LOGGER = LogUtils.getLogger();

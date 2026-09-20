@@ -1,7 +1,7 @@
 {
+  "hand_animation_on_swap": false,
   "model": {
     "type": "minecraft:model",
     "model": "minecraft:item/nether_star"
-  },
-  "hand_animation_on_swap": false
+  }
 }

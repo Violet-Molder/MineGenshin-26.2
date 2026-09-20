@@ -15,7 +15,8 @@
     "PlayerHurtInterceptor"
   ],
   "client": [
-    "AvatarRendererMixin"
+    "AvatarRendererMixin",
+    "SoundManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -9,7 +9,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.system.combat.action.ActionManager;
 import com.linweiyun.genshin.core.system.combat.action.InterruptReason;
-import com.linweiyun.genshin.core.system.combat.action.ServerAnimationTicker;
+import com.linweiyun.genshin.core.system.combat.animation.server.ServerAnimationTicker;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.linweiyun.genshin.render.gui.menu.BackpackMenu;
 import com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu;

@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import static net.minecraft.network.chat.Component.literal;
+import static net.minecraft.network.chat.Component.translatable;
+
 @Getter
 public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
     public static final String ID = "vesna";
@@ -54,7 +57,7 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
     protected int lv3UsesInWindrider = 0;
 
     public Vesna() {
-        super(UID, 5, Component.translatable("character.name.vesna"),
+        super(UID, 5, translatable("character.name.vesna"),
                 ModElements.ANEMO.getId().toString(), CharacterAscendAttribute.ATK,
                 18 * 20, 10 * 20, 80f, ID,
                 Map.of(
@@ -161,7 +164,7 @@ public class Vesna extends SwordCharacter implements IStellarSwirlParticipant {
     @Override
     public void sendSkillCooldownMessage(Player player) {
         if (windriderActive) {
-            player.sendSystemMessage(Component.translatable("message.minegenshin.not_enough_energy"));
+            player.sendSystemMessage(literal("§4剑气不足！"));
         } else {
             super.sendSkillCooldownMessage(player);
         }

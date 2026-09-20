@@ -1,6 +1,8 @@
 package com.linweiyun.genshin.core.character.sword.vesna;
 
+import com.linweiyun.genshin.core.system.combat.action.data.BoneMountSource;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
+import com.linweiyun.genshin.core.system.combat.action.data.CharacterBoneMount;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData;
 
 import java.util.LinkedHashMap;
@@ -11,14 +13,27 @@ public final class VesnaResources {
 
     public static final String ID = Vesna.ID;
 
-    public static final CharacterRenderData RENDER_DATA = new CharacterRenderData(
+    /**
+     * 渲染数据 —— 模型和贴图走共用目录，动画是本角色独立的：
+     * <pre>
+     * character/default/default.geo.json      ← 所有角色共用
+     * character/default/default.png           ← 所有角色共用
+     * character/vesna/vesna.animation.json    ← 薇斯娜自己的
+     * </pre>
+     */
+    public static final CharacterRenderData RENDER_DATA = CharacterRenderData.character(
             ID,
-            "default",
-            "default_texture.png",
-            "vesna",
             CharacterRenderData.defaultAnimMapping(),
-            1.0f
-    );
+            1.0f,
+            // 模型里剑鞘和右手剑身是分开的骨骼：
+            // 剑身(blade_right)换成实际装备武器的整把模型；槽位为空时保持原样。
+            // 想把「一剑两骨」拆开挂，把下面这行换成：
+            //     CharacterBoneMount.of("blade_right", BoneMountSource.weaponSubBone("blade")),
+            //     CharacterBoneMount.of("shealth",     BoneMountSource.weaponSubBone("sheath"))
+            CharacterBoneMount.of("blade_right")
+    )
+            // 第一人称动画单独一个文件：主文件只查不到的名字才会来这里找
+            .withAnimationFile("character/vesna/vesna_fp.animation.json");
 
     public static final CharacterActionData ACTION_DATA = buildActionData();
 
@@ -84,7 +99,7 @@ public final class VesnaResources {
                 List.of(new CharacterActionData.SoundRef(5, "vesna_attack_6", 1.0f, 1.0f)),
                 0, 6, 0, 12
         );
-        attack6Step.comboEndAnim = "air_attack_end";
+        attack6Step.withComboEnd("air_attack_end", 60);
         comboSteps.put(6, attack6Step);
 
         CharacterActionData.ComboData combo = new CharacterActionData.ComboData(6, comboSteps);
@@ -98,7 +113,8 @@ public final class VesnaResources {
         );
 
         CharacterActionData.ActionStep burstStep = new CharacterActionData.ActionStep(
-                "burst", 40, 40, 4,
+                // 动画 json 里大招叫 "final"，不是 "burst"
+                "final", 40, 40, 4,
                 List.of(),
                 List.of(new CharacterActionData.Hit(10, 3.0, 1.0, 3.0, 0.0, 4.0, false)),
                 List.of(new CharacterActionData.SoundRef(10, "vesna_burst", 1.0f, 1.0f)),

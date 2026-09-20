@@ -4,6 +4,7 @@ import com.linweiyun.genshin.content.entities.ModEntities;
 import com.linweiyun.genshin.content.skill_node.TargetSeeker;
 import com.linweiyun.genshin.core.character.sword.vesna.Vesna;
 import com.linweiyun.genshin.core.character.sword.vesna.VesnaTalent;
+import com.linweiyun.genshin.core.system.combat.targeting.SummonTargeting;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
@@ -55,6 +56,15 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
 
     @Persisted(key = "character") @DescSynced
     private Vesna character;
+
+    /**
+     * 这只风铃的索敌模式。
+     *
+     * <p>{@link SummonTargeting#OWNER_TARGET}：优先咬玩家（召唤者）当前锁定的目标；
+     * 玩家没在打就保留自己的目标，自己也没有才独立找。
+     * 想让它完全独立索敌，把这里换成 {@link SummonTargeting#INDEPENDENT} 即可。
+     */
+    private static final SummonTargeting SUMMON_TARGETING = SummonTargeting.defaultMode();
 
     @Persisted(key = "target") @DescSynced
     private LivingEntity target;
@@ -167,15 +177,20 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
                 sync(true);
             }
 
-            target = new TargetSeeker(
-                    this,
+            // 索敌模式：优先咬主人（玩家）当前锁定的目标 —— 角色可能已经挂后台，所以问玩家
+            target = SUMMON_TARGETING.resolve(
+                    getOwnerPlayer(),
+                    target,
                     SEARCH_RADIUS,
-                    TargetSeeker.TargetingType.RADIUS,
-                    TargetSeeker.SourceType.TRACKING_COOP,
-                    character,
-                    TargetSeeker.TargetFilter.HOSTILE_ONLY,
-                    new Vec3(cx, cy, cz)
-            ).execute();
+                    () -> new TargetSeeker(
+                            this,
+                            SEARCH_RADIUS,
+                            TargetSeeker.TargetingType.RADIUS,
+                            TargetSeeker.SourceType.TRACKING_COOP,
+                            character,
+                            TargetSeeker.TargetFilter.HOSTILE_ONLY,
+                            new Vec3(cx, cy, cz)
+                    ).execute());
         } else {
             if (character == null) return;
         }

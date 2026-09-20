@@ -7,6 +7,7 @@ import com.linweiyun.genshin.content.items.food.CharacterFoods;
 import com.linweiyun.genshin.content.items.food.FoodItem;
 import com.linweiyun.genshin.content.items.preicous.ItemPrimogem;
 import com.linweiyun.genshin.content.items.weapon.catalyst.EverlastingMoonglow;
+import com.linweiyun.genshin.content.items.weapon.sword.TestSword;
 import com.linweiyun.genshin.core.system.registry.RegistryHelper;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
@@ -37,6 +38,9 @@ public class ModItems {
 
   public static final Supplier<EverlastingMoonglow> EVERLASTING_MOONGLOW =
           RegistryHelper.registerOrdinaryItem("everlasting_moonglow", EverlastingMoonglow::new);
+  public static final Supplier<TestSword> TEST_SWORD =
+          RegistryHelper.registerOrdinaryItem("test_sword", TestSword::new);
+
 
   public static final Supplier<FoodItem> SWEET_MADAME =
           RegistryHelper.registerFoodItem("sweet_madame", props -> new FoodItem(

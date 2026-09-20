@@ -21,6 +21,7 @@ import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.combat.action.ActionManager;
 import com.linweiyun.genshin.core.system.combat.action.ActionSet;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
@@ -192,6 +193,61 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
     }
 
     // ============ E / Q 钩子（由 ActionManager 调用） ============
+
+    /**
+     * 出手<b>前置判断</b> —— 「这一招现在放不放得出来」。
+     *
+     * <h2>为什么需要它</h2>
+     * 本 MOD 的架构是「客户端管动画、服务端管结算」：按键那一帧客户端就把动画切了，
+     * 请求才发给服务端。于是凡是<b>服务端会拒绝</b>的条件（能量不够、CD 没好、没子弹…），
+     * 都会变成「动画播了、什么都没有」—— 玩家看到的是「我放了，但没效果」。
+     *
+     * <p>所以这条判断要在<b>播动画之前</b>问一次：
+     * <ul>
+     *   <li><b>客户端</b>（{@code ResourceDrivenActionHandler}）：不通过就<b>不播动画、不发请求</b>；</li>
+     *   <li><b>服务端</b>（{@code ActionManager}）：照旧再判一次，它才是权威。</li>
+     * </ul>
+     *
+     * <h2>写实现时的两条约束</h2>
+     * <ol>
+     *   <li><b>只读双端都有的数据</b>：这个方法会在客户端跑，
+     *       而 {@code talent} 字段在客户端是 {@code null}（反序列化不走子类构造器），
+     *       所以判断只能基于 {@code data}（同步过的角色数据）这类双端都有的状态，
+     *       <b>不要</b>调 {@code getTalent()} 里的东西。</li>
+     *   <li><b>不要有副作用</b>：它可能被每刻调用（长按重试）。
+     *       提示消息走 {@link #sendCastFailedMessage(Player, ActionKind)}，那边有节流。</li>
+     * </ol>
+     *
+     * <p>默认实现落到已有的 E/Q 钩子上：角色要加自己的条件（能量、姿态、弹药…）
+     * 就覆盖 {@link #canUseElementalSkill} / {@link #canUseElementalBurst}，
+     * 或者直接覆盖这个方法加全新的招式门槛。
+     *
+     * @param kind      这一招是什么（普攻/重击/战技/大招/闪避）
+     * @param skillTime 战技的短按(0)/长按(1000)标记，其它招式忽略
+     * @return true = 可以放
+     */
+    public boolean canCast(Player player, ActionKind kind, int skillTime) {
+        return switch (kind) {
+            case ELEMENTAL_SKILL_TAP, ELEMENTAL_SKILL_HOLD -> canUseElementalSkill(player, skillTime);
+            case ELEMENTAL_BURST -> canUseElementalBurst(player);
+            // 普攻 / 重击 / 闪避 / 下落攻击默认没有门槛
+            default -> true;
+        };
+    }
+
+    /**
+     * 前置判断没过时的反馈（客户端与服务端共用同一套文案）。
+     *
+     * <p>默认按招式类别给出对应的提示；不需要提示就覆盖成空实现。
+     */
+    public void sendCastFailedMessage(Player player, ActionKind kind) {
+        switch (kind) {
+            case ELEMENTAL_SKILL_TAP, ELEMENTAL_SKILL_HOLD -> sendSkillCooldownMessage(player);
+            case ELEMENTAL_BURST -> sendBurstCooldownMessage(player);
+            default -> {
+            }
+        }
+    }
 
     public boolean canUseElementalSkill(Player player, int skillTime) {
         return data.getElementalSkillCooldownTick() == 0;

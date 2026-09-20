@@ -3,6 +3,7 @@ package com.linweiyun.genshin.core.system.combat.action;
 import com.linweiyun.genshin.config.character.CharacterSystemConfig;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
+import com.linweiyun.genshin.core.system.combat.targeting.CombatTargeting;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
@@ -107,9 +108,11 @@ public class ActionManager {
         }
 
         // 1. CD / 能量检查
-        if (!character.canUseElementalSkill(player, skillTime)) {
-            LOGGER.info("[ActionManager] [{}] canUse=false, rejected", side);
-            character.sendSkillCooldownMessage(player);
+        //    和客户端 {@code ResourceDrivenActionHandler.canCast} 走的是同一个方法 ——
+        //    一处规则两端一致：客户端不通过就连动画都不播，服务端这里是权威复核。
+        if (!character.canCast(player, def.kind, skillTime)) {
+            LOGGER.info("[ActionManager] [{}] canCast=false, rejected", side);
+            character.sendCastFailedMessage(player, def.kind);
             return false;
         }
 
@@ -140,9 +143,9 @@ public class ActionManager {
             return false;
         }
 
-        if (!character.canUseElementalBurst(player)) {
-            LOGGER.info("[ActionManager] [{}] burst canUse=false", side);
-            character.sendBurstCooldownMessage(player);
+        if (!character.canCast(player, def.kind, 0)) {
+            LOGGER.info("[ActionManager] [{}] burst canCast=false", side);
+            character.sendCastFailedMessage(player, def.kind);
             return false;
         }
 
@@ -218,11 +221,15 @@ public class ActionManager {
     /**
      * 把 {@code ActionStep.moves}（前冲/后撤位移）排进服务端时间轴。
      *
+     * <p><b>锁着目标的时候不排</b>：近战的手感应该是「自动贴住对手」，
+     * 而不是每段都往前推一段固定距离 —— 那样打两下人就穿到怪背后、丢目标了。
+     * 贴上去的动作由客户端 {@code AttackApproach} 负责，没有目标时才走这里的固定位移。
+     *
      * <p>伤害不在这里做 —— 伤害是角色天赋的事（{@link ActionDefinition#getOnActiveStart()}）。
-     * {@link ServerActionExecutor} 只负责位移，所以 {@code hits} 列表在那边只用于记录。
      */
     private void scheduleStepMovement(Player player, PGCharacter character, ActionDefinition def) {
         if (player.level().isClientSide() || def.step == null) return;
+        if (CombatTargeting.isLocked(player)) return;
         ServerActionExecutor.execute(player, def.step, character.getTextureId());
     }
 

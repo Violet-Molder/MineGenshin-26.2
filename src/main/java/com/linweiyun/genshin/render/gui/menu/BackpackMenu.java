@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.render.gui.menu;
 
+import com.linweiyun.genshin.core.asset.ItemIcons;
 import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
@@ -651,10 +652,15 @@ public class BackpackMenu {
         container.addChild(buttonContainer);
     }
 
+    /**
+     * GUI 里这件物品画哪张图。
+     *
+     * <p>走 {@link ItemIcons}：优先本 MOD 的图标
+     * {@code minegenshin:icon/item/<物品名>.png}，没有才退回物品自己的贴图 ——
+     * geo 物品的贴图是 3D 模型的 UV 图集，直接当 2D 精灵画会是一坨错位色块。
+     */
     private static String getItemTexturePath(ItemStack stack) {
-        if (stack.isEmpty()) return "minegenshin:textures/empty.png";
-        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return id.getNamespace() + ":textures/item/" + id.getPath() + ".png";
+        return ItemIcons.pathOf(stack);
     }
 
     // ========================================================================

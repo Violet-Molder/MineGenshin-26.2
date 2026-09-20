@@ -5,17 +5,21 @@ import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.action.ActionManager;
 import com.linweiyun.genshin.core.system.combat.action.InterruptReason;
+import com.linweiyun.genshin.core.system.combat.targeting.CombatTargeting;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import org.jetbrains.annotations.Nullable;
 
 public final class ActionServer {
 
     private ActionServer() {}
 
     @RPCPacket("characterNormalAttackRPCPacket")
-    public static void characterNormalAttackRPCPacket(RPCSender sender, int comboStage) {
+    public static void characterNormalAttackRPCPacket(RPCSender sender, int comboStage, int targetEntityId) {
         if (!sender.isServer()) {
             ServerPlayer sp = sender.asPlayer();
             if (sp == null) return;
@@ -23,17 +27,21 @@ public final class ActionServer {
                     sp.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter character = attachment.getCurrentCharacter();
             if (character != null) {
+                lockTarget(sp, targetEntityId);
                 ActionManager.get(sp).requestNormalAttack(sp, character, comboStage);
             }
         }
     }
 
-    public static void performNormalAttackToServer(int comboStage) {
-        RPCPacketDistributor.rpcToServer("characterNormalAttackRPCPacket", comboStage);
+    /**
+     * @param target 客户端锁定的目标；服务端据此判断要不要跳过动作自带的位移，可为 null
+     */
+    public static void performNormalAttackToServer(int comboStage, @Nullable Entity target) {
+        RPCPacketDistributor.rpcToServer("characterNormalAttackRPCPacket", comboStage, entityId(target));
     }
 
     @RPCPacket("characterChargedAttackRPCPacket")
-    public static void characterChargedAttackRPCPacket(RPCSender sender) {
+    public static void characterChargedAttackRPCPacket(RPCSender sender, int targetEntityId) {
         if (!sender.isServer()) {
             ServerPlayer sp = sender.asPlayer();
             if (sp == null) return;
@@ -41,17 +49,18 @@ public final class ActionServer {
                     sp.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter character = attachment.getCurrentCharacter();
             if (character != null) {
+                lockTarget(sp, targetEntityId);
                 ActionManager.get(sp).requestChargedAttack(sp, character);
             }
         }
     }
 
-    public static void performChargedAttackToServer() {
-        RPCPacketDistributor.rpcToServer("characterChargedAttackRPCPacket");
+    public static void performChargedAttackToServer(@Nullable Entity target) {
+        RPCPacketDistributor.rpcToServer("characterChargedAttackRPCPacket", entityId(target));
     }
 
     @RPCPacket("characterActiveSkillRPCPacket")
-    public static void characterActiveSkillRPCPacket(RPCSender sender, int isLong) {
+    public static void characterActiveSkillRPCPacket(RPCSender sender, int isLong, int targetEntityId) {
         if (!sender.isServer()) {
             ServerPlayer sp = sender.asPlayer();
             if (sp == null) return;
@@ -59,17 +68,18 @@ public final class ActionServer {
                     sp.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter character = attachment.getCurrentCharacter();
             if (character != null) {
+                lockTarget(sp, targetEntityId);
                 ActionManager.get(sp).requestElementalSkill(sp, character, isLong);
             }
         }
     }
 
-    public static void triggerCharacterSkill(int isLong) {
-        RPCPacketDistributor.rpcToServer("characterActiveSkillRPCPacket", isLong);
+    public static void triggerCharacterSkill(int isLong, @Nullable Entity target) {
+        RPCPacketDistributor.rpcToServer("characterActiveSkillRPCPacket", isLong, entityId(target));
     }
 
     @RPCPacket("characterActiveBurstRPCPacket")
-    public static void characterActiveBurstRPCPacket(RPCSender sender) {
+    public static void characterActiveBurstRPCPacket(RPCSender sender, int targetEntityId) {
         if (!sender.isServer()) {
             ServerPlayer sp = sender.asPlayer();
             if (sp == null) return;
@@ -77,13 +87,14 @@ public final class ActionServer {
                     sp.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             PGCharacter character = attachment.getCurrentCharacter();
             if (character != null) {
+                lockTarget(sp, targetEntityId);
                 ActionManager.get(sp).requestElementalBurst(sp, character);
             }
         }
     }
 
-    public static void triggerCharacterBurst() {
-        RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket");
+    public static void triggerCharacterBurst(@Nullable Entity target) {
+        RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket", entityId(target));
     }
 
     @RPCPacket("characterInterruptRPCPacket")
@@ -117,5 +128,25 @@ public final class ActionServer {
 
     public static void triggerCharacterDodge() {
         RPCPacketDistributor.rpcToServer("characterDodgeRPCPacket");
+    }
+
+    // ==================== 工具 ====================
+
+    /** 没有目标时传 -1（{@code level().getEntity(-1)} 拿到 null）。 */
+    private static int entityId(@Nullable Entity target) {
+        return target == null ? -1 : target.getId();
+    }
+
+    /**
+     * 服务端也记一份锁 —— 召唤物要问「主人正在打谁」，而主人可能已经切到后台。
+     *
+     * <p>所有招式（普攻 / 重击 / 战技 / 大招）的请求都带目标，所以这条锁永远跟着
+     * 客户端最近一次出手走；带 -1 时不覆盖已有目标，只是刷新「最近出手时间」。
+     */
+    private static void lockTarget(ServerPlayer sp, int targetEntityId) {
+        LivingEntity target = sp.level().getEntity(targetEntityId) instanceof LivingEntity living
+                ? living
+                : null;
+        CombatTargeting.lock(sp, target);
     }
 }

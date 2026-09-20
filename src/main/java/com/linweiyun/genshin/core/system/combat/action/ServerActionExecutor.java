@@ -42,9 +42,9 @@ public final class ServerActionExecutor {
 
         for (Move move : step.moves) {
             if (move.delay > 0) {
-                ServerTickScheduler.schedule(move.delay, () -> applyMove(player, move));
+                ServerTickScheduler.schedule(move.delay, () -> applyMove(player, move, step.moveAllowsVertical));
             } else {
-                applyMove(player, move);
+                applyMove(player, move, step.moveAllowsVertical);
             }
         }
 
@@ -60,11 +60,38 @@ public final class ServerActionExecutor {
 
     // ==================== 位移 ====================
 
-    private static void applyMove(Entity entity, Move move) {
+    /**
+     * 给一次位移冲量。
+     *
+     * <p>方向默认取<b>视线在水平面上的投影</b>（并归一化）——
+     * 位移本来是沿视线给的，而视线有俯仰：抬头砍一刀人就往上窜，
+     * 低头又会被按进地里。{@code ActionStep.moveAllowsVertical} 打开时才用完整视线方向。
+     *
+     * <p>注意水平投影要归一化：不然「抬头看天」时水平分量趋近 0，位移就等于没有了。
+     */
+    private static void applyMove(Entity entity, Move move, boolean allowVertical) {
         if (!entity.isAlive() || entity.isRemoved()) return;
+
         Vec3 look = entity.getLookAngle();
+        double dirX = look.x;
+        double dirZ = look.z;
+
+        if (!allowVertical) {
+            double horizontal = Math.sqrt(dirX * dirX + dirZ * dirZ);
+            if (horizontal < 1.0E-4) {
+                // 垂直向上/下看：没有水平方向可用，取身体朝向的水平分量
+                double yaw = Math.toRadians(entity.getYRot());
+                dirX = -Math.sin(yaw);
+                dirZ = Math.cos(yaw);
+            } else {
+                dirX /= horizontal;
+                dirZ /= horizontal;
+            }
+        }
+
+        double y = allowVertical ? look.y * move.speed : 0.0;
         entity.setDeltaMovement(entity.getDeltaMovement().add(
-                look.x * move.speed, look.y * move.speed, look.z * move.speed));
+                dirX * move.speed, y, dirZ * move.speed));
         entity.hurtMarked = true;
     }
 
