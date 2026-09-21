@@ -41,6 +41,9 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
 
     public @Nullable PGCharacter getCharacterByUUID(int uuid) {
         for (PGCharacter character : ownedCharacters) {
+            // 反序列化失败时列表里可能留下 null（例如老存档引用了已经改名的物品 id），
+            // 这里必须挡住 —— 否则玩家一进世界就在 HUD 里 NPE 崩掉
+            if (character == null) continue;
             if (character.getCharacterUUID() == uuid) {
                 return character;
             }
@@ -67,6 +70,9 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
 
     //AI 反序列化后统一给所有角色绑定 ownerPlayer（通过已有的 ownerUUID 验证）
     public void bindAllOwners(Player player) {
+        // 读不出来的角色（反序列化返回 null）先剔掉：留着它会让「进世界」这一步直接抛 NPE，
+        // 表现是「无效的玩家数据 / Couldn't place player in world」，比少一个角色严重得多
+        ownedCharacters.removeIf(c -> c == null);
         for (PGCharacter c : ownedCharacters) {
             c.getData().setOwnerPlayer(player);
             LOGGER.info("绑定角色 {} 到玩家 {}", c.getCharacterUUID(), player.getName().getString());
@@ -198,7 +204,22 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
     public int getCurrentCharacterIndex() { return currentCharacterIndex; }
 
     public void setCurrentCharacterIndex(int index) {
-        this.currentCharacterIndex = Math.max(0, Math.min(3, index));
+        int clamped = Math.max(0, Math.min(3, index));
+        if (clamped != this.currentCharacterIndex) {
+            // 退场钩子：让「刚才在场上的那个角色」收尾（例如武器被动要清 buff + 重置轮换顺序）
+            PGCharacter previous = getCurrentCharacter();
+            if (previous != null) {
+                Player owner = previous.getData().getOwnerPlayer();
+                if (owner != null && !owner.level().isClientSide()) {
+                    var weapon = previous.getData().getWeapon();
+                    if (weapon != null && !weapon.isEmpty()
+                            && weapon.getItem() instanceof com.linweiyun.genshin.content.items.weapon.WeaponItem weaponItem) {
+                        weaponItem.onLeaveField(owner, previous);
+                    }
+                }
+            }
+        }
+        this.currentCharacterIndex = clamped;
     }
 
     public void setPartyCharacter(int index, int characterUUID) {

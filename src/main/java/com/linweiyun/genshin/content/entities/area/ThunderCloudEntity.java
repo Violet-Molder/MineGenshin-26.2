@@ -74,8 +74,10 @@ public class ThunderCloudEntity extends AreaEntity {
     }
 
     public void refreshDuration() {
-        this.tickCount = 0;
+        // 寿命现在记在 AreaEntity.expireGameTime 上（绝对时刻），
+        // 不要再写 tickCount = 0 —— 那条路已经被废弃了
         this.duration = DEFAULT_DURATION;
+        refreshLifetime();
         LOGGER.info("[雷暴云] 刷新持续时间");
     }
 

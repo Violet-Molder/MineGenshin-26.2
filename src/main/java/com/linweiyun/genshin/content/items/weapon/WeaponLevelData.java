@@ -36,17 +36,16 @@ public class WeaponLevelData {
         return WeaponConfig.getAscensionBonus(star);
     }
 
+    /**
+     * 副词条的成长倍率。
+     *
+     * <p>⚠️ 档位是**每 5 级一档**（lv1 / lv5 / lv10 / … / lv90 共 19 档，见
+     * {@link WeaponSubStatConfig#MULT_01} 那一串），所以必须交给
+     * {@link WeaponSubStatConfig#getMultiplier(int)} 去查档 ——
+     * 以前这里按 {@code level - 1} 直接索引那张表，等于「升一级跳一档」，
+     * 副词条几下就顶到接近满级（1 级 1.0 → 2 级 1.162 → 5 级 1.565 …）。
+     */
     public static double getSubStatMultiplier(int level) {
-        int idx = Math.max(0, Math.min(level - 1, WeaponSubStatConfig.MULT_01 == null ? 0 : 18));
-        StringDoubleValue[] mults = {
-            WeaponSubStatConfig.MULT_01, WeaponSubStatConfig.MULT_02, WeaponSubStatConfig.MULT_03,
-            WeaponSubStatConfig.MULT_04, WeaponSubStatConfig.MULT_05, WeaponSubStatConfig.MULT_06,
-            WeaponSubStatConfig.MULT_07, WeaponSubStatConfig.MULT_08, WeaponSubStatConfig.MULT_09,
-            WeaponSubStatConfig.MULT_10, WeaponSubStatConfig.MULT_11, WeaponSubStatConfig.MULT_12,
-            WeaponSubStatConfig.MULT_13, WeaponSubStatConfig.MULT_14, WeaponSubStatConfig.MULT_15,
-            WeaponSubStatConfig.MULT_16, WeaponSubStatConfig.MULT_17, WeaponSubStatConfig.MULT_18,
-            WeaponSubStatConfig.MULT_19
-        };
-        return mults[idx].get();
+        return WeaponSubStatConfig.getMultiplier(level);
     }
 }

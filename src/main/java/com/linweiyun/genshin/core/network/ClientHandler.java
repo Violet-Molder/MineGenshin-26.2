@@ -127,12 +127,16 @@ public class ClientHandler {
     }
 
     /**
-     * 客户端处理服务端激活同步：
-     * 更新本地背包中指定索引的圣遗物数据。
+     * 客户端处理服务端推回来的「已激活圣遗物」：**直接采用服务端那一份**。
+     *
+     * <p>⚠️ 绝对不要在这里自己抽词条：`buildInitialStats(new Random())` 用的是**客户端**的随机数，
+     * 抽出来的主副词条和服务端那次完全不同 —— 本地存着另一套词条，
+     * 等它被同步/卸下写回服务端时，玩家就看到「穿一次再卸下来副词条变了一套」。
      */
-    public static void activateArtifactClientHandler(int inventorySlotIndex) {
+    public static void applyActivatedArtifactClientHandler(int inventorySlotIndex, ItemStack activated) {
         var player = net.minecraft.client.Minecraft.getInstance().player;
         if (player == null) return;
+        if (activated == null || activated.isEmpty()) return;
         Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
         int globalSlot = 0;
         for (var category : Backpack.Category.values()) {
@@ -140,11 +144,11 @@ public class ClientHandler {
             globalSlot += category.maxCapacity;
         }
         globalSlot += inventorySlotIndex;
-        ItemStack stack = backpack.getItem(globalSlot);
-        if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem)) return;
-        // 本地补一次激活（与服务端结果一致），UI 下次刷新时即显示激活后的数据
-        ArtifactItem.initializeArtifactStackIfNeeded(stack);
-        backpack.setItem(globalSlot, stack);
+        backpack.setItem(globalSlot, activated.copy());
+
+        // 界面不是每刻重建的 —— 不显式刷新的话，点了「激活」之后面板会一直停在未激活，
+        // 要玩家再点一次别的圣遗物才更新。
+        com.linweiyun.genshin.render.gui.screens.atrifact.ScreenArtifactEquip.refreshIfOpen();
     }
 
 //    // ========== 原神背包同步（服务端→客户端） ==========

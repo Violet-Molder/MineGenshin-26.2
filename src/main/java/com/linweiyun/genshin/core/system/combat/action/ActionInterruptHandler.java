@@ -15,9 +15,14 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
  * <p>
  * 生效范围：
  * <ul>
- *   <li>保护期（protectDuration 内）→ <b>忽略</b>，不打断</li>
- *   <li>非保护期 → 打断，当前动作取消，连招窗口消失</li>
+ *   <li>执行期（{@code [prepareTicks, protectDuration)} 内）→ <b>忽略</b>，不打断</li>
+ *   <li>其余时间（准备阶段 / 后摇）→ 打断，当前动作取消，连招窗口消失</li>
  * </ul>
+ * <p>
+ * 「执行期不可打断」这条是刻意的：位移和伤害点都在执行期里，
+ * 放行的话就是「CD 扣了、能量没了、效果没出来」。
+ * 准备阶段（{@code prepareTicks} 那段吟唱）不属于执行期，照样能被打断 ——
+ * 这是「前摇分两种」的另一半，见 {@code CharacterActionData.ActionStep#protectDuration}。
  * <p>
  * 想额外加"击退打断"？复制一份 onKnockback，把事件换成
  * {@code net.neoforged.neoforge.event.entity.living.LivingKnockBackEvent}，
@@ -36,7 +41,7 @@ public final class ActionInterruptHandler {
         if (!(event.getEntity() instanceof Player player)) return;
         // 只在服务端处理（客户端由 @DescSynced 同步状态，不需要打断自己）
         if (player.level().isClientSide()) return;
-        // 交给 ActionManager，内部会根据当前是否在保护期判断是否允许打断
+        // 交给 ActionManager，内部会根据当前是否在执行期判断是否允许打断
         ActionManager.get(player).interrupt(InterruptReason.DAMAGE);
     }
 

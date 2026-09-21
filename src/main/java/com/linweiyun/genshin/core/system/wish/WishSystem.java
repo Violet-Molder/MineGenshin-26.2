@@ -1,11 +1,13 @@
 package com.linweiyun.genshin.core.system.wish;
 
 import com.google.gson.JsonParser;
+import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacters;
+import com.linweiyun.genshin.content.items.ModItems;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.ChatFormatting;
@@ -26,13 +28,13 @@ import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
 
 public class WishSystem {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Random RANDOM = new Random();
     private static final int WISH_COST = 160;
-    private static final int DUPLICATE_COMPENSATION = 75;
     private static WishConfig cachedConfig;
 
     public static void performWish(ServerPlayer serverPlayer) {
@@ -81,33 +83,87 @@ public class WishSystem {
         NetworkManager.setPlayerCharactersToPlayer(serverPlayer, output.buildResult());
     }
 
+    /**
+     * 抽到角色。
+     *
+     * <ul>
+     *   <li>还没有这个角色 → 直接授予；</li>
+     *   <li>已有、命座 &lt; 6 → <b>命座 +1</b>；</li>
+     *   <li>已有、且已经满命 → <b>满命补偿</b>：随机给<b>一整套</b>圣遗物
+     *       （魔女套 / 血红之证套，各 5 件，词条已经 roll 好）。</li>
+     * </ul>
+     */
     private static boolean handleCharacterDrop(ServerPlayer serverPlayer,
                                                PlayerCharactersAttachment charactersAttachment,
                                                WishEntry entry) {
         Identifier charId = Identifier.parse(entry.id());
-        PGCharacter character = ModCharacters.getById(charId);
-        if (character == null) {
+        PGCharacter template = ModCharacters.getById(charId);
+        if (template == null) {
             LOGGER.warn("Unknown character in wish: {}", entry.id());
             return false;
         }
 
-        if (charactersAttachment.hasCharacter(character.getCharacterUUID())) {
-            int newPrimogem = serverPlayer.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
-            serverPlayer.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT,
-                    newPrimogem + DUPLICATE_COMPENSATION);
-            NetworkManager.setPrimogemToPlayer(serverPlayer, newPrimogem + DUPLICATE_COMPENSATION);
-            serverPlayer.sendSystemMessage(
-                    Component.translatable("message.minegenshin.wish.owned_character",
-                            character.getName().copy().withStyle(ChatFormatting.GOLD),
-                            Component.literal(String.valueOf(DUPLICATE_COMPENSATION))
-                                    .withStyle(ChatFormatting.AQUA)));
-        } else {
-            charactersAttachment.addCharacter(character, serverPlayer);
+        // ⚠️ 必须拿玩家**实际持有**的那一份实例：ModCharacters.getById(...) 每次调用都是
+        //    新建一个模板角色，改它的命座等于改了个没人看的副本（旧代码就是拿它直接 addCharacter）。
+        PGCharacter owned = charactersAttachment.getCharacterByUUID(template.getCharacterUUID());
+
+        if (owned == null) {
+            charactersAttachment.addCharacter(template, serverPlayer);
             serverPlayer.sendSystemMessage(
                     Component.translatable("message.minegenshin.wish.draw_character",
-                            character.getName().copy().withStyle(ChatFormatting.GOLD)));
+                            template.getName().copy().withStyle(ChatFormatting.GOLD)));
+            return true;
         }
+
+        if (owned.addConstellation()) {
+            LOGGER.info("[祈愿] {} 抽到重复角色 {} → 命座 {}",
+                    serverPlayer.getName().getString(), entry.id(), owned.getConstellation());
+            serverPlayer.sendSystemMessage(
+                    Component.translatable("message.minegenshin.wish.constellation_up",
+                            owned.getName().copy().withStyle(ChatFormatting.GOLD),
+                            Component.literal(String.valueOf(owned.getConstellation()))
+                                    .withStyle(ChatFormatting.AQUA)));
+            return true;
+        }
+
+        giveMaxConstellationCompensation(serverPlayer);
         return true;
+    }
+
+    /**
+     * 满命之后的额外补偿：随机挑一套圣遗物，<b>整套 5 件</b>一起发。
+     *
+     * <p>要发新造出来的圣遗物就必须先 {@link ArtifactItem#initializeArtifactStackIfNeeded}——
+     * 否则拿到的是「未激活空壳」，主副词条全是空的（现有祈愿物品那一支也有这个坑）。
+     */
+    private static void giveMaxConstellationCompensation(ServerPlayer serverPlayer) {
+        int roll = RANDOM.nextInt(3);
+        List<Supplier<? extends Item>> pieces = switch (roll) {
+            case 0 -> List.of(ModItems.CRIMSON_FLOWER, ModItems.CRIMSON_PLUME, ModItems.CRIMSON_SANDS,
+                    ModItems.CRIMSON_GOBLET, ModItems.CRIMSON_CIRCLET);
+            case 1 -> List.of(ModItems.SCARLET_FLOWER, ModItems.SCARLET_PLUME, ModItems.SCARLET_SANDS,
+                    ModItems.SCARLET_GOBLET, ModItems.SCARLET_CIRCLET);
+            default -> List.of(ModItems.TENACITY_FLOWER, ModItems.TENACITY_PLUME, ModItems.TENACITY_SANDS,
+                    ModItems.TENACITY_GOBLET, ModItems.TENACITY_CIRCLET);
+        };
+
+        // 套装名只有一份来源：语言键。日志和聊天栏都直接用它，避免再维护第二份中文名
+        String setKey = switch (roll) {
+            case 0 -> "artifact_set.crimson_witch";
+            case 1 -> "artifact_set.scarlet_proof";
+            default -> "artifact_set.tenacity_of_the_millelith";
+        };
+
+        for (Supplier<? extends Item> piece : pieces) {
+            ItemStack stack = new ItemStack(piece.get());
+            ArtifactItem.initializeArtifactStackIfNeeded(stack);
+            NetworkManager.giveItemToPlayer(serverPlayer, stack);
+        }
+
+        LOGGER.info("[祈愿] {} 已满命 → 补偿一整套 {}", serverPlayer.getName().getString(), setKey);
+        serverPlayer.sendSystemMessage(
+                Component.translatable("message.minegenshin.wish.constellation_max_compensation",
+                        Component.translatable(setKey).withStyle(ChatFormatting.LIGHT_PURPLE)));
     }
 
     private static boolean handleItemDrop(ServerPlayer serverPlayer, WishEntry entry) {

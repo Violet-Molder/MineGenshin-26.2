@@ -12,6 +12,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import org.slf4j.Logger;
 
+import java.util.Objects;
+
 @EventBusSubscriber
 public class MonsterLevelSpawnHandler {
     public static final Logger LOGGER = LogUtils.getLogger();
@@ -47,7 +49,7 @@ public class MonsterLevelSpawnHandler {
         float scaledAttack = MonsterStatCalculator.calculateAttack(level, attackMult, environmentMultiplier);
 
         var living = (net.minecraft.world.entity.LivingEntity) entity;
-        living.getAttribute(Attributes.MAX_HEALTH).setBaseValue(scaledHealth);
+        Objects.requireNonNull(living.getAttribute(Attributes.MAX_HEALTH)).setBaseValue(scaledHealth);
         living.setHealth(scaledHealth);
         entity.setEntityStats(entity.getEntityStats().withAttack(scaledAttack));
     }

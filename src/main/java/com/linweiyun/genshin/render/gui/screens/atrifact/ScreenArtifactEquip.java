@@ -78,6 +78,49 @@ public class ScreenArtifactEquip extends Screen {
         LOG.info("ScreenArtifactEquip init() → LDLib2 UI已注册");
     }
 
+    @Override
+    public void removed() {
+        super.removed();
+        OPEN_STATE = null;
+    }
+
+    // ================================================================
+    //  外部数据变化 → 立刻重画
+    // ================================================================
+
+    /**
+     * 当前打开的界面状态。服务端把「已激活的圣遗物」推回来时要用它重画界面 ——
+     * 界面不是每刻重建的，只在点击/选择时重建，所以数据变了必须显式刷新，
+     * 否则点了「激活」之后面板会一直停在「未激活」，直到玩家再点一次别的才更新。
+     */
+    private static St OPEN_STATE;
+
+    /**
+     * 背包数据被外部改动（例如服务端推回了激活后的圣遗物）后，让当前打开的界面立刻重画。
+     *
+     * <p>会先从背包**重新读一份**当前选中的那一件 —— 点击时存进 {@code st.selectedEnt}
+     * 的是那一刻的旧拷贝，不重新读的话详情面板还是显示未激活。
+     */
+    public static void refreshIfOpen() {
+        St st = OPEN_STATE;      // 界面关闭时 removed() 会把它置空，所以这里不用再查当前 screen
+        var mc = net.minecraft.client.Minecraft.getInstance();
+        if (st == null || mc.player == null) return;
+
+        Backpack bp = mc.player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
+
+        Ent sel = st.selectedEnt;
+        if (sel != null && sel.fromBackpack && sel.backpackIdx >= 0) {
+            int globalSlot = getCategoryOffset(Backpack.Category.ARTIFACTS) + sel.backpackIdx;
+            ItemStack fresh = bp.getItem(globalSlot);
+            if (!fresh.isEmpty()) {
+                st.selectedEnt = new Ent(fresh.copy(), true, sel.backpackIdx, true, -1, null, -1);
+            }
+        }
+
+        if (st.lc != null) fillLC(st.lc, bp, st);
+        if (st.mp != null && st.rp != null) fillDetail(st.mp, st.rp, bp, st);
+    }
+
     // ================================================================
     //  工厂方法：构建完整 UI（所有内容在 init() 前已就位）
     // ================================================================
@@ -108,6 +151,7 @@ public class ScreenArtifactEquip extends Screen {
         st.characterTextureId = cc.getTextureId();
         st.attachment = ca;
         st.inv = inv;
+        OPEN_STATE = st;        // 服务端推数据回来时要能重画界面，见 refreshIfOpen()
         autoSel(bp, st);
 
         // ===== 窗口容器 =====
@@ -780,11 +824,13 @@ public class ScreenArtifactEquip extends Screen {
                 int ii = ent.backpackIdx;
                 act.setOnClick(e -> {
                     NetworkManager.sendActivateArtifactToServer(ii);
+                    // ⚠️ 这里**不要**再调 ArtifactItem.initializeArtifactStackIfNeeded 本地补一份：
+                    // 它内部是 `new Random()`，客户端的随机数和服务端那次不是同一份，
+                    // 本地会存下一套不同的词条，等被写回服务端时玩家就看到「卸载一次词条变了」。
+                    // 服务端抽完会把背包同步过来，UI 下一次刷新就是权威数据。
                     int globalSlot = getCategoryOffset(Backpack.Category.ARTIFACTS) + ii;
                     ItemStack local = bp.getItem(globalSlot);
                     if (!local.isEmpty() && local.getItem() instanceof ArtifactItem) {
-                        ArtifactItem.initializeArtifactStackIfNeeded(local);
-                        bp.setItem(globalSlot, local);
                         // 保持选中：直接更新 selectedEnt 指向激活后的物品，
                         // 不调用 autoSel（autoSel 会把选中跳到优先级最高的物品）。
                         // 背包索引不变，因此 isSelected 依然能匹配到这个条目。

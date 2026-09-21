@@ -94,8 +94,13 @@ public final class PlayerAnimationController {
             return controller.getCurrentAnimationPoint() == null ? PlayState.STOP : PlayState.CONTINUE;
         }
 
-        // 突进期间：把动作暂停在起手那一帧，贴到目标再解冻继续播
-        if (ActionStateMachine.isApproachFrozen() && targetName(target).equals(currentAnimationName(controller))) {
+        // 突进期间：把动作暂停在起手那一帧，贴到目标再解冻继续播。
+        //
+        // ⚠️ 只对**本机玩家**生效：`isApproachFrozen` 是全局（一份）状态，
+        // 而其他玩家的控制器也会走这里 —— 不加这个判断的话，只要名字撞上
+        // （比如双方都在 attack_1），旁边的人也会跟着一起冻住。
+        if (isLocalPlayer && ActionStateMachine.isApproachFrozen()
+                && targetName(target).equals(currentAnimationName(controller))) {
             return PlayState.PAUSE;
         }
 

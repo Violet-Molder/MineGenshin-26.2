@@ -31,8 +31,82 @@ public class WeaponItem extends TeyvatItem {
     protected DeferredHolder<AttributeType, AttributeType> subStatAttribute;
     protected boolean canRefine = true;
 
+    /**
+     * 主词条的额外修正（默认 0）。
+     *
+     * <p>{@code tier} 给的是整数基础攻击力（五星 44/46/48/49），而有些武器的主词条是小数
+     * （例如蝶变 47.54）—— 用这个差值补齐。只影响「喂给角色的那个数值」，
+     * 升级/突破的成长曲线照旧。
+     */
+    protected double mainStatDelta = 0.0;
+
+    /** 主词条修正值（见 {@link #mainStatDelta}）。 */
+    public double getMainStatDelta() {
+        return mainStatDelta;
+    }
+
+    // ==================== 武器被动钩子 ====================
+
+    /**
+     * 装备者施放了元素战技 / 元素爆发（<b>服务端</b>，受理成功那一刻）。
+     *
+     * <p>默认什么都不做；带被动的武器覆写它。
+     */
+    public void onAbilityCast(net.minecraft.world.entity.player.Player player,
+                              com.linweiyun.genshin.core.character.PGCharacter character,
+                              com.linweiyun.genshin.core.system.combat.action.ActionKind kind) {
+    }
+
+    /**
+     * 装备者<b>退场</b>（切到别的角色）时调用 —— 清被动留下的 buff、重置轮换顺序。
+     *
+     * <p>默认什么都不做；带被动的武器覆写它。
+     */
+    public void onLeaveField(net.minecraft.world.entity.player.Player player,
+                             com.linweiyun.genshin.core.character.PGCharacter character) {
+    }
+
     public WeaponItem(Properties properties) {
         super(properties.stacksTo(1));
+    }
+
+    // ==================== 武器被动钩子（续） ====================
+
+    /**
+     * 装备者自身提供的<b>治疗加成</b>（小数，{@code 0.04 = 4%}），默认 0。
+     *
+     * <p>由 {@code PGCharacter#getHealingBonus} 聚合，角色治疗时消费。
+     */
+    public float getHealingBonus() {
+        return 0f;
+    }
+
+    /**
+     * 装备者完成了一次治疗（<b>服务端</b>）。
+     *
+     * <p>这是「角色打出的治疗」的唯一窄口：目前只有沃雅妮莎的
+     * {@code VodyanitsaTalent#songHeal}（后台也照常跑）走这里。
+     * 默认什么都不做；带「治疗触发」类被动的武器覆写它。
+     *
+     * @param healer    施疗的玩家
+     * @param character 施疗的角色（= 装备者）
+     * @param target    被治疗方的实体锚点（角色数据没有实体，传宿主玩家）
+     * @param amount    本次实际治疗量
+     */
+    public void onHeal(net.minecraft.world.entity.player.Player healer,
+                       com.linweiyun.genshin.core.character.PGCharacter character,
+                       LivingEntity target, float amount) {
+    }
+
+    /** 服务端把「装备者治疗了」分发给该角色当前装备的武器。 */
+    public static void notifyHeal(net.minecraft.world.entity.player.Player healer,
+                                  com.linweiyun.genshin.core.character.PGCharacter character,
+                                  LivingEntity target, float amount) {
+        if (healer == null || character == null || healer.level().isClientSide()) return;
+        ItemStack stack = character.getData().getWeapon();
+        if (!stack.isEmpty() && stack.getItem() instanceof WeaponItem weapon) {
+            weapon.onHeal(healer, character, target, amount);
+        }
     }
 
     public int getTier() {

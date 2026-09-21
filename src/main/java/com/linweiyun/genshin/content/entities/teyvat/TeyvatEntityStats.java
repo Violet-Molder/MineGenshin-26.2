@@ -79,35 +79,35 @@ public class TeyvatEntityStats implements IPersistedSerializable {
     }
 
     public float physicalResistance() {
-        return (float) attributes.getBaseValue(ModAttributes.PHYSICAL_RES.get());
+        return (float) attributes.getTotalValue(ModAttributes.PHYSICAL_RES.get());
     }
 
     public float pyroResistance() {
-        return (float) attributes.getBaseValue(ModAttributes.PYRO_RES.get());
+        return (float) attributes.getTotalValue(ModAttributes.PYRO_RES.get());
     }
 
     public float hydroResistance() {
-        return (float) attributes.getBaseValue(ModAttributes.HYDRO_RES.get());
+        return (float) attributes.getTotalValue(ModAttributes.HYDRO_RES.get());
     }
 
     public float anemoResistance() {
-        return (float) attributes.getBaseValue(ModAttributes.ANEMO_RES.get());
+        return (float) attributes.getTotalValue(ModAttributes.ANEMO_RES.get());
     }
 
     public float electroResistance() {
-        return (float) attributes.getBaseValue(ModAttributes.ELECTRO_RES.get());
+        return (float) attributes.getTotalValue(ModAttributes.ELECTRO_RES.get());
     }
 
     public float dendroResistance() {
-        return (float) attributes.getBaseValue(ModAttributes.DENDRO_RES.get());
+        return (float) attributes.getTotalValue(ModAttributes.DENDRO_RES.get());
     }
 
     public float cyroResistance() {
-        return (float) attributes.getBaseValue(ModAttributes.CYRO_RES.get());
+        return (float) attributes.getTotalValue(ModAttributes.CYRO_RES.get());
     }
 
     public float geoResistance() {
-        return (float) attributes.getBaseValue(ModAttributes.GEO_RES.get());
+        return (float) attributes.getTotalValue(ModAttributes.GEO_RES.get());
     }
 
     public float getElementResistance(GenshinElement element) {

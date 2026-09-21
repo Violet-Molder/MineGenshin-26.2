@@ -153,4 +153,74 @@ public class DamageBonusEffect implements ICharacterEffect {
         if (applicableElement != null && applicableElement != element) return 0f;
         return bonus;
     }
+
+    // ==================== 参数化效果的存档 ====================
+    //
+    // 注册表里只存了「无参原型」（minegenshin:damage_bonus），而加成多少、作用于哪些攻击类型
+    // 是构造参数。不把参数写出来的话，读档回来会变成一个 bonus=0 的实例（buff 静默失效），
+    // 所以这里自己写、自己读。
+
+    @Override
+    public void writeInstanceData(net.minecraft.nbt.CompoundTag data) {
+        data.putFloat("dmg_bonus", bonus);
+
+        int[] typeOrdinals = new int[applicableTypes.size()];
+        int i = 0;
+        for (AttackType type : applicableTypes) {
+            typeOrdinals[i++] = type.ordinal();
+        }
+        data.putIntArray("dmg_types", typeOrdinals);
+
+        if (applicableElement != null) {
+            // 存<b>完整注册名</b>（元素 getId() 只给 path，反查注册表需要带命名空间的键）
+            net.minecraft.resources.Identifier key =
+                    com.linweiyun.genshin.core.system.registry.ModRegistries.ELEMENT_REGISTRY
+                            .getKey(applicableElement);
+            if (key != null) {
+                data.putString("dmg_element", key.toString());
+            }
+        }
+    }
+
+    @Override
+    public ICharacterEffect createFromInstanceData(net.minecraft.nbt.CompoundTag data) {
+        float savedBonus = data.getFloat("dmg_bonus").orElse(0f);
+        java.util.Optional<int[]> savedTypes = data.getIntArray("dmg_types");
+        if (savedTypes.isEmpty()) {
+            return this;        // 老数据没有参数：保持原型（加成为 0，但至少类型正确）
+        }
+
+        AttackType[] allTypes = AttackType.values();
+        Set<AttackType> types = EnumSet.noneOf(AttackType.class);
+        for (int ordinal : savedTypes.get()) {
+            if (ordinal >= 0 && ordinal < allTypes.length) {
+                types.add(allTypes[ordinal]);
+            }
+        }
+        if (types.isEmpty()) {
+            return this;
+        }
+
+        GenshinElement element = null;
+        java.util.Optional<String> elementKey = data.getString("dmg_element");
+        if (elementKey.isPresent()) {
+            try {
+                element = com.linweiyun.genshin.core.system.registry.ModRegistries.ELEMENT_REGISTRY
+                        .get(net.minecraft.resources.Identifier.parse(elementKey.get()))
+                        .map(net.minecraft.core.Holder.Reference::value)
+                        .orElse(null);
+            } catch (Exception ignored) {
+                element = null;
+            }
+        }
+
+        return new DamageBonusEffect(savedBonus, types, element);
+    }
+
+    /** 按「一组攻击类型 + 可选元素」直接构造（读档重建用）。 */
+    public DamageBonusEffect(float bonus, Set<AttackType> types, GenshinElement element) {
+        this.bonus = bonus;
+        this.applicableTypes = types.isEmpty() ? EnumSet.noneOf(AttackType.class) : EnumSet.copyOf(types);
+        this.applicableElement = element;
+    }
 }

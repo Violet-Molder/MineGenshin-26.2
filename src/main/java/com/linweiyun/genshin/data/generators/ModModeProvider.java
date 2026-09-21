@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.data.generators;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.core.system.registry.register.ModItems;
+import com.linweiyun.genshin.content.items.ModItems;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.ModelProvider;
@@ -81,6 +81,18 @@ public class ModModeProvider extends ModelProvider {
         itemModels.generateFlatItem(ModItems.CRIMSON_SANDS.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.CRIMSON_GOBLET.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.CRIMSON_CIRCLET.get(), ModelTemplates.FLAT_ITEM);
+        // 血红之证：贴图是从魔女套复制的一套，模型同样是普通平面物品
+        itemModels.generateFlatItem(ModItems.SCARLET_FLOWER.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SCARLET_PLUME.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SCARLET_SANDS.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SCARLET_GOBLET.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.SCARLET_CIRCLET.get(), ModelTemplates.FLAT_ITEM);
+        // 千岩牢固：同样是普通平面物品（贴图后补，先借用物品 id 自己的图）
+        itemModels.generateFlatItem(ModItems.TENACITY_FLOWER.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.TENACITY_PLUME.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.TENACITY_SANDS.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.TENACITY_GOBLET.get(), ModelTemplates.FLAT_ITEM);
+        itemModels.generateFlatItem(ModItems.TENACITY_CIRCLET.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.SWEET_MADAME.get(), ModelTemplates.FLAT_ITEM);
         itemModels.generateFlatItem(ModItems.EVERLASTING_MOONGLOW.get(), ModelTemplates.FLAT_ITEM);
 
@@ -88,6 +100,16 @@ public class ModModeProvider extends ModelProvider {
         borrowModel(itemModels, ModItems.DARK_FRAGMENT.get(),
                 Identifier.withDefaultNamespace("item/nether_star"),
                 // 和手写时保持一致：换手不播交换动画
+                new ClientItem.Properties(false, false, 1.0F));
+
+        // ---- 蝶变：模型暂时直接用钻石剑（借原版 item/diamond_sword） ----
+        borrowModel(itemModels, ModItems.BEYOND_THE_CHRYSALIS.get(),
+                Identifier.withDefaultNamespace("item/diamond_sword"),
+                new ClientItem.Properties(true, false, 1.0F));
+
+        // ---- 漩流颂歌：模型暂时借用书本（借原版 item/book） ----
+        borrowModel(itemModels, ModItems.WHIRLFLOW_HYMN.get(),
+                Identifier.withDefaultNamespace("item/book"),
                 new ClientItem.Properties(false, false, 1.0F));
     }
 

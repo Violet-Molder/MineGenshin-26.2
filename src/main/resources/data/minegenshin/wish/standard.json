@@ -7,6 +7,8 @@
         { "type": "character", "id": "minegenshin:shenhe", "weight": 10 },
         { "type": "character", "id": "minegenshin:columbina", "weight": 10 },
         { "type": "character", "id": "minegenshin:arlecchino", "weight": 10 },
+        { "type": "character", "id": "minegenshin:vesna", "weight": 10 },
+        { "type": "character", "id": "minegenshin:vodyanitsa", "weight": 10 },
         { "type": "item", "id": "minegenshin:sweet_madame", "weight": 60, "count": 1 }
       ]
     }

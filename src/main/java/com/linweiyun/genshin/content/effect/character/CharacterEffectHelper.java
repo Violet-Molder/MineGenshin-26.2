@@ -31,6 +31,13 @@ public class CharacterEffectHelper {
         ICharacterEffect newEffect = instance.getEffect();                   // 从注册表获取效果对象
         if (newEffect == null) return;                                       // 效果未注册，直接返回
 
+        // 互斥组：高优先级在场时，低优先级直接不上场（例如 星超导 在场则不接受 星扩散）
+        if (!newEffect.canApplyWith(container)) {                            // 检查能否共存
+            LOGGER.debug("[效果] {} 被互斥规则拦下（当前容器已有更高优先级效果）| char={}",
+                    CharacterEffectContainer.getEffectIdString(newEffect), character.getName());
+            return;
+        }
+
         CharacterEffectInstance existing = container.getEffectInstance(instance.getEffectIdString()); // 查找已有同ID效果
 
         if (existing != null) {

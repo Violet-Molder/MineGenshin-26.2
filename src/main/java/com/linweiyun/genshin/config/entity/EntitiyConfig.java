@@ -20,6 +20,7 @@ public class EntitiyConfig {
 
         EntityHealthConfig.register(builder);
         EntityAttackConfig.register(builder);
+        EntityAttributeCapConfig.register(builder);
 
     }
 

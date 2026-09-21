@@ -3,8 +3,8 @@ package com.linweiyun.genshin.core.command;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.mojang.brigadier.Command;
-import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
@@ -12,17 +12,18 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
-@EventBusSubscriber
 public class PrimogemCommand {
 
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(
-                Commands.literal("minegenshin")
-                        .then(Commands.literal("primogem")
+    /**
+     * 只造「primogem」这一棵子树，交给 {@link CharacterCommand} 挂到同一个 {@code minegenshin} 根下面。
+     *
+     * <p>⚠️ 不能在这里自己 {@code dispatcher.register(Commands.literal("minegenshin")...)}：
+     * Brigadier 的根子节点是 {@code putIfAbsent}，第二个同名的根会被<b>静默丢弃</b>
+     * ——两个类各自注册一次的话，后注册的那棵树（也就是整棵 character）会直接消失。
+     */
+    public static LiteralArgumentBuilder<CommandSourceStack> buildPrimogemNode() {
+        return Commands.literal("primogem")
                                 .then(Commands.literal("get")
                                         .then(Commands.argument("target", EntityArgument.player())
                                                 .executes(PrimogemCommand::getPrimogem)
@@ -41,9 +42,7 @@ public class PrimogemCommand {
                                                         .executes(PrimogemCommand::addPrimogem)
                                                 )
                                         )
-                                )
-                        )
-        );
+                                );
     }
 
     private static int getPrimogem(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -83,10 +82,5 @@ public class PrimogemCommand {
                 () -> Component.translatable("command.minegenshin.primogem.add", target.getName().getString(), amount, finalNewAmount),
                 true);
         return Command.SINGLE_SUCCESS;
-    }
-
-    @SubscribeEvent
-    public static void onRegisterCommands(RegisterCommandsEvent event) {
-        register(event.getDispatcher());
     }
 }

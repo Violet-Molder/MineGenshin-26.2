@@ -170,6 +170,13 @@ public class FreezeReaction extends ElementalReaction {
             if (container.getFrozenDecayState() != null) {
                 container.getFrozenDecayState().activate();
             }
+
+            // 武器被动（漩流颂歌）：附近的队伍成员触发冻结 → 打开 5 秒强化窗口
+            if (ctx.targetEntity().level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                com.linweiyun.genshin.content.items.weapon.catalyst.WhirlflowHymn.markReactionTriggers(
+                        serverLevel, ctx.attackerEntity(),
+                        ctx.targetEntity().getX(), ctx.targetEntity().getY(), ctx.targetEntity().getZ());
+            }
         }
 
         float defenderConsumedQty = attackerIsA ? consumedB : consumedA;

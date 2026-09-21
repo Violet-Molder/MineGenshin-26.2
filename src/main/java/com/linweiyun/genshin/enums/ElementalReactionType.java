@@ -20,9 +20,11 @@ public enum ElementalReactionType {
   QUICKEN("reaction.minegenshin.quicken"), // 草+雷
   AGGRAVATE("reaction.minegenshin.aggravate"), // 激+雷
   SPREAD("reaction.minegenshin.spread"), // 激+草
-  // 星体系
+  // 星体系（辉映·星烁 —— 星扩散 / 星超导两个分支，见 StellarGlimmerBranch）
   STELLAR_SWIRL_WIND("reaction.minegenshin.stellar_swirl_wind"),
   STELLAR_SWIRL_ICE("reaction.minegenshin.stellar_swirl_ice"),
+  STELLAR_CONDUCE_ELECTRO("reaction.minegenshin.stellar_conduce_electro"),
+  STELLAR_CONDUCE_ICE("reaction.minegenshin.stellar_conduce_ice"),
 
   // 月体系
   LUNAR_CHARGED("reaction.minegenshin.lunar_charged"), // 雷+水 (月感电)

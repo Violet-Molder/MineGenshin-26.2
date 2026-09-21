@@ -3,6 +3,7 @@ package com.linweiyun.genshin.core.system.combat.animation;
 import com.linweiyun.genshin.core.system.combat.animation.action.CharacterActions;
 import com.linweiyun.genshin.core.system.combat.animation.action.ResourceDrivenActionHandler;
 import com.linweiyun.genshin.core.system.combat.animation.config.DefaultCharacterAnimations;
+import com.linweiyun.genshin.core.character.catalyst.vodyanitsa.Vodyanitsa;
 import com.linweiyun.genshin.core.character.sword.vesna.Vesna;
 import com.linweiyun.genshin.core.character.sword.vesna.VesnaAnimations;
 
@@ -25,16 +26,25 @@ public final class CharacterAnimationRegistry {
     }
 
     public static void registerAll() {
-        // 目前只有 Vesna 有完整资源和天赋；其余角色登记为「只有通用常态动画、没有动作」
         CharacterActions.register(Vesna.ID, ResourceDrivenActionHandler.INSTANCE, VesnaAnimations.INSTANCE);
 
         registerPlaceholder("shenhe");
         registerPlaceholder("arlecchino");
         registerPlaceholder("columbina");
         registerPlaceholder("raiden_shogun");
+        // 沃雅妮莎：ACTION_DATA / 天赋都是全的，只是还没有专属动画名（先用通用常态动画）
+        registerPlaceholder(Vodyanitsa.ID);
     }
 
-    /** 还没有专属动画数据的角色：只保证模型能渲染，按键不产生动作。 */
+    /**
+     * 只保证模型能渲染、动画用通用常态配置的角色 —— <b>动作编排仍然给通用的
+     * {@link ResourceDrivenActionHandler}</b>（时序来自各自的 {@code XxxResources.ACTION_DATA}）。
+     *
+     * <p>⚠️ <b>这里没登记 = 这个角色的普攻 / 战技 / 爆发全部静默失效</b>：
+     * {@code CharacterActions.getFor(player)} 查不到就返回 {@code EMPTY} 编排，
+     * 按键<b>不播动画、不发请求、一条日志都没有</b>（沃雅妮莎漏登记时就是这个症状）。
+     * 加角色时别忘了在这里补一行。
+     */
     private static void registerPlaceholder(String characterId) {
         CharacterActions.register(characterId, ResourceDrivenActionHandler.INSTANCE,
                 DefaultCharacterAnimations.INSTANCE);

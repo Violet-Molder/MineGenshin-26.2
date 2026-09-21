@@ -1,12 +1,14 @@
 package com.linweiyun.genshin.core.system.combat.animation.action;
 
 import com.linweiyun.genshin.client.combat.AttackApproach;
+import com.linweiyun.genshin.client.combat.BurstDive;
 import com.linweiyun.genshin.client.render.character.AttachmentHelper;
 import com.linweiyun.genshin.config.character.CharacterSystemConfig;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.network.ActionServer;
+import com.linweiyun.genshin.core.system.combat.action.ActionContext;
 import com.linweiyun.genshin.core.system.combat.action.ActionDefinition;
 import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.combat.action.ActionSet;
@@ -48,12 +50,20 @@ import java.util.function.Consumer;
  *
  * <p>时序只有一份数据源：改 {@code XxxResources.ACTION_DATA}，客户端动画和服务端伤害同时生效。
  *
- * <h2>从 ActionStep 推导出的三个数值</h2>
+ * <h2>从 ActionStep 推导出的客户端时序</h2>
+ * <pre>
+ * 0            prepareTicks          protectDuration      duration
+ * ├─ 准备阶段 ────┼──── 执行期 ────────────┼──── 后摇 ────┤
+ *    可打断          不可打断               可取消
+ * </pre>
  * <ul>
  *   <li>{@code totalTicks} = {@code step.duration}</li>
- *   <li>{@code lockFrames}（前摇 + 硬直）= {@code step.protectDuration}，为 0 时退化成
+ *   <li>{@code lockDelay}（准备阶段）= {@code step.prepareTicks}，这段时间锁还没生效</li>
+ *   <li>{@code lockFrames}（执行期）= {@code protectDuration - prepareTicks}；
+ *       没配执行期（{@code protectDuration <= prepareTicks}）时退化成
  *       {@code min(duration / 4, 8)} —— 保证「按下去马上有反应，但要等一拍才能接下一段」。</li>
- *   <li>{@code movementLockTicks}（定身）= 取硬直与 5 刻的较小值；有保护期（大招）则用保护期本身。</li>
+ *   <li>{@code movementLock}（定身）= 有执行期就用执行期本身（大招那种整段定身），
+ *       否则 {@code min(lockFrames, 5)}。</li>
  * </ul>
  */
 public final class ResourceDrivenActionHandler implements CharacterActionHandler {
@@ -125,8 +135,12 @@ public final class ResourceDrivenActionHandler implements CharacterActionHandler
         final int holdFlag = longPress ? 1000 : 0;
         final ActionKind kind = longPress ? ActionKind.ELEMENTAL_SKILL_HOLD : ActionKind.ELEMENTAL_SKILL_TAP;
 
-        // 放不出来就到此为止：不播动画、不发请求（否则就是「动画播了但没效果」）
-        if (!canCast(player, character, kind, holdFlag)) return false;
+        // 放不出来就到此为止：不播动画、不发请求（否则就是「动画播了但没效果」）。
+        // ⚠️ 用 def.kind 而不是上面按「按了哪个键」推出来的 kind —— 两者可能不一样：
+        //    满命薇斯娜的「翔风剑·变移」占的是 E 点按槽，但它的 kind 是 SPECIAL
+        //    （不扣剑气、不转 CD）；用 ELEMENTAL_SKILL_TAP 去判会被 CD / 剑气拦下来，
+        //    而服务端判的是 def.kind，两端就会分叉。
+        if (!canCast(player, character, def.kind, holdFlag)) return false;
 
         engageAndPlay(player, def, ActionStateMachine.PRIO_ATTACK, null,
                 target -> ActionServer.triggerCharacterSkill(holdFlag, target));
@@ -148,6 +162,12 @@ public final class ResourceDrivenActionHandler implements CharacterActionHandler
 
         engageAndPlay(player, def, ActionStateMachine.PRIO_FINAL, null,
                 ActionServer::triggerCharacterBurst);
+
+        // 「跃起下坠刺击」类大招：动画只管起跳与摆姿态，位移交给客户端序列
+        // （落点在开始下坠那一刻锁死，之后不再追踪 —— 见 BurstDive / ActionStep.diveBurst）
+        if (def.step.diveBurst != null && player instanceof LocalPlayer localPlayer) {
+            BurstDive.begin(localPlayer, CombatTargeting.current(player), def.step);
+        }
     }
 
     @Override
@@ -251,8 +271,19 @@ public final class ResourceDrivenActionHandler implements CharacterActionHandler
         float attackRange = step.effectiveAttackRange();
         ActionStateMachine.setCurrentAttackRange(attackRange);
 
+        // 客户端时序（动画总长 / 执行期锁 / 准备阶段 / 定身）——
+        // 突进路径也要用同一份：到位时靠它把执行期重新起算。
+        Timing timing = timingFor(step);
+
         Engagement engagement = step.engagement == null ? Engagement.melee() : step.engagement;
         CombatTargeting.Params params = targetingParams(engagement, attackRange);
+
+        // 客户端本地钩子：声明了「客户端也要跑一次天赋」的角色（例如申鹤的突刺），
+        // 在出手这一刻本地执行一次这一招的 onActiveStart；服务端请求照旧发。
+        Consumer<LivingEntity> dispatch = serverCall == null ? null : target -> {
+            fireLocalTalentHook(player, def);
+            serverCall.accept(target);
+        };
 
         // 先看现成的锁（远程招式够不着也仍然会对着它转），没有再按这一招的参数找
         LivingEntity locked = CombatTargeting.current(player);
@@ -264,30 +295,108 @@ public final class ResourceDrivenActionHandler implements CharacterActionHandler
             // 目标在攻击距离外 → 先贴上去：起手动作冻在那一帧，到位再解冻接着播
             // （关掉动作系统时不突进 —— 那一档的承诺是「按下立刻响应、没有延迟伤害」，
             //   而突进会把服务端请求推到到位那一刻）
-            if (engagement.wantsDash() && ActionStateMachine.actionSystemEnabled()
-                    && AttackApproach.needsDash(localPlayer, target, attackRange)) {
+            boolean wantsDash = engagement.wantsDash() && ActionStateMachine.actionSystemEnabled()
+                    && AttackApproach.needsDash(localPlayer, target, attackRange);
 
-                // 先起手（摆臂和音效都等到位那一刻，否则声音会在冻结期间就响）
+            if (wantsDash && step.dashStartDelay > 0) {
+                // 前 N 刻是动作本身的一部分（起跳 / 人消失 / 变成长枪螺旋…），
+                // 这几刻动画照常播、人也还在原地；第 N 刻才冻结并冲出去。
+                // 见 ActionStep#dashStartDelay。
                 play(player, def, priority, animationOverride, false);
 
-                AttackApproach.begin(localPlayer, target, engagement, attackRange, () -> {
-                    // 到位：解冻 + 从这一刻重新计时，动画接着剩下的部分播
-                    ActionStateMachine.resumeFromApproach(Math.max(1, def.totalDuration()));
-                    scheduleFallbackSwing(player, step);
-                    scheduleActionSounds(player, step);
-                    if (serverCall != null) {
-                        serverCall.accept(target);
+                final int sequence = ActionStateMachine.actionSequence();
+                final int delay = step.dashStartDelay;
+
+                ActionStateMachine.queueClientWork(delay, () -> {
+                    // 中途换招了（闪避/被打断/接了下一段）→ 这次突进作废，别再补一刀
+                    if (ActionStateMachine.actionSequence() != sequence) {
+                        return;
+                    }
+
+                    // 目标可能已经死了、也可能自己走过来了 → 重新判一次
+                    LivingEntity fresh = CombatTargeting.current(localPlayer);
+                    LivingEntity now = fresh != null ? fresh : target;
+
+                    if (now != null && AttackApproach.needsDash(localPlayer, now, attackRange)) {
+                        beginDash(localPlayer, now, engagement, attackRange, player, step, timing, dispatch);
+                    } else {
+                        // 不用冲了：时间零点同样是第 N 刻，直接出手
+                        strikeAfterApproach(player, step, timing, dispatch, now);
                     }
                 });
                 return;
             }
 
+            if (wantsDash) {
+                // 按下即冻结（默认）：起手动作停在第一帧，摆臂和音效都等到位那一刻，
+                // 否则声音会在冻结期间就响
+                play(player, def, priority, animationOverride, false);
+                beginDash(localPlayer, target, engagement, attackRange, player, step, timing, dispatch);
+                return;
+            }
+
             // 已经在范围内 / 这一招是远程 → 只转向（滑过去）+ 出手瞬间的一小步吸附
             AttackApproach.faceTarget(localPlayer, target, engagement);
-            AttackApproach.stepToward(localPlayer, target, attackRange);
+            AttackApproach.stepToward(localPlayer, target, attackRange, engagement);
         }
 
         play(player, def, priority, animationOverride, true);
+        if (dispatch != null) {
+            dispatch.accept(target);
+        }
+    }
+
+    /**
+     * 客户端本地跑一次「这一招出手了」的钩子。
+     *
+     * <p>只为 {@link PGCharacter#runsTalentOnClient()} 为 {@code true} 的角色执行
+     * —— 那些招式的表现层位移由技能自己算（申鹤的 {@code DashSystem}：客户端按格推位置、
+     * 服务端沿途扫伤害），而角色天赋现在默认只在服务端跑，不补这一次的话
+     * 客户端那段位移永远没人调用。
+     */
+    private static void fireLocalTalentHook(Player player, ActionDefinition def) {
+        if (!(player instanceof LocalPlayer)) return;
+        PGCharacter character = currentCharacter(player);
+        if (character == null || !character.runsTalentOnClient()) return;
+
+        Consumer<ActionContext> hook = def.getOnActiveStart();
+        if (hook == null) return;
+        try {
+            hook.accept(new ActionContext(player, character, def));
+        } catch (Exception e) {
+            LOGGER.error("[MineGenshin] 客户端本地招式钩子抛异常 kind={}", def.kind, e);
+        }
+    }
+
+    /**
+     * 开始突进：动画冻在当前这一帧，每刻滑向目标，到位后回调 {@link #strikeAfterApproach}。
+     *
+     * <p>{@code dashStartDelay = 0} 时这是在按下那一帧调用的（冻在第一帧）；
+     * 大于 0 时是在第 N 刻调用的（冻在第 N 帧）。
+     */
+    private static void beginDash(LocalPlayer localPlayer, LivingEntity target, Engagement engagement,
+                                  float attackRange, Player player, CharacterActionData.ActionStep step,
+                                  Timing timing, @Nullable Consumer<LivingEntity> serverCall) {
+        AttackApproach.begin(localPlayer, target, engagement, attackRange,
+                () -> strikeAfterApproach(player, step, timing, serverCall, target));
+    }
+
+    /**
+     * 「时间零点」到了：解冻动画、把执行期（动画时钟 / 硬直 / 定身）从这一刻重新起算，
+     * 然后摆臂 + 排音效 + 发服务端请求。
+     *
+     * <p>三条路都汇到这里：正常突进到位、延后突进到位、以及「本来要冲但已经不用冲了」。
+     * 服务端的伤害计时也从这一刻起算（{@code hits[].delay} 相对它），
+     * 所以动画看到的那一刀和服务端结算的那一刀是同一帧。
+     */
+    private static void strikeAfterApproach(Player player, CharacterActionData.ActionStep step,
+                                            Timing timing,
+                                            @Nullable Consumer<LivingEntity> serverCall,
+                                            @Nullable LivingEntity target) {
+        ActionStateMachine.resumeFromApproach(timing.totalTicks(),
+                timing.lockFrames(), timing.movementLock());
+        scheduleFallbackSwing(player, step);
+        scheduleActionSounds(player, step);
         if (serverCall != null) {
             serverCall.accept(target);
         }
@@ -302,17 +411,18 @@ public final class ResourceDrivenActionHandler implements CharacterActionHandler
     private static CombatTargeting.Params targetingParams(Engagement engagement, float attackRange) {
         Engagement e = engagement == null ? Engagement.melee() : engagement;
 
-        // 没显式写索敌距离时：远程跟攻击距离走，近战用全局默认
+        // 没显式写索敌距离时：远程跟攻击距离走（不判路径），近战用全局默认（判「追不追得上」）
         CombatTargeting.Params base = e.ranged
                 ? CombatTargeting.Params.forRange(e.acquireRange > 0 ? e.acquireRange : attackRange)
-                : CombatTargeting.Params.DEFAULT;
+                : CombatTargeting.Params.forChase(attackRange);
 
         double acquire = e.acquireRange > 0 ? e.acquireRange : base.acquireRange();
         double keep = e.keepRange > 0 ? e.keepRange : base.keepRange();
         double acquireAngle = e.acquireAngle > 0 ? e.acquireAngle : base.acquireAngle();
         double keepAngle = e.keepAngle > 0 ? e.keepAngle : base.keepAngle();
 
-        return new CombatTargeting.Params(acquire, acquireAngle, keep, keepAngle, TargetPolicy.DEFAULT);
+        return new CombatTargeting.Params(acquire, acquireAngle, keep, keepAngle,
+                base.attackRange(), base.chase(), TargetPolicy.DEFAULT);
     }
 
     // ==================== 内部 ====================
@@ -342,17 +452,15 @@ public final class ResourceDrivenActionHandler implements CharacterActionHandler
                                 @Nullable String animationOverride, boolean feedbackNow) {
         CharacterActionData.ActionStep step = def.step;
 
-        int totalTicks = Math.max(1, def.totalDuration());
-        int lockFrames = resolveLockFrames(step, totalTicks);
-        int movementLock = resolveMovementLock(step, lockFrames);
-
+        Timing timing = timingFor(step);
         String animation = (animationOverride == null || animationOverride.isEmpty())
                 ? def.animationName()
                 : animationOverride;
 
         boolean animated = AnimationAvailability.existsFor(player, animation);
         if (animated) {
-            ActionStateMachine.changeState(animation, priorityOverride, totalTicks, lockFrames, movementLock);
+            ActionStateMachine.changeState(animation, priorityOverride, timing.totalTicks(),
+                    timing.lockFrames(), timing.movementLock(), timing.lockDelay());
         } else {
             LOGGER.warn("[MineGenshin] 角色 '{}' 没有动画 '{}'：这次动作只结算伤害，不切动画",
                     AttachmentHelper.getActiveCharacterId(player), animation);
@@ -550,19 +658,34 @@ public final class ResourceDrivenActionHandler implements CharacterActionHandler
         ActionStateMachine.queueClientWork(delay, () -> player.swing(InteractionHand.MAIN_HAND));
     }
 
-    private static int resolveLockFrames(@Nullable CharacterActionData.ActionStep step, int totalTicks) {
-        if (step != null && step.protectDuration > 0) {
-            return step.protectDuration;
-        }
-        return Math.min(Math.max(1, totalTicks / 4), MAX_LOCK_FRAMES);
+    /**
+     * 一段动作的客户端时序 —— 见类注释的三窗口图。
+     *
+     * @param totalTicks   动画总刻数
+     * @param lockFrames   执行期硬直刻数（这段时间同级或更低优先级打不断）
+     * @param lockDelay    准备阶段刻数（这段时间硬直与定身都还没生效，可以被主动打断）
+     * @param movementLock 定身刻数
+     */
+    private record Timing(int totalTicks, int lockFrames, int lockDelay, int movementLock) {
     }
 
-    private static int resolveMovementLock(@Nullable CharacterActionData.ActionStep step, int lockFrames) {
-        if (step != null && step.protectDuration > 0) {
-            // 大招这类有保护期的动作：整段都定身
-            return Math.max(step.protectDuration, lockFrames);
+    private static Timing timingFor(@Nullable CharacterActionData.ActionStep step) {
+        int totalTicks = step == null ? 1 : Math.max(1, step.duration);
+
+        // 准备阶段（吟唱）不能超过总时长
+        int prepare = step == null ? 0 : Math.max(0, Math.min(step.prepareTicks, totalTicks));
+
+        // 执行期 = [prepareTicks, protectDuration)
+        int execution = step == null ? 0 : step.protectDuration - prepare;
+
+        if (execution <= 0) {
+            // 没配执行期：退化成「按下去马上有反应，但要等一拍才能接下一段」
+            int lock = Math.min(Math.max(1, totalTicks / 4), MAX_LOCK_FRAMES);
+            return new Timing(totalTicks, lock, prepare, Math.min(lock, DEFAULT_MOVE_LOCK));
         }
-        return Math.min(lockFrames, DEFAULT_MOVE_LOCK);
+
+        // 有执行期：整段执行期都锁 + 定身（大招那种绝对霸体就是 protect = duration）
+        return new Timing(totalTicks, execution, prepare, execution);
     }
 
     private static boolean playable(@Nullable Player player, @Nullable ActionDefinition def) {

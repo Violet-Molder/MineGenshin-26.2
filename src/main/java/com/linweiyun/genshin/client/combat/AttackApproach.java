@@ -23,6 +23,17 @@ import org.jetbrains.annotations.Nullable;
  *   <tr><td>没有目标</td><td>什么都不做，照旧执行动作自带的 {@code moves} 位移</td></tr>
  * </table>
  *
+ * <h2>保护性原则：接近任务做不下去就开打</h2>
+ * 突进的目的是<b>快速把人带进自己的攻击范围</b>，不是「百分百贴身」。
+ * 所以除了「到位」和「够得着」两条正常出口，还有一条兜底出口：
+ * <b>只要接近这件事停下来了就立刻出手</b> —— 撞墙、卡住、目标在方块后面、
+ * 目标在头顶/地板下打转、目标跑得和自己一样快……不管因为什么。
+ *
+ * <p>判据是 {@link #DASH_BLOCKED_PATIENCE_TICKS}（身体没动）与
+ * {@link #DASH_STALL_PATIENCE_TICKS}（距离没缩小），任一成立即停。
+ * 没有它的时候，追不到的情况会一路追满 {@link #MAX_APPROACH_TICKS} 刻，
+ * 表现就是「在够不着的目标旁边逗留一会儿才挥刀」。
+ *
  * <h2>转向为什么是「滑」而不是「瞬移」</h2>
  * 一按就把人掰到目标方向，看起来像贴图被翻转了一下 —— 缺了「发力」的过程。
  * 这里用<b>衰减式追角</b>：每刻转掉剩余夹角的一部分，再夹在一个速度区间里。
@@ -106,10 +117,37 @@ public final class AttackApproach {
     public static final double ARRIVE_SLACK = 0.6;
 
     /** 突进速度（格/刻）。<b>全向</b>：目标是飞的、在脚下的，都朝它直线过去。 */
-    public static final double DASH_SPEED = 0.85;
+    public static final double DASH_SPEED = 1.0;
 
     /** 兜底：最多突进多少刻，超时也要继续打（防止目标一直跑导致永远不出手）。 */
     public static final int MAX_APPROACH_TICKS = 20;
+
+    /**
+     * 「已经够得着」连续多少刻就强制开打。
+     *
+     * <p>目标在到位线附近来回动时，光靠精确距离判定会让人一直跟着跑；
+     * 够得着（进到这一招的攻击距离）连续这么多刻就直接出手 —— 反正已经打得到了。
+     */
+    public static final int ARRIVE_PATIENCE_TICKS = 3;
+
+    // ==================== 保护性原则（追不动了就开打） ====================
+
+    /**
+     * 本刻实际位移小于这个值（格）就当成「人被挡住了」。
+     *
+     * <p>突进每刻会给 1 格左右的冲量，正常情况下位移不会低于 0.5；
+     * 撞墙/顶住方块时会掉到 0.05 以下。
+     */
+    public static final double DASH_BLOCKED_EPSILON = 0.05;
+
+    /** 连续这么多刻「身体没动」→ 立刻停手开打。 */
+    public static final int DASH_BLOCKED_PATIENCE_TICKS = 2;
+
+    /** 距离每刻缩小不到这个值（格）就当成「没在接近」。 */
+    public static final double DASH_PROGRESS_EPSILON = 0.05;
+
+    /** 连续这么多刻「没接近」→ 立刻停手开打。 */
+    public static final int DASH_STALL_PATIENCE_TICKS = 2;
 
     // ==================== 吸附（每次出手推一下） ====================
 
@@ -153,6 +191,18 @@ public final class AttackApproach {
     private static double dashSpeed = DASH_SPEED;
     /** 这一招的生效攻击距离 —— 决定「到位线」和吸附带。 */
     private static double dashAttackRange = 3.0;
+    /** 连续多少刻「已经够得着」（用于 {@link #ARRIVE_PATIENCE_TICKS} 的兜底开打）。 */
+    private static int nearTicks;
+
+    // 保护性原则用的两个「还没停下来吗」探测器（见 DASH_STALL_PATIENCE_TICKS）
+    /** 上一刻玩家所在位置 —— 用来判断「身体到底有没有动」。 */
+    @Nullable
+    private static Vec3 lastPos;
+    /** 上一刻到目标的距离 —— 用来判断「还在不在接近」。 */
+    private static double lastDistance = Double.MAX_VALUE;
+    /** 连续多少刻身体没动 / 距离没缩小。 */
+    private static int blockedTicks;
+    private static int stallTicks;
 
     private AttackApproach() {
     }
@@ -188,6 +238,11 @@ public final class AttackApproach {
         AttackApproach.targetId = target.getId();
         AttackApproach.onArrive = onArrive;
         AttackApproach.dashing = true;
+        AttackApproach.nearTicks = 0;
+        AttackApproach.blockedTicks = 0;
+        AttackApproach.stallTicks = 0;
+        AttackApproach.lastPos = null;
+        AttackApproach.lastDistance = Double.MAX_VALUE;
         AttackApproach.dashTicksLeft = engagement != null && engagement.maxApproachTicks > 0
                 ? engagement.maxApproachTicks
                 : MAX_APPROACH_TICKS;
@@ -287,6 +342,50 @@ public final class AttackApproach {
             return;
         }
 
+        // 兜底：已经「够得着」（进到这一招的攻击距离）却还没进到位线 → 连续几刻就强制开打。
+        //
+        // 为什么需要：目标在到位线附近来回动时，距离会一直在线上弹，
+        // 只靠精确判定会出现「人在旁边跟着跑，动画却一直冻着不出手」。
+        // 够得着就已经能打中了，别墨迹。
+        if (distance <= dashAttackRange) {
+            if (++nearTicks >= ARRIVE_PATIENCE_TICKS) {
+                finish(player, true);
+                return;
+            }
+        } else {
+            nearTicks = 0;
+        }
+
+        // ── 保护性原则：接近这件事只要做不下去了，就当场停下来开打 ──
+        //
+        // 突进的目的是「快速把人带进自己的攻击范围」，不是「百分百贴身」。
+        // 所以撞墙、卡住、目标在方块后面或头顶打转、目标跑得和自己一样快……
+        // <b>不管因为什么</b>，只要停下来就出手，绝不继续追。
+        //
+        // 没有这一条时，追不到的情况会一路追满 MAX_APPROACH_TICKS(20 刻) 才出手，
+        // 表现就是「在地板下那个目标的头顶逗留一会儿」「贴着墙蹭半天」。
+        // 用两个互相独立的迹象判断「停下来了」，任一成立都算：
+        if (lastPos != null && player.position().distanceTo(lastPos) < DASH_BLOCKED_EPSILON) {
+            blockedTicks++;                 // ① 身体几乎没动 → 被方块挡住了
+        } else {
+            blockedTicks = 0;
+        }
+        lastPos = player.position();
+
+        if (distance >= lastDistance - DASH_PROGRESS_EPSILON) {
+            stallTicks++;                   // ② 距离不再缩小 → 追不上（或目标一样快）
+        } else {
+            stallTicks = 0;
+        }
+        lastDistance = distance;
+
+        if (blockedTicks >= DASH_BLOCKED_PATIENCE_TICKS
+                || stallTicks >= DASH_STALL_PATIENCE_TICKS) {
+            // hardStop = true：原地急停 + 立刻走「到位」那条路（解冻动画、结算伤害）
+            finish(player, true);
+            return;
+        }
+
         // 突进方向：<b>全向</b>（含 Y）。
         // 早期只推水平分量，目标是飞的就永远差一段高度 → 到位判定迟迟不成立 → 在头顶鬼畜；
         // 在脚下的同理。现在朝目标位置直线过去，竖直方向也一起给速度。
@@ -297,8 +396,13 @@ public final class AttackApproach {
             return;
         }
 
-        // 最后一步不要冲过头：按剩余距离缩小速度
-        double step = Math.min(dashSpeed, Math.max(0.05, distance - arriveDistance()));
+        // ⚠️ 这里**不按剩余距离收力**。
+        //
+        // 早期版本写的是 min(dashSpeed, distance - 到位线)：靠近到位线时力度会被压到很小，
+        // 而目标如果正在往外走（怪的速度量级差不多就是 0.2 格/刻），两边速度刚好抵消 →
+        // 距离永远卡在到位线上一点点，人就「跟着目标跑」直到 20 刻超时，动画全程冻着。
+        // 现在全程满速，靠「到达目标身前」这一条防冲过头：最多一步冲到目标身上，下一帧就会判定到位。
+        double step = Math.min(dashSpeed, remaining);
         Vec3 velocity = delta.scale(step / remaining);
         player.setDeltaMovement(velocity.x, velocity.y, velocity.z);
         player.hurtMarked = true;
@@ -327,11 +431,33 @@ public final class AttackApproach {
      * </ul>
      * 所以吸附不该被频繁触发，突进也不该被小碎步触发。
      *
+     * <p><b>参数从哪来</b>（这就是「吸附参数是怎么确定的」的完整链路）：
+     * <pre>
+     * 生效范围 = 这一招的攻击距离（ActionStep.attackRange / effectiveAttackRange()）
+     *            + 吸附带（Engagement.adhesionBand，默认全局 ADHESION_BAND）
+     * 一步多大力 = Engagement.adhesionStep（默认全局 ADHESION_STEP_SPEED）
+     * 力度换算、贴身下限 = 全局 ADHESION_TRAVEL_FACTOR / ADHESION_MIN_DISTANCE
+     * </pre>
+     *
      * @param attackRange 这一招的生效攻击距离
+     * @param engagement  这一招的交战形态；{@code null} 表示全用全局默认
      */
-    public static void stepToward(LocalPlayer player, LivingEntity target, double attackRange) {
+    public static void stepToward(LocalPlayer player, LivingEntity target, double attackRange,
+                                  @Nullable Engagement engagement) {
+        // 招式里写负数（-1 = USE_DEFAULT）→ 用全局常量；写 0 → 这一招明确关掉吸附。
+        // （判定用 >= 0：这样「0 = 关掉」和「-1 = 用默认」才是两件事，和文档一致。）
+        double band = engagement != null && engagement.adhesionBand >= 0
+                ? engagement.adhesionBand
+                : ADHESION_BAND;
+        double maxStep = engagement != null && engagement.adhesionStep >= 0
+                ? engagement.adhesionStep
+                : ADHESION_STEP_SPEED;
+        if (band <= 0 || maxStep <= 0) {
+            return;
+        }
+
         double distance = player.distanceTo(target);
-        if (distance > attackRange + ADHESION_BAND || distance <= ADHESION_MIN_DISTANCE) {
+        if (distance > attackRange + band || distance <= ADHESION_MIN_DISTANCE) {
             return;
         }
 
@@ -342,8 +468,8 @@ public final class AttackApproach {
         }
 
         // 按缺口收力：贴脸时不推、离得远时推满（也就半个格）
-        double gap = Math.min(distance - ADHESION_MIN_DISTANCE, ADHESION_BAND);
-        double speed = Math.min(ADHESION_STEP_SPEED, gap / ADHESION_TRAVEL_FACTOR);
+        double gap = Math.min(distance - ADHESION_MIN_DISTANCE, band);
+        double speed = Math.min(maxStep, gap / ADHESION_TRAVEL_FACTOR);
 
         Vec3 nudge = new Vec3(delta.x, 0, delta.z).scale(speed / horizontal);
         player.setDeltaMovement(player.getDeltaMovement().add(nudge));
@@ -427,6 +553,13 @@ public final class AttackApproach {
         dashing = false;
         dashTicksLeft = 0;
         onArrive = null;
+
+        // 保护性原则的探测器也要清：下一次突进从零开始数
+        nearTicks = 0;
+        blockedTicks = 0;
+        stallTicks = 0;
+        lastPos = null;
+        lastDistance = Double.MAX_VALUE;
     }
 
     // ==================== 转向工具 ====================

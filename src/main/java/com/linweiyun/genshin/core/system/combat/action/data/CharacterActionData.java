@@ -156,7 +156,44 @@ public final class CharacterActionData {
     public static final class ActionStep {
         public final String animation;           // 动画名
         public final int duration;               // 动画总时长（刻）
-        public final int protectDuration;        // 保护时长（刻）：期间无法被打断
+
+        /**
+         * <b>执行期结束刻</b>：{@code [prepareTicks, protectDuration)} 这一段是执行期，期间不可打断。
+         *
+         * <h2>一段动作的三个窗口</h2>
+         * <pre>
+         * 0                  prepareTicks              protectDuration        duration
+         * ├── 准备阶段（可打断）──┼──── 执行期（不可打断）────┼─── 后摇（可取消）───┤
+         * </pre>
+         * <ul>
+         *   <li><b>准备阶段</b> {@code [0, prepareTicks)}：吟唱 / 读条。
+         *       可以被打断 —— 挨打、走开、跳跃都会让这一招作废。</li>
+         *   <li><b>执行期</b> {@code [prepareTicks, protectDuration)}：技能<b>真正在发生</b>的部分，
+         *       位移、动画、伤害点（{@code hits[].delay}）都在这一段里。
+         *       一旦进入就<b>不可打断</b>，否则就是「CD 扣了、能量没了、效果没出来」。</li>
+         *   <li><b>后摇</b> {@code [protectDuration, duration)}：效果已经结算完，
+         *       可以被移动 / 跳跃 / 下一招取消 —— 连招手感就靠它。</li>
+         * </ul>
+         *
+         * <p><b>怎么填</b>：{@code 0}（默认）= 没有执行期保护，整段都能被打断；
+         * {@code = duration} = 整段都是执行期（大招那种绝对霸体）；
+         * 其余情况填「<b>最后一个伤害点之后一点</b>」。
+         * <b>执行期必须盖住所有伤害点</b>，只保护到伤害点之前等于没保护。
+         */
+        public final int protectDuration;
+
+        /**
+         * 准备阶段长度（刻）—— 三窗口图见 {@link #protectDuration}。
+         *
+         * <p>{@code 0}（默认）= <b>没有准备阶段，触发即进入执行期</b>：
+         * 「按下去就是位移 + 动画 + 伤害」的招式（翔风剑、突刺）都该是 0，
+         * 因为那种位移本身就是技能在执行，不是前摇。
+         *
+         * <p>只有真正的吟唱 / 读条才写正数：这段时间里被打断 = 施法失败
+         * （要不要退 CD / 能量由角色自己在 {@code canCast} 与触发钩子里决定）。
+         */
+        public int prepareTicks = 0;
+
         public final int priority;               // 优先级
         public final List<Move> moves;           // 位移列表
         public final List<Hit> hits;             // 伤害列表
@@ -178,6 +215,33 @@ public final class CharacterActionData {
          * 早期版本拿它算过，结果角色在 8 格外就停下不出手。
          */
         public float attackRange = 0f;
+
+        /**
+         * 突进时<b>从第几刻开始冻结动画</b>（刻）。默认 {@code 0} = 按下即冻结。
+         *
+         * <h2>为什么需要它</h2>
+         * 大部分近战是「起手摆一下就冲过去」，所以默认 0 刻冻结（停在起手那一帧）。
+         * 但有些招式的前几帧<b>本身就是动作的一部分</b>，必须播出来才冲：
+         *
+         * <pre>
+         * 薇斯娜三阶 E（原神效果）：
+         *     0 ──── N ────────── 冻结 ──── 到位 ──── 继续播
+         *     │  起跳 · 人消失 · 化作细长螺旋   │  朝目标突刺   │  突刺收招
+         * </pre>
+         *
+         * 也就是说这一招的位移发生在「变身」之后，而不是一按下就飞。
+         * 写 {@code N} 之后：前 N 刻动画照常播（人也还在原地/起跳），
+         * 第 N 刻才冻结并开始突进，到位再解冻接着播剩下的。
+         *
+         * <p><b>伤害点怎么对齐</b>：{@code hits[].delay} 一律是
+         * 「从<b>解冻</b>（没有突进时就是从按下）那一刻起算」——
+         * 所以写 delay 时不用管这个值，它就负责把「动作开始」往后推 N 刻。
+         *
+         * <p><b>配执行期</b>：这 N 刻也属于执行期，别让它被人打断 ——
+         * {@code protectDuration} 要盖住「N + 最后一个 delay」。
+         * 见 {@link #protectDuration} 的三窗口图。
+         */
+        public int dashStartDelay = 0;
 
         /**
          * 这一招的<b>交战形态</b>：远程还是近战、要不要突进、索敌多远。
@@ -208,6 +272,66 @@ public final class CharacterActionData {
          * 打飞在空中的敌人时它必须能往上走 —— 那是「追目标」，不是「跟你抬头的方向走」。
          */
         public boolean moveAllowsVertical = false;
+
+        /**
+         * 大招「跃起 → 摆姿态 → 锁落点 → 下坠刺击」的可选配置；{@code null} = 普通大招。
+         *
+         * <h2>为什么位移要单独配</h2>
+         * 这种大招的<b>动画只负责「跳起来 + 把身体转成下坠姿态」</b>，
+         * 真正飞出去的过程由代码驱动 —— 因为落点要在「开始下坠」那一刻按双方位置算出来，
+         * 而且<b>之后不再追踪</b>（敌人跑了就打空，这是设计）。
+         *
+         * <pre>
+         * 0 ──── jumpTicks ──────── landTick ──────── duration
+         * │  跃起 + 摆姿态（动画）  │   下坠（代码）   │  落地伤害 + 收招
+         *                           ↑ 这一刻锁落点，并发给服务端
+         * </pre>
+         *
+         * <p><b>伤害点必须配在 {@code jumpTicks + diveTicks} 那一刻</b>
+         * （{@code hits[].delay = DiveBurst.landTick()}），落地伤害才会和下坠同步。
+         *
+         * <p>另外记得把 {@code engagement} 的突进关掉（{@code .withDash(false)}）——
+         * 接近这件事由下坠本身完成，不需要再来一次贴脸突进。
+         */
+        public DiveBurst diveBurst = null;
+
+        /**
+         * 便捷写法：把这一段做成「跃起下坠刺击」大招。
+         *
+         * @param jumpTicks   跃起 + 摆姿态的刻数（动画演到这里为止）
+         * @param diveTicks   下坠刻数（落点在这一段开始时锁定）
+         * @param jumpHeight  跃起多高（格）
+         * @param maxDistance 落点最远离自己几格（防止一口气飞到天边）
+         */
+        public ActionStep withDiveBurst(int jumpTicks, int diveTicks,
+                                        double jumpHeight, double maxDistance) {
+            this.diveBurst = new DiveBurst(jumpTicks, diveTicks, jumpHeight, maxDistance);
+            return this;
+        }
+
+        /** 跃起下坠大招的时序与射程（见 {@link #diveBurst}）。 */
+        public static final class DiveBurst {
+            /** 跃起 + 摆姿态用多少刻（这一段动画正常播，位移由代码抬升）。 */
+            public final int jumpTicks;
+            /** 下坠多少刻。 */
+            public final int diveTicks;
+            /** 跃起高度（格）。 */
+            public final double jumpHeight;
+            /** 落点最远离自己多远（格）。 */
+            public final double maxDistance;
+
+            public DiveBurst(int jumpTicks, int diveTicks, double jumpHeight, double maxDistance) {
+                this.jumpTicks = Math.max(1, jumpTicks);
+                this.diveTicks = Math.max(1, diveTicks);
+                this.jumpHeight = Math.max(0.5, jumpHeight);
+                this.maxDistance = Math.max(1.0, maxDistance);
+            }
+
+            /** 落地时刻 —— {@code hits[].delay} 要写这个值。 */
+            public int landTick() {
+                return jumpTicks + diveTicks;
+            }
+        }
 
         /** 收尾动画的默认时长（刻）。 */
         public static final int DEFAULT_COMBO_END_TICKS = 60;
@@ -242,9 +366,31 @@ public final class CharacterActionData {
             return this;
         }
 
+        /**
+         * 便捷写法：这一段有<b>准备阶段</b>（吟唱 / 读条）多少刻。
+         *
+         * <p>准备阶段里可以被打断，执行期（{@code prepareTicks ~ protectDuration}）不行 ——
+         * 见 {@link #protectDuration} 的三窗口图。写 0 = 触发即执行（默认）。
+         */
+        public ActionStep withPrepareTicks(int ticks) {
+            this.prepareTicks = Math.max(0, ticks);
+            return this;
+        }
+
         /** 便捷写法：显式指定这一段的生效攻击距离（格）。 */
         public ActionStep withAttackRange(float range) {
             this.attackRange = Math.max(0f, range);
+            return this;
+        }
+
+        /**
+         * 便捷写法：突进<b>延后到第几刻</b>才开始（前几刻先播「起跳 / 变身 / 蓄力」）。
+         *
+         * <p>见 {@link #dashStartDelay}：写 0（默认）= 按下即冻结冲出去；
+         * 写 N = 先播 N 刻动画，第 N 刻才冻结并突进。
+         */
+        public ActionStep withDashStartDelay(int ticks) {
+            this.dashStartDelay = Math.max(0, ticks);
             return this;
         }
 
@@ -375,12 +521,37 @@ public final class CharacterActionData {
         public final int maxApproachTicks;
         /** 转向最大角速度（度/刻）；{@link #USE_DEFAULT} = 全局默认。 */
         public final float turnSpeed;
+        /**
+         * 吸附带（格）：目标在「攻击距离 + 这个」以内时，出手瞬间朝它推一小步。
+         *
+         * <p>{@link #USE_DEFAULT}（-1）= 全局 {@code AttackApproach.ADHESION_BAND}；
+         * <b>0 = 这一招不吸附</b>（和 {@link #adhesionStep} 任一为 0 都会关掉吸附）。
+         */
+        public final double adhesionBand;
+        /**
+         * 出手那一下的推力（冲量）；{@link #USE_DEFAULT}（-1）= 全局
+         * {@code AttackApproach.ADHESION_STEP_SPEED}；<b>0 = 这一招不吸附</b>。
+         *
+         * <p>大剑这类「一刀就要贴上去」的角色调大，轻武器/远程调小或直接
+         * {@link #withAdhesion(double, double) withAdhesion(0, 0)} 关掉。
+         */
+        public final double adhesionStep;
 
         public Engagement(boolean ranged, boolean dash,
                           double acquireRange, double keepRange,
                           double acquireAngle, double keepAngle,
                           double stopDistance, double dashSpeed,
                           int maxApproachTicks, float turnSpeed) {
+            this(ranged, dash, acquireRange, keepRange, acquireAngle, keepAngle,
+                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed, USE_DEFAULT, USE_DEFAULT);
+        }
+
+        public Engagement(boolean ranged, boolean dash,
+                          double acquireRange, double keepRange,
+                          double acquireAngle, double keepAngle,
+                          double stopDistance, double dashSpeed,
+                          int maxApproachTicks, float turnSpeed,
+                          double adhesionBand, double adhesionStep) {
             this.ranged = ranged;
             this.dash = dash;
             this.acquireRange = acquireRange;
@@ -391,6 +562,8 @@ public final class CharacterActionData {
             this.dashSpeed = dashSpeed;
             this.maxApproachTicks = maxApproachTicks;
             this.turnSpeed = turnSpeed;
+            this.adhesionBand = adhesionBand;
+            this.adhesionStep = adhesionStep;
         }
 
         /** 近战默认：索敌 6 / 保持 9 / 攻击距离外突进贴脸。 */
@@ -410,37 +583,61 @@ public final class CharacterActionData {
             return !ranged && dash;
         }
 
+        /** 装备/刻数全量重建（内部用；加字段时只改这一处）。 */
+        private Engagement copy(boolean ranged, boolean dash, double acquireRange, double keepRange,
+                                double acquireAngle, double keepAngle, double stopDistance,
+                                double dashSpeed, int maxApproachTicks, float turnSpeed,
+                                double adhesionBand, double adhesionStep) {
+            return new Engagement(ranged, dash, acquireRange, keepRange, acquireAngle, keepAngle,
+                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed, adhesionBand, adhesionStep);
+        }
+
         public Engagement withDash(boolean enabled) {
-            return new Engagement(ranged, enabled, acquireRange, keepRange, acquireAngle, keepAngle,
-                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed);
+            return copy(ranged, enabled, acquireRange, keepRange, acquireAngle, keepAngle,
+                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed, adhesionBand, adhesionStep);
         }
 
         public Engagement withAcquireRange(double range) {
-            return new Engagement(ranged, dash, range, keepRange, acquireAngle, keepAngle,
-                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed);
+            return copy(ranged, dash, range, keepRange, acquireAngle, keepAngle,
+                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed, adhesionBand, adhesionStep);
         }
 
         public Engagement withKeepRange(double range) {
-            return new Engagement(ranged, dash, acquireRange, range, acquireAngle, keepAngle,
-                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed);
+            return copy(ranged, dash, acquireRange, range, acquireAngle, keepAngle,
+                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed, adhesionBand, adhesionStep);
         }
 
         /** 索敌与保持的视角半角（度）。 */
         public Engagement withAngles(double acquire, double keep) {
-            return new Engagement(ranged, dash, acquireRange, keepRange, acquire, keep,
-                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed);
+            return copy(ranged, dash, acquireRange, keepRange, acquire, keep,
+                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed, adhesionBand, adhesionStep);
         }
 
         /** 突进手感三件套：停几格 / 多快 / 最多几刻。 */
         public Engagement withDashProfile(double stopDistance, double dashSpeed, int maxApproachTicks) {
-            return new Engagement(ranged, dash, acquireRange, keepRange, acquireAngle, keepAngle,
-                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed);
+            return copy(ranged, dash, acquireRange, keepRange, acquireAngle, keepAngle,
+                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed, adhesionBand, adhesionStep);
         }
 
         /** 转向最大角速度（度/刻）——想让人物转得更急/更从容就调这个。 */
         public Engagement withTurnSpeed(float degreesPerTick) {
-            return new Engagement(ranged, dash, acquireRange, keepRange, acquireAngle, keepAngle,
-                    stopDistance, dashSpeed, maxApproachTicks, degreesPerTick);
+            return copy(ranged, dash, acquireRange, keepRange, acquireAngle, keepAngle,
+                    stopDistance, dashSpeed, maxApproachTicks, degreesPerTick, adhesionBand, adhesionStep);
+        }
+
+        /**
+         * 吸附（每次出手朝目标推一小步）：推多远生效 / 一步多大力。
+         *
+         * <pre>
+         * 大剑：   .withAdhesion(2.0, 0.30)   // 带得更宽、一步更沉
+         * 短刀：   .withAdhesion(1.2, 0.16)   // 贴身才吸、步子轻
+         * 不要吸附：.withAdhesion(0, 0)        // 0 = 关掉（两个里任一为 0 就关）
+         * 用默认：  .withAdhesion(-1, -1)      // -1 = USE_DEFAULT
+         * </pre>
+         */
+        public Engagement withAdhesion(double band, double step) {
+            return copy(ranged, dash, acquireRange, keepRange, acquireAngle, keepAngle,
+                    stopDistance, dashSpeed, maxApproachTicks, turnSpeed, band, step);
         }
     }
 

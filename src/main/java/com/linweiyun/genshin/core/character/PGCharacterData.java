@@ -54,19 +54,35 @@ public class PGCharacterData implements IPersistedSerializable, IManaged {
     @Getter
     @Persisted(key = "ascension_phase")
     private int ascensionPhase;
+    @Getter
     @Persisted(key = "constellation")
+    @DescSynced
     private int constellation;
     @Persisted(key = "attributes")
     private AttributeContainer attributes = new AttributeContainer();
-    @Getter
     @Persisted(key = "normal_attack_level")
     private int normalAttackLevel;
-    @Getter
     @Persisted(key = "elemental_skill_level")
     private int elementalSkillLevel;
-    @Getter
     @Persisted(key = "elemental_burst_level")
     private int elementalBurstLevel;
+
+    // ==================== 天赋的「手动升级次数」 ====================
+    //
+    // 有效等级 = 基础 1 级 + 手动次数 + 命座/天赋加成（见 recalculateTalentLevels）。
+    // 之所以单独记手动次数：**升级消耗只按手动次数算**。
+    // 例：手动升到 4 级（3 次）后抽到 3 命（战技 +3）→ 显示 7 级，
+    //     但下一次升级消耗的仍然是「4→5」那一档，因为手动次数只有 3。
+
+    @Persisted(key = "manual_normal_attack")
+    private int manualNormalAttack;
+    @Persisted(key = "manual_elemental_skill")
+    private int manualElementalSkill;
+    @Persisted(key = "manual_elemental_burst")
+    private int manualElementalBurst;
+
+    /** 手动升级次数字段是否已经迁移过（老存档：没有这三个字段）。瞬态，不入档。 */
+    private transient boolean talentUpgradesMigrated;
     @Getter
     @Persisted(key = "current_obtaining_energy")
     @DescSynced
@@ -251,37 +267,182 @@ public class PGCharacterData implements IPersistedSerializable, IManaged {
 
     public CharacterAttachmentContainer getAttachments() {return characterAttachments;}
 
-    public static final int MAX_TALENT_LEVEL = 14;
+    // ==================== 天赋等级 ====================
+
+    /**
+     * 手动升级次数上限（三个天赋各自）：手动最多 9 次 → <b>手动能到 10 级</b>。
+     */
+    public static final int MAX_MANUAL_TALENT_UPGRADES = 9;
+
+    /** 天赋基础等级：0 次手动时是 1 级。 */
+    public static final int TALENT_BASE_LEVEL = 1;
+
+    /** 3 命：元素战技等级 +3，<b>上限同时 +3</b>（10 → 13）。全角色通用。 */
+    public static final int C3_SKILL_LEVEL_BONUS = 3;
+
+    /** 5 命：元素爆发等级 +3，<b>上限同时 +3</b>（10 → 13）。全角色通用。 */
+    public static final int C5_BURST_LEVEL_BONUS = 3;
+
+    /** 天赋等级的理论上限（含最高命座加成），给需要「绝对上限」的地方用。 */
+    public static final int MAX_TALENT_LEVEL =
+            TALENT_BASE_LEVEL + MAX_MANUAL_TALENT_UPGRADES + C3_SKILL_LEVEL_BONUS;
+
+    /**
+     * 把「手动次数 + 命座加成」重算成三个天赋的<b>有效等级</b>。
+     *
+     * <p>有效等级仍然写在 {@code normalAttackLevel} 那几个字段里（伤害计算、UI 都直接读它们），
+     * 但它们是<b>派生值</b> —— 唯一可以手动改的只有上面的「手动次数」。
+     */
+    private void recalculateTalentLevels() {
+        this.normalAttackLevel = TALENT_BASE_LEVEL + manualNormalAttack;
+        this.elementalSkillLevel = TALENT_BASE_LEVEL + manualElementalSkill
+                + (constellation >= 3 ? C3_SKILL_LEVEL_BONUS : 0);
+        this.elementalBurstLevel = TALENT_BASE_LEVEL + manualElementalBurst
+                + (constellation >= 5 ? C5_BURST_LEVEL_BONUS : 0);
+    }
+
+    /**
+     * 老存档迁移：那时候只有「有效等级」、没有「手动次数」。
+     *
+     * <p>不倒推的话，老角色一旦升级就会先被算成 1 级 + 1 次，等级直接掉回去。
+     * 当时没有命座加成，所以手动次数就是 {@code 有效等级 - 1}。
+     */
+    private void migrateTalentUpgradesIfNeeded() {
+        if (talentUpgradesMigrated) return;
+        talentUpgradesMigrated = true;
+
+        if (manualNormalAttack != 0 || manualElementalSkill != 0 || manualElementalBurst != 0) {
+            return;     // 已经有手动次数了，不用迁移
+        }
+        if (normalAttackLevel <= TALENT_BASE_LEVEL
+                && elementalSkillLevel <= TALENT_BASE_LEVEL
+                && elementalBurstLevel <= TALENT_BASE_LEVEL) {
+            return;     // 全是 1 级，没什么可迁移的
+        }
+
+        manualNormalAttack = clampManual(normalAttackLevel - TALENT_BASE_LEVEL);
+        manualElementalSkill = clampManual(elementalSkillLevel - TALENT_BASE_LEVEL);
+        manualElementalBurst = clampManual(elementalBurstLevel - TALENT_BASE_LEVEL);
+        recalculateTalentLevels();
+        markDirty();
+    }
+
+    private static int clampManual(int value) {
+        return Math.max(0, Math.min(MAX_MANUAL_TALENT_UPGRADES, value));
+    }
+
+    /**
+     * 直接设置某个天赋的<b>手动升级次数</b>（命令 / GM 用）。
+     *
+     * @param kind {@code normal} / {@code skill} / {@code burst}
+     * @return {@code false} = kind 写错了
+     */
+    public boolean setManualTalentUpgrades(String kind, int count) {
+        migrateTalentUpgradesIfNeeded();
+        int clamped = clampManual(count);
+        switch (kind == null ? "" : kind.toLowerCase(java.util.Locale.ROOT)) {
+            case "normal" -> manualNormalAttack = clamped;
+            case "skill" -> manualElementalSkill = clamped;
+            case "burst" -> manualElementalBurst = clamped;
+            default -> {
+                return false;
+            }
+        }
+        recalculateTalentLevels();
+        markDirty();
+        return true;
+    }
+
+    /** 手动升级次数（三个天赋）。 */
+    public int getManualNormalAttack() {
+        migrateTalentUpgradesIfNeeded();
+        return manualNormalAttack;
+    }
+
+    /**
+     * 普通攻击的<b>有效等级</b>（= 基础 + 手动次数 + 命座/天赋加成）。
+     *
+     * <p>这几个 getter 是手写的（不用 Lombok）：顺手做一次「老存档迁移 + 重算」，
+     * 保证从磁盘读出来的旧数据在第一次读取时就被修正 ——
+     * 例如一个早就 3 命的老角色，战技等级要立刻补上 +3。
+     */
+    public int getNormalAttackLevel() {
+        migrateTalentUpgradesIfNeeded();
+        return normalAttackLevel;
+    }
+
+    public int getElementalSkillLevel() {
+        migrateTalentUpgradesIfNeeded();
+        return elementalSkillLevel;
+    }
+
+    public int getElementalBurstLevel() {
+        migrateTalentUpgradesIfNeeded();
+        return elementalBurstLevel;
+    }
+
+    public int getManualElementalSkill() {
+        migrateTalentUpgradesIfNeeded();
+        return manualElementalSkill;
+    }
+
+    public int getManualElementalBurst() {
+        migrateTalentUpgradesIfNeeded();
+        return manualElementalBurst;
+    }
+
+    /** 普攻等级上限：手动 9 次 → 10 级（命座不加普攻）。 */
+    public int getNormalAttackLevelCap() {
+        return TALENT_BASE_LEVEL + MAX_MANUAL_TALENT_UPGRADES;
+    }
+
+    /** 战技等级上限：10 级；3 命 +3 → 13 级。 */
+    public int getElementalSkillLevelCap() {
+        return TALENT_BASE_LEVEL + MAX_MANUAL_TALENT_UPGRADES
+                + (constellation >= 3 ? C3_SKILL_LEVEL_BONUS : 0);
+    }
+
+    /** 元素爆发等级上限：10 级；5 命 +3 → 13 级。 */
+    public int getElementalBurstLevelCap() {
+        return TALENT_BASE_LEVEL + MAX_MANUAL_TALENT_UPGRADES
+                + (constellation >= 5 ? C5_BURST_LEVEL_BONUS : 0);
+    }
 
     public boolean canUpgradeNormalAttack() {
-        return normalAttackLevel < MAX_TALENT_LEVEL;
+        migrateTalentUpgradesIfNeeded();
+        return manualNormalAttack < MAX_MANUAL_TALENT_UPGRADES;
     }
 
     public boolean canUpgradeElementalSkill() {
-        return elementalSkillLevel < MAX_TALENT_LEVEL;
+        migrateTalentUpgradesIfNeeded();
+        return manualElementalSkill < MAX_MANUAL_TALENT_UPGRADES;
     }
 
     public boolean canUpgradeElementalBurst() {
-        return elementalBurstLevel < MAX_TALENT_LEVEL;
+        migrateTalentUpgradesIfNeeded();
+        return manualElementalBurst < MAX_MANUAL_TALENT_UPGRADES;
     }
 
     public boolean upgradeNormalAttack() {
         if (!canUpgradeNormalAttack()) return false;
-        normalAttackLevel++;
+        manualNormalAttack++;
+        recalculateTalentLevels();
         markDirty();
         return true;
     }
 
     public boolean upgradeElementalSkill() {
         if (!canUpgradeElementalSkill()) return false;
-        elementalSkillLevel++;
+        manualElementalSkill++;
+        recalculateTalentLevels();
         markDirty();
         return true;
     }
 
     public boolean upgradeElementalBurst() {
         if (!canUpgradeElementalBurst()) return false;
-        elementalBurstLevel++;
+        manualElementalBurst++;
+        recalculateTalentLevels();
         markDirty();
         return true;
     }
@@ -300,8 +461,116 @@ public class PGCharacterData implements IPersistedSerializable, IManaged {
     }
 
 
-    public void setCurrentExp(int currentExp) { this.currentExp = currentExp;markDirty();}
-    public void setMaxExp(int maxExp) { this.maxExp = maxExp;markDirty();}
+    // ==================== 武器被动状态 ====================
+    //
+    // 放在角色上而不是武器物品 NBT 上：武器被动是「装备者」的属性，
+    // 退场要能重置（见 WeaponItem#onLeaveField）。
+
+    /** 武器被动的轮换序号（如蝶变的三种风：0 忠忱 / 1 叛弃 / 2 丰获）。 */
+    @DescSynced
+    @Persisted(key = "weapon_passive_stage")
+    private int weaponPassiveStage;
+
+    /** 武器被动的限速闸门（游戏刻）：下一次允许触发的时间。 */
+    @DescSynced
+    @Persisted(key = "weapon_passive_gate_tick")
+    private long weaponPassiveGateTick;
+
+    public int getWeaponPassiveStage() {
+        return weaponPassiveStage;
+    }
+
+    public void setWeaponPassiveStage(int stage) {
+        this.weaponPassiveStage = Math.max(0, stage);
+        markDirty();
+    }
+
+    public long getWeaponPassiveGateTick() {
+        return weaponPassiveGateTick;
+    }
+
+    public void setWeaponPassiveGateTick(long tick) {
+        this.weaponPassiveGateTick = tick;
+        markDirty();
+    }
+
+    /**
+     * 漩流颂歌（{@code whirlflow_hymn}）：「附近队友触发冻结 / 星扩散」的窗口<b>到期刻</b>。
+     *
+     * <p>用绝对时刻而不是倒计时，读的时候拿当前游戏刻比一下就行。
+     * 老存档里没有这个字段，读出来就是 {@code 0} —— 语义正是「从没触发过」，
+     * 所以不需要自愈 getter（和蝶变的轮换序号那种「新常量被旧值盖掉」的情况不同）。
+     */
+    @DescSynced
+    @Persisted(key = "whirlflow_reaction_window_end")
+    private long whirlflowReactionWindowEnd;
+
+    public long getWhirlflowReactionWindowEnd() {
+        return whirlflowReactionWindowEnd;
+    }
+
+    public void setWhirlflowReactionWindowEnd(long tick) {
+        this.whirlflowReactionWindowEnd = tick;
+        markDirty();
+    }
+
+    /** 现在（{@code gameTime}）是否还在「冻结 / 星扩散」的 5 秒窗口内。 */
+    public boolean isWhirlflowReactionWindowActive(long gameTime) {
+        return whirlflowReactionWindowEnd > 0L && gameTime < whirlflowReactionWindowEnd;
+    }
+
+    /**
+     * 千岩牢固（{@code tenacity_of_the_millelith}）四件套的触发闸门：
+     * 「元素战技命中敌人」下次<b>允许</b>触发的游戏刻（每 0.5 秒至多触发一次）。
+     *
+     * <p>和蝶变的 {@code weaponPassiveGateTick} 同一形态 —— 用绝对时刻而不是倒计时，
+     * 换人 / 存档 / 重登都不会串。老存档读出来是 {@code 0}，语义正是「从没触发过」，不需要自愈。
+     */
+    @DescSynced
+    @Persisted(key = "tenacity4_gate_tick")
+    private long tenacity4GateTick;
+
+    public long getTenacity4GateTick() {
+        return tenacity4GateTick;
+    }
+
+    public void setTenacity4GateTick(long tick) {
+        this.tenacity4GateTick = tick;
+        markDirty();
+    }
+
+    // ==================== 命座 ====================
+
+    /** 命座上限（满命）。 */
+    public static final int MAX_CONSTELLATION = 6;
+
+    /** 直接设置命座等级（命令 / GM 用），自动 clamp 到 0~6。 */
+    public void setConstellation(int constellation) {
+        migrateTalentUpgradesIfNeeded();     // ⚠️ 必须先迁移：否则老存档重算会把手动次数当 0，等级掉回去
+        this.constellation = Math.max(0, Math.min(MAX_CONSTELLATION, constellation));
+        // 3 命 +战技等级 / 5 命 +爆发等级 → 有效等级要跟着重算
+        recalculateTalentLevels();
+        markDirty();
+    }
+
+    /**
+     * 提升一级命座 —— 抽到<b>已有</b>角色时调用。
+     *
+     * @return {@code true} = 这次真的升了一级；{@code false} = 已经满命，
+     *         调用方应该改走满命补偿（随机一套圣遗物）
+     */
+    public boolean upgradeConstellation() {
+        migrateTalentUpgradesIfNeeded();     // 同上：先迁移再重算
+        if (this.constellation >= MAX_CONSTELLATION) {
+            return false;
+        }
+        this.constellation++;
+        recalculateTalentLevels();
+        markDirty();
+        return true;
+    }
+
+    public void setCurrentExp(int currentExp) { this.currentExp = currentExp;markDirty();}    public void setMaxExp(int maxExp) { this.maxExp = maxExp;markDirty();}
     public void setCurrentHP(double currentHP) { this.currentHP = currentHP;markDirty();}
     public void setAscensionPhase(int ascensionPhase) { this.ascensionPhase = ascensionPhase;markDirty();}
     public void setCurrentObtainingEnergy(float energy) { this.currentObtainingEnergy = energy;markDirty();}
@@ -398,6 +667,9 @@ public class PGCharacterData implements IPersistedSerializable, IManaged {
         copy.normalAttackLevel = this.normalAttackLevel;
         copy.elementalSkillLevel = this.elementalSkillLevel;
         copy.elementalBurstLevel = this.elementalBurstLevel;
+        copy.manualNormalAttack = this.manualNormalAttack;
+        copy.manualElementalSkill = this.manualElementalSkill;
+        copy.manualElementalBurst = this.manualElementalBurst;
         copy.currentObtainingEnergy = this.currentObtainingEnergy;
         copy.elementalSkillCooldownTick = this.elementalSkillCooldownTick;
         copy.elementalBurstCooldownTick = this.elementalBurstCooldownTick;
@@ -413,7 +685,22 @@ public class PGCharacterData implements IPersistedSerializable, IManaged {
         return copy;
     }
 
-    private void markDirty() {
+    /**
+     * 标记这份数据「下一 tick 需要整包同步给客户端」。
+     *
+     * <p>同步有两条路：
+     * <ol>
+     *   <li>{@link #syncToClient()} —— LDLib2 增量包。<b>角色身上收不到</b>：
+     *       客户端没绑 ownerPlayer（{@code ISyncCharacter.handleCharacterSyncPacket} 会直接返回），
+     *       而且它和「角色自己的字段」共用同一个包名，索引空间不同，不能混用。</li>
+     *   <li>{@code CharacterTickEvent} 里检查 {@code isDirty()} → 整包
+     *       （{@code syncSingleCharacterToPlayer}）。<b>这条路是通的</b>，
+     *       所以「想让客户端看到什么」就得标 dirty。</li>
+     * </ol>
+     * 角色子类自己的状态（例如薇斯娜的剑气 / 巡风列装）也走第 2 条 ——
+     * 它们不在这个类里，但整包同步会把角色对象的 {@code @Persisted} 字段一起带上。
+     */
+    public void markDirty() {
         this.dirty = true;
     }
 

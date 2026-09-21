@@ -12,7 +12,8 @@
     "LivingEntityTeyvatMixin",
     "MagmaCubeResistanceMixin",
     "PlayerAttackInterceptor",
-    "PlayerHurtInterceptor"
+    "PlayerHurtInterceptor",
+    "AccessorRangedAttribute"
   ],
   "client": [
     "AvatarRendererMixin",

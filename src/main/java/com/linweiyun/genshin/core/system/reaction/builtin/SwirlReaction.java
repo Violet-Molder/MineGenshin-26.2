@@ -19,7 +19,6 @@ import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.content.effect.character.impl.RadianceStellarSwirlEffect;
-import com.linweiyun.genshin.core.character.IStellarSwirlParticipant;
 import com.linweiyun.genshin.core.system.reaction.ReactionPriorityCalculator;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
@@ -27,6 +26,7 @@ import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.enums.AttackType;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.linweiyun.genshin.content.entities.area.StellarVortexEntity;
+import com.linweiyun.genshin.core.character.catalyst.vodyanitsa.VodyanitsaTalent;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.content.entities.ModEntities;
 import com.mojang.logging.LogUtils;
@@ -134,7 +134,7 @@ public class SwirlReaction extends ElementalReaction {
         ServerLevel serverLevel = ctx.targetEntity().level() instanceof ServerLevel sl ? sl : null;
         boolean isStellarSwirl = attackerIsAnemo && spreadElement == ModElements.CYRO.get()
                 && serverLevel != null
-                && ReactionPriorityCalculator.hasStellarSwirlParticipant(serverLevel);
+                && ReactionPriorityCalculator.hasStellarSwirlHousehold(serverLevel);
         PGCharacter triggerCharacter = null;
         List<PGCharacter> preConsumeWindContributors = List.of();
         if (isStellarSwirl) {
@@ -288,6 +288,14 @@ public class SwirlReaction extends ElementalReaction {
         }
         stellarSwirlCooldown.put(targetId, gameTime);
 
+        // 血红之证四件套：触发者穿着四件套时挂上 10 秒 buff
+        applyScarletProofBuff(ctx.attackerEntity() instanceof Player p ? p : null, triggerCharacter);
+
+        // 武器被动（漩流颂歌）：附近的队伍成员触发星扩散 → 打开 5 秒强化窗口
+        com.linweiyun.genshin.content.items.weapon.catalyst.WhirlflowHymn.markReactionTriggers(
+                level, ctx.attackerEntity(),
+                ctx.targetEntity().getX(), ctx.targetEntity().getY(), ctx.targetEntity().getZ());
+
         if (ctx.targetEntity() instanceof LivingEntity livingTarget) {
             DamageIndicatorFactory.stellarIceReactionGradient(livingTarget,
                     ElementalReactionType.STELLAR_SWIRL_ICE);
@@ -299,23 +307,39 @@ public class SwirlReaction extends ElementalReaction {
 
         StellarVortexEntity existing = StellarVortexEntity.findExisting(level, x, y, z, 10.0f);
 
+        final StellarVortexEntity vortex;
         if (existing != null) {
-            // 将本次风贡献者加入累积列表（用于后续冰爆炸）
-            existing.addAllContributors(windContributorList);
-            existing.incrementLevel(triggerCharacter);
-            existing.triggerWindDamage(triggerCharacter, windContributorList);
+            vortex = existing;
         } else {
-            StellarVortexEntity vortex = new StellarVortexEntity(ModEntities.STELLAR_VORTEX.get(), level);
-            if (vortex == null) return;
-
-            vortex.setPos(x, y, z);
-            vortex.setLevel(1);
-            level.addFreshEntity(vortex);
-            vortex.addAllContributors(windContributorList);
-            vortex.triggerWindDamage(triggerCharacter, windContributorList);
+            StellarVortexEntity created = new StellarVortexEntity(ModEntities.STELLAR_VORTEX.get(), level);
+            if (created == null) return;
+            created.setPos(x, y, z);
+            created.setLevel(1);
+            level.addFreshEntity(created);
+            vortex = created;
         }
 
-        applyRadianceToParticipants(level);
+        // 突破天赋 1（沃雅妮莎）：遥久之歌持续期间触发星扩散 → 改为创造「流荡风旋」。
+        // 数据表现：创造 / 引爆时给周围敌人降 35% 风抗（6 秒）。
+        //
+        // ⚠️ 两个坑：
+        //   ① 必须排在 triggerWindDamage <b>之前</b> —— 否则这一下的风伤吃不到自己刚降的抗；
+        //   ② 「合并进已有风旋」那一支以前<b>没有</b>这段判定，于是只要场上已经有一个星辉风旋，
+        //      后面怎么触发都转不成流荡风旋（风抗自然一直是 0.1）。
+        boolean flowing = VodyanitsaTalent.songCovers(level, x, y, z);
+        if (flowing) {
+            vortex.markFlowingSwirl();
+            VodyanitsaTalent.shredWindAround(level, x, y, z);
+        }
+
+        // 将本次风贡献者加入累积列表（用于后续冰爆炸）
+        vortex.addAllContributors(windContributorList);
+        if (existing != null) {
+            vortex.incrementLevel(triggerCharacter);
+        }
+        vortex.triggerWindDamage(triggerCharacter, windContributorList);
+
+        applyRadianceToParticipants(level, x, y, z);
     }
 
     /**
@@ -328,21 +352,57 @@ public class SwirlReaction extends ElementalReaction {
         return att != null ? att.getCurrentCharacter() : null;
     }
 
-    private void applyRadianceToParticipants(ServerLevel level) {
+    /**
+     * 触发星扩散时，给「穿着血红之证四件套」的触发者挂上那 10 秒 buff
+     * （暴击率 +16% / 星扩散伤害 +40%）。
+     *
+     * <p>判定用四件套的常驻效果 {@code ScarletProof4}（穿着四件才在），
+     * 加上的 {@code ScarletProofBuffEffect} 才是真正改属性的那 10 秒。
+     */
+    private static void applyScarletProofBuff(Player player, PGCharacter triggerCharacter) {
+        if (player == null || triggerCharacter == null) {
+            return;
+        }
+        if (!triggerCharacter.getData().getEffectContainer()
+                .hasEffectOfType(com.linweiyun.genshin.content.effect.character.artifact.ScarletProof4.class)) {
+            return;
+        }
+        var buff = ModCharacterEffects.SCARLET_PROOF_BUFF_EFFECT.get();
+        if (buff == null) {
+            return;
+        }
+        CharacterEffectHelper.addEffect(player, triggerCharacter,
+                new CharacterEffectInstance(buff,
+                        com.linweiyun.genshin.content.effect.character.artifact.ScarletProofBuffEffect
+                                .DURATION_TICKS,
+                        0, false));
+    }
+
+    private void applyRadianceToParticipants(ServerLevel level, double x, double y, double z) {
         ICharacterEffect radianceEffect = ModCharacterEffects.RADIANCE_STELLAR_SWIRL_EFFECT.get();
         if (radianceEffect == null) return;
 
-        int duration = RadianceStellarSwirlEffect.DURATION_TICKS;
+        // 突破天赋 1（沃雅妮莎）：遥久之歌持续期间，队伍附近的角色进入辉映·星扩散时
+        // 持续时间延长 4 秒。
+        boolean songCovers = VodyanitsaTalent.songCovers(level, x, y, z);
+        int extend = songCovers ? VodyanitsaTalent.RADIANCE_EXTEND_TICKS : 0;
+        int duration = RadianceStellarSwirlEffect.DURATION_TICKS + extend;
 
         for (Player p : level.players()) {
             PlayerCharactersAttachment att = p.getData(
                     AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             for (int i = 0; i < 4; i++) {
                 PGCharacter character = att.getPartyCharacter(i);
-                if (character instanceof IStellarSwirlParticipant) {
+                // 状态持有者（能进入星烁状态的角色）才吃这个 buff —— 和户口无关
+                if (character instanceof com.linweiyun.genshin.core.character.IStellarStateHolder holder
+                        && holder.canHoldStellarState()) {
                     CharacterEffectInstance instance = new CharacterEffectInstance(
                             radianceEffect, duration, 0, false);
                     CharacterEffectHelper.addEffect(p, character, instance);
+                    // 排查用：挂的时候把时长打出来（含天赋 1 那 4 秒有没有加上）
+                    LOGGER.info("[辉映·星扩散] 挂上 char={} 时长={}刻({}秒) = 基础{} + 天赋1 {} | 遥久之歌覆盖={}",
+                            character.getName().getString(), duration, duration / 20f,
+                            RadianceStellarSwirlEffect.DURATION_TICKS, extend, songCovers);
                 }
             }
         }

@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.mojang.logging.LogUtils;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -18,6 +19,7 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.PushReaction;
+import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -36,6 +38,16 @@ import java.util.UUID;
  * 数据同步：半径（radius）通过 SynchedEntityData 实时同步给客户端
  */
 public abstract class AreaEntity extends Entity implements IPersistedSerializable {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
+
+    /**
+     * 寿命诊断日志开关（排查「领域不会自然消亡」用，平时留 false）。
+     *
+     * <p>打开后每 100 刻打一条「剩余 N 刻」；不管开关如何，
+     * <b>到期移除</b>那条日志始终会打（一次领域一行，很便宜，也是排查的关键证据）。
+     */
+    public static boolean LIFETIME_DEBUG_LOG = false;
 
     // ========== SynchedEntityData 同步字段 ==========
 
@@ -56,6 +68,28 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
     // 领域剩余持续时间（tick）—— -1 表示无限持续
     @Persisted(key = "duration")
     protected int duration = -1;
+
+    /**
+     * 到期时刻（绝对游戏时间 {@code level().getGameTime()}）；{@code -1} = 还没定。
+     *
+     * <p><b>为什么用「绝对时刻」而不是 {@code tickCount}</b>（这两个都是一次真事故）：
+     * <ol>
+     *   <li>{@code tickCount} <b>不落盘</b>（{@code Entity} 只存档
+     *       {@code addAdditionalSaveData} 写进去的东西），而 {@code @Persisted} 对<b>实体</b>是无效的
+     *       （LDLib2 只 mixin 了 BlockEntity）；于是区块每卸载重载一次，
+     *       实体都被构造器「满血复活」成 duration=600 / tickCount=0 ——
+     *       表现就是「领域一直存在，不会自然消亡」；</li>
+     *   <li>实体离开 ENTITY_TICKING 距离后服务端根本不 tick 它，相对倒计时会<b>冻结</b>；
+     *       换成绝对时刻后，它只要再被 tick 一次就会发现自己早就过期了。</li>
+     * </ol>
+     */
+    protected long expireGameTime = -1L;
+
+    /** 领域拥有者玩家 UUID —— 实体重载后 {@code owner} 引用会丢，靠它找回。 */
+    protected UUID ownerUUID;
+
+    /** 触发领域的角色 UUID（{@code PGCharacter.getCharacterUUID()}）。 */
+    protected int characterUUID;
 
     // 领域形状类型 —— 球体或圆柱体
     @Persisted(key = "shape_type")
@@ -109,10 +143,37 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
      * 服务端Tick —— 处理持续时间、领域效果等
      */
     protected void serverTick() {
-        // 持续时间倒计时
-        if (this.duration != -1 && this.tickCount >= this.duration) {
-            this.discard();  // 到期后移除实体
+        if (this.duration == -1) {
+            return;                     // 无限持续的领域：没有到期时刻
         }
+
+        long now = this.level().getGameTime();
+        if (this.expireGameTime < 0L) {
+            // 第一次 tick 才定死到期时刻（构造期没有可靠的游戏时间）
+            this.expireGameTime = now + this.duration;
+        }
+
+        if (now >= this.expireGameTime) {
+            LOGGER.info("[领域] {} 到期移除（原定 {} 刻）",
+                    this.getType().getDescription().getString(), this.duration);
+            this.discard();  // 到期后移除实体
+            return;
+        }
+
+        if (LIFETIME_DEBUG_LOG && now % 100L == 0L) {
+            // 心跳：有这条日志 = 这个领域确实在被 tick；没有 = 它根本没在走寿命
+            LOGGER.info("[领域] {} 剩余 {} 刻", this.getType().getDescription().getString(),
+                    this.expireGameTime - now);
+        }
+    }
+
+    /**
+     * 重新起算寿命（「被刷新就续命」的领域用，例如雷暴云）。
+     *
+     * <p>不要再自己去写 {@code tickCount = 0} —— 寿命现在记在 {@link #expireGameTime} 上。
+     */
+    public void refreshLifetime() {
+        this.expireGameTime = this.duration == -1 ? -1L : this.level().getGameTime() + this.duration;
     }
 
     /**
@@ -175,6 +236,7 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
     /** 设置领域持续时间（tick），-1表示无限 */
     public void setDuration(int duration) {
         this.duration = duration;
+        this.expireGameTime = -1L;      // 下一 tick 按当时的游戏时间重新定死
     }
 
     /** 获取当前同步的半径值（用于碰撞箱计算） */
@@ -190,12 +252,11 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
      */
     @Nullable
     public Player getOwner() {
-        if (owner == null) return null;
-        try {
-            return this.owner;
-        } catch (IllegalArgumentException e) {
-            return null;
+        // 实体重载后引用会丢（@Persisted 对实体无效）→ 按 UUID 从玩家列表里找回来
+        if (this.owner == null && this.ownerUUID != null && this.level() instanceof ServerLevel serverLevel) {
+            this.owner = serverLevel.getServer().getPlayerList().getPlayer(this.ownerUUID);
         }
+        return this.owner;
     }
 
     /**
@@ -205,7 +266,17 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
      */
     @Nullable
     public PGCharacter getOwnerCharacter() {
-        return character;
+        if (this.character == null && this.characterUUID != 0) {
+            Player owner = getOwner();
+            if (owner != null) {
+                PlayerCharactersAttachment attachment =
+                        owner.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+                if (attachment != null) {
+                    this.character = attachment.getCharacterByUUID(this.characterUUID);
+                }
+            }
+        }
+        return this.character;
     }
 
     /**
@@ -214,10 +285,10 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
      * @param character 触发领域的角色数据（PGCharacterData）
      */
     public void setOwner(Player owner, PGCharacter character) {
-        if (owner != null) {
-            this.owner = owner;  // 存储玩家
-        }
-        this.character = character;  // 存储角色数据
+        this.owner = owner;
+        this.ownerUUID = owner == null ? null : owner.getUUID();
+        this.character = character;
+        this.characterUUID = character == null ? 0 : character.getCharacterUUID();
     }
 
 
@@ -269,18 +340,40 @@ public abstract class AreaEntity extends Entity implements IPersistedSerializabl
         super.onSyncedDataUpdated(accessor);
     }
 
-    // ========== LDLib2 序列化 ==========
-    // IPersistedSerializable 的序列化/反序列化由 LDLib2 自动处理
-    // readAdditionalSaveData 和 addAdditionalSaveData 可以保留为空，
-    // 因为 @Persisted 注解的字段会自动被 LDLib2 持久化
+    // ========== 序列化 ==========
+    //
+    // ⚠️ 这里的 @Persisted 只是标注，对**实体**不生效（LDLib2 只 mixin 了 BlockEntity），
+    //    寿命与拥有者必须自己用 ValueOutput/ValueInput 真正落盘 ——
+    //    否则区块一重载，领域就被构造器「满血复活」，看起来永远不会消亡。
 
     @Override
     public void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input) {
-        // LDLib2 自动处理 @Persisted 字段的反序列化
+        this.duration = input.getIntOr("mg_duration", this.duration);
+        this.expireGameTime = input.getLongOr("mg_expire", -1L);
+
+        this.characterUUID = input.getIntOr("mg_character", 0);
+        this.owner = null;
+        this.character = null;      // 让 getOwner()/getOwnerCharacter() 按 UUID 重新解析
+
+        String ownerId = input.getStringOr("mg_owner", "");
+        if (!ownerId.isEmpty()) {
+            try {
+                this.ownerUUID = UUID.fromString(ownerId);
+            } catch (IllegalArgumentException ignored) {
+                this.ownerUUID = null;
+            }
+        }
+        // 注意：不在这里 discard() —— 读档期移除实体容易踩到加载流程；
+        // 到期时刻留在过去，第一个 serverTick 就会把它清掉。
     }
 
     @Override
     protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
-        // LDLib2 自动处理 @Persisted 字段的序列化
+        output.putInt("mg_duration", this.duration);
+        output.putLong("mg_expire", this.expireGameTime);
+        output.putInt("mg_character", this.characterUUID);
+        if (this.ownerUUID != null) {
+            output.putString("mg_owner", this.ownerUUID.toString());
+        }
     }
 }

@@ -1,7 +1,9 @@
 package com.linweiyun.genshin;
 
 import com.linweiyun.genshin.config.GenshinConfig;
+import com.linweiyun.genshin.content.attribute.AttributeCapHandler;
 import com.linweiyun.genshin.content.entities.ModEntities;
+import com.linweiyun.genshin.content.items.ModItems;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.character.attachment.ModCharacterAttachmentTypes;
@@ -14,6 +16,7 @@ import com.linweiyun.genshin.core.system.registry.register.*;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
@@ -24,7 +27,6 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 
@@ -75,10 +77,13 @@ public class Minegenshin {
 
 
     }
-
     private void commonSetup(FMLCommonSetupEvent event) {
         ModElements.setupSubElements();
         NetworkManager.init();
+        // 属性上限解放（AttributeFix 等价物）：要等所有属性都注册完，
+        // 所以放 enqueueWork。放这里而不是 FMLLoadCompleteEvent —— 数据生成（runData）
+        // 不会触发后者，那样这条路径就只在正式游戏里才被走到、没法验证。
+        event.enqueueWork(AttributeCapHandler::applyCapRelief);
     }
 
     public static Identifier id(String path) {

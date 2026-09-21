@@ -81,6 +81,7 @@ public class ModDamageSpec {
     private final float stellarCoefficient;              // 星辉基础系数 (风:0.75, 冰:2.0/3.0)
     private final float stellarBaseBonusMult;            // 星扩散基础伤害倍率加成
     private final float stellarBaseBonusFlat;            // 星扩散基础伤害附加
+    private final boolean stellarReactionDamage;         // 是不是「反应造成的」星烁伤害（只影响日志口径）
     private List<PGCharacter> stellarContributors;       // 参与星扩散反应的角色列表（星辉风旋伤害用）
 
     // ========== 伤害类型 - 决定走哪条计算管线 ==========
@@ -97,6 +98,59 @@ public class ModDamageSpec {
     // ========== 运行时计算结果 ==========
     private boolean crit;                               // 本次伤害是否暴击（计算时由战斗系统设置）
 
+    /**
+     * 大权区加成（{@code 大权区 = 1 + 这个值}）。
+     *
+     * <p><b>按招式显式打开</b>，不是全局属性：例如薇斯娜的「整肃」只作用在灵剑那几段上
+     * （翔风剑二阶第二段、三阶两段、大招），她那几段以外的伤害不该吃。
+     * 天赋造伤害时调 {@link #withSovereignty(float)} 把当前层数盖上来。
+     */
+    private float sovereigntyBonus = 0f;
+
+    /** 队伍级星扩散基础倍率提升（运行时覆盖，见 {@link #withStellarBaseBonusMult(float)}）。 */
+    private float stellarBaseBonusMultValue = Float.NaN;
+
+    /** 给这一条伤害打开大权区（值 = 角色当前的大权加成，0.6 = +60%）。 */
+    public ModDamageSpec withSovereignty(float bonus) {
+        this.sovereigntyBonus = Math.max(0f, bonus);
+        return this;
+    }
+
+    public float getSovereigntyBonus() {
+        return sovereigntyBonus;
+    }
+
+    /**
+     * 增伤区加成（{@code 增伤区 = 1 + 元素伤害加成 + 效果加成 + 这个值}）。
+     *
+     * <p>和 {@link #sovereigntyBonus} 一样是<b>按招式</b>盖上去的：天赋里算好的
+     * 「这一招额外多少增伤」调 {@link #withDamageBonus(float)} 覆盖。
+     *
+     * <p>⚠️ 别和 {@code skillMultiplierBonus} 弄混：那个是<b>倍率区</b>
+     * （{@code 1 + 倍率提升}），这个才是「伤害提升 X%」的增伤区。
+     * 沃雅妮莎「遥久之歌期间大招额外一档」就是落在这一区。
+     */
+    private float damageBonus = 0f;
+
+    public ModDamageSpec withDamageBonus(float bonus) {
+        this.damageBonus = bonus;
+        return this;
+    }
+
+    public float getDamageBonus() {
+        return damageBonus;
+    }
+
+    /**
+     * 覆盖星扩散的<b>基础倍率提升</b>（基础区上的 {@code × (1 + 基础倍率提升)}）。
+     *
+     * <p>队伍级的星扩散基础伤害提升（例如薇斯娜按攻击力给的那一档）在造伤害时算好盖上来。
+     */
+    public ModDamageSpec withStellarBaseBonusMult(float bonus) {
+        this.stellarBaseBonusMultValue = Math.max(0f, bonus);
+        return this;
+    }
+
     // ========== 构造函数 ==========
     private ModDamageSpec(AttackType attackType, GenshinElement element,
                           float atkMultiplier, float hpMultiplier, float defMultiplier, float emMultiplier,
@@ -108,7 +162,7 @@ public class ModDamageSpec {
                 skillMultiplierBonus, flatDamageBonus,
                 elementAmount, decayGroup,
                 attackerCharacter,
-                DamageType.DIRECT, null, 0f, 0f, 0f, 0f, 0f);
+                DamageType.DIRECT, null, 0f, 0f, 0f, 0f, 0f, false);
     }
 
     private ModDamageSpec(AttackType attackType, GenshinElement element,
@@ -122,7 +176,7 @@ public class ModDamageSpec {
                 atkMultiplier, hpMultiplier, defMultiplier, emMultiplier,
                 skillMultiplierBonus, flatDamageBonus,
                 elementAmount, decayGroup,
-                attackerCharacter, damageType, reactionType, 0f, 0f, 0f, 0f, 0f);
+                attackerCharacter, damageType, reactionType, 0f, 0f, 0f, 0f, 0f, false);
     }
 
     private ModDamageSpec(AttackType attackType, GenshinElement element,
@@ -133,7 +187,8 @@ public class ModDamageSpec {
                           DamageType damageType,
                           ElementalReactionType reactionType,
                           float lunarBaseBonus, float lunarBaseFlat,
-                          float stellarCoefficient, float stellarBaseBonusMult, float stellarBaseBonusFlat) {
+                          float stellarCoefficient, float stellarBaseBonusMult, float stellarBaseBonusFlat,
+                          boolean stellarReactionDamage) {
         this.attackType = attackType;
         this.element = element;
         this.atkMultiplier = atkMultiplier;
@@ -152,6 +207,7 @@ public class ModDamageSpec {
         this.stellarCoefficient = stellarCoefficient;
         this.stellarBaseBonusMult = stellarBaseBonusMult;
         this.stellarBaseBonusFlat = stellarBaseBonusFlat;
+        this.stellarReactionDamage = stellarReactionDamage;
     }
 
     public static ModDamageSpec transformative(ElementalReactionType reactionType, GenshinElement element) {
@@ -161,7 +217,7 @@ public class ModDamageSpec {
                 0f, 0f,
                 0f, null,
                 null,
-                DamageType.TRANSFORMATIVE, reactionType, 0f, 0f, 0f, 0f, 0f);
+                DamageType.TRANSFORMATIVE, reactionType, 0f, 0f, 0f, 0f, 0f, false);
     }
 
     public static ModDamageSpec transformative(ElementalReactionType reactionType,
@@ -172,7 +228,7 @@ public class ModDamageSpec {
                 0f, 0f,
                 0f, null,
                 null,
-                DamageType.TRANSFORMATIVE, reactionType, 0f, 0f, 0f, 0f, 0f);
+                DamageType.TRANSFORMATIVE, reactionType, 0f, 0f, 0f, 0f, 0f, false);
     }
 
     public static ModDamageSpec lunar(ElementalReactionType reactionType) {
@@ -182,7 +238,7 @@ public class ModDamageSpec {
                 0f, 0f,
                 0f, null,
                 null,
-                DamageType.LUNAR, reactionType, 0f, 0f, 0f, 0f, 0f);
+                DamageType.LUNAR, reactionType, 0f, 0f, 0f, 0f, 0f, false);
     }
 
     public static ModDamageSpec lunarDirect(float atkMultiplier, float elementAmount) {
@@ -192,17 +248,38 @@ public class ModDamageSpec {
                 0f, 0f,
                 elementAmount, null,
                 null,
-                DamageType.LUNAR, ElementalReactionType.LUNAR_CHARGED, 0f, 0f, 0f, 0f, 0f);
+                DamageType.LUNAR, ElementalReactionType.LUNAR_CHARGED, 0f, 0f, 0f, 0f, 0f, false);
     }
 
     public static ModDamageSpec lunarDirectHp(float hpMultiplier) {
         return new ModDamageSpec(
                 AttackType.LUNAR_CHARGED, ModElements.ELECTRO.get(),
-                1.0f, hpMultiplier, 0f, 0f,
+                0f, hpMultiplier, 0f, 0f,
                 0f, 0f,
                 0f, null,
                 null,
-                DamageType.LUNAR, ElementalReactionType.LUNAR_CHARGED, 0f, 0f, 0f, 0f, 0f);
+                DamageType.LUNAR, ElementalReactionType.LUNAR_CHARGED, 0f, 0f, 0f, 0f, 0f, false);
+    }
+
+    /**
+     * 星烁反应伤害（星辉风旋那种「谁打的一起算」的区域伤害）。
+     *
+     * <p>和 {@link #stellarDirect} 的区别只在语义/日志：这是<b>反应造成的</b>伤害，
+     * 不是某个角色技能自带的星烁直伤。
+     */
+    public static ModDamageSpec stellarReaction(ElementalReactionType reactionType, GenshinElement element,
+                                                float stellarCoefficient, float baseBonusMult,
+                                                float baseBonusFlat, List<PGCharacter> contributors) {
+        ModDamageSpec spec = new ModDamageSpec(
+                AttackType.STELLAR_SWIRL, element,
+                1.0f, 0f, 0f, 0f,
+                0f, 0f,
+                0f, null,
+                null,
+                DamageType.STELLAR, reactionType, 0f, 0f,
+                stellarCoefficient, baseBonusMult, baseBonusFlat, true);
+        spec.setStellarContributors(contributors);
+        return spec;
     }
 
     public static ModDamageSpec stellar(ElementalReactionType reactionType, GenshinElement element) {
@@ -212,7 +289,7 @@ public class ModDamageSpec {
                 0f, 0f,
                 0f, null,
                 null,
-                DamageType.STELLAR, reactionType, 0f, 0f, 0f, 0f, 0f);
+                DamageType.STELLAR, reactionType, 0f, 0f, 0f, 0f, 0f, false);
     }
 
     public static ModDamageSpec stellarDirect(ElementalReactionType reactionType,
@@ -232,7 +309,12 @@ public class ModDamageSpec {
                 0f, 0f,
                 elementAmount, null,
                 null,
-                DamageType.STELLAR, reactionType, 0f, 0f, stellarCoefficient, 0f, 0f);
+                DamageType.STELLAR, reactionType, 0f, 0f, stellarCoefficient, 0f, 0f, false);
+    }
+
+    /** 是不是「星烁反应造成的」伤害（用于日志区分反应伤害 / 技能直伤）。 */
+    public boolean isStellarReactionDamage() {
+        return stellarReactionDamage;
     }
 
     public DamageType getDamageType() {
@@ -262,7 +344,9 @@ public class ModDamageSpec {
     public void setLunarContributors(List<PGCharacter> contributors) { this.lunarContributors = contributors; }
 
     public float getStellarCoefficient() { return stellarCoefficient; }
-    public float getStellarBaseBonusMult() { return stellarBaseBonusMult; }
+    public float getStellarBaseBonusMult() {
+        return Float.isNaN(stellarBaseBonusMultValue) ? stellarBaseBonusMult : stellarBaseBonusMultValue;
+    }
     public float getStellarBaseBonusFlat() { return stellarBaseBonusFlat; }
     public List<PGCharacter> getStellarContributors() { return stellarContributors; }
     public void setStellarContributors(List<PGCharacter> contributors) { this.stellarContributors = contributors; }
@@ -275,7 +359,8 @@ public class ModDamageSpec {
                 this.elementAmount, this.decayGroup,
                 this.attackerCharacter, this.damageType, this.transformativeReactionType,
                 this.lunarBaseBonus, this.lunarBaseFlat,
-                this.stellarCoefficient, this.stellarBaseBonusMult, this.stellarBaseBonusFlat
+                this.stellarCoefficient, this.stellarBaseBonusMult, this.stellarBaseBonusFlat,
+                this.stellarReactionDamage
         );
     }
 
@@ -287,7 +372,8 @@ public class ModDamageSpec {
                 this.elementAmount, this.decayGroup,
                 character, this.damageType, this.transformativeReactionType,
                 this.lunarBaseBonus, this.lunarBaseFlat,
-                this.stellarCoefficient, this.stellarBaseBonusMult, this.stellarBaseBonusFlat
+                this.stellarCoefficient, this.stellarBaseBonusMult, this.stellarBaseBonusFlat,
+                this.stellarReactionDamage
         );
     }
 
@@ -386,7 +472,7 @@ public class ModDamageSpec {
         private final AttackType attackType;
         private final GenshinElement element;
 
-        private float atkMultiplier = 1.0f;
+        private float atkMultiplier = 0.0f;
         private float hpMultiplier = 0.0f;
         private float defMultiplier = 0.0f;
         private float emMultiplier = 0.0f;

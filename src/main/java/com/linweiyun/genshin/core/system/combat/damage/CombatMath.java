@@ -12,12 +12,17 @@ public final class CombatMath {
     }
 
     /**
-     * 防御区：
-     * 1 - (攻方等级系数) / (攻方等级系数 + 被攻方防御)
+     * 防御区 = 攻方等级系数 / (攻方等级系数 + 被攻方防御)。
+     *
+     * <p>也就是「这一下能打进去多少比例」，值域 (0,1)，防御越高越小。
+     *
+     * <p><b>注意</b>：早期版本这里返回的是它的<b>补数</b>（{@code 1 - 防御区}），
+     * 调用方要再取一次 {@code 1 -} 才得到真正的防御区 —— 双重取反很容易看错，
+     * 现在直接返回防御区本身。
      */
     public static float defenseZone(int attackerLevel, double defenderDef) {
         double atkCoef = levelCoefficient(attackerLevel);
-        return (float) (1.0 - atkCoef / (atkCoef + defenderDef));
+        return (float) (atkCoef / (atkCoef + defenderDef));
     }
 
     /**

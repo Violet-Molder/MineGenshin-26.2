@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
 import com.linweiyun.genshin.config.character.CharacterSystemConfig;
+import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
 import com.linweiyun.genshin.core.system.combat.targeting.CombatTargeting;
@@ -124,8 +125,20 @@ public class ActionManager {
 
         // 3. 立即设 CD
         character.applyElementalSkillCooldown(player, skillTime);
+        // 4. 武器被动：装备者施放战技（触发即生效，服务端权威）
+        notifyWeaponAbilityCast(player, character, def.kind);
         LOGGER.info("[ActionManager] [{}] elementalSkill STARTED", side);
         return true;
+    }
+
+    /** 把「施放了一招」告诉装备者的武器（武器被动用）。 */
+    private static void notifyWeaponAbilityCast(Player player, PGCharacter character, ActionKind kind) {
+        if (player.level().isClientSide()) return;
+        var weapon = character.getData().getWeapon();
+        if (weapon != null && !weapon.isEmpty()
+                && weapon.getItem() instanceof WeaponItem weaponItem) {
+            weaponItem.onAbilityCast(player, character, kind);
+        }
     }
 
     public boolean requestElementalBurst(Player player, PGCharacter character) {
@@ -155,6 +168,8 @@ public class ActionManager {
         }
 
         character.applyElementalBurstCooldown(player);
+        // 武器被动：装备者施放元素爆发
+        notifyWeaponAbilityCast(player, character, ActionKind.ELEMENTAL_BURST);
         LOGGER.info("[ActionManager] [{}] burst STARTED", side);
         return true;
     }
@@ -189,23 +204,20 @@ public class ActionManager {
         activeCharacter = character;
 
         if (current != null && !current.isFinished()) {
-            boolean isSkill = def.kind == ActionKind.ELEMENTAL_SKILL_TAP
-                    || def.kind == ActionKind.ELEMENTAL_SKILL_HOLD
-                    || def.kind == ActionKind.ELEMENTAL_BURST;
-
             if (current.isProtected()) {
-                // 保护期内：仅技能可打断
-                if (isSkill) {
-                    current.interrupt(InterruptReason.MANUAL);
-                    buffered = null;
-                } else {
-                    return false;
-                }
-            } else {
-                // 非保护期（comboWindow 或收尾）：直接替换
-                current.interrupt(InterruptReason.MANUAL);
-                if (!def.isCombo()) resetCombo();
+                // 执行期内不接受任何新动作 —— 和客户端 ActionStateMachine.canInterrupt 同一条规则，
+                // 两端必须一致，否则会出现「客户端播了动画、服务端什么都没做」。
+                //
+                // 这一段是技能真正在发生（位移 + 动画 + 伤害点），被打断就是
+                // 「CD 扣了、能量没了、效果没出来」；想接就得等执行期结束 —— 后摇才是取消窗口。
+                LOGGER.info("[ActionManager] [{}] 当前动作在执行期内，请求被拒 kind={}",
+                        player.level().isClientSide() ? "CLIENT" : "SERVER", def.kind);
+                return false;
             }
+
+            // 准备阶段 / 后摇 / 连击窗口：直接替换
+            current.interrupt(InterruptReason.MANUAL);
+            if (!def.isCombo()) resetCombo();
         }
 
         start(player, character, def);
@@ -241,10 +253,21 @@ public class ActionManager {
      * 只是不再分散在时间轴上）；{@code moves}（冲刺位移）属于前后摇表现，这一模式下跳过。
      */
     private void fireImmediately(Player player, PGCharacter character, ActionDefinition def) {
+        ActionContext ctx = new ActionContext(player, character, def);
+
+        // 触发钩子照发：换姿态 / 开模式这类「触发即生效」的逻辑跟动作系统开关无关
+        Consumer<ActionContext> castStart = def.getOnCastStart();
+        if (castStart != null) {
+            try {
+                castStart.accept(ctx);
+            } catch (Exception e) {
+                LOGGER.error("[ActionManager] 触发钩子抛异常 kind={}", def.kind, e);
+            }
+        }
+
         Consumer<ActionContext> hook = def.getOnActiveStart();
         if (hook == null) return;
 
-        ActionContext ctx = new ActionContext(player, character, def);
         CharacterActionData.ActionStep step = def.step;
         int times = (step == null || step.hits == null || step.hits.isEmpty()) ? 1 : step.hits.size();
 

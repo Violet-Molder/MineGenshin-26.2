@@ -157,6 +157,111 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
     }
 
     /**
+     * 客户端要不要在「这一招出手那一刻」<b>本地也跑一次</b>天赋钩子（默认不跑）。
+     *
+     * <p>角色天赋只在服务端执行，客户端只播动画 + 发包 —— 绝大多数招式这样就够了
+     * （伤害在服务端、动画在客户端）。但有些招式的<b>表现层位移必须由技能自己算</b>：
+     * 申鹤的 {@code DashSystem} 就是「客户端按格推位置、服务端沿途扫伤害」，
+     * 客户端不跑天赋的话那段位移就成了死代码。
+     *
+     * <p>打开的角色的天赋必须在客户端安全：自己按 {@code level.isClientSide()} 分流，
+     * 服务端专属逻辑（改数据、加效果、扣能量、生成实体）不要跑。
+     */
+    public boolean runsTalentOnClient() {
+        return false;
+    }
+
+    /**
+     * 辉映·星烁反应的伤害加成（反应加成区）—— <b>按分支给</b>。
+     *
+     * <p>覆写它就能做「天赋给星烁加成」的角色。写法有两种，对应文案的两种口径：
+     * <pre>
+     * // 文案写「星烁反应伤害提升 20%」→ 星扩散、星超导都给
+     * public float getStellarGlimmerBonus(StellarGlimmerBranch branch) { return 0.20f; }
+     *
+     * // 文案只写「星扩散伤害提升 20%」（薇斯娜那一类）→ 只给星扩散
+     * public float getStellarGlimmerBonus(StellarGlimmerBranch branch) {
+     *     return branch == StellarGlimmerBranch.SWIRL ? 0.20f : 0f;
+     * }
+     * </pre>
+     *
+     * <p>效果/ buff 那边走 {@code ICharacterEffect.getStellarGlimmerBonus(分支)}，
+     * 两边会在 {@code StellarGlimmer.bonusOf(...)} 里相加。
+     */
+    public float getStellarGlimmerBonus(com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch branch) {
+        return 0f;
+    }
+
+    /**
+     * 「擢升」加成（伤害公式里的<b>擢升区</b> = {@code 1 + 这个值}），按分支给。
+     *
+     * <p>和 {@link #getStellarGlimmerBonus} 的区别是<b>乘区不同</b>：
+     * 那个落在反应加成区、和元素精通<b>加算</b>；
+     * 这个落在擢升区、是<b>独立的乘区</b>（在暴击之后、大权之前）。
+     * 文案写「擢升」的加成就走这里（例：薇斯娜满命的星扩散伤害擢升 20%）。
+     */
+    public float getElevationBonus(com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch branch) {
+        // 两块相加：效果侧（例如队友身上沃雅妮莎 6 命的 Glimmer）+ 角色天赋自己那一份
+        return data.getEffectContainer().getElevationBonus(branch) + getOwnElevationBonus(branch);
+    }
+
+    /**
+     * 角色<b>天赋自己</b>给的擢升加成（默认 0；例：薇斯娜 6 命的星扩散擢升 20%）。
+     *
+     * <p>单独开一个方法是为了不被上面的容器聚合吞掉：覆写 {@link #getElevationBonus} 的话，
+     * 队友给你的效果加成也会一起没了。
+     */
+    public float getOwnElevationBonus(com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch branch) {
+        return 0f;
+    }
+
+    /**
+     * 按<b>元素 / 反应类型</b>的额外暴击伤害（加在统一 CDG 之上），默认 0。
+     *
+     * <p>和 {@link #getStellarGlimmerBonus} / {@link #getElevationBonus} 同类，只是作用在暴击区：
+     * 文案写「水元素伤害与冰元素伤害的暴击伤害提升 X%」这种就覆写它
+     * （例：沃雅妮莎 2 命的「黑与白的双音」）。
+     *
+     * @param element         这次伤害的元素
+     * @param stellarReaction 这次是不是星烁（星扩散/星超导）反应伤害
+     */
+    public float getCritDamageBonus(com.linweiyun.genshin.core.element.GenshinElement element,
+                                    boolean stellarReaction) {
+        // 效果侧聚合（和 getStellarGlimmerBonus 一样：效果 + 角色自己相加）
+        return data.getEffectContainer().getCritDamageBonus(element, stellarReaction);
+    }
+
+    /**
+     * 治疗加成（小数，{@code 0.04 = 4%}）—— 装备者实际治疗时乘进治疗量。
+     *
+     * <p>两块相加：效果侧（{@code ICharacterEffect#getHealingBonus} 的聚合，
+     * 例如圣遗物/天赋给的治疗加成）+ 装备武器自己那一份
+     * （{@code WeaponItem#getHealingBonus}，例如漩流颂歌的 +4%）。
+     *
+     * <p>武器那一份直接按「当前装着的武器」算，不落任何持久化状态 ——
+     * 换武器即时生效，也不会被老存档的影子值盖掉。
+     */
+    public float getHealingBonus() {
+        float total = data.getEffectContainer().getHealingBonus();
+        ItemStack weapon = data.getWeapon();
+        if (weapon != null && !weapon.isEmpty() && weapon.getItem() instanceof WeaponItem weaponItem) {
+            total += weaponItem.getHealingBonus();
+        }
+        return total;
+    }
+
+    /**
+     * 「大权」加成（伤害公式里的<b>大权区</b> = {@code 1 + 这个值}）。
+     *
+     * <p>由角色自己按层数/状态给，例如薇斯娜的「整肃」：每层 +10%，
+     * 只作用在她召唤的灵剑（翔风剑二/三阶与大招那几段）上。
+     * 没有这套机制的角色保持 0，大权区就是 1。
+     */
+    public float getSovereigntyBonus() {
+        return 0f;
+    }
+
+    /**
      * 获取数据驱动的动作配置（来自角色资源的 CharacterActionData）。
      * 子类可覆盖以返回角色专属配置。
      */
@@ -271,7 +376,8 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
 
     public boolean canUseElementalBurst(Player player) {
         if (data.getElementalBurstCooldownTick() > 0) return false;
-        return data.getCurrentObtainingEnergy() >= data.getMaxObtainingEnergy();
+        boolean canUse = data.getCurrentObtainingEnergy() >= data.getMaxObtainingEnergy();
+        return true;
     }
 
     public void applyElementalBurstCooldown(Player player) {
@@ -399,7 +505,9 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
                 ModDataComponents.WEAPON_STATS.get(), WeaponStatsComponent.DEFAULT);
 
         if (stats.mainStat != null && stats.mainStat.isInitialized()) {
-            double mainValue = stats.mainStat.getValue();
+            // 主词条修正：tier 只给整数基础攻击力，个别武器的主词条是小数
+            //（例如蝶变 48 - 0.46 = 47.54）
+            double mainValue = stats.mainStat.getValue() + weapon.getMainStatDelta();
             data.setWeaponBaseATK(mainValue);
             data.setAttributeBaseValue(ModAttributes.ATK.get(), SOURCE_WEAPON, mainValue);
         }
@@ -762,5 +870,52 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
     public void syncRealtimeState() {
         data.syncToClient();
         syncToClient();
+    }
+
+    // ==================== 命座 ====================
+
+    /**
+     * 命座等级（0 = 0 命，6 = 满命）。
+     *
+     * <p>字段本身住在 {@link PGCharacterData} 里（{@code @Persisted(key = "constellation")}，
+     * 早就有了、只是以前没人用），这里只是给天赋代码一个门面。
+     */
+    public int getConstellation() {
+        return data.getConstellation();
+    }
+
+    /**
+     * 命座是否达到 {@code level}（1~6）。
+     *
+     * <p>天赋里判命座一律走这个方法（而不是直接比等级数字），
+     * 「必须先解锁某个突破天赋」这类前置条件由天赋自己再判一次。
+     */
+    public boolean hasConstellation(int level) {
+        return data.getConstellation() >= level;
+    }
+
+    /** 是否已满命（6 命）。 */
+    public boolean isConstellationMax() {
+        return data.getConstellation() >= PGCharacterData.MAX_CONSTELLATION;
+    }
+
+    /**
+     * 提升一级命座 —— 抽到<b>已有</b>角色时调用。
+     *
+     * @return {@code true} = 这次真的升了一级；{@code false} = 已经满命，
+     *         调用方应该改走满命补偿（随机一套圣遗物）
+     */
+    public boolean addConstellation() {
+        if (!data.upgradeConstellation()) {
+            return false;
+        }
+        syncRealtimeState();
+        return true;
+    }
+
+    /** 直接设置命座等级（命令 / GM 用）。 */
+    public void setConstellation(int level) {
+        data.setConstellation(level);
+        syncRealtimeState();
     }
 }

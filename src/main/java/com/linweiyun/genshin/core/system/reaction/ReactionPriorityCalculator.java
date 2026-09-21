@@ -3,7 +3,6 @@ package com.linweiyun.genshin.core.system.reaction;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
-import com.linweiyun.genshin.core.character.IStellarSwirlParticipant;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.catalyst.columbina.Columbina;
 import com.linweiyun.genshin.core.element.GenshinElement;
@@ -82,26 +81,30 @@ public class ReactionPriorityCalculator {
         return false;
     }
 
-    public static boolean hasStellarSwirlParticipant(ServerLevel level) {
-        for (Player p : level.players()) {
-            PlayerCharactersAttachment att = p.getData(
-                    AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-            for (int i = 0; i < 4; i++) {
-                PGCharacter character = att.getPartyCharacter(i);
-                if (character instanceof IStellarSwirlParticipant) return true;
-            }
-        }
-        return false;
+    /**
+     * 队伍里有没有<b>星扩散户口</b> —— 有的话冰扩散要转成星扩散。
+     *
+     * <p>注意查的是户口（转化 + 体系加成，写在同一个天赋里），
+     * 不是「能进入星扩散状态」的角色（那个是 {@code IStellarStateHolder}，两回事）。
+     */
+    public static boolean hasStellarSwirlHousehold(ServerLevel level) {
+        return com.linweiyun.genshin.core.system.reaction.StellarGlimmer.swirlHousehold(level) != null;
     }
 
-    public static List<PGCharacter> getStellarSwirlParticipants(ServerLevel level) {
+    public static boolean hasStellarSwirlParticipant(ServerLevel level) {
+        return hasStellarSwirlHousehold(level);
+    }
+
+    /** 队伍里能进入星烁状态的角色（和户口无关）。 */
+    public static List<PGCharacter> getStellarStateHolders(ServerLevel level) {
         List<PGCharacter> result = new ArrayList<>();
         for (Player p : level.players()) {
             PlayerCharactersAttachment att = p.getData(
                     AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
             for (int i = 0; i < 4; i++) {
                 PGCharacter character = att.getPartyCharacter(i);
-                if (character instanceof IStellarSwirlParticipant) {
+                if (character instanceof com.linweiyun.genshin.core.character.IStellarStateHolder holder
+                        && holder.canHoldStellarState()) {
                     result.add(character);
                 }
             }

@@ -35,6 +35,23 @@ public class TalentBase {
     public void elementalBurst(Player player, PGCharacter character) {}
     public void dodge(Player player, PGCharacter character) {}
 
+    /**
+     * 招式<b>触发那一刻</b>（动作刚开始，早于任何伤害点）调用一次。
+     *
+     * <h2>和 {@link #attack}/{@link #elementalSkill} 的分工</h2>
+     * 那几个回调跑在 {@code hits[].delay} 的伤害点上 —— 它们是「效果在第几帧出」。
+     * 这个方法跑在 tick 0，是「这一招<b>已经放出来了</b>」。
+     *
+     * <p>凡是<b>触发即生效</b>的东西都放这里：换姿态、开模式、扣子弹、进入某个状态。
+     * 放在伤害点上的话，前摇/准备阶段被打断就会出现
+     * 「CD 已经在转、资源已经扣了，但模式没进去、效果没出来」。
+     *
+     * <p>服务端触发（客户端那一帧只是开始播动画 + 发请求）。
+     *
+     * @param kind 这一招是什么（普攻/重击/战技/大招/闪避）
+     */
+    public void onCastStart(Player player, PGCharacter character, ActionKind kind) {}
+
     // ==================== ActionSet 构建 ====================
 
     public ActionSet buildActionSet(PGCharacter character, String stateKey) {
@@ -64,6 +81,8 @@ public class TalentBase {
                                 ActionDefinition.builder(ActionKind.NORMAL_ATTACK)
                                         .comboIndex(s)
                                         .step(step)
+                                        .onCastStart(ctx -> onCastStart(ctx.player, ctx.character,
+                                                ActionKind.NORMAL_ATTACK))
                                         .onActiveStart(ctx -> attack(ctx.player, ctx.character, s))
                                         .build()
                         );
@@ -77,6 +96,8 @@ public class TalentBase {
                     sb.addSkillTap(
                             ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_TAP)
                                     .step(skill.tap())
+                                    .onCastStart(ctx -> onCastStart(ctx.player, ctx.character,
+                                            ActionKind.ELEMENTAL_SKILL_TAP))
                                     .onActiveStart(ctx -> elementalSkill(ctx.player, ctx.character, 0))
                                     .build()
                     );
@@ -85,6 +106,8 @@ public class TalentBase {
                     sb.addSkillHold(
                             ActionDefinition.builder(ActionKind.ELEMENTAL_SKILL_HOLD)
                                     .step(skill.hold())
+                                    .onCastStart(ctx -> onCastStart(ctx.player, ctx.character,
+                                            ActionKind.ELEMENTAL_SKILL_HOLD))
                                     .onActiveStart(ctx -> elementalSkill(ctx.player, ctx.character, 1000))
                                     .build()
                     );
@@ -96,6 +119,8 @@ public class TalentBase {
                 sb.addBurst(
                         ActionDefinition.builder(ActionKind.ELEMENTAL_BURST)
                                 .step(burst.step())
+                                .onCastStart(ctx -> onCastStart(ctx.player, ctx.character,
+                                        ActionKind.ELEMENTAL_BURST))
                                 .onActiveStart(ctx -> elementalBurst(ctx.player, ctx.character))
                                 .build()
                 );
@@ -106,6 +131,8 @@ public class TalentBase {
                 sb.addDodge(
                         ActionDefinition.builder(ActionKind.DODGE)
                                 .step(dodgeData.step())
+                                .onCastStart(ctx -> onCastStart(ctx.player, ctx.character,
+                                        ActionKind.DODGE))
                                 .onActiveStart(ctx -> dodge(ctx.player, ctx.character))
                                 .build()
                 );
@@ -117,6 +144,8 @@ public class TalentBase {
             sb.addCharged(
                     ActionDefinition.builder(ActionKind.CHARGED_ATTACK)
                             .step(actionData.skill().tap())
+                            .onCastStart(ctx -> onCastStart(ctx.player, ctx.character,
+                                    ActionKind.CHARGED_ATTACK))
                             .onActiveStart(ctx -> chargeAttack(ctx.player, ctx.character))
                             .build()
             );

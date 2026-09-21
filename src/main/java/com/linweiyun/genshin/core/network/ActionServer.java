@@ -5,6 +5,7 @@ import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.action.ActionManager;
 import com.linweiyun.genshin.core.system.combat.action.InterruptReason;
+import com.linweiyun.genshin.core.system.combat.attack.BurstLanding;
 import com.linweiyun.genshin.core.system.combat.targeting.CombatTargeting;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
@@ -12,6 +13,7 @@ import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 public final class ActionServer {
@@ -95,6 +97,25 @@ public final class ActionServer {
 
     public static void triggerCharacterBurst(@Nullable Entity target) {
         RPCPacketDistributor.rpcToServer("characterActiveBurstRPCPacket", entityId(target));
+    }
+
+    /**
+     * 跃起下坠大招的<b>落点</b>：客户端在「开始下坠」那一刻算好并送来。
+     *
+     * <p>落点一旦送到就不再变 —— 下坠类大招不追踪，服务端的落地伤害打的就是这里。
+     * 见 {@code BurstLanding}。
+     */
+    @RPCPacket("characterBurstLandingRPCPacket")
+    public static void characterBurstLandingRPCPacket(RPCSender sender, double x, double y, double z) {
+        if (!sender.isServer()) {
+            ServerPlayer sp = sender.asPlayer();
+            if (sp == null) return;
+            BurstLanding.set(sp, new Vec3(x, y, z));
+        }
+    }
+
+    public static void sendBurstLandingToServer(double x, double y, double z) {
+        RPCPacketDistributor.rpcToServer("characterBurstLandingRPCPacket", x, y, z);
     }
 
     @RPCPacket("characterInterruptRPCPacket")

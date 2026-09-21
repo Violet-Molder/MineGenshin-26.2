@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.content.effect.character;
 
 import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.enums.AttackType;
 import net.minecraft.nbt.CompoundTag;
@@ -49,6 +50,65 @@ public class CharacterEffectContainer {
     public boolean hasEffect(ICharacterEffect effect) {
         return effects.stream()
                 .anyMatch(e -> e.getEffect() == effect);
+    }
+
+    /**
+     * 是否含有某一类效果 —— 按<b>类型</b>判断。
+     *
+     * <p>注册过效果基本都是「一个类一个单例」，按类查比按实例省事，
+     * 也适用于「只想知道有没有这类效果」的场景（辉映·星烁的互斥判断就用它）。
+     */
+    public boolean hasEffectOfType(Class<? extends ICharacterEffect> type) {
+        return effects.stream().anyMatch(e -> type.isInstance(e.getEffect()));
+    }
+
+    /**
+     * 按元素/反应类型的额外暴击伤害 = 身上所有效果给的之和。
+     *
+     * <p>和 {@code getStellarGlimmerBonus(分支)} 一样是「效果侧」的聚合：
+     * 角色自己在 {@code PGCharacter.getCritDamageBonus} 里再叠一层。
+     */
+    public float getCritDamageBonus(com.linweiyun.genshin.core.element.GenshinElement element,
+                                    boolean stellarReaction) {
+        float total = 0f;
+        for (CharacterEffectInstance instance : effects) {
+            total += instance.getEffect().getCritDamageBonus(element, stellarReaction);
+        }
+        return total;
+    }
+
+    /** 治疗加成 = 身上所有效果给的之和（小数，0.04 = 4%）。 */
+    public float getHealingBonus() {
+        float total = 0f;
+        for (CharacterEffectInstance instance : effects) {
+            total += instance.getEffect().getHealingBonus();
+        }
+        return total;
+    }
+
+    /** 按分支的「擢升」加成 = 身上所有效果给的之和（例：沃雅妮莎 6 命的 Glimmer）。 */
+    public float getElevationBonus(
+            com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch branch) {
+        float total = 0f;
+        for (CharacterEffectInstance instance : effects) {
+            total += instance.getEffect().getElevationBonus(branch);
+        }
+        return total;
+    }
+
+    /** 移除某一类效果（辉映·星超导顶掉星扩散用）。返回移除了几个。 */
+    public int removeEffectsOfType(Class<? extends ICharacterEffect> type) {
+        int before = effects.size();
+        effects.removeIf(e -> type.isInstance(e.getEffect()));
+        return before - effects.size();
+    }
+
+    /** 取第一个某一类效果的实例；没有返回 null。 */
+    public @Nullable CharacterEffectInstance getEffectInstanceOfType(Class<? extends ICharacterEffect> type) {
+        return effects.stream()
+                .filter(e -> type.isInstance(e.getEffect()))
+                .findFirst()
+                .orElse(null);
     }
 
     /**
@@ -141,6 +201,20 @@ public class CharacterEffectContainer {
         float total = 0f;
         for (CharacterEffectInstance instance : effects) {
             total += instance.getEffect().getDamageBonus(attackType, element);
+        }
+        return total;
+    }
+
+    /**
+     * 所有效果对<b>星烁反应</b>某一分支的伤害加成总和（反应加成区）。
+     *
+     * <p>写「星烁反应加成」的效果两个分支返回同一个值，两个分支就都吃得到；
+     * 只写星扩散的效果对 {@code CONDUCE} 返回 0，就只加星扩散。
+     */
+    public float getTotalStellarGlimmerBonus(StellarGlimmerBranch branch) {
+        float total = 0f;
+        for (CharacterEffectInstance instance : effects) {
+            total += instance.getEffect().getStellarGlimmerBonus(branch);
         }
         return total;
     }

@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.core.system.registry;
 
 import com.linweiyun.genshin.core.system.registry.register.ModItemGroups;
-import com.linweiyun.genshin.core.system.registry.register.ModItems;
+import com.linweiyun.genshin.content.items.ModItems;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -12,7 +12,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.linweiyun.genshin.core.system.registry.register.ModBlocks.BLOCKS;
-import static com.linweiyun.genshin.core.system.registry.register.ModItems.ITEMS;
+import static com.linweiyun.genshin.content.items.ModItems.ITEMS;
 
 public class RegistryHelper {
 

@@ -102,9 +102,13 @@ public class ScreenAscension extends Screen {
                 weaponBreakthroughBtn.setVisible(false);
             }
 
-            normalAttackLabel.setText(Component.translatable("gui.minegenshin.ascension.normal_attack_label", currentChar.getData().getNormalAttackLevel(), PGCharacterData.MAX_TALENT_LEVEL));
-            elementalSkillLabel.setText(Component.translatable("gui.minegenshin.ascension.elemental_skill_label", currentChar.getData().getElementalSkillLevel(), PGCharacterData.MAX_TALENT_LEVEL));
-            elementalBurstLabel.setText(Component.translatable("gui.minegenshin.ascension.elemental_burst_label", currentChar.getData().getElementalBurstLevel(), PGCharacterData.MAX_TALENT_LEVEL));
+            // 上限按【每个天赋各自】的 cap 显示：普攻 10；战技/爆发 3 命 / 5 命后是 13
+            normalAttackLabel.setText(Component.translatable("gui.minegenshin.ascension.normal_attack_label",
+                    currentChar.getData().getNormalAttackLevel(), currentChar.getData().getNormalAttackLevelCap()));
+            elementalSkillLabel.setText(Component.translatable("gui.minegenshin.ascension.elemental_skill_label",
+                    currentChar.getData().getElementalSkillLevel(), currentChar.getData().getElementalSkillLevelCap()));
+            elementalBurstLabel.setText(Component.translatable("gui.minegenshin.ascension.elemental_burst_label",
+                    currentChar.getData().getElementalBurstLevel(), currentChar.getData().getElementalBurstLevelCap()));
 
             normalAttackLabel.setVisible(true);
             elementalSkillLabel.setVisible(true);

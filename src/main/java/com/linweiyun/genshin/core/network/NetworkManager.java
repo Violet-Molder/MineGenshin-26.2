@@ -453,24 +453,36 @@ public class NetworkManager {
 
   @RPCPacket("activateArtifactRPCPacket")
   public static void activateArtifactRPCPacket(RPCSender sender, int inventorySlotIndex) {
-    if (sender.isServer()) {
-      ClientHandler.activateArtifactClientHandler(inventorySlotIndex);
-    } else {
-      ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
-      Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
-      int globalSlot = getCategoryOffset(Backpack.Category.ARTIFACTS) + inventorySlotIndex;
-      ItemStack stack = backpack.getItem(globalSlot);
-      if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem)) return;
+    // 只处理「客户端 → 服务端」这一向：抽词条是服务端的事。
+    if (sender.isServer()) return;
 
-      ArtifactStatsComponent stats = stack.getOrDefault(
-              ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
-      if (stats.activated) return;
+    ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
+    Backpack backpack = player.getData(AttachmentRegistration.BACKPACK_ATTACHMENT);
+    int globalSlot = getCategoryOffset(Backpack.Category.ARTIFACTS) + inventorySlotIndex;
+    ItemStack stack = backpack.getItem(globalSlot);
+    if (stack.isEmpty() || !(stack.getItem() instanceof ArtifactItem)) return;
 
+    ArtifactStatsComponent stats = stack.getOrDefault(
+            ModDataComponents.ARTIFACT_STATS.get(), ArtifactStatsComponent.DEFAULT);
+
+    if (!stats.activated) {
       ArtifactItem.initializeArtifactStackIfNeeded(stack);
       backpack.setItem(globalSlot, stack);
-
       LOGGER.info("服务端激活圣遗物: 背包索引 {}", inventorySlotIndex);
     }
+
+    // ⚠️ 抽完（或本来就已经激活）一定要把**服务端这一份权威数据**发回客户端：
+    // 客户端不许自己抽（`new Random()` 不是同一份，会抽成另一套词条），
+    // 而背包 attachment 的同步不保证在这一刻就到，所以这里显式推一次，
+    // 否则 UI 会一直停在「未激活」、按钮看起来是坏的。
+    RPCPacketDistributor.rpcToPlayer(player, "artifactActivatedRPCPacket", inventorySlotIndex, stack);
+  }
+
+  /** 服务端 → 客户端：把抽好的那件圣遗物推回去（客户端只负责放进槽位）。 */
+  @RPCPacket("artifactActivatedRPCPacket")
+  public static void artifactActivatedRPCPacket(RPCSender sender, int inventorySlotIndex, ItemStack stack) {
+    if (!sender.isServer()) return;     // 只有服务端会发这一向
+    ClientHandler.applyActivatedArtifactClientHandler(inventorySlotIndex, stack);
   }
 
   public static void sendActivateArtifactToServer(int inventorySlotIndex) {
@@ -657,29 +669,37 @@ public class NetworkManager {
   public static void upgradeNormalAttackRPCPacket(RPCSender sender) {
     if (!sender.isServer()) {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
-      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
-      if (primogem < 320) {
-        player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_primogem_low"));
-        return;
-      }
-      if (player.experienceLevel < 5) {
-        player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_exp_low"));
-        return;
-      }
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter character = attachment.getCurrentCharacter();
       if (character == null || character.getData() == null) {
         player.sendSystemMessage(Component.translatable("message.minegenshin.no_character_selected"));
         return;
       }
+      // 先判「还能不能升」，再判材料 —— 满级时就该报满级，而不是报「原石不足」
       if (!character.getData().canUpgradeNormalAttack()) {
         player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_max_level"));
         return;
       }
+      // ⚠️ 消耗按【手动次数】查表，不按有效等级：手动 4 级 +3 命显示 7 级时，
+      //    下一次消耗的仍然是「4→5」那一档
+      int manual = character.getData().getManualNormalAttack();
+      int costPrimogem = com.linweiyun.genshin.core.character.talent.TalentUpgradeCost.primogem(manual);
+      int costExp = com.linweiyun.genshin.core.character.talent.TalentUpgradeCost.experienceLevels(manual);
+
+      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
+      if (primogem < costPrimogem) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_primogem_low"));
+        return;
+      }
+      if (player.experienceLevel < costExp) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_exp_low"));
+        return;
+      }
+
       character.upgradeNormalAttack();
-      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - 320);
-      setPrimogemToPlayer(player, primogem - 320);
-      player.giveExperienceLevels(-5);
+      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - costPrimogem);
+      setPrimogemToPlayer(player, primogem - costPrimogem);
+      player.giveExperienceLevels(-costExp);
       attachment.syncToPlayer(player);
       player.sendSystemMessage(Component.translatable("message.minegenshin.normal_attack_upgrade_success", character.getData().getNormalAttackLevel()));
     }
@@ -693,15 +713,6 @@ public class NetworkManager {
   public static void upgradeElementalSkillRPCPacket(RPCSender sender) {
     if (!sender.isServer()) {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
-      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
-      if (primogem < 320) {
-        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_primogem_low"));
-        return;
-      }
-      if (player.experienceLevel < 5) {
-        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_exp_low"));
-        return;
-      }
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter character = attachment.getCurrentCharacter();
       if (character == null || character.getData() == null) {
@@ -712,10 +723,25 @@ public class NetworkManager {
         player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_max_level"));
         return;
       }
+      // 消耗按【手动次数】查表（命座 +3 抬高的是有效等级，不该抬价）
+      int manual = character.getData().getManualElementalSkill();
+      int costPrimogem = com.linweiyun.genshin.core.character.talent.TalentUpgradeCost.primogem(manual);
+      int costExp = com.linweiyun.genshin.core.character.talent.TalentUpgradeCost.experienceLevels(manual);
+
+      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
+      if (primogem < costPrimogem) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_primogem_low"));
+        return;
+      }
+      if (player.experienceLevel < costExp) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_exp_low"));
+        return;
+      }
+
       character.upgradeElementalSkill();
-      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - 320);
-      setPrimogemToPlayer(player, primogem - 320);
-      player.giveExperienceLevels(-5);
+      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - costPrimogem);
+      setPrimogemToPlayer(player, primogem - costPrimogem);
+      player.giveExperienceLevels(-costExp);
       attachment.syncToPlayer(player);
       player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_skill_upgrade_success", character.getData().getElementalSkillLevel()));
     }
@@ -729,15 +755,6 @@ public class NetworkManager {
   public static void upgradeElementalBurstRPCPacket(RPCSender sender) {
     if (!sender.isServer()) {
       ServerPlayer player = Objects.requireNonNull(sender.asPlayer());
-      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
-      if (primogem < 320) {
-        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_primogem_low"));
-        return;
-      }
-      if (player.experienceLevel < 5) {
-        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_exp_low"));
-        return;
-      }
       PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
       PGCharacter character = attachment.getCurrentCharacter();
       if (character == null || character.getData() == null) {
@@ -748,10 +765,25 @@ public class NetworkManager {
         player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_max_level"));
         return;
       }
+      // 消耗按【手动次数】查表（5 命 +3 抬高的是有效等级，不该抬价）
+      int manual = character.getData().getManualElementalBurst();
+      int costPrimogem = com.linweiyun.genshin.core.character.talent.TalentUpgradeCost.primogem(manual);
+      int costExp = com.linweiyun.genshin.core.character.talent.TalentUpgradeCost.experienceLevels(manual);
+
+      int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT);
+      if (primogem < costPrimogem) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_primogem_low"));
+        return;
+      }
+      if (player.experienceLevel < costExp) {
+        player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_exp_low"));
+        return;
+      }
+
       character.upgradeElementalBurst();
-      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - 320);
-      setPrimogemToPlayer(player, primogem - 320);
-      player.giveExperienceLevels(-5);
+      player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT, primogem - costPrimogem);
+      setPrimogemToPlayer(player, primogem - costPrimogem);
+      player.giveExperienceLevels(-costExp);
       attachment.syncToPlayer(player);
       player.sendSystemMessage(Component.translatable("message.minegenshin.elemental_burst_upgrade_success", character.getData().getElementalBurstLevel()));
     }

@@ -7,6 +7,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.ProblemReporter;
@@ -14,6 +16,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
+
+import java.util.ArrayList;
+import java.util.Map;
 
 public final class ModSyncAccessors {
 
@@ -80,9 +85,52 @@ public final class ModSyncAccessors {
     private static final String TAG_CLASS = "_pgchar_class";
 
     /**
+     * 老存档里<b>改过名的物品 id</b> → 现在的 id。
+     *
+     * <p>物品改注册名（例如 {@code diebian} → {@code beyond_the_chrysalis}）之后，老存档里那份 NBT
+     * 还是旧 id，{@code ItemStack.CODEC} 一解析就抛
+     * {@code Unknown registry key in ResourceKey[minecraft:root / minecraft:item]: minegenshin:diebian}
+     * —— 整份角色数据都读不出来，玩家会卡在「无效的玩家数据 / Couldn't place player in world」。
+     * 所以在<b>反序列化之前</b>先把 tag 里的旧 id 改写成新 id。
+     *
+     * <p>⚠️ 以后凡是改物品注册名，都要往这里补一条。
+     */
+    private static final Map<String, String> LEGACY_ITEM_IDS = Map.of(
+            "minegenshin:diebian", "minegenshin:beyond_the_chrysalis");
+
+    /**
+     * 递归把 tag 里所有 {@code "id": 旧物品 id} 改写成新 id。
+     *
+     * <p>只匹配 {@link #LEGACY_ITEM_IDS} 里登记过的值，其它字符串（包括别的 {@code id} 字段）一律不动，
+     * 所以不会误伤。
+     */
+    private static void migrateLegacyItemIds(Tag tag) {
+        if (tag instanceof CompoundTag compound) {
+            String id = compound.getString("id").orElse(null);
+            if (id != null) {
+                String replacement = LEGACY_ITEM_IDS.get(id);
+                if (replacement != null) {
+                    compound.putString("id", replacement);
+                }
+            }
+            for (String key : new ArrayList<>(compound.keySet())) {
+                Tag child = compound.get(key);
+                if (child != null) {
+                    migrateLegacyItemIds(child);
+                }
+            }
+        } else if (tag instanceof ListTag list) {
+            for (Tag child : list) {
+                migrateLegacyItemIds(child);
+            }
+        }
+    }
+
+    /**
      * Deserialize a PGCharacter from NBT, creating the correct subclass instance.
      */
     private static PGCharacter deserializeFromTag(CompoundTag tag, HolderLookup.Provider access) {
+        migrateLegacyItemIds(tag);
         var className = tag.getString(TAG_CLASS).orElse("");
         PGCharacter c;
         if (!className.isEmpty()) {

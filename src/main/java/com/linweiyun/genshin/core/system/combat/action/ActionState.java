@@ -21,6 +21,15 @@ import java.util.function.Consumer;
  *     <li>在 hitDelay 指定的 tick 触发 onActiveStart 回调</li>
  *     <li>达到 totalDuration 则完成</li>
  * </ul>
+ *
+ * <h2>三个窗口（见 {@link ActionStep#protectDuration}）</h2>
+ * <pre>
+ * 0            prepareTicks          protectDuration      duration
+ * ├─ 准备阶段 ────┼──── 执行期 ────────────┼──── 后摇 ────┤
+ *    可打断          不可打断               可取消
+ * </pre>
+ * {@code onCastStart} 在构造时（tick 0）触发一次 —— 它在准备阶段之前，
+ * 也就是「触发即生效」的那些逻辑该待的地方。
  */
 public class ActionState {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -30,6 +39,8 @@ public class ActionState {
 
     private final int totalDuration;
     private final int protectDuration;
+    /** 准备阶段长度：这段时间内还能被打断。 */
+    private final int prepareTicks;
     private final int[] hitDelays;
     private final BitSet hitsFired;
 
@@ -44,6 +55,7 @@ public class ActionState {
         this.context = context;
         this.totalDuration = definition.totalDuration();
         this.protectDuration = definition.protectDuration();
+        this.prepareTicks = Math.max(0, definition.prepareTicks());
 
         ActionStep step = definition.step;
         if (step != null && step.hits != null) {
@@ -63,10 +75,15 @@ public class ActionState {
         this.tickCount = 0;
         this.finished = false;
 
-        LOGGER.info("[ActionState] START kind={} comboIndex={} anim={} duration={} hits={} protect={} side={}",
+        LOGGER.info("[ActionState] START kind={} comboIndex={} anim={} duration={} hits={} protect={} prepare={} side={}",
                 definition.kind, definition.comboIndex,
-                definition.animationName(), totalDuration, hitDelays.length, protectDuration,
+                definition.animationName(), totalDuration, hitDelays.length, protectDuration, prepareTicks,
                 context.player.level().isClientSide() ? "CLIENT" : "SERVER");
+
+        // ⭐ 触发那一刻（tick 0）—— 「触发即生效」钩子。
+        //    必须在 checkHits() 之前：它是「这一招已经放出来了」，不是「伤害在第几帧」。
+        //    换姿态 / 开模式 / 扣资源放这里，才不会出现「CD 转了但前摇被打断、模式没进去」。
+        fire(definition.getOnCastStart());
 
         // tick 0 触发伤害（delay=0 的 hit）
         checkHits();
@@ -86,7 +103,7 @@ public class ActionState {
             return;
         }
 
-        // 保护期内不接新动作，由 ActionManager 检查
+        // 执行期内不接新动作，由 ActionManager 检查
     }
 
     private void checkHits() {
@@ -135,14 +152,22 @@ public class ActionState {
         finished = true;
     }
 
-    /** 当前保护期剩余 tick */
+    /** 当前保护期剩余 tick（不在执行期内时为 0）。 */
     public int protectRemaining() {
-        return Math.max(0, protectDuration - tickCount);
+        return isProtected() ? Math.max(0, protectDuration - tickCount) : 0;
     }
 
-    /** 当前是否在保护期内 */
+    /**
+     * 当前是否在<b>执行期</b>内 —— 只有执行期不可打断。
+     *
+     * <p>准备阶段（{@code tickCount < prepareTicks}）可以被打断：那是吟唱，
+     * 玩家走开 / 挨打就该作废；执行期一旦开始就必须打完，
+     * 否则会出现「CD 扣了、能量没了、效果没出来」。
+     */
     public boolean isProtected() {
-        return protectDuration > 0 && tickCount < protectDuration;
+        return protectDuration > prepareTicks
+                && tickCount >= prepareTicks
+                && tickCount < protectDuration;
     }
 
     private void fire(Consumer<ActionContext> hook) {

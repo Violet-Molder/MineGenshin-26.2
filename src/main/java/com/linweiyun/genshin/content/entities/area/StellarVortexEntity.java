@@ -43,6 +43,25 @@ public class StellarVortexEntity extends AreaEntity {
     @Persisted(key = "sv_exploded")
     private boolean exploded;
 
+    /**
+     * 这一枚是不是「<b>流荡风旋</b>」（沃雅妮莎突破天赋 1）。
+     *
+     * <p>流荡风旋和星辉风旋其它行为完全一致，只有两点不同：
+     * <b>创造</b>与<b>引爆</b>时会降低附近敌人的风元素抗性 35%（6 秒）。
+     * 创造那一次由 `SwirlReaction` 直接做（那一刻手里有坐标）；引爆要靠这个标记。
+     */
+    @Persisted(key = "sv_flowing")
+    private boolean flowingSwirl;
+
+    public boolean isFlowingSwirl() {
+        return flowingSwirl;
+    }
+
+    /** 把它变成流荡风旋（沃雅妮莎施放战技时转化，或创造时判定遥久之歌覆盖）。 */
+    public void markFlowingSwirl() {
+        this.flowingSwirl = true;
+    }
+
     // 星璇存活期间所有触发过星扩散的角色（只增不减，用于冰伤统计）
     private final List<PGCharacter> accumulatedContributors = new ArrayList<>();
 
@@ -143,6 +162,15 @@ public class StellarVortexEntity extends AreaEntity {
 
         if (!(this.level() instanceof ServerLevel level)) return;
 
+        // 流荡风旋：引爆时也要降一次附近敌人的风抗（突破天赋 1），
+        // 并给「引爆后 5 秒内」这个窗口盖章（沃雅妮莎 A4/2 命的触发条件之一）
+        if (flowingSwirl) {
+            com.linweiyun.genshin.core.character.catalyst.vodyanitsa.VodyanitsaTalent
+                    .shredWindAround(level, this.getX(), this.getY(), this.getZ());
+            com.linweiyun.genshin.content.effect.character.vodyanitsa.VodyanitsaSongEffects
+                    .markFlowingDetonation(level.getGameTime());
+        }
+
         double iceCoefficient = vortexLevel <= 2
                 ? ReactionConfig.STELLAR_SWIRL_ICE_COEFFICIENT_LOW.get()
                 : ReactionConfig.STELLAR_SWIRL_ICE_COEFFICIENT_HIGH.get();
@@ -173,6 +201,7 @@ public class StellarVortexEntity extends AreaEntity {
 
         for (LivingEntity target : targets) {
             ModDamageSpec spec = buildIceSpec(iceCoefficient, contributorList);
+            spec.withStellarBaseBonusMult(com.linweiyun.genshin.core.system.reaction.StellarGlimmer.swirlBaseBonusMult(level));
             ModDamageSource source = ModDamageSource.from(spec, iceSourcePlayer);
             target.hurtServer(level, source, 0f);
 
@@ -220,6 +249,7 @@ public class StellarVortexEntity extends AreaEntity {
 
         for (LivingEntity target : targets) {
             ModDamageSpec spec = buildWindSpec(windCoefficient, contributorList);
+            spec.withStellarBaseBonusMult(com.linweiyun.genshin.core.system.reaction.StellarGlimmer.swirlBaseBonusMult(level));
             ModDamageSource source = ModDamageSource.from(spec, windSourcePlayer);
             target.hurtServer(level, source, 0f);
         }
@@ -233,35 +263,18 @@ public class StellarVortexEntity extends AreaEntity {
     }
 
     private static ModDamageSpec buildWindSpec(double coefficient, List<PGCharacter> contributors) {
-        ModDamageSpec spec = ModDamageSpec.stellar(ElementalReactionType.STELLAR_SWIRL_WIND, ModElements.ANEMO.get());
-        setSpecFields(spec, (float) coefficient, 0f, 0f);
-        spec.setStellarContributors(contributors);
-        return spec;
+        return ModDamageSpec.stellarReaction(ElementalReactionType.STELLAR_SWIRL_WIND,
+                ModElements.ANEMO.get(), (float) coefficient, 0f, 0f, contributors);
     }
 
     private static ModDamageSpec buildIceSpec(double coefficient, List<PGCharacter> contributors) {
-        ModDamageSpec spec = ModDamageSpec.stellar(ElementalReactionType.STELLAR_SWIRL_ICE, ModElements.CYRO.get());
-        setSpecFields(spec, (float) coefficient, 0f, 0f);
-        spec.setStellarContributors(contributors);
-        return spec;
+        return ModDamageSpec.stellarReaction(ElementalReactionType.STELLAR_SWIRL_ICE,
+                ModElements.CYRO.get(), (float) coefficient, 0f, 0f, contributors);
     }
 
+    /** 兼容旧调用（参数现在直接走 {@code ModDamageSpec.stellarReaction(...)} 工厂，不再需要反射）。 */
     private static void setSpecFields(ModDamageSpec spec, float coefficient, float baseBonusMult, float baseBonusFlat) {
-        try {
-            java.lang.reflect.Field cField = ModDamageSpec.class.getDeclaredField("stellarCoefficient");
-            cField.setAccessible(true);
-            cField.set(spec, coefficient);
-
-            java.lang.reflect.Field bmField = ModDamageSpec.class.getDeclaredField("stellarBaseBonusMult");
-            bmField.setAccessible(true);
-            bmField.set(spec, baseBonusMult);
-
-            java.lang.reflect.Field bfField = ModDamageSpec.class.getDeclaredField("stellarBaseBonusFlat");
-            bfField.setAccessible(true);
-            bfField.set(spec, baseBonusFlat);
-        } catch (Exception e) {
-            LOGGER.error("[星辉风旋] 反射设置spec参数失败", e);
-        }
+        // 保留空实现：旧的反射写法已删除，参数在工厂方法里给
     }
 
     @Override

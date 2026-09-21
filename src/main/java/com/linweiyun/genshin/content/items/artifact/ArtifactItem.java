@@ -48,13 +48,25 @@ public class ArtifactItem extends TeyvatItem {
                 ModDataComponents.ARTIFACT_STATS.get(),
                 ArtifactStatsComponent.DEFAULT
         );
-        // 只有未激活的圣遗物才进行抽取；已激活的圣遗物不再重置词条。
-        // 用 activated 判定替代原来的 mainStat.isInitialized() 判定，
-        // 这样在数据上明确表达"已激活"这个语义。
-        if (!stats.activated) {
+
+        // 判定要「未激活 **且** 主词条还没抽」两个条件同时成立才重抽。
+        //
+        // ⚠️ 只看 `activated` 会出大问题：只要有**任何一条路径**漏了把 activated 置 true
+        //    （客户端本地补激活、圣遗物 UI 里升级解锁词条、装备栏 ↔ 背包来回搬……），
+        //    下一次本方法被调用（右键 / 装备 / 卸下）就会**整件重抽一遍主副词条**
+        //    —— 玩家看到的就是「穿一次再卸下来，副词条变了一套，之后又正常了」。
+        //    已经有词条就说明它早就抽过了，缺的只是那个标记，补上即可，绝不重抽。
+        boolean blankStats = stats.mainStat == null || !stats.mainStat.isInitialized();
+        if (!stats.activated && blankStats) {
             ArtifactStatsComponent generated = buildInitialStats(artifact.getStar(), artifact.getType());
             generated.activated = true;
             stack.set(ModDataComponents.ARTIFACT_STATS.get(), generated);
+        } else if (!stats.activated) {
+            ArtifactStatsComponent healed = stats.copy();
+            healed.activated = true;
+            stack.set(ModDataComponents.ARTIFACT_STATS.get(), healed);
+            LOGGER.info("[圣遗物] 词条已存在但 activated=false，只补标记、不重抽 | item={}",
+                    stack.getItem());
         }
     }
     protected static ArtifactStatsComponent buildInitialStats(int star, ArtifactType type) {

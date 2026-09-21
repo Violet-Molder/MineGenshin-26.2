@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.character.attachment.CharacterAttachment;
 import com.linweiyun.genshin.core.character.attachment.CharacterAttachmentType;
 import com.linweiyun.genshin.core.character.attachment.ModCharacterAttachmentTypes;
 import com.linweiyun.genshin.core.character.catalyst.columbina.Columbina;
+import com.linweiyun.genshin.core.character.catalyst.vodyanitsa.Vodyanitsa;
 import com.linweiyun.genshin.core.character.polearm.arlecchino.Arlecchino;
 import com.linweiyun.genshin.core.character.polearm.raiden_shogun.RaidenShogun;
 import com.linweiyun.genshin.core.character.polearm.shenhe.Shenhe;
@@ -34,6 +35,9 @@ public class ModCharacters {
     public static final DeferredHolder<PGCharacter, Columbina> COLUMBINA = register("columbina", 145001, Columbina::new);
     public static final DeferredHolder<PGCharacter, RaidenShogun> RAIDEN_SHOGUN = register("raiden_shogun", 135003, RaidenShogun::new);
     public static final DeferredHolder<PGCharacter, Vesna> VESNA = register(Vesna.ID, Vesna.UID, Vesna::new);
+    /** 沃雅妮莎（水系五星法器，突破属性生命值）。 */
+    public static final DeferredHolder<PGCharacter, Vodyanitsa> VODYANITSA =
+            register(Vodyanitsa.ID, Vodyanitsa.UID, Vodyanitsa::new);
 
     @SuppressWarnings("unchecked")
     private static <T extends PGCharacter> DeferredHolder<PGCharacter, T> register(

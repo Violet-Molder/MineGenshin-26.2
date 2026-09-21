@@ -35,6 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * <ul>
  *   <li>目标死亡/卸载 → 立刻丢</li>
  *   <li>超出保持范围、或转身背对超过 {@link #KEEP_ANGLE}° → 累计 {@link #LOSE_GRACE_TICKS} 刻后丢</li>
+ *   <li><b>追不上了</b>（隔着方块、在地板下、飞在天花板上面）→ 同样进宽限计时，
+ *       见 {@link ChaseReach}；只有会突进的招式才判（{@link Params#chase()}）</li>
  *   <li>连续 {@link #IDLE_RELEASE_TICKS} 刻没有发起过攻击 → 自动松锁</li>
  *   <li>{@link #release} 可以随时手动丢</li>
  * </ul>
@@ -80,27 +82,35 @@ public final class CombatTargeting {
 
     // ==================== 逐招式参数 ====================
 
+    /** {@link Params#DEFAULT} 用的攻击距离占位值（不判可行性，用不到它）。 */
+    public static final double DEFAULT_PROBE_RANGE = 3.0;
+
     /**
      * 一次索敌/保持用的参数 —— <b>由招式带进来</b>，不是全局写死的。
      *
      * <p>典型两组：
      * <pre>
-     * 近战：acquire 6 / keep 9   → 先锁上，差额靠突进补
-     * 远程：acquire = 攻击距离   → 够得着才锁，锁上也不突进
+     * 近战：acquire 6 / keep 9   → 先锁上，差额靠突进补（要判「追不追得上」）
+     * 远程：acquire = 攻击距离   → 够得着才锁，锁上也不突进（不判路径，隔着墙也锁）
      * </pre>
      *
      * @param acquireRange 首次索敌距离（格）
      * @param acquireAngle 索敌视角半角（度）
      * @param keepRange    保持锁定的距离（格）
      * @param keepAngle    保持锁定的视角半角（度）
+     * @param attackRange  这一招的生效攻击距离（格）—— 可行性判定用它
+     * @param chase        要不要做「追击可行性」判定（{@link ChaseReach}）。
+     *                     会突进的近战招式 = true；远程招式 = false
      * @param policy       目标筛选策略
      */
     public record Params(double acquireRange, double acquireAngle,
-                         double keepRange, double keepAngle, TargetPolicy policy) {
+                         double keepRange, double keepAngle,
+                         double attackRange, boolean chase, TargetPolicy policy) {
 
-        /** 近战默认：用类里的全局常量。 */
+        /** 不判可行性的默认（召唤物 / 工具代码用）：只按距离与视角筛。 */
         public static final Params DEFAULT = new Params(
-                ACQUIRE_RANGE, ACQUIRE_ANGLE, KEEP_RANGE, KEEP_ANGLE, TargetPolicy.DEFAULT);
+                ACQUIRE_RANGE, ACQUIRE_ANGLE, KEEP_RANGE, KEEP_ANGLE,
+                DEFAULT_PROBE_RANGE, false, TargetPolicy.DEFAULT);
 
         public Params {
             // 保持圈比索敌圈小的话会「刚锁上就掉」，这里直接兜住
@@ -109,11 +119,22 @@ public final class CombatTargeting {
             policy = policy == null ? TargetPolicy.DEFAULT : policy;
         }
 
+        /**
+         * 近战招式用：索敌 &gt; 攻击距离，差额交给突进 —— 所以要判「追不追得上」。
+         *
+         * <p>判定会挡掉「隔着两三个方块」「目标在地板下/天花板上面」这类追不到的目标，
+         * 见 {@link ChaseReach}。
+         */
+        public static Params forChase(double attackRange) {
+            return new Params(ACQUIRE_RANGE, ACQUIRE_ANGLE, KEEP_RANGE, KEEP_ANGLE,
+                    Math.max(0.5, attackRange), true, TargetPolicy.DEFAULT);
+        }
+
         /** 远程招式用：索敌距离 = 攻击距离，保持圈只多留一点余量防抖。 */
         public static Params forRange(double attackRange) {
             double range = Math.max(0.5, attackRange);
             return new Params(range, ACQUIRE_ANGLE, range + RANGED_KEEP_MARGIN, KEEP_ANGLE,
-                    TargetPolicy.DEFAULT);
+                    range, false, TargetPolicy.DEFAULT);
         }
     }
 
@@ -209,7 +230,7 @@ public final class CombatTargeting {
             return kept;
         }
 
-        LivingEntity best = findBest(player, p.acquireRange(), p.acquireAngle(), p.policy());
+        LivingEntity best = findBest(player, p);
         if (best == null) {
             return null;
         }
@@ -312,30 +333,43 @@ public final class CombatTargeting {
             return false;
         }
 
-        return angleTo(player, target) <= state.params.keepAngle();
+        if (angleTo(player, target) > state.params.keepAngle()) {
+            return false;
+        }
+
+        // 追不上的目标不再保持：隔着方块、在地板下、飞在天花板上面 ——
+        // 锁着它只会让人一直对着打不到的方向转，还占着索敌位。
+        return !state.params.chase()
+                || ChaseReach.canCloseIn(player, target, state.params.attackRange());
     }
 
     // ==================== 内部工具 ====================
 
     @Nullable
-    private static LivingEntity findBest(Player player, double range, double angle, TargetPolicy policy) {
-        AABB box = player.getBoundingBox().inflate(range);
+    private static LivingEntity findBest(Player player, Params params) {
+        AABB box = player.getBoundingBox().inflate(params.acquireRange());
         List<LivingEntity> candidates = player.level().getEntitiesOfClass(LivingEntity.class, box,
-                e -> policy.isTargetable(player, e));
+                e -> params.policy().isTargetable(player, e));
 
         LivingEntity best = null;
         double bestScore = Double.NEGATIVE_INFINITY;
 
         for (LivingEntity candidate : candidates) {
             double distanceSq = player.distanceToSqr(candidate);
-            if (distanceSq > range * range) {
+            if (distanceSq > params.acquireRange() * params.acquireRange()) {
                 continue;
             }
-            if (angleTo(player, candidate) > angle) {
+            if (angleTo(player, candidate) > params.acquireAngle()) {
                 continue;
             }
 
-            double score = scoreOf(player, candidate, policy);
+            // 够不着的（墙后 / 地板下 / 天花板上面）直接不算候选 ——
+            // 与其锁上去撞墙，不如把索敌位留给真正打得到的那只。
+            if (params.chase() && !ChaseReach.canCloseIn(player, candidate, params.attackRange())) {
+                continue;
+            }
+
+            double score = scoreOf(player, candidate, params.policy());
             if (score > bestScore) {
                 bestScore = score;
                 best = candidate;

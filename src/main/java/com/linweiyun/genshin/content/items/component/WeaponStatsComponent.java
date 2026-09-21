@@ -142,9 +142,10 @@ public class WeaponStatsComponent implements IPersistedSerializable {
         ascended++;
         updateMainStatValue(star);
         updateSubStatValue(star);
-        if (storedExp > 0) {
-            addExp(storedExp, star);
-            storedExp = 0;
+        int expToRelease = storedExp;
+        storedExp = 0;
+        if (expToRelease > 0) {
+            addExp(expToRelease, star);
         }
         onStatsChanged.run();
         return true;
@@ -172,9 +173,11 @@ public class WeaponStatsComponent implements IPersistedSerializable {
         }
 
         while (remaining > 0 && level < currentMaxLevel) {
-            long needed = getExpToNextLevel(star) - exp;
+            long nextLevelExp = getExpToNextLevel(star);
+            if (nextLevelExp <= 0) break;
+            long needed = nextLevelExp - exp;
             if (needed <= 0) {
-                exp -= (int) getExpToNextLevel(star);
+                exp -= (int) nextLevelExp;
                 if (exp < 0) exp = 0;
                 level++;
                 updateMainStatValue(star);
@@ -186,8 +189,11 @@ public class WeaponStatsComponent implements IPersistedSerializable {
             remaining -= gained;
             consumed += gained;
 
-            while (level < currentMaxLevel && exp >= getExpToNextLevel(star)) {
-                exp -= (int) getExpToNextLevel(star);
+            while (level < currentMaxLevel) {
+                long innerNextExp = getExpToNextLevel(star);
+                if (innerNextExp <= 0) break;
+                if (exp < innerNextExp) break;
+                exp -= (int) innerNextExp;
                 level++;
                 updateMainStatValue(star);
                 updateSubStatValue(star);

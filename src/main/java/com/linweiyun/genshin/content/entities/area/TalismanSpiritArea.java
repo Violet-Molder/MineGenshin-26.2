@@ -19,6 +19,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import com.mojang.logging.LogUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -27,6 +29,9 @@ import java.util.Set;
 import java.util.UUID;
 
 public class TalismanSpiritArea extends AreaEntity {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     // ========== 领域常量配置 ==========
 
     // 伤害触发间隔（tick）—— 每1秒（20tick）对范围敌人造成一次伤害
@@ -83,6 +88,9 @@ public class TalismanSpiritArea extends AreaEntity {
         setVerticalRadius(VERTICAL_RADIUS);
         setFieldUUID(FIELD_UUID);
         setDuration(FIELD_DURATION);
+        // 生成日志：把「这一次到底打算活多久」写出来。
+        // 排查「领域不消亡」时，先看这一行是不是 600 —— 是的话问题在寿命没被推进（看 AreaEntity 的心跳日志）。
+        LOGGER.info("[镇灵之鼎] 生成：持续 {} 刻（{} 秒）", FIELD_DURATION, FIELD_DURATION / 20);
     }
 
     // ========== Tick 逻辑 ==========
@@ -161,6 +169,8 @@ public class TalismanSpiritArea extends AreaEntity {
     }
 
     private void dealDamageToEntity(LivingEntity target) {
+        if (!target.isAlive()) return;
+
         int burstLevel = this.character.getData().getElementalBurstLevel();
         float damageMultiplier = ShenheTalentConfig.getBurstDotDamage(burstLevel);
         ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_BURST, ModElements.CYRO.get())
@@ -277,6 +287,7 @@ public class TalismanSpiritArea extends AreaEntity {
             currentEntities.add(entity.getUUID());
 
             TeyvatEntityStats stats = entity.getData(AttachmentRegistration.ENTITY_STATS);
+            // 减抗是乘算（基于目标自身抗性），所以走百分比修饰符：0.1 × (1 - 0.12) = 0.088
             stats.attributes().setPercentModifier(ModAttributes.CYRO_RES.value(), RES_SHRED_SOURCE, RES_SHRED_VALUE);
             stats.attributes().setPercentModifier(ModAttributes.PHYSICAL_RES.value(), RES_SHRED_SOURCE, RES_SHRED_VALUE);
         }

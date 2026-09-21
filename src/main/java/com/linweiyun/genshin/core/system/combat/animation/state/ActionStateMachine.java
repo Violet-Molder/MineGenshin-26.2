@@ -2,6 +2,7 @@ package com.linweiyun.genshin.core.system.combat.animation.state;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.client.combat.AttackApproach;
+import com.linweiyun.genshin.client.combat.BurstDive;
 import com.linweiyun.genshin.core.system.combat.targeting.CombatTargeting;
 import com.linweiyun.genshin.core.system.combat.animation.action.CharacterActionHandler;
 import com.linweiyun.genshin.core.system.combat.animation.action.CharacterActions;
@@ -59,12 +60,19 @@ import java.util.List;
  *   <li>4 = 大招（绝对霸体，不可打断）</li>
  * </ul>
  *
- * <h2>三个计时器</h2>
+ * <h2>四个计时器</h2>
  * <ul>
  *   <li>{@link #animationTick} —— 动画总时长，归零即动作结束并自动回常态。</li>
- *   <li>{@link #actionLockFrames} —— 前摇 + 硬直，期间同级或更低优先级不能打断。</li>
+ *   <li>{@link #lockDelayFrames} —— <b>准备阶段</b>剩余刻数（吟唱/读条）。
+ *       这段时间里硬直和定身都还没生效，所以还能被打断。</li>
+ *   <li>{@link #actionLockFrames} —— <b>执行期</b>（伤害已经/正在打出来）剩余刻数，
+ *       期间同级或更低优先级不能打断。</li>
  *   <li>{@link #movementLockFrames} —— 额外的移动封锁（定身）。</li>
  * </ul>
+ *
+ * <p>准备阶段 → 执行期 → 后摇，这个三窗口模型的数据来源是
+ * {@code ActionStep.prepareTicks} / {@code ActionStep.protectDuration}，
+ * 见 {@code CharacterActionData.ActionStep#protectDuration} 的图。
  */
 @EventBusSubscriber(modid = Minegenshin.MOD_ID, value = Dist.CLIENT)
 public final class ActionStateMachine {
@@ -90,8 +98,17 @@ public final class ActionStateMachine {
     /** 当前动作剩余总刻数。 */
     public static int animationTick = 0;
 
-    /** 前摇 + 硬直剩余刻数。 */
+    /** 执行期（硬直）剩余刻数 —— 结束之后就是可以随便取消的后摇。 */
     public static int actionLockFrames = 0;
+
+    /**
+     * 准备阶段剩余刻数（吟唱 / 读条）。
+     *
+     * <p>这段时间里 {@link #actionLockFrames} 与 {@link #movementLockFrames}
+     * <b>都还没开始倒数</b>（见 {@link #actionLocked()} / {@link #movementFrozen()}），
+     * 所以准备阶段是可以被主动打断的：走开、跳跃、下一招都能让它作废。
+     */
+    public static int lockDelayFrames = 0;
 
     /** 移动封锁剩余刻数。 */
     public static int movementLockFrames = 0;
@@ -192,9 +209,10 @@ public final class ActionStateMachine {
         restoreFrozenInput(player);
         runDelayedTasks();
 
-        // 索敌校验 + 突进/转向（都在动画判定之前，保证当帧就生效）
+        // 索敌校验 + 突进/转向 + 下坠大招（都在动画判定之前，保证当帧就生效）
         CombatTargeting.tick(player);
         AttackApproach.tick(player);
+        BurstDive.tick(player);
 
         // 左键按住 → 交给当前角色的动作编排做蓄力判定
         if (isAttackButtonDown) {
@@ -220,16 +238,28 @@ public final class ActionStateMachine {
             }
         }
 
-        // 倒计时：前摇/硬直、移动锁
-        if (actionLockFrames > 0) {
-            actionLockFrames--;
-        }
-        if (movementLockFrames > 0) {
-            movementLockFrames--;
+        // 倒计时：准备阶段 → 执行期（硬直）、定身。
+        //
+        // ⚠️ 突进期间整块冻结（和下面的动画时间轴一样）：突进属于<b>执行期</b>，
+        //    最长可以飞 MAX_APPROACH_TICKS 刻。让锁在飞行途中流失的话会出现
+        //    「人还在飞过去，锁已经过期」→ 一个移动输入就把这一刀连同还没发出的服务端请求吞掉。
+        //    到位时 resumeFromApproach(...) 会把执行期重新起算。
+        if (!approachFrozen) {
+            if (lockDelayFrames > 0) {
+                // 准备阶段：硬直与定身都还没开始（这段时间可以被打断）
+                lockDelayFrames--;
+            } else {
+                if (actionLockFrames > 0) {
+                    actionLockFrames--;
+                }
+                if (movementLockFrames > 0) {
+                    movementLockFrames--;
+                }
+            }
         }
 
         // 只有硬直彻底结束（进入后摇）时，连击窗口才开始流失
-        if (actionLockFrames <= 0 && comboWindowFrames > 0) {
+        if (!actionLocked() && comboWindowFrames > 0) {
             comboWindowFrames--;
 
             if (comboWindowFrames <= 0) {
@@ -237,10 +267,10 @@ public final class ActionStateMachine {
             }
         }
 
-        // 1 级常态输入打断高级动作的后摇。
+        // 1 级常态输入打断高级动作的后摇（准备阶段也算「可以打断」，执行期不行）。
         // 定身期间输入已经被换成 FrozenInput，这里再看一遍输入会读到「玩家其实按着 W」，
         // 所以定身没结束就不做打断判定 —— 否则一按攻击就被自己的移动输入取消。
-        if (movementLockFrames <= 0 && actionLockFrames <= 0
+        if (!movementFrozen() && !actionLocked()
                 && animationTick > 0 && !DEFAULT_STATE.equals(currentState)) {
             ClientInput input = player.input;
             boolean isMoving = input.getMoveVector().lengthSquared() > 1.0E-5f;
@@ -374,7 +404,7 @@ public final class ActionStateMachine {
 
     @SubscribeEvent
     public static void onMovementInputUpdate(MovementInputUpdateEvent event) {
-        if (movementLockFrames <= 0) {
+        if (!movementFrozen()) {
             return;
         }
 
@@ -413,22 +443,53 @@ public final class ActionStateMachine {
 
     // ---- 打断规则 ----
 
+    /**
+     * 硬直（执行期）是否已经生效。
+     *
+     * <p>准备阶段（{@link #lockDelayFrames} &gt; 0）里恒为 false —— 那段时间只是吟唱，
+     * 被打断是正常玩法，不是 bug。
+     */
+    public static boolean actionLocked() {
+        return lockDelayFrames <= 0 && actionLockFrames > 0;
+    }
+
+    /** 定身是否已经生效（准备阶段里还没开始定身，人可以走开取消吟唱）。 */
+    public static boolean movementFrozen() {
+        return lockDelayFrames <= 0 && movementLockFrames > 0;
+    }
+
+    /**
+     * 现在能不能被一个新动作打断。
+     *
+     * @param requestedPriority 新动作的层级（{@code PRIO_*}）。目前只用于「大招期间不可打断」
+     *                          这一条 —— 见下面为什么层级比较不再参与判定
+     */
     public static boolean canInterrupt(int requestedPriority) {
         // 动作系统关闭：不做前摇/硬直判定，任何动作都能立刻接上
         if (!actionSystemEnabled()) {
             return true;
         }
 
-        // 大招期间不可打断
+        // 大招期间不可打断（绝对霸体）
         if (currentPriority >= PRIO_FINAL) {
             return false;
         }
 
-        if (requestedPriority > currentPriority) {
-            return true; // 高级打断低级
+        // ⭐ 执行期内谁都打不断 —— 连闪避、大招也不行。
+        //
+        // 这一段是技能「真正在发生」的部分：位移 + 动画 + 伤害点都在里面。
+        // 放人进来 = 「CD 扣了、能量没了、效果没出来」，正是要修的那个 bug。
+        // 想取消只能等执行期结束 —— <b>后摇才是设计上留的取消窗口</b>。
+        //
+        // （层级比较 requestedPriority > currentPriority 以前用在这里，现在删掉了：
+        //   高阶动作能越过执行期的话，翔风剑这种「触发即位移 + 伤害」的招式
+        //   照样会被闪避顶掉。准备阶段没有锁，吟唱依旧可以被高级动作取消。）
+        if (actionLocked()) {
+            return false;
         }
 
-        return actionLockFrames <= 0; // 同级或低级必须等前摇和硬直结束
+        // 准备阶段 / 后摇 / 常态：任何输入都能接上
+        return true;
     }
 
     // ---- 动作入口（供键位调用）----
@@ -590,29 +651,57 @@ public final class ActionStateMachine {
      * 动画则从冻结的那一帧继续往下播。
      */
     public static void resumeFromApproach(int totalTicks) {
+        resumeFromApproach(totalTicks, 0, 0);
+    }
+
+    /**
+     * 突进到位：解冻动画 + 整段执行期（动画时间轴、硬直、定身）<b>全部从这一刻重新起算</b>。
+     *
+     * <p>为什么锁也要重算：<b>飞过去本身就是执行期的一部分</b>。飞了 10 刻的话，
+     * 按「从按下那一刻算」的锁早就过期了，于是刚接上的动画会被一个移动输入取消，
+     * 连还没结算的伤害一起丢掉（表现就是「冲刺过去，人一到就收招，没伤害」）。
+     * 重算之后语义才一致：<b>到位 = 执行期开始</b>，保护时间一个不少。
+     *
+     * @param lockFrames    执行期硬直刻数（同 {@code changeState} 的 lockFrames）
+     * @param movementLock  到位后的定身刻数
+     */
+    public static void resumeFromApproach(int totalTicks, int lockFrames, int movementLock) {
         approachFrozen = false;
         animationTick = Math.max(1, totalTicks);
+
+        boolean actionSystem = actionSystemEnabled();
+        actionLockFrames = actionSystem ? Math.max(0, lockFrames) : 0;
+        movementLockFrames = actionSystem ? Math.max(0, movementLock) : 0;
+        lockDelayFrames = 0; // 已经飞过来了：准备阶段早就结束，到位就是执行期
     }
 
     /** 切到新状态，<b>不动</b>移动锁（上一状态设下的定身会继续自然倒数完）。 */
     public static void changeState(String newState, int priority, int totalTicks, int lockFrames) {
-        changeState(newState, priority, totalTicks, lockFrames, -1);
+        changeState(newState, priority, totalTicks, lockFrames, -1, 0);
+    }
+
+    public static void changeState(String newState, int priority, int totalTicks, int lockFrames,
+                                   int movementLockTicks) {
+        changeState(newState, priority, totalTicks, lockFrames, movementLockTicks, 0);
     }
 
     /**
-     * 切到新状态：清理旧状态残留、写入状态与计时器、按需设置移动锁，并自动发同步包给服务端。
+     * 切到新状态：清理旧状态残留、写入状态与计时器、按需设置移动锁与准备阶段，并自动发同步包给服务端。
      *
      * @param movementLockTicks 移动封锁刻数；传负数表示保持当前值不变
+     * @param lockDelayTicks    <b>准备阶段</b>刻数：这么多刻内硬直与定身都还没生效，
+     *                          所以这段时间还能被打断（吟唱）。0 = 触发即执行期
      */
     public static void changeState(String newState, int priority, int totalTicks, int lockFrames,
-                                   int movementLockTicks) {
+                                   int movementLockTicks, int lockDelayTicks) {
         LocalPlayer player = Minecraft.getInstance().player;
 
-        // 换动作 → 上一次出手的突进作废。
+        // 换动作 → 上一次出手的突进 / 下坠大招作废。
         // 不取消的话会出现「已经闪避走了，半秒后突然补一刀」——
-        // 突进是「上一次出手」的延续，新状态一开始它就该结束。
-        // （突进自己的起手是先 changeState 再 begin，所以不会误杀自己）
+        // 它们是「上一次出手」的延续，新状态一开始就该结束。
+        // （自己的起手是先 changeState 再 begin，所以不会误杀自己）
         AttackApproach.cancel();
+        BurstDive.cancel();
 
         dispatchCleanup(currentState, player);
 
@@ -632,6 +721,7 @@ public final class ActionStateMachine {
         // 动作系统关闭：不设硬直与定身，按键随时可以打断
         boolean actionSystem = actionSystemEnabled();
         actionLockFrames = actionSystem ? lockFrames : 0;
+        lockDelayFrames = actionSystem ? Math.max(0, lockDelayTicks) : 0;
 
         if (movementLockTicks >= 0) {
             movementLockFrames = actionSystem ? movementLockTicks : 0;
@@ -653,8 +743,10 @@ public final class ActionStateMachine {
     public static void resetToDefault() {
         LocalPlayer player = Minecraft.getInstance().player;
 
-        // 回常态 = 这次出手结束了：还在突进的话立刻停（不走到位回调，也不补发攻击请求）
+        // 回常态 = 这次出手结束了：还在突进/下坠的话立刻停
+        // （不走到位回调，也不补发攻击请求）
         AttackApproach.cancel();
+        BurstDive.cancel();
 
         dispatchCleanup(currentState, player);
 
@@ -662,6 +754,7 @@ public final class ActionStateMachine {
         currentPriority = PRIO_NORMAL;
         animationTick = 0;
         actionLockFrames = 0;
+        lockDelayFrames = 0;
         movementLockFrames = 0;
 
         clearFollowUpState();

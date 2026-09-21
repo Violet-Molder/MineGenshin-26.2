@@ -53,7 +53,7 @@ public class WeaponXpConfig {
         XP_5STAR_13 = builder.translation("minsgenshin.configuration.level.13t14").comment("Lv.13 -> Lv.14").defineInRange("13t14",8300, 0, 10000000);
         XP_5STAR_14 = builder.translation("minsgenshin.configuration.level.14t15").comment("Lv.14 -> Lv.15").defineInRange("14t15",9225, 0, 10000000);
         XP_5STAR_15 = builder.translation("minsgenshin.configuration.level.15t16").comment("Lv.15 -> Lv.16").defineInRange("15t16",10200, 0, 10000000);
-        XP_5STAR_16 = builder.translation("minsgenshin.configuration.level.16t17").comment("Lv.16 -> Lv.17").defineInRange("16t17",111250, 0, 10000000);
+        XP_5STAR_16 = builder.translation("minsgenshin.configuration.level.16t17").comment("Lv.16 -> Lv.17").defineInRange("16t17",11125, 0, 10000000);
         XP_5STAR_17 = builder.translation("minsgenshin.configuration.level.17t18").comment("minsgenshin.configuration.level.17 -> Lv.18").defineInRange("17t18",12300, 0, 10000000);
         XP_5STAR_18 = builder.translation("minsgenshin.configuration.level.18t19").comment("minsgenshin.configuration.level.18 -> Lv.19").defineInRange("18t19",13425, 0, 10000000);
         XP_5STAR_19 = builder.translation("minsgenshin.configuration.level.19t20").comment("minsgenshin.configuration.level.19 -> Lv.20").defineInRange("19t20",14600, 0, 10000000);
@@ -68,7 +68,7 @@ public class WeaponXpConfig {
         XP_5STAR_28 = builder.translation("minsgenshin.configuration.level.28t29").comment("minsgenshin.configuration.level.28 -> Lv.29").defineInRange("28t29",28050, 0, 10000000);
         XP_5STAR_29 = builder.translation("minsgenshin.configuration.level.29t30").comment("minsgenshin.configuration.level.29 -> Lv.30").defineInRange("29t30",29675, 0, 10000000);
         XP_5STAR_30 = builder.translation("minsgenshin.configuration.level.30t31").comment("minsgenshin.configuration.level.30 -> Lv.31").defineInRange("30t31",31350, 0, 10000000);
-        XP_5STAR_31 = builder.translation("minsgenshin.configuration.level.31t32").comment("minsgenshin.configuration.level.31 -> Lv.32").defineInRange("31t32",333050, 0, 10000000);
+        XP_5STAR_31 = builder.translation("minsgenshin.configuration.level.31t32").comment("minsgenshin.configuration.level.31 -> Lv.32").defineInRange("31t32",33350, 0, 10000000);
         XP_5STAR_32 = builder.translation("minsgenshin.configuration.level.32t33").comment("minsgenshin.configuration.level.32 -> Lv.33").defineInRange("32t33",34800, 0, 10000000);
         XP_5STAR_33 = builder.translation("minsgenshin.configuration.level.33t34").comment("minsgenshin.configuration.level.33 -> Lv.34").defineInRange("33t34",36575, 0, 10000000);
         XP_5STAR_34 = builder.translation("minsgenshin.configuration.level.34t35").comment("minsgenshin.configuration.level.34 -> Lv.35").defineInRange("34t35",38400, 0, 10000000);
@@ -81,7 +81,8 @@ public class WeaponXpConfig {
         XP_5STAR_42 = builder.translation("minsgenshin.configuration.level.42t43").comment("minsgenshin.configuration.level.42 -> Lv.43").defineInRange("42t42",57125, 0, 10000000);
         XP_5STAR_43 = builder.translation("minsgenshin.configuration.level.43t44").comment("minsgenshin.configuration.level.43 -> Lv.44").defineInRange("43t43",59400, 0, 10000000);
         XP_5STAR_44 = builder.translation("minsgenshin.configuration.level.44t45").comment("minsgenshin.configuration.level.44 -> Lv.45").defineInRange("44t45",61725, 0, 10000000);
-        XP_5STAR_46 = builder.translation("minsgenshin.configuration.level.46t47").comment("minsgenshin.configuration.level.46 -> Lv.46").defineInRange("46t47",66500, 0, 10000000);
+        XP_5STAR_45 = builder.translation("minsgenshin.configuration.level.45t46").comment("minsgenshin.configuration.level.45 -> Lv.46").defineInRange("45t46",64125, 0, 10000000);
+        XP_5STAR_46 = builder.translation("minsgenshin.configuration.level.46t47").comment("minsgenshin.configuration.level.46 -> Lv.47").defineInRange("46t47",66500, 0, 10000000);
         XP_5STAR_47 = builder.translation("minsgenshin.configuration.level.47t48").comment("minsgenshin.configuration.level.47 -> Lv.48").defineInRange("47t47",68925, 0, 10000000);
         XP_5STAR_48 = builder.translation("minsgenshin.configuration.level.48t49").comment("minsgenshin.configuration.level.48 -> Lv.49").defineInRange("48t48",71400, 0, 100000000);
         XP_5STAR_49 = builder.translation("minsgenshin.configuration.level.49t50").comment("minsgenshin.configuration.level.49 -> Lv.50").defineInRange("49t49",73950, 0, 10000000);
@@ -140,6 +141,7 @@ public class WeaponXpConfig {
         XP_4STAR_10 = builder.translation("minsgenshin.configuration.level.10t11").comment("Lv.10 -> Lv.11").defineInRange("10t11", 3800, 0, 10000000);
         XP_4STAR_11 = builder.translation("minsgenshin.configuration.level.11t12").comment("Lv.11 -> Lv.12").defineInRange("11t12", 4350, 0, 10000000);
         XP_4STAR_12 = builder.translation("minsgenshin.configuration.level.12t13").comment("Lv.12 -> Lv.13").defineInRange("12t13",4925, 0, 10000000);
+        XP_4STAR_13 = builder.translation("minsgenshin.configuration.level.13t14").comment("Lv.13 -> Lv.14").defineInRange("13t14",5525, 0, 10000000);
         XP_4STAR_14 = builder.translation("minsgenshin.configuration.level.14t15").comment("Lv.14 -> Lv.15").defineInRange("14t15",6150, 0, 10000000);
         XP_4STAR_15 = builder.translation("minsgenshin.configuration.level.15t16").comment("Lv.15 -> Lv.16").defineInRange("15t16", 6800, 0, 10000000);
         XP_4STAR_16 = builder.translation("minsgenshin.configuration.level.16t17").comment("Lv.16 -> Lv.17").defineInRange("16t17", 7500, 0, 10000000);

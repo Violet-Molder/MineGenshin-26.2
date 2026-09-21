@@ -24,10 +24,15 @@ public class ModEntities {
     public static final DeferredRegister<EntityType<?>> ENTITIES =
             DeferredRegister.create(BuiltInRegistries.ENTITY_TYPE, Minegenshin.MOD_ID);
     // 修复：使用 ResourceKey 替代 String
+    // MobCategory 用 MISC：它是「领域」不是生物。用 CREATURE 会让 NeoForge 在加载期
+    // 报 `Entity minegenshin:talisman_spirit has no attributes`（那句只是噪音，
+    // 但领域本来就不该占生物的类别/刷怪名额）。
     public static final Supplier<EntityType<TalismanSpiritArea>> FIELD_TALISMAN_SPIRIT =
             ENTITIES.register(
                     "talisman_spirit",
-                    () -> EntityType.Builder.of(TalismanSpiritArea::new, MobCategory.CREATURE)
+                    () -> EntityType.Builder.of(TalismanSpiritArea::new, MobCategory.MISC)
+                            .clientTrackingRange(10)
+                            .updateInterval(3)
                             .build(ResourceKey.create(
                                     Registries.ENTITY_TYPE,
                                     Minegenshin.id("talisman_spirit"))

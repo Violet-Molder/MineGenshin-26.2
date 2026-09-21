@@ -33,9 +33,32 @@ public final class VesnaResources {
             CharacterBoneMount.of("blade_right")
     )
             // 第一人称动画单独一个文件：主文件只查不到的名字才会来这里找
-            .withAnimationFile("character/vesna/vesna_fp.animation.json");
+            .withAnimationFile("character/vesna/vesna_fp.animation.json")
+            // 大招「跃起下坠刺击」的动画也单独一个文件（burst_dive），
+            // 不去动主文件里的 "final" —— 见 buildActionData() 里大招那一段
+            .withAnimationFile("character/vesna/vesna_burst.animation.json");
 
     public static final CharacterActionData ACTION_DATA = buildActionData();
+
+    /**
+     * 满命「翔风剑·变移」那一段的时序。
+     *
+     * <p>窗口期内普攻和 E 点按都换成它（见 {@code Vesna.getActionStateKey} 的 {@code "bianyi"}）。
+     * 时间轴：0 刻出手，{@value #BIANYI_HIT_DELAY} 刻结算两段伤害（150% 风 + 200% 灵剑），
+     * 执行期盖住伤害点，8 刻之后是后摇（可以被下一招取消）。
+     *
+     * <p>动画名先写 {@code "skill_bianyi"}；现在没有这个动画也不会崩
+     * （{@code ResourceDrivenActionHandler} 找不到动画名只会 warn + 不切动画，伤害照常）。
+     */
+    public static final int BIANYI_HIT_DELAY = 6;
+
+    public static final CharacterActionData.ActionStep BIANYI_STEP = new CharacterActionData.ActionStep(
+            "skill_bianyi", 20, BIANYI_HIT_DELAY + 2, 4,
+            List.of(new CharacterActionData.Move(0, 0.8)),
+            List.of(new CharacterActionData.Hit(BIANYI_HIT_DELAY, 2.0, 1.0, 1.5, 0.0, 2.5, false)),
+            List.of(new CharacterActionData.SoundRef(BIANYI_HIT_DELAY, "vesna_skill", 1.0f, 1.0f)),
+            0, 0, 0, 0
+    );
 
     private static CharacterActionData buildActionData() {
         Map<Integer, CharacterActionData.ActionStep> comboSteps = new LinkedHashMap<>();
@@ -88,7 +111,14 @@ public final class VesnaResources {
                 0, 5, 0, 10
         ));
         CharacterActionData.ActionStep attack6Step = new CharacterActionData.ActionStep(
-                "air_attack_long", 80, 0, 2,
+                // 第 6 段直接复用第 2 段的完整动画。
+                //
+                // 原来这里写的是 air_attack_long + 收尾 air_attack_end ——
+                // 那两个其实是「第 2 段被拆成两半」的产物：long 是攻击本体、end 是收尾。
+                // 拆开用就得额外接一次收尾状态，中间还夹一段很长的保持（身体 0.5 秒就到位了，
+                // 后面全靠 hold 撑满 7 秒），而第 6 段根本不需要那么长的恢复。
+                // 直接播完整的第 2 段动画：动作连贯、时长和动画天然对齐，也不用收尾机制。
+                "attack_2", 48, 0, 2,
                 List.of(new CharacterActionData.Move(6, 2.0)),
                 List.of(
                         new CharacterActionData.Hit(5, 0.0, 1.5, 2.0, 0.0, 12.0, false),
@@ -99,27 +129,71 @@ public final class VesnaResources {
                 List.of(new CharacterActionData.SoundRef(5, "vesna_attack_6", 1.0f, 1.0f)),
                 0, 6, 0, 12
         );
-        attack6Step.withComboEnd("air_attack_end", 60);
         comboSteps.put(6, attack6Step);
+
+        // ─── 吸附参数怎么定：默认全用全局值，只有「手感不对」的那一段才逐招覆盖 ───
+        //
+        // 判定链（写在 AttackApproach.stepToward 上方）：
+        //     生效范围 = 这一招的 attackRange + Engagement.adhesionBand（默认 1.5 格）
+        //     一步力度 = Engagement.adhesionStep（默认 0.22 冲量 ≈ 半个格）
+        // 默认值是按「补上对手挪开的那半步」定的，薇斯娜这几段用默认就够 ——
+        // 她的 moves 只有 1.2~2.0 的位移，攻击距离 3 格，节奏也快。
+        //
+        // 真要按段调，就这样（不改默认，只改那一段）：
+        //     attack6Step.withEngagement(Engagement.melee().withAdhesion(2.0, 0.30));
+        //     // 第 6 段是大收招，吸得宽一点、一步沉一点，打完不容易被溜掉
+        //
+        // 反例（什么时候要关掉）：如果以后给她加一段「原地蓄力炮」，
+        // 那一段就该 withAdhesion(0, 0) —— 蓄力时被往前带会很难看。
 
         CharacterActionData.ComboData combo = new CharacterActionData.ComboData(6, comboSteps);
 
+        // ─── 战技（E）：巡风列装入门 + 翔风剑，共用这一份时序 ───
+        //
+        // 三窗口（图见 ActionStep#protectDuration）：
+        //     0            8                    20
+        //     ├── 执行期 ──┼────── 后摇 ─────────┤
+        //       不可打断        可取消
+        //
+        // ① prepareTicks = 0：翔风剑没有「准备阶段」。
+        //    按下去就是位移 + 动画，那个位移本身就是技能在执行（不是前摇），
+        //    所以触发即进入执行期。
+        // ② protectDuration = 8：执行期盖住伤害点（hits[].delay = 6）+ 2 刻余量。
+        //    这段时间内外都打不断它 —— 挨打、跳跃、走开都不行。
+        //    之前这里是 0（整段可打断），表现就是「每一个都被打断、
+        //    剑气不扣但技能也没打出来」，前摇被打断还会连模式都进不去。
+        // ③ 8 刻之后是后摇（12 刻）：伤害已经结算完，随便取消 —— 连招手感靠它。
+        //
+        // 想改成「有吟唱」的角色：withPrepareTicks(n) 把 n 刻划成可打断的准备阶段即可。
         CharacterActionData.ActionStep skillStep = new CharacterActionData.ActionStep(
-                "skill_no_energy", 20, 0, 3,
+                "skill_no_energy", 20, 8, 3,
                 List.of(new CharacterActionData.Move(0, 0.8)),
                 List.of(new CharacterActionData.Hit(6, 2.0, 1.0, 1.2, 0.0, 2.5, false)),
                 List.of(new CharacterActionData.SoundRef(6, "vesna_skill", 1.0f, 1.0f)),
                 0, 0, 360, 0
         );
 
+        // ─── 大招 Q：跃起下坠刺击（60 能量）───
+        //
+        // 动画 "burst_dive" 在**独立文件** character/vesna/vesna_burst.animation.json 里
+        // （原来的 "final" 留在主动画文件里不动）。它只负责「跳起来 + 转成下坠姿态」；
+        // 飞出去的过程由客户端 BurstDive 驱动：跃起 8 刻 → 第 8 刻锁落点 → 下坠 10 刻。
+        //
+        // 伤害点写在 8 + 10 = 18 刻（就是 DiveBurst.landTick()，同一个数的两种写法），
+        // 这样落地伤害和「人砸到地上」是同一帧。
+        //
+        // 索敌：大招锁得远一点（16 格），但**不要突进** ——
+        // 接近这件事由下坠本身完成，再来一次贴脸突进就重复了。
         CharacterActionData.ActionStep burstStep = new CharacterActionData.ActionStep(
-                // 动画 json 里大招叫 "final"，不是 "burst"
-                "final", 40, 40, 4,
+                "burst_dive", 40, 40, 4,
                 List.of(),
-                List.of(new CharacterActionData.Hit(10, 3.0, 1.0, 3.0, 0.0, 4.0, false)),
-                List.of(new CharacterActionData.SoundRef(10, "vesna_burst", 1.0f, 1.0f)),
+                List.of(new CharacterActionData.Hit(18, 0.0, 0.0, 3.7, 0.0, 12.0, false)),
+                List.of(new CharacterActionData.SoundRef(18, "vesna_burst", 1.0f, 1.0f)),
                 0, 0, 400, 0
-        );
+        )
+                .withDiveBurst(8, 10, 2.5, 16.0)
+                .withEngagement(CharacterActionData.Engagement.melee().withDash(false)
+                        .withAcquireRange(16).withKeepRange(20));
 
         CharacterActionData.ActionStep dodgeStep = new CharacterActionData.ActionStep(
                 // 基准名；实际播放时按输入方向换成 dodge_front / dodge_back / dodge_left / dodge_right
@@ -133,7 +207,8 @@ public final class VesnaResources {
         return new CharacterActionData(
                 combo,
                 new CharacterActionData.SkillData(skillStep, null),
-                new CharacterActionData.BurstData(burstStep, 80f),
+                // 大招 60 能量（原来 80）
+                new CharacterActionData.BurstData(burstStep, 60f),
                 new CharacterActionData.DodgeData(dodgeStep)
         );
     }

@@ -75,7 +75,8 @@ public class VesnaSpiritSwordEntity extends Entity implements ISyncManagedEntity
 
     @Persisted(key = "stellar_swirl") @DescSynced
     private boolean stellarSwirl;
-
+    /** 大权区加成（整肃层数 ×10%）。 */
+    private float sovereigntyBonus;
     @Persisted(key = "element_amount") @DescSynced
     private float elementAmount;
 
@@ -91,6 +92,17 @@ public class VesnaSpiritSwordEntity extends Entity implements ISyncManagedEntity
                                                 Vec3 from, Vec3 to,
                                                 float multiplier, float aoeRange,
                                                 boolean stellarSwirl, float elementAmount) {
+        return create(level, character, from, to, multiplier, aoeRange, stellarSwirl, elementAmount, 0f);
+    }
+
+    /**
+     * @param sovereigntyBonus 「大权」加成（整肃层数 ×10%）—— 灵剑属于吃整肃的那几段
+     */
+    public static VesnaSpiritSwordEntity create(Level level, Vesna character,
+                                                Vec3 from, Vec3 to,
+                                                float multiplier, float aoeRange,
+                                                boolean stellarSwirl, float elementAmount,
+                                                float sovereigntyBonus) {
         VesnaSpiritSwordEntity e = ModEntities.VESNA_SPIRIT_SWORD.get()
                 .create(level, EntitySpawnReason.EVENT);
         if (e == null) return null;
@@ -102,6 +114,7 @@ public class VesnaSpiritSwordEntity extends Entity implements ISyncManagedEntity
         e.aoeRange = aoeRange;
         e.stellarSwirl = stellarSwirl;
         e.elementAmount = elementAmount;
+        e.sovereigntyBonus = sovereigntyBonus;
 
         e.setPos(from.x, from.y, from.z);
         return e;
@@ -199,7 +212,11 @@ public class VesnaSpiritSwordEntity extends Entity implements ISyncManagedEntity
             if (stellarSwirl) {
                 spec = ModDamageSpec.stellarDirect(
                         ElementalReactionType.STELLAR_SWIRL_WIND, ModElements.ANEMO.get(),
-                        multiplier, 0.5f);
+                        multiplier, 0.5f)
+                        .withStellarBaseBonusMult(
+                                com.linweiyun.genshin.core.system.reaction.StellarGlimmer
+                                        .swirlBaseBonusMult(serverLevel))
+                        .withSovereignty(sovereigntyBonus);
                 spec.setStellarContributors(List.of((PGCharacter) character));
             } else {
                 spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.ANEMO.get())
@@ -207,7 +224,8 @@ public class VesnaSpiritSwordEntity extends Entity implements ISyncManagedEntity
                         .elementAmount(elementAmount)
                         .decayGroup(DecayGroups.DEFAULT_ELEMENTAL_SKILL)
                         .attackerCharacter(character)
-                        .build();
+                        .build()
+                        .withSovereignty(sovereigntyBonus);
             }
             ModDamageSource source = ModDamageSource.from(spec, owner);
             target.hurtServer(serverLevel, source, 0f);

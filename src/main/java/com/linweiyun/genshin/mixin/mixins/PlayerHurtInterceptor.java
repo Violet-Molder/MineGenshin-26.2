@@ -5,12 +5,18 @@ import com.linweiyun.genshin.content.entities.teyvat.monster.TeyvatMonster;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.system.combat.damage.CombatEntityAccessor;
+import com.linweiyun.genshin.core.system.combat.damage.CombatMath;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.TeyvatConvertedDamageSource;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -42,8 +48,39 @@ public class PlayerHurtInterceptor {
                 player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
         PGCharacter current = attachment.getCurrentCharacter();
         if (current != null) {
+            LivingEntity livingAttacker = attacker instanceof LivingEntity le ? le : null;
+            int attackerLevel = CombatEntityAccessor.getAttackerLevel(livingAttacker, null);
+            double defense = CombatEntityAccessor.getDefenderDefense(player, current);
+            float defenseZone = CombatMath.defenseZone(attackerLevel, defense);
+
+            GenshinElement element = elementFromSource(source);
+            float rawResistance = CombatEntityAccessor.getDefenderResistance(player, current, element);
+            float resistanceZone = CombatMath.resistanceZone(rawResistance);
+
+            adjustedDamage *= defenseZone * resistanceZone;
+
             current.hurt(adjustedDamage);
             ci.cancel();
         }
+    }
+
+    private static GenshinElement elementFromSource(DamageSource source) {
+        if (source.is(DamageTypes.IN_FIRE) || source.is(DamageTypes.CAMPFIRE)
+                || source.is(DamageTypes.ON_FIRE) || source.is(DamageTypes.LAVA)
+                || source.is(DamageTypes.HOT_FLOOR) || source.is(DamageTypes.FIREBALL)
+                || source.is(DamageTypes.UNATTRIBUTED_FIREBALL)
+                || source.is(DamageTypes.SULFUR_CUBE_HOT)) {
+            return ModElements.PYRO.get();
+        }
+        if (source.is(DamageTypes.LIGHTNING_BOLT)) {
+            return ModElements.ELECTRO.get();
+        }
+        if (source.is(DamageTypes.FREEZE)) {
+            return ModElements.CYRO.get();
+        }
+        if (source.is(DamageTypes.DROWN)) {
+            return ModElements.HYDRO.get();
+        }
+        return ModElements.FYSIKOS.get();
     }
 }
