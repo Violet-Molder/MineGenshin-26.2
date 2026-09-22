@@ -55,7 +55,9 @@ final class TransformativeDamage {
 
         // 数值行 = 把数字代进公式（不是填算好的乘区结果）
         float em = (float) DamageZones.elementalMastery(character);
-        trace.zone("等级系数区", "等级 × 5 + 500", level + " × 5 + 500");
+        // ⚠️ 等级系数区用的是**剧变反应的等级系数**（按等级查表，见 DamageZones.levelCoefficient），
+        //    不是防御区那个「等级×5+500」——写成后者的话日志里的数根本对不上算出来的伤害。
+        trace.zone("等级系数区", "等级系数(按等级查表)", DamageTrace.fmt(levelCoefficient));
         trace.zone("反应倍率区", "反应倍率", DamageTrace.fmt(reactionMultiplier));
         trace.zone("反应加成区", "1 + 16×元素精通/(元素精通+2000)",
                 "1 + 16×" + DamageTrace.fmt(em) + "/(" + DamageTrace.fmt(em) + "+2000)");

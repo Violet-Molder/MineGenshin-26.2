@@ -140,7 +140,7 @@ public class SwirlReaction extends ElementalReaction {
         if (isStellarSwirl) {
             triggerCharacter = resolveTriggerCharacter(ctx.attackerEntity());
             preConsumeWindContributors = new ArrayList<>(ctx.targetContainer().getActiveContributors(
-                    serverLevel.getGameTime(), ModElements.CYRO.get(), ModElements.ANEMO.get()));
+                    serverLevel, serverLevel.getGameTime(), ModElements.CYRO.get(), ModElements.ANEMO.get()));
         }
 
         if (attackerIsAnemo) {
@@ -336,6 +336,10 @@ public class SwirlReaction extends ElementalReaction {
         vortex.addAllContributors(windContributorList);
         if (existing != null) {
             vortex.incrementLevel(triggerCharacter);
+        } else {
+            // 新建这一枚的那一次星扩散也算「落进这枚星璇」—— 冰段伤害源要记下它，
+            // 否则这枚星璇一直没被升级时冰段就没有来源（会退化回第一个贡献者）。
+            vortex.recordStellarTrigger(triggerCharacter);
         }
         vortex.triggerWindDamage(triggerCharacter, windContributorList);
 

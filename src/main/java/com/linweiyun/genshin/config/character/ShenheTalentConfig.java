@@ -5,8 +5,17 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class ShenheTalentConfig {
 
-    public static StringDoubleValue NA_BASE_1, NA_BASE_2, NA_BASE_3, NA_BASE_4, NA_BASE_5;
-    public static StringDoubleValue NA_PER_LEVEL_1, NA_PER_LEVEL_2, NA_PER_LEVEL_3, NA_PER_LEVEL_4, NA_PER_LEVEL_5;
+    /**
+     * 普攻倍率表（1~6 段）。
+     *
+     * <p>⚠️ 第 6 段是给<b>薇斯娜</b>用的：她的 {@code getMaxCombo() == 6}，而这张表原来只到第 5 段，
+     * 于是第 6 段落到 {@code default -> 0.0} —— 那一整段普攻恒为 0 伤害。
+     * 默认值暂取<b>第 2 段</b>的数值（她的第 6 段本来就复用第 2 段的动画 {@code attack_2}），
+     * 官方数值到位后改 TOML 即可，不用动代码。
+     */
+    public static StringDoubleValue NA_BASE_1, NA_BASE_2, NA_BASE_3, NA_BASE_4, NA_BASE_5, NA_BASE_6;
+    public static StringDoubleValue NA_PER_LEVEL_1, NA_PER_LEVEL_2, NA_PER_LEVEL_3, NA_PER_LEVEL_4,
+            NA_PER_LEVEL_5, NA_PER_LEVEL_6;
 
     public static StringDoubleValue SKILL_PRESS_BASE;
     public static StringDoubleValue SKILL_PRESS_PER_LEVEL;
@@ -31,11 +40,16 @@ public class ShenheTalentConfig {
         NA_BASE_3 = StringDoubleValue.defineInRange(builder, "nab3", 0.533, 0.0, 100.0);
         NA_BASE_4 = StringDoubleValue.defineInRange(builder, "nab4", 0.263, 0.0, 100.0);
         NA_BASE_5 = StringDoubleValue.defineInRange(builder, "nab5", 0.656, 0.0, 100.0);
+        // 第 6 段（薇斯娜）—— 需求：10 级 = 142.8%。按本表一贯的「每级成长 ≈ 基础 × 0.1117」反推：
+        //   0.7122 + 9 × 0.07954 = 1.4281 → 142.8%（官方数值到位后改这一项或 TOML 即可）
+        NA_BASE_6 = StringDoubleValue.defineInRange(builder, "nab6", 0.7122, 0.0, 100.0);
         NA_PER_LEVEL_1 = StringDoubleValue.defineInRange(builder, "nap1", 0.0482, 0.0, 100.0);
         NA_PER_LEVEL_2 = StringDoubleValue.defineInRange(builder, "nap2", 0.0450, 0.0, 100.0);
         NA_PER_LEVEL_3 = StringDoubleValue.defineInRange(builder, "nap3", 0.0595, 0.0, 100.0);
         NA_PER_LEVEL_4 = StringDoubleValue.defineInRange(builder, "nap4", 0.0294, 0.0, 100.0);
         NA_PER_LEVEL_5 = StringDoubleValue.defineInRange(builder, "nap5", 0.0733, 0.0, 100.0);
+        // 第 6 段（薇斯娜）—— 10 级 142.8%（推导见上面 nab6 的注释）
+        NA_PER_LEVEL_6 = StringDoubleValue.defineInRange(builder, "nap6", 0.07954, 0.0, 100.0);
         builder.pop();
 
         builder.push("elemental-skill");
@@ -66,6 +80,8 @@ public class ShenheTalentConfig {
             case 3 -> NA_BASE_3.get();
             case 4 -> NA_BASE_4.get();
             case 5 -> NA_BASE_5.get();
+            // 第 6 段：薇斯娜 getMaxCombo()==6。原来没有这一档 → 0.0 → 那一段普攻 0 伤害。
+            case 6 -> NA_BASE_6.get();
             default -> 0.0;
         };
     }
@@ -77,6 +93,7 @@ public class ShenheTalentConfig {
             case 3 -> NA_PER_LEVEL_3.get();
             case 4 -> NA_PER_LEVEL_4.get();
             case 5 -> NA_PER_LEVEL_5.get();
+            case 6 -> NA_PER_LEVEL_6.get();
             default -> 0.0;
         };
     }

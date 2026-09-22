@@ -209,8 +209,7 @@ public final class WhirlflowHymnEffects {
     private static void applyHpBonus(PGCharacter character, CharacterEffectInstance instance) {
         int stacks = Math.max(1, Math.min(MAX_STACKS, instance.getIntData(STACK_KEY)));
         double value = HP_PERCENT_PER_STACK * stacks * reactionMultiplier(character);
-        character.getData().removeAttributeModifier(ModAttributes.MAX_HP.value(), HP_SOURCE);
-        character.getData().addAttributeTempPercentModifier(ModAttributes.MAX_HP.value(), HP_SOURCE, value);
+        character.getData().setAttributeTempPercentModifier(ModAttributes.MAX_HP.value(), HP_SOURCE, value);
     }
 
     /**

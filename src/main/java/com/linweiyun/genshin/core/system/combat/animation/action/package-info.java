@@ -8,7 +8,7 @@
  *       —— 角色 ID → 动作编排 + 动画配置的注册表。</li>
  *   <li>{@link com.linweiyun.genshin.core.system.combat.animation.action.ResourceDrivenActionHandler}
  *       —— 本项目所有角色共用的实现：时序取自角色的 {@code ActionSet}
- *       （{@code XxxResources.ACTION_DATA} → {@code XxxTalent}），不硬编码在客户端。</li>
+ *       （{@code XxxResources.ACTION_DATA} → {@code XxxSkill}），不硬编码在客户端。</li>
  * </ul>
  */
 package com.linweiyun.genshin.core.system.combat.animation.action;

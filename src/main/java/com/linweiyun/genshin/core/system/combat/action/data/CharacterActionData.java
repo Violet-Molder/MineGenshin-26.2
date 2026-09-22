@@ -35,7 +35,7 @@ public final class CharacterActionData {
     /**
      * 没写 {@code XxxResources.ACTION_DATA} 的角色的通用动作配置。
      *
-     * <p>没有它的话 {@code TalentBase.buildDefaultActionSet()} 会返回空集，
+     * <p>没有它的话 {@code SkillBase.buildDefaultActionSet()} 会返回空集，
      * 角色的普攻 / 战技 / 大招会全部静默失效（按键毫无反应）。
      *
      * <p>时序只是「够用」的量级：动画名走通用命名，角色动画文件里没有对应名字时

@@ -144,6 +144,24 @@ public class FreezeReaction extends ElementalReaction {
 
         float consumedAttacker = attackerIsA ? consumedA : consumedB;
 
+        java.util.Set<String> cyroKeysBefore = new java.util.LinkedHashSet<>();
+        java.util.Set<String> hydroKeysBefore = new java.util.LinkedHashSet<>();
+        for (var inst : ctx.targetContainer().getAll()) {
+            if (inst.isFinished()) continue;
+            if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
+            GenshinElement el = ea.getElement();
+            String key = ea.getSourceCharacterKey();
+            if (key == null || key.isEmpty()) continue;
+            if (el == ModElements.CYRO.get()) {
+                cyroKeysBefore.add(key);
+            } else if (el == ModElements.HYDRO.get()) {
+                hydroKeysBefore.add(key);
+            } else if (el == ModElements.FROZEN.get()) {
+                cyroKeysBefore.addAll(ea.getFrozenCyroSourceKeys());
+                hydroKeysBefore.addAll(ea.getFrozenHydroSourceKeys());
+            }
+        }
+
         consumeElementUnit(ctx.targetContainer(), elB, consumedB);
         consumeElementUnit(ctx.targetContainer(), elA, consumedA);
 
@@ -166,6 +184,15 @@ public class FreezeReaction extends ElementalReaction {
                     AttachmentSource.SPECIAL,
                     new AttachmentProfile(frozenQty, 1.0f, 0.0f, 999.0f)
             );
+
+            for (var inst : ctx.targetContainer().getAll()) {
+                if (inst.isFinished()) continue;
+                if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
+                if (ea.getElement() != ModElements.FROZEN.get()) continue;
+                for (String k : cyroKeysBefore) ea.addFrozenCyroSource(k);
+                for (String k : hydroKeysBefore) ea.addFrozenHydroSource(k);
+            }
+
             StatusContainer container = ctx.targetContainer();
             if (container.getFrozenDecayState() != null) {
                 container.getFrozenDecayState().activate();

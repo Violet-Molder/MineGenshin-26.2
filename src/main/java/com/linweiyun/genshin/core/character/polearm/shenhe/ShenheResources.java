@@ -23,7 +23,7 @@ import java.util.List;
  * 服务端的冲量盖掉了客户端的突刺。所以这里的战技两段 {@code moves} 必须是空的。
  *
  * <h2>长按为什么也要在这里写</h2>
- * {@code TalentBase.buildDefaultActionSet} 只在 {@code skill.hold() != null} 时才注册
+ * {@code SkillBase.buildDefaultActionSet} 只在 {@code skill.hold() != null} 时才注册
  * {@code ELEMENTAL_SKILL_HOLD}；兜底表的 {@code SkillData} 是 {@code (step, null)}，
  * 于是客户端的短/长按判定（短 CD ≠ 长 CD 才等长按）通过之后，
  * {@code set.getElementalSkillHold()} 是 {@code null} → 长按什么都不发生，
@@ -39,7 +39,7 @@ public final class ShenheResources {
 
     public static final CharacterActionData ACTION_DATA = build();
 
-    /** 短按 E：突刺 + 一次冰伤（伤害本身在 {@code ShenheTalent.elementalSkill} 里算）。 */
+    /** 短按 E：突刺 + 一次冰伤（伤害本身在 {@code ShenheSkill.elementalSkill} 里算）。 */
     private static final int TAP_DURATION = 25;
     /** 长按 E：站桩，给全队冰翎与普攻/重击/下落加成。 */
     private static final int HOLD_DURATION = 30;

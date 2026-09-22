@@ -8,6 +8,8 @@ import com.linweiyun.genshin.core.status.StatusInstanceTypes;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.about.FrozenDecayState;
 import com.linweiyun.genshin.core.system.reaction.ElectroChargedTickState;
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.lowdragmc.lowdraglib2.LDLib2;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
@@ -22,12 +24,15 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -161,16 +166,39 @@ public class StatusContainer implements IPersistedSerializable {
      * @param elements 要查询的元素（不传则返回全部）
      * @return 去重后的角色集合
      */
-    public Set<PGCharacter> getActiveContributors(long currentTick, GenshinElement... elements) {
+    public Set<PGCharacter> getActiveContributors(ServerLevel level, long currentTick, GenshinElement... elements) {
         Set<PGCharacter> result = new LinkedHashSet<>();
         Set<GenshinElement> filter = elements.length == 0 ? null : Set.of(elements);
+        boolean filterWantsCyro = filter == null || filter.contains(ModElements.CYRO.get());
+        boolean filterWantsHydro = filter == null || filter.contains(ModElements.HYDRO.get());
+        GenshinElement frozenEl = ModElements.FROZEN.get();
         for (StatusInstance inst : instances) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
             if (ea.getDecayEndTick() <= currentTick) {
                 continue;
             }
-            if (filter != null && !filter.contains(ea.getElement())) continue;
+            GenshinElement el = ea.getElement();
+            if (el == frozenEl) {
+                if (filterWantsCyro) {
+                    for (String k : ea.getFrozenCyroSourceKeys()) {
+                        PGCharacter ch = resolveCharacterByKey(level, k);
+                        if (ch != null) result.add(ch);
+                    }
+                }
+                if (filterWantsHydro) {
+                    for (String k : ea.getFrozenHydroSourceKeys()) {
+                        PGCharacter ch = resolveCharacterByKey(level, k);
+                        if (ch != null) result.add(ch);
+                    }
+                }
+                if (filter == null) {
+                    PGCharacter ch = ea.getSourceCharacter();
+                    if (ch != null) result.add(ch);
+                }
+                continue;
+            }
+            if (filter != null && !filter.contains(el)) continue;
             PGCharacter ch = ea.getSourceCharacter();
             if (ch != null) {
                 result.add(ch);
@@ -180,6 +208,29 @@ public class StatusContainer implements IPersistedSerializable {
         if (result.isEmpty()) {
         }
         return result;
+    }
+
+    /**
+     * 从 sourceCharacterKey（格式：{@code characterUUID::ClassName}）在 ServerLevel 的所有玩家队伍里找到对应的 PGCharacter。
+     */
+    @Nullable
+    private static PGCharacter resolveCharacterByKey(@Nullable ServerLevel level, String key) {
+        if (key == null || key.isEmpty()) return null;
+        if (level == null) return null;
+        String uuidPart = key.split("::", 2)[0];
+        int uuid;
+        try {
+            uuid = Integer.parseInt(uuidPart);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        for (ServerPlayer player : level.players()) {
+            PlayerCharactersAttachment att = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            if (att == null) continue;
+            PGCharacter ch = att.getCharacterByUUID(uuid);
+            if (ch != null) return ch;
+        }
+        return null;
     }
 
     /**

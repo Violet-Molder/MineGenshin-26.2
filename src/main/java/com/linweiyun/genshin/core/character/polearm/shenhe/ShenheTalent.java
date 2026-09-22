@@ -1,271 +1,99 @@
 package com.linweiyun.genshin.core.character.polearm.shenhe;
 
-import com.linweiyun.genshin.config.character.ShenheTalentConfig;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
-import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
 import com.linweiyun.genshin.content.effect.character.impl.DamageBonusEffect;
-import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
-import com.linweiyun.genshin.content.skill_node.AreaEntityCollector;
-import com.linweiyun.genshin.content.skill_node.DashSystem;
-import com.linweiyun.genshin.content.skill_node.RushesForward;
-import com.linweiyun.genshin.content.skill_node.SkillHelper;
+import com.linweiyun.genshin.content.effect.character.shenhe.IcyQuillEffect;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
-import com.linweiyun.genshin.core.system.combat.action.ActionSet;
-import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
-import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
-import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
-import com.linweiyun.genshin.content.entities.ModEntities;
-import com.linweiyun.genshin.enums.AttachmentType;
-import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.enums.AttackType;
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
-import org.slf4j.Logger;
 
-import java.util.List;
-
+/**
+ * 申鹤的<b>天赋</b>（突破天赋 / 被动）。
+ *
+ * <p>这个类名以前是「技能」用的（现在技能搬去 {@link ShenheSkill}）。
+ * 这里只放<b>不由某一招自身打出来</b>的那部分：
+ *
+ * <h2>突破天赋 1 —— 冰凌</h2>
+ * 点按 E 给全队 5 根（10 秒）、长按 7 根（15 秒）。
+ * 冰凌的「消耗 + 附加伤害」在 {@code IcyQuillEffect} 里（效果自己管），
+ * 这里只负责<b>发放</b>。
+ *
+ * <h2>突破天赋 2（突破 ≥ 4）—— 点按/长按的队伍增伤</h2>
+ * 点按：队伍元素战技 / 元素爆发伤害 +15%，10 秒；
+ * 长按：普攻 / 重击 / 下落攻击伤害 +15%，15 秒。
+ *
+ * <p>两个方法的调用点都在 {@link ShenheSkill#elementalSkill} 里（各一行）——
+ * 这样「突破天赋给什么」只在这个文件里看，技能里看到的只是「什么时候发」。
+ */
 public class ShenheTalent extends TalentBase {
-    public static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final float CHARGE_DASH_DISTANCE = 10f;
-    private static final int   CHARGE_DASH_TICKS    = 10;
-    private static final float SKILL_DASH_DISTANCE  = 10f;
-    private static final int   SKILL_DASH_TICKS     = 10;
+    /** 突破天赋 2 的解锁档：突破 ≥ 4。 */
+    private static final int ASCEND2_PHASE = 4;
+    /** 两份增伤的数值（点按 / 长按都是 15%）。 */
+    private static final float ASCEND2_DAMAGE_BONUS = 0.15f;
+    /** 增伤的持续刻数：点按 10 秒 / 长按 15 秒。 */
+    private static final int ASCEND2_TAP_TICKS = 200;
+    private static final int ASCEND2_HOLD_TICKS = 300;
+    /** 增伤效果的实例 id（沿用原来的字符串，两个方向各一份）。 */
+    private static final Identifier ASCEND2_TAP_ID = Identifier.parse("minegenshin:shenhe_ascend2_tap");
+    private static final Identifier ASCEND2_HOLD_ID = Identifier.parse("minegenshin:shenhe_ascend2_hold");
 
-    @Override
-    public int getMaxCombo() { return 5; }
+    /**
+     * 突破天赋 1：给队伍 4 人各挂一份「冰凌」。
+     *
+     * <p>数值由调用方给（点按 5 根 / 200 刻、长按 7 根 / 300 刻）——
+     * 和原来内联时的字面量完全一致，只是抽成了一个方法。
+     *
+     * @param count         冰凌根数
+     * @param durationTicks 持续刻数
+     */
+    public void grantIcyQuills(Player player, PGCharacter character, int count, int durationTicks) {
+        PlayerCharactersAttachment attachment =
+                player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
 
-    @Override
-    protected ActionSet buildDefaultActionSet(PGCharacter character) {
-        return super.buildDefaultActionSet(character);
-    }
-
-    @Override
-    public void attack(Player player, PGCharacter character, int comboStage) {
-        Level level = player.level();
-        if (level.isClientSide()) return;
-        int stage = comboStage;
-        int naLevel = Math.max(1, character.getData().getNormalAttackLevel());
-
-        float multiplier = (float) (
-                ShenheTalentConfig.getNABase(stage)
-                        + ShenheTalentConfig.getNAPerLevel(stage) * (naLevel - 1));
-
-        Vec3 startPos = player.position();
-        Vec3 lookDir = player.getLookAngle();
-        Vec3 endPos = startPos.add(lookDir.scale(2.5f));
-
-        List<LivingEntity> targets = new AreaEntityCollector(level, startPos, endPos, 1.0f).execute();
-
-        for (LivingEntity target : targets) {
-            if (target != player) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.CYRO.get())
-                        .multiplier(multiplier)
-                        .elementAmount(AttachmentType.WEAK.getInitialAmount())
-                        .attackerCharacter(character)
-                        .build();
-                ModDamageSource source = ModDamageSource.from(spec, player);
-                if (target.level() instanceof ServerLevel serverLevel) {
-                    target.hurtServer(serverLevel, source, 0f);
-                    if (stage == 5) {
-                        target.hurtServer(serverLevel, source, 0f);
-                    }
-                }
+        for (int i = 0; i < 4; i++) {
+            PGCharacter partyChar = attachment.getPartyCharacter(i);
+            if (partyChar != null) {
+                CharacterEffectInstance effect = new CharacterEffectInstance(
+                        ModCharacterEffects.ICY_QUILL_EFFECT.get(), durationTicks, 1);
+                effect.setIntData(IcyQuillEffect.ICY_QUILL_COUNT_KEY, count);
+                CharacterEffectHelper.addEffect(player, partyChar, effect);
             }
         }
     }
 
-    @Override
-    public void chargeAttack(Player player, PGCharacter character) {
-        Vec3 delta = new RushesForward(player, CHARGE_DASH_DISTANCE).execute();
-        String side = player.level().isClientSide() ? "CLIENT" : "SERVER";
-        LOGGER.info("[ShenheTalent.chargeAttack] [{}] delta={}", side, delta);
-
-        if (player.level().isClientSide()) {
-            DashSystem.startDash(player, delta, CHARGE_DASH_TICKS);
-        } else {
-            DashSystem.startDamageDash(player, delta, CHARGE_DASH_TICKS, hitEntity -> {
-                ModDamageSpec spec = ModDamageSpec.builder(
-                                AttackType.ELEMENTAL_SKILL, ModElements.PYRO.get())
-                        .multiplier(3.5f)
-                        .elementAmount(AttachmentType.WEAK.getInitialAmount())
-                        .decayGroup(DecayGroups.SHENHE_SKILL)
-                        .attackerCharacter(character)
-                        .build();
-                ModDamageSource source = ModDamageSource.from(spec, player);
-                if (hitEntity.level() instanceof ServerLevel serverLevel) {
-                    hitEntity.hurtServer(serverLevel, source, 0f);
-                }
-            });
-        }
-    }
-
-    @Override
-    public void elementalSkill(Player player, PGCharacter character, int skillType) {
-        Level level = player.level();
-        String side = level.isClientSide() ? "CLIENT" : "SERVER";
-        LOGGER.info("[ShenheTalent.elementalSkill] [{}] enter skillType={}", side, skillType);
-
-        int skillLevel = character.getData().getElementalSkillLevel();
-
-        if (skillType < 1000) {
-            float pressDamage = ShenheTalentConfig.getSkillPressDamage(skillLevel);
-            Vec3 delta = new RushesForward(player, SKILL_DASH_DISTANCE).execute();
-            LOGGER.info("[ShenheTalent.elementalSkill] [{}] delta={}", side, delta);
-
-            if (level.isClientSide()) {
-                DashSystem.startDash(player, delta, SKILL_DASH_TICKS);
-                LOGGER.info("[ShenheTalent.elementalSkill] [{}] startDash called", side);
-            } else {
-                DashSystem.startDamageDash(player, delta, SKILL_DASH_TICKS, hitEntity -> {
-                    ModDamageSpec spec = ModDamageSpec.builder(
-                                    AttackType.ELEMENTAL_SKILL, ModElements.CYRO.get())
-                            .multiplier(pressDamage)
-                            .elementAmount(AttachmentType.WEAK.getInitialAmount())
-                            .decayGroup(DecayGroups.SHENHE_SKILL)
-                            .attackerCharacter(character)
-                            .build();
-                    ModDamageSource source = ModDamageSource.from(spec, player);
-                    if (hitEntity.level() instanceof ServerLevel serverLevel) {
-                        hitEntity.hurtServer(serverLevel, source, 0f);
-                    }
-                });
-                LOGGER.info("[ShenheTalent.elementalSkill] [{}] startDamageDash called", side);
-            }
-
-            if (level.isClientSide()) return;
-
-            PlayerCharactersAttachment attachment =
-                    player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-
-            for (int i = 0; i < 4; i++) {
-                PGCharacter partyChar = attachment.getPartyCharacter(i);
-                if (partyChar != null) {
-                    CharacterEffectInstance effect = new CharacterEffectInstance(
-                            ModCharacterEffects.ICY_QUILL_EFFECT.get(), 200, 1);
-                    effect.setIntData(IcyQuillEffect.ICY_QUILL_COUNT_KEY, 5);
-                    CharacterEffectHelper.addEffect(player, partyChar, effect);
-                }
-            }
-
-            if (character.getData().getAscensionPhase() >= 4) {
-                Identifier tapBuffId = Identifier.parse("minegenshin:shenhe_ascend2_tap");
-                for (int i = 0; i < 4; i++) {
-                    PGCharacter partyChar = attachment.getPartyCharacter(i);
-                    if (partyChar != null) {
-                        DamageBonusEffect tapBuff = new DamageBonusEffect(
-                                0.15f, AttackType.ELEMENTAL_SKILL, AttackType.ELEMENTAL_BURST);
-                        CharacterEffectInstance tapInstance =
-                                new CharacterEffectInstance(tapBuffId, tapBuff, 200, 0);
-                        CharacterEffectHelper.addEffect(player, partyChar, tapInstance);
-                    }
-                }
-            }
-
-            new SkillHelper(player, 10).addStun();
-
-        } else {
-            if (level.isClientSide()) return;
-
-            float holdDamage = ShenheTalentConfig.getSkillHoldDamage(skillLevel);
-            AABB holdBox = new AABB(
-                    player.getX() - 2.5, player.getY() - 2, player.getZ() - 2.5,
-                    player.getX() + 2.5, player.getY() + 2, player.getZ() + 2.5);
-            List<LivingEntity> holdTargets = level.getEntitiesOfClass(LivingEntity.class, holdBox,
-                    e -> e != player && !(e instanceof Player));
-            for (LivingEntity target : holdTargets) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.CYRO.get())
-                        .multiplier(holdDamage)
-                        .elementAmount(AttachmentType.WEAK.getInitialAmount())
-                        .decayGroup(DecayGroups.SHENHE_SKILL)
-                        .attackerCharacter(character)
-                        .build();
-                ModDamageSource source = ModDamageSource.from(spec, player);
-                if (target.level() instanceof ServerLevel serverLevel) {
-                    target.hurtServer(serverLevel, source, 0f);
-                }
-            }
-
-            PlayerCharactersAttachment attachment =
-                    player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-            for (int i = 0; i < 4; i++) {
-                PGCharacter partyChar = attachment.getPartyCharacter(i);
-                if (partyChar != null) {
-                    CharacterEffectInstance effect = new CharacterEffectInstance(
-                            ModCharacterEffects.ICY_QUILL_EFFECT.get(), 300, 1);
-                    effect.setIntData(IcyQuillEffect.ICY_QUILL_COUNT_KEY, 7);
-                    CharacterEffectHelper.addEffect(player, partyChar, effect);
-                }
-            }
-            if (character.getData().getAscensionPhase() >= 4) {
-                Identifier holdBuffId = Identifier.parse("minegenshin:shenhe_ascend2_hold");
-                for (int i = 0; i < 4; i++) {
-                    PGCharacter partyChar = attachment.getPartyCharacter(i);
-                    if (partyChar != null) {
-                        DamageBonusEffect holdBuff = new DamageBonusEffect(
-                                0.15f, AttackType.NORMAL_ATTACK,
-                                AttackType.CHARGED_ATTACK, AttackType.PLUNGING_ATTACK);
-                        CharacterEffectInstance holdInstance =
-                                new CharacterEffectInstance(holdBuffId, holdBuff, 300, 0);
-                        CharacterEffectHelper.addEffect(player, partyChar, holdInstance);
-                    }
-                }
-            }
-
-            new SkillHelper(player, 10).addStun();
-        }
-    }
-
-    @Override
-    public void elementalBurst(Player player, PGCharacter character) {
-        Level level = player.level();
-        if (level.isClientSide()) return;
-
-        int burstLevel = character.getData().getElementalBurstLevel();
-
-        float castDamage = ShenheTalentConfig.getBurstCastDamage(burstLevel);
-        AABB castBox = new AABB(
-                player.getX() - 6.0, player.getY() - 2.0, player.getZ() - 6.0,
-                player.getX() + 6.0, player.getY() + 2.0, player.getZ() + 6.0);
-
-        List<LivingEntity> targets = level.getEntitiesOfClass(LivingEntity.class, castBox,
-                e -> e != player);
-        for (LivingEntity target : targets) {
-            ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_BURST, ModElements.CYRO.get())
-                    .multiplier(castDamage)
-                    .elementAmount(1.0f)
-                    .attackerCharacter(character)
-                    .build();
-            ModDamageSource source = ModDamageSource.from(spec, player);
-            if (target.level() instanceof ServerLevel serverLevel) {
-                target.hurtServer(serverLevel, source, 0f);
-            }
-        }
+    /**
+     * 突破天赋 2：突破 ≥ 4 时，给队伍 4 人各挂一份增伤。
+     *
+     * <p>点按（{@code hold = false}）给元素战技 / 元素爆发 +15%（10 秒）；
+     * 长按（{@code hold = true}）给普攻 / 重击 / 下落攻击 +15%（15 秒）。
+     * 不足突破 4 直接不发（原来那句 {@code getAscensionPhase() >= 4} 挪到这里）。
+     */
+    public void grantAscend2DamageBonus(Player player, PGCharacter character, boolean hold) {
+        if (character.getData().getAscensionPhase() < ASCEND2_PHASE) return;
 
         PlayerCharactersAttachment attachment =
                 player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-        PGCharacter currentChar = attachment.getCurrentCharacter();
 
-        TalismanSpiritArea field = ModEntities.FIELD_TALISMAN_SPIRIT.get()
-                .create(player.level(), EntitySpawnReason.EVENT);
-        if (field != null) {
-            field.setPos(player.position());
-            if (currentChar != null) {
-                field.setOwner(player, currentChar);
+        for (int i = 0; i < 4; i++) {
+            PGCharacter partyChar = attachment.getPartyCharacter(i);
+            if (partyChar != null) {
+                DamageBonusEffect buff = hold
+                        ? new DamageBonusEffect(ASCEND2_DAMAGE_BONUS, AttackType.NORMAL_ATTACK,
+                                AttackType.CHARGED_ATTACK, AttackType.PLUNGING_ATTACK)
+                        : new DamageBonusEffect(ASCEND2_DAMAGE_BONUS, AttackType.ELEMENTAL_SKILL,
+                                AttackType.ELEMENTAL_BURST);
+                CharacterEffectInstance instance = new CharacterEffectInstance(
+                        hold ? ASCEND2_HOLD_ID : ASCEND2_TAP_ID, buff,
+                        hold ? ASCEND2_HOLD_TICKS : ASCEND2_TAP_TICKS, 0);
+                CharacterEffectHelper.addEffect(player, partyChar, instance);
             }
-            player.level().addFreshEntity(field);
         }
     }
 }

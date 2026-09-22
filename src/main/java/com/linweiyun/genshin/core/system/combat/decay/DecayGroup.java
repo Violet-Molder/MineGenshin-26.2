@@ -51,10 +51,16 @@ public record DecayGroup(int clearTimeTicks, DecaySequence elementSequence, Deca
      * @param poiseSequence   削韧序列
      */
     public DecayGroup {
-        // 设置清除时间
-        // 设置元素量序列
-        // 设置伤害序列
-        // 设置削韧序列
+        // ⚠️ 三条序列一条都不能是 null —— 这里做一次快速失败。
+        //
+        // 为什么需要：Java 的静态字段按书写顺序初始化。曾经 {@code DecaySequence.DEFAULT_DAMAGE}
+        // 被写成「引用一个声明在它后面的单例」，于是那个常量被静默初始化成 null，
+        // 一路传到 {@code DecayGroup.getDamageCoefficient()} 才在运行时炸 NPE
+        // （表现是「所有攻击零伤害」+「领域实体一 tick 就崩服」，而且编译、启动都不报错）。
+        // 在这里挡住的话，这种错会在类初始化那一刻就带着清楚的消息抛出来。
+        java.util.Objects.requireNonNull(elementSequence, "DecayGroup.elementSequence 不能为 null");
+        java.util.Objects.requireNonNull(damageSequence, "DecayGroup.damageSequence 不能为 null");
+        java.util.Objects.requireNonNull(poiseSequence, "DecayGroup.poiseSequence 不能为 null");
     }
 
     // ========== Getter 方法 ==========

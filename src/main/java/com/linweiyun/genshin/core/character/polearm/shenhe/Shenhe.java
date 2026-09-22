@@ -30,7 +30,11 @@ public class Shenhe extends PolearmCharacter implements IStellarStateHolder {
                         ModAttributes.ATK.getId(), ShenheAttributeConfig::getAllAtk,
                         ModAttributes.DEF.getId(), ShenheAttributeConfig::getAllDef
                 ));
+        // 三个协作者都在无参构造器里建：客户端反序列化走
+        // clazz.getDeclaredConstructor().newInstance()（会跑到这里），双端都拿得到实例。
+        this.skill = new ShenheSkill();
         this.talent = new ShenheTalent();
+        this.constellation = new ShenheConstellation();
     }
 
     @Override

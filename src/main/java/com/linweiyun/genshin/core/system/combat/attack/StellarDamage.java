@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.attack;
 
+import com.linweiyun.genshin.config.reaction.ReactionConfig;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.damage.CombatMath;
 import com.linweiyun.genshin.core.system.combat.damage.DamageTrace;
@@ -26,9 +27,18 @@ import java.util.UUID;
  * 后段（两种一样）：× 反应加成区 × 抗性区 × 暴击区 × 擢升区 × 大权区
  * </pre>
  *
- * <h2>多人一起触发</h2>
+ * <h2>加权：只看「是不是反应伤害」，不看人数</h2>
  * 逐人算出理论伤害后<b>加权求和</b>：{@code 第1名×0.6 + 第2名×0.3 + 第3名×0.05 + 第4名×0.05}
  * （只看前四名；第五名及以后不计入）。和月曜的权重不同。
+ *
+ * <p>⚠️ 这条加权公式<b>只对「反应伤害」成立</b>（{@code isStellarReactionDamage()} 为真，
+ * 即 {@code ModDamageSpec.stellarReaction(...)} 造出来的、星辉风旋那种「反应分配出来的」伤害）：
+ * 它<b>永远</b>走加权 —— 单人触发时就是 {@code 单人理论伤害 × 0.6}，不因为只有一个人就免掉。
+ *
+ * <p>反过来，<b>直伤</b>（{@code stellarDirect(...)}，技能自带的星扩散伤害，例如薇斯娜的灵剑）
+ * 是某个角色自己打出的那一下，<b>不参与加权</b>，单人就是理论伤害本身。
+ *
+ * <p>所以这里只需要区分「直伤 / 反应伤害」，不需要另判人数。
  */
 final class StellarDamage {
 
@@ -42,7 +52,7 @@ final class StellarDamage {
                     + " × 【1 - 抗性】 × 【1 + 暴击伤害】 × 【擢升区】 × 【大权区】";
 
     private static final String SINGLE_FORMULA_BY_REACTION =
-            "单人理论伤害 = 【((等级×5+500) × 星辉系数 × (1 + 基础倍率提升) + 基础附加)】"
+            "单人理论伤害 = 【(聚变等级系数 × 星辉系数 × (1 + 基础倍率提升) + 基础附加)】"
                     + " × 【1 + 16×元素精通/(元素精通+2000) + 星烁加成】"
                     + " × 【1 - 抗性】 × 【1 + 暴击伤害】 × 【擢升区】 × 【大权区】";
 
@@ -88,26 +98,24 @@ final class StellarDamage {
             results.add(result);
             valueTexts.add(result.valueText);
         }
-        Combined combined = combine(results);
+        Combined combined = combine(results, byReaction);
         spec.setCrit(combined.crit);
 
-        if (results.size() == 1) {
-            trace.slim("伤害 = 基础区 × 反应加成区 × 抗性区 × 暴击区 × 擢升区 × 大权区");
-            String singleFormula = byReaction ? SINGLE_FORMULA_BY_REACTION : SINGLE_FORMULA_BY_SKILL;
-            trace.fullLine("伤害 = "
-                    + singleFormula.substring(singleFormula.indexOf('=') + 1).trim());
-            trace.valueLine("伤害", valueTexts.get(0));
-        } else {
-            // 多人：单人公式一行 + 加权公式一行 + 逐人数值 + 加权数值
-            trace.slim("伤害 = 单人理论伤害 × 权重（逐名求和）");
-            trace.fullLine(byReaction ? SINGLE_FORMULA_BY_REACTION : SINGLE_FORMULA_BY_SKILL);
+        // 只有「直伤 + 单人」才不加权（那是角色自己打出的那一下）；
+        // 「反应伤害」无论几个人都走加权公式（单人 = ×0.6），所以日志照印那条公式。
+        boolean noWeighting = results.size() == 1 && !byReaction;
+        trace.slim(noWeighting
+                ? "伤害 = 单人理论伤害（直伤，不参与加权）"
+                : "伤害 = 单人理论伤害 × 权重（逐名求和）");
+        trace.fullLine(byReaction ? SINGLE_FORMULA_BY_REACTION : SINGLE_FORMULA_BY_SKILL);
+        if (!noWeighting) {
             trace.fullLine(COMBINE_FORMULA);
-            for (int i = 0; i < valueTexts.size(); i++) {
-                trace.valueLine("单人" + (i + 1),
-                        valueTexts.get(i) + " = " + DamageTrace.fmt(results.get(i).theoryDamage));
-            }
-            trace.valueLine("伤害", combineValueText(results));
         }
+        for (int i = 0; i < valueTexts.size(); i++) {
+            trace.valueLine("单人" + (i + 1),
+                    valueTexts.get(i) + " = " + DamageTrace.fmt(results.get(i).theoryDamage));
+        }
+        trace.valueLine("伤害", combineValueText(results, noWeighting));
         trace.result(combined.totalDamage);
         trace.log();
         return combined.totalDamage;
@@ -144,7 +152,7 @@ final class StellarDamage {
                 : (float) character.getData().getAttributeTotalValue(ModAttributes.ATK.value());
         int level = com.linweiyun.genshin.core.system.combat.damage.CombatEntityAccessor
                 .getAttackerLevel(null, character);
-        double levelCoefficient = DamageZones.levelCoefficient(level);
+        double levelCoefficient = ReactionConfig.getReactionFusion(level);
         double baseBoost = byReaction
                 ? levelCoefficient * coefficient * (1.0 + baseBonusMult) + baseBonusFlat
                 : atk * coefficient * (1.0 + baseBonusMult) + baseBonusFlat;
@@ -190,14 +198,25 @@ final class StellarDamage {
     // ==================== 合并 ====================
 
     /**
-     * 星烁多人合并权重：{@code 第1名×0.6 + 第2名×0.3 + 第3名×0.05 + 第4名×0.05}
-     * （只看前四名，第五名及以后不计入）。
+     * 星烁合并：{@code 第1名×0.6 + 第2名×0.3 + 第3/4名×0.05}（只看前四名，第五名及以后不计入）。
+     *
+     * <p>⚠️ <b>「反应伤害」永远走这条公式</b>（{@code byReaction == true}，即星辉风旋那种
+     * 由反应分配出来的伤害）：单人触发时第 1 名照样 ×0.6 —— 它不是哪个角色自己的那一下。
+     *
+     * <p>只有<b>直伤</b>（{@code stellarDirect}，技能自带的星扩散伤害）在单人时按理论伤害本身计，
+     * 不参与加权 —— 那是角色自己打出的伤害。
      */
-    static Combined combine(List<Result> contributors) {
+    static Combined combine(List<Result> contributors, boolean byReaction) {
         if (contributors.isEmpty()) {
             return new Combined(0f, false, null);
         }
         contributors.sort(Comparator.comparingDouble(r -> -r.theoryDamage));
+
+        // 单人 + 直伤：不参与加权，直接就是理论伤害
+        if (contributors.size() == 1 && !byReaction) {
+            Result only = contributors.get(0);
+            return new Combined(only.theoryDamage, only.isCrit, only.character);
+        }
 
         float total = 0f;
         int n = contributors.size();
@@ -209,8 +228,14 @@ final class StellarDamage {
         return new Combined(total, contributors.get(0).isCrit, contributors.get(0).character);
     }
 
-    /** 加权那一行的数值写法：{@code 【16.2】 × 0.6 + 【16.2】 × 0.3}。 */
-    private static String combineValueText(List<Result> sorted) {
+    /**
+     * 加权那一行的数值写法：{@code 【16.2】×0.6 + 【16.2】×0.3}；
+     * 「单人 + 直伤」不参与加权时写 {@code 【16.2】 × 1.0}。
+     */
+    private static String combineValueText(List<Result> sorted, boolean noWeighting) {
+        if (noWeighting) {
+            return "【" + DamageTrace.fmt(sorted.get(0).theoryDamage) + "】 × 1.0";
+        }
         String[] weights = {"0.6", "0.3", "0.05", "0.05"};
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < sorted.size() && i < 4; i++) {

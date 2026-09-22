@@ -18,6 +18,8 @@ import com.linweiyun.genshin.content.stat.TeyvatItemStat;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.character.talent.ConstellationBase;
+import com.linweiyun.genshin.core.character.talent.SkillBase;
 import com.linweiyun.genshin.core.character.talent.TalentBase;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
@@ -44,6 +46,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -91,7 +94,43 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
 
     private static final String SOURCE_WEAPON = "weapon";
 
+    /**
+     * 三大协作对象：技能（普攻/重击/战技/爆发）、天赋（被动）、命座。
+     *
+     * <p>三者都是 {@code transient}，实例只在角色<b>无参构造器</b>里创建。
+     * 客户端反序列化走 {@code ModSyncAccessors.deserializeFromTag} 里的
+     * {@code clazz.getDeclaredConstructor().newInstance()} —— <b>会</b>跑到子类的无参构造器，
+     * 所以双端都有这三个对象（和重构前 {@code talent} 的做法一致）。
+     *
+     * <p>尽管如此，<b>出手前置判断</b>（{@link #canCast}）仍然只读
+     * {@link PGCharacterData} 那类同步数据：协作者内部可能带着服务端专属的运行时状态
+     * （CD、层数、窗口…），客户端那一份不一定和服务端同步过。
+     */
+    protected transient SkillBase skill;
     protected transient TalentBase talent;
+    protected transient ConstellationBase constellation;
+
+    /** 技能对象（普攻/重击/战技/爆发）。 */
+    @Nullable
+    public SkillBase getSkill() {
+        return skill;
+    }
+
+    /** 天赋对象（突破天赋 / 被动）。 */
+    @Nullable
+    public TalentBase getTalent() {
+        return talent;
+    }
+
+    /**
+     * 命座对象。
+     *
+     * <p>注意和 {@link #getConstellation()} 区分：那个返回的是<b>命座等级</b>（int）。
+     */
+    @Nullable
+    public ConstellationBase getConstellationObj() {
+        return constellation;
+    }
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -272,7 +311,7 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
     public final ActionSet getActionSet(Player player) {
         String key = getActionStateKey(player);
         return actionSetCache.computeIfAbsent(key, k -> {
-            ActionSet built = (talent != null) ? talent.buildActionSet(this, k) : null;
+            ActionSet built = (skill != null) ? skill.buildActionSet(this, k) : null;
             return built != null ? built : buildFallbackActionSet();
         });
     }
@@ -286,15 +325,23 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
     }
 
     /**
-     * 调试用：返回 talent 是否已初始化。
+     * 调试用：返回三个协作对象（技能 / 天赋 / 命座）是否已初始化。
      * <p>
-     * 客户端从网络反序列化角色时不走子类构造函数，
-     * {@code talent} 是 transient 字段 → 客户端永远 null。
+     * 前半段沿用旧格式（{@code skill} 的类名，或 {@code null(class=Xxx)}，
+     * 也就是重构前 {@code talent} 那一份），后面追加天赋 / 命座两项 ——
+     * 日志里的字段名仍叫 {@code talent=}，老日志的匹配习惯不被破坏。
      */
     public String getTalentDebugInfo() {
-        return talent == null
+        String skillPart = (skill == null)
                 ? "null(class=" + this.getClass().getSimpleName() + ")"
-                : talent.getClass().getSimpleName();
+                : skill.getClass().getSimpleName();
+        return skillPart
+                + " [talent=" + debugNameOf(talent)
+                + ", constellation=" + debugNameOf(constellation) + "]";
+    }
+
+    private static String debugNameOf(Object collaborator) {
+        return collaborator == null ? "null" : collaborator.getClass().getSimpleName();
     }
 
     // ============ E / Q 钩子（由 ActionManager 调用） ============
@@ -316,9 +363,9 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
      * <h2>写实现时的两条约束</h2>
      * <ol>
      *   <li><b>只读双端都有的数据</b>：这个方法会在客户端跑，
-     *       而 {@code talent} 字段在客户端是 {@code null}（反序列化不走子类构造器），
      *       所以判断只能基于 {@code data}（同步过的角色数据）这类双端都有的状态，
-     *       <b>不要</b>调 {@code getTalent()} 里的东西。</li>
+     *       <b>不要</b>依赖 {@link #getSkill()} / {@link #getTalent()} 里的运行时状态
+     *       （协作者双端都有实例，但里面的 CD / 层数 / 窗口不一定同步过）。</li>
      *   <li><b>不要有副作用</b>：它可能被每刻调用（长按重试）。
      *       提示消息走 {@link #sendCastFailedMessage(Player, ActionKind)}，那边有节流。</li>
      * </ol>
@@ -397,15 +444,15 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
     // ============ 普攻 / 重击 ============
 
     public void performNormalAttack(Player player, int comboStage) {
-        if (talent != null) talent.attack(player, this, comboStage);
+        if (skill != null) skill.attack(player, this, comboStage);
     }
 
     public void performChargedAttack(Player player) {
-        if (talent != null) talent.chargeAttack(player, this);
+        if (skill != null) skill.chargeAttack(player, this);
     }
 
     public int getChargedAttackChargeTicks() {
-        if (talent != null) return talent.getChargeTicks();
+        if (skill != null) return skill.getChargeTicks();
         return 20;
     }
 

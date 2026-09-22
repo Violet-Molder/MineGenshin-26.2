@@ -138,10 +138,25 @@ public class DecayCounterManager {
         String characterUuid = character != null
                 ? character.getClass().getSimpleName() + ":" + attackerUuid
                 : "direct:" + attackerUuid;
-        String groupId = spec.getEffectiveDecayGroup() == DecayGroups.DEFAULT_NORMAL_ATTACK
-                ? "default" : "custom";
+        String groupId = groupKeyOf(spec.getEffectiveDecayGroup());
 
         return attackerUuid + ":" + characterUuid + ":" + decayTag + ":" + groupId;
+    }
+
+    /**
+     * 衰减组的<b>身份</b>（进计数器 key 的那一段）。
+     *
+     * <p>⚠️ 原来是「是默认普攻组就 {@code "default"}，否则统统 {@code "custom"}」——
+     * 于是风铃、E、Q 这些非默认组在同一个目标上<b>共用同一个计数器</b>，
+     * 实际生效的三条序列取决于谁先把这个计数器建出来（见附录 A #11）。
+     *
+     * <p>现在每组各一份。{@code DecayGroup} 是 record，但里面的 {@code DecaySequence}
+     * 没有重写 {@code equals}，所以用身份哈希当身份 —— 计数器只在运行时存活（不落存档），
+     * 跨重启不需要稳定，这也正好和「同一个静态组实例」的用法对上。
+     */
+    private static String groupKeyOf(DecayGroup group) {
+        if (group == DecayGroups.DEFAULT_NORMAL_ATTACK) return "default";
+        return "g" + Integer.toHexString(System.identityHashCode(group));
     }
 
     private DecayCounterData createCounter(LivingEntity attacker, Object character,
@@ -151,8 +166,7 @@ public class DecayCounterManager {
                 ? character.getClass().getSimpleName() + ":" + attackerUuid
                 : "direct:" + attackerUuid;
         String decayTag = spec.getDecayTag();
-        String groupId = spec.getEffectiveDecayGroup() == DecayGroups.DEFAULT_NORMAL_ATTACK
-                ? "default" : "custom";
+        String groupId = groupKeyOf(spec.getEffectiveDecayGroup());
 
         return new DecayCounterData(attackerUuid, characterUuid,
                 decayTag, groupId, spec.getEffectiveDecayGroup(), currentTick);

@@ -3,7 +3,7 @@ package com.linweiyun.genshin.content.entities.teyvat.skill.vesna;
 import com.linweiyun.genshin.content.entities.ModEntities;
 import com.linweiyun.genshin.content.skill_node.TargetSeeker;
 import com.linweiyun.genshin.core.character.sword.vesna.Vesna;
-import com.linweiyun.genshin.core.character.sword.vesna.VesnaTalent;
+import com.linweiyun.genshin.core.character.sword.vesna.VesnaSkill;
 import com.linweiyun.genshin.core.system.combat.targeting.SummonTargeting;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
@@ -348,11 +348,11 @@ public class VesnaAttackProjectile extends Entity implements ISyncManagedEntity 
         Player ownerPlayer = getOwnerPlayer();
         if (ownerPlayer == null) { discard(); return; }
 
-        float mult = VesnaTalent.getWindBellDamageMultiplier(skillLevel);
+        float mult = VesnaSkill.getWindBellDamageMultiplier(skillLevel);
         ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.ANEMO.get())
                 .multiplier(mult)
                 .elementAmount(AttachmentType.WEAK.getInitialAmount())
-                .decayGroup(VesnaTalent.VESNA_WIND_BELL_DECAY)
+                .decayGroup(VesnaSkill.VESNA_WIND_BELL_DECAY)
                 .attackerCharacter(character)
                 .build();
         ModDamageSource source = ModDamageSource.from(spec, ownerPlayer);

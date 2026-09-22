@@ -1,6 +1,8 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
 import com.linweiyun.genshin.content.entities.area.ThunderCloudEntity;
+import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
@@ -14,6 +16,7 @@ import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import org.slf4j.Logger;
 
@@ -59,13 +62,17 @@ public class LunarChargedReaction extends ElementalReaction {
         // 从目标实体的 StatusContainer 获取所有活跃的水/雷附着角色
         long gameTime = level.getGameTime();
         Set<PGCharacter> activeContributors = ctx.targetContainer().getActiveContributors(
-                gameTime, ModElements.HYDRO.get(), ModElements.ELECTRO.get());
+                level, gameTime, ModElements.HYDRO.get(), ModElements.ELECTRO.get());
         List<PGCharacter> contributorList = new ArrayList<>(activeContributors);
 
         ThunderCloudEntity existingCloud = findExistingCloud(target);
 
+        // 归因：造成这次月感电反应的那一下的触发者 —— 雷暴云周期结算的伤害源。
+        PGCharacter triggerCharacter = resolveTriggerCharacter(ctx);
+
         if (existingCloud != null) {
             existingCloud.addContributors(contributorList);
+            existingCloud.recordLunarTrigger(triggerCharacter);
             existingCloud.refreshDuration();
             LOGGER.info("[月感电] 刷新雷暴云 duration={} | contributors={}",
                     existingCloud.getDuration(), contributorList.size());
@@ -74,6 +81,7 @@ public class LunarChargedReaction extends ElementalReaction {
                     ModEntities.THUNDER_CLOUD.get(), level);
             cloud.setPos(target.getX(), target.getEyeY() + 2.0, target.getZ());
             cloud.setInitialContributors(contributorList);
+            cloud.recordLunarTrigger(triggerCharacter);
             level.addFreshEntity(cloud);
 
             cloud.dealLunarDamage(target, level);
@@ -100,5 +108,24 @@ public class LunarChargedReaction extends ElementalReaction {
                 ThunderCloudEntity.class, searchBox, e -> e.isAlive()
                         && e.getAreaOfInfluence().contains(target.getX(), target.getY(), target.getZ()));
         return clouds.isEmpty() ? null : clouds.get(0);
+    }
+
+    /**
+     * 解析「造成这次月感电反应」的角色。
+     *
+     * <p>先看伤害 spec 上盖的攻击者角色（最准），没有再看攻击实体（玩家）当前操作的角色。
+     * 解析不出来就返回 {@code null}，调用方退化回旧行为（不会 NPE）。
+     */
+    private static PGCharacter resolveTriggerCharacter(ReactionContext ctx) {
+        if (ctx.damageSpec() != null) {
+            PGCharacter fromSpec = ctx.damageSpec().getAttackerCharacter();
+            if (fromSpec != null) return fromSpec;
+        }
+        if (ctx.attackerEntity() instanceof Player player) {
+            PlayerCharactersAttachment att = player.getData(
+                    AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            return att != null ? att.getCurrentCharacter() : null;
+        }
+        return null;
     }
 }

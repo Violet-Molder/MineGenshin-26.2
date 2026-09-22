@@ -99,9 +99,6 @@ public final class StellarGlimmer {
         for (Player player : serverLevel.players()) {
             PlayerCharactersAttachment attachment = player.getData(
                     AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-            if (attachment == null) {
-                continue;
-            }
             for (PGCharacter member : attachment.getOwnedCharacters()) {
                 if (member instanceof IStellarHousehold provider) {
                     IStellarHousehold.StellarHousehold household = provider.stellarHousehold();

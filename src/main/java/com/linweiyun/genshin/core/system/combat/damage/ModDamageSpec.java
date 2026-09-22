@@ -365,7 +365,7 @@ public class ModDamageSpec {
     }
 
     public ModDamageSpec withAttackerCharacter(PGCharacter character) {
-        return new ModDamageSpec(
+        ModDamageSpec copy = new ModDamageSpec(
                 this.attackType, this.element,
                 this.atkMultiplier, this.hpMultiplier, this.defMultiplier, this.emMultiplier,
                 this.skillMultiplierBonus, this.flatDamageBonus,
@@ -375,6 +375,15 @@ public class ModDamageSpec {
                 this.stellarCoefficient, this.stellarBaseBonusMult, this.stellarBaseBonusFlat,
                 this.stellarReactionDamage
         );
+        // 这些字段不在构造器里（是运行时后填的），换角色时必须一起带过去 ——
+        // 否则「先建带贡献者的星烁 spec，再 withAttackerCharacter」会把贡献者列表丢掉，
+        // 星扩散的风段 / 冰段伤害直接算成 0。
+        copy.damageBonus = this.damageBonus;
+        copy.sovereigntyBonus = this.sovereigntyBonus;
+        copy.stellarBaseBonusMultValue = this.stellarBaseBonusMultValue;
+        copy.lunarContributors = this.lunarContributors;
+        copy.stellarContributors = this.stellarContributors;
+        return copy;
     }
 
     // ========== Getter ==========

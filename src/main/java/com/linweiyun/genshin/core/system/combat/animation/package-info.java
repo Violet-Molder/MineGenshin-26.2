@@ -25,7 +25,7 @@
  *       ├─ PlayerAnimationController → GeckoLib 逐帧选动画
  *       └─ NetworkManager RPC → 服务端 → 同步给其他玩家
  *   → ActionServer RPC → ActionManager（服务端，伤害唯一权威）
- *       → ActionSet（由角色 Talent 从 XxxResources 构建）→ TalentBase 回调
+ *       → ActionSet（由角色 Skill 从 XxxResources 构建）→ SkillBase 回调
  * </pre>
  *
  * <h2>注意</h2>

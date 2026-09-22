@@ -39,13 +39,13 @@ import java.util.function.Consumer;
  *
  * <p>参考2 是「一个角色一个 {@code XxxActionHandler} + 一个 {@code XxxComboClient}」，时序硬编码在客户端。
  * 本项目保留了另一条链路：<b>角色资源 → 角色天赋</b>（如 {@code VesnaResources.ACTION_DATA} →
- * {@code VesnaTalent.buildActionSet()} → {@link ActionSet}），
+ * {@code VesnaSkill.buildActionSet()} → {@link ActionSet}），
  * 所以这里只做两件事：
  *
  * <ol>
  *   <li>从当前角色的 {@link ActionSet} 里取 {@link ActionDefinition}，
  *       把它的 {@code ActionStep} 数值喂给 {@link ActionStateMachine}（动画名 / 总刻数 / 硬直 / 定身）；</li>
- *   <li>把请求转给服务端，由服务端继续走 {@code ActionManager → TalentBase} 结算伤害。</li>
+ *   <li>把请求转给服务端，由服务端继续走 {@code ActionManager → SkillBase} 结算伤害。</li>
  * </ol>
  *
  * <p>时序只有一份数据源：改 {@code XxxResources.ACTION_DATA}，客户端动画和服务端伤害同时生效。

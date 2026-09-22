@@ -24,8 +24,9 @@ import org.jetbrains.annotations.Nullable;
  *   <caption>乘区一览</caption>
  *   <tr><th>乘区</th><th>公式</th><th>参数顺序（数值行就是照这个顺序写的）</th></tr>
  *   <tr><td>基础伤害区</td>
- *       <td>{@code (ATK×atkMult + HP×hpMult + DEF×defMult + EM×emMult) × (1+skillBonus) + flat}</td>
- *       <td>ATK atkMult HP hpMult DEF defMult EM emMult skillBonus flat</td></tr>
+ *       <td>{@code ATK×atkMult + HP×hpMult + DEF×defMult + EM×emMult + flat}</td>
+ *       <td>ATK atkMult HP hpMult DEF defMult EM emMult flat</td></tr>
+ *   <tr><td>倍率区</td><td>{@code 1 + 技能倍率提升}</td><td>skillBonus</td></tr>
  *   <tr><td>暴击区</td><td>{@code 暴击 ? 1 + CDG : 1}</td><td>暴击 CR CDG</td></tr>
  *   <tr><td>增伤区</td><td>{@code 1 + 元素伤害加成 + 效果加成}</td><td>元素伤害加成 效果加成</td></tr>
  *   <tr><td>防御区</td><td>{@code (攻方等级×5+500) / (攻方等级×5+500 + 守方防御)}</td><td>攻方等级 守方防御</td></tr>
@@ -57,21 +58,28 @@ public final class DamageZones {
     // 基础伤害区
     // ============================================================
 
-    /** {@code (ATK×atkMult + HP×hpMult + DEF×defMult + EM×emMult) × (1+skillBonus) + flat} */
+    /**
+     * 基础伤害区 {@code ATK×atkMult + HP×hpMult + DEF×defMult + EM×emMult + flat}。
+     *
+     * <p>⚠️ 这里<b>不</b>乘 {@code (1 + 倍率提升)}：那是<b>倍率区</b>，由管线单独乘一次
+     * （{@code DirectDamagePipeline} 里的 {@code × (1f + baseMultiplierBonus)}）。
+     * 以前两边都乘 → 实际是 {@code (1+x)²}；而且 {@link #baseZoneText} 不显示这一项，
+     * 于是日志的【基础区】数字乘起来对不上末尾结果（正是文档里提醒的「结算真的错了」）。
+     */
     public static float baseDamage(PGCharacter attacker, ModDamageSpec spec) {
         var data = attacker.getData();
         double atk = data.getAttributeTotalValue(ModAttributes.ATK.value());
         double hp = data.getAttributeTotalValue(ModAttributes.MAX_HP.value());
         double def = data.getAttributeTotalValue(ModAttributes.DEF.value());
         double em = data.getAttributeTotalValue(ModAttributes.ELEMENTAL_MASTERY.value());
-        return (float) ((atk * spec.getAtkMultiplier()
+        return (float) (atk * spec.getAtkMultiplier()
                 + hp * spec.getHpMultiplier()
                 + def * spec.getDefMultiplier()
-                + em * spec.getEmMultiplier())
-                * (1 + spec.getSkillMultiplierBonus()) + spec.getFlatDamageBonus());
+                + em * spec.getEmMultiplier()
+                + spec.getFlatDamageBonus());
     }
 
-    /** 基础区的参数快照（数值行照这个顺序写）。 */
+    /** 基础区的参数快照（数值行照这个顺序写）。倍率提升不在基础区，所以不在这里。 */
     public static Object[] baseDamageInputs(PGCharacter attacker, ModDamageSpec spec) {
         var data = attacker.getData();
         return new Object[]{
@@ -79,7 +87,7 @@ public final class DamageZones {
                 data.getAttributeTotalValue(ModAttributes.MAX_HP.value()), spec.getHpMultiplier(),
                 data.getAttributeTotalValue(ModAttributes.DEF.value()), spec.getDefMultiplier(),
                 data.getAttributeTotalValue(ModAttributes.ELEMENTAL_MASTERY.value()), spec.getEmMultiplier(),
-                spec.getSkillMultiplierBonus(), spec.getFlatDamageBonus()};
+                spec.getFlatDamageBonus()};
     }
 
     /**
@@ -178,7 +186,9 @@ public final class DamageZones {
      * （伤害数字的暴击样式要用它）。
      */
     public static float crit(PGCharacter attacker, ModDamageSpec spec) {
-        CritRoll roll = rollCrit(attacker);
+        // ⚠️ 必须走「带 spec」的判定：不带 spec 的那一份会丢掉
+        // PGCharacter#getCritDamageBonus(元素, 是否星烁) 给的那档额外暴击伤害。
+        CritRoll roll = rollCrit(attacker, spec);
         if (spec != null) {
             spec.setCrit(roll.isCrit());
         }
@@ -305,12 +315,21 @@ public final class DamageZones {
     // 元素精通 / 反应加成区
     // ============================================================
 
-    /** 精通加成：增幅 {@code 2.78×EM/(EM+1400)}；剧变 {@code 16×EM/(EM+2000)}；月曜 {@code 6×EM/(EM+2000)} */
+    /**
+     * 精通加成：增幅 {@code 2.78×EM/(EM+1400)}；剧变 {@code 16×EM/(EM+2000)}；月曜 {@code 6×EM/(EM+2000)}。
+     *
+     * <p>⚠️ <b>星烁（星扩散 / 星超导）走的是剧变那一档</b>：它的反应加成区就是
+     * {@code 1 + 16×EM/(EM+2000) + 星烁加成}（见 {@code StellarDamage} 的公式与数值行）。
+     * 原来这个 switch <b>没有</b>星烁的四个枚举值 → 落到 {@code default -> 0f}，
+     * 星烁反应完全吃不到元素精通，而日志却照着自己的公式把 {@code 16×EM/(EM+2000)} 印出来 ——
+     * 公式和结果对不上（EM 200 时实际少了约 2.45 倍，EM 500 时约 4.2 倍）。
+     */
     public static float emBonus(PGCharacter attacker, ElementalReactionType reactionType) {
         double em = elementalMastery(attacker);
         return switch (reactionType) {
             case MELT, VAPORIZE -> (float) ((2.78 * em) / (em + 1400.0));
-            case OVERLOAD, SUPERCONDUCT, ELECTRO_CHARGED, SWIRL, BURNING, BLOOM, HYPERBLOOM, BURGEON
+            case OVERLOAD, SUPERCONDUCT, ELECTRO_CHARGED, SWIRL, BURNING, BLOOM, HYPERBLOOM, BURGEON,
+                 STELLAR_SWIRL_WIND, STELLAR_SWIRL_ICE, STELLAR_CONDUCE_ELECTRO, STELLAR_CONDUCE_ICE
                     -> (float) ((16.0 * em) / (em + 2000.0));
             case LUNAR_CHARGED, LUNAR_BLOOM, LUNAR_CRYSTALLIZE
                     -> (float) ((6.0 * em) / (em + 2000.0));

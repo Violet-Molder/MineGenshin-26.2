@@ -21,8 +21,8 @@ import java.util.List;
  *
  * <p>延时通过 {@link ServerTickScheduler} 实现，主线程安全。
  *
- * <p><b>伤害不在这里结算</b>：伤害由角色天赋负责（{@code ActionDefinition.onActiveStart} →
- * {@code TalentBase.attack / elementalSkill / ...}），{@code ActionStep.hits} 只在
+ * <p><b>伤害不在这里结算</b>：伤害由角色技能负责（{@code ActionDefinition.onActiveStart} →
+ * {@code SkillBase.attack / elementalSkill / ...}），{@code ActionStep.hits} 只在
  * {@link ActionState} 里当时间轴用。这里对 hits 只做日志记录，方便排查时序。
  */
 public final class ServerActionExecutor {

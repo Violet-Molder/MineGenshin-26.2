@@ -54,6 +54,12 @@ public class ElementalAttachmentInstance extends StatusInstance {
     @Persisted(key = "attach_tick")
     private long attachTick;
 
+    @Persisted(key = "frozen_cyro_sources")
+    private java.util.List<String> frozenCyroSourceKeys = new java.util.ArrayList<>();
+
+    @Persisted(key = "frozen_hydro_sources")
+    private java.util.List<String> frozenHydroSourceKeys = new java.util.ArrayList<>();
+
     private transient StatusContainer container;
     private transient LivingEntity owner;
 
@@ -131,6 +137,8 @@ public class ElementalAttachmentInstance extends StatusInstance {
         c.replenishTimer = this.replenishTimer;
         c.sourceCharacterKey = this.sourceCharacterKey;
         c.attachTick = this.attachTick;
+        c.frozenCyroSourceKeys = new java.util.ArrayList<>(this.frozenCyroSourceKeys);
+        c.frozenHydroSourceKeys = new java.util.ArrayList<>(this.frozenHydroSourceKeys);
         c.container = null;
         return c;
     }
@@ -226,5 +234,25 @@ public class ElementalAttachmentInstance extends StatusInstance {
 
     public void setAttachTick(long tick) {
         this.attachTick = tick;
+    }
+
+    public java.util.List<String> getFrozenCyroSourceKeys() {
+        return frozenCyroSourceKeys;
+    }
+
+    public java.util.List<String> getFrozenHydroSourceKeys() {
+        return frozenHydroSourceKeys;
+    }
+
+    public void addFrozenCyroSource(String key) {
+        if (key != null && !key.isEmpty() && !frozenCyroSourceKeys.contains(key)) {
+            frozenCyroSourceKeys.add(key);
+        }
+    }
+
+    public void addFrozenHydroSource(String key) {
+        if (key != null && !key.isEmpty() && !frozenHydroSourceKeys.contains(key)) {
+            frozenHydroSourceKeys.add(key);
+        }
     }
 }

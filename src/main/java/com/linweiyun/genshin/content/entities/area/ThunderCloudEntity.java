@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.content.entities.area;
 
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
+import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.ModElements;
@@ -34,8 +35,24 @@ public class ThunderCloudEntity extends AreaEntity {
     // 当前周期的贡献者集合（每个周期只添加不删除，结算后清空）
     private transient Set<PGCharacter> periodContributors = new LinkedHashSet<>();
 
-    // 当前周期最后一次产生水/雷附着的角色，作为伤害源
+    // 当前周期最后一次产生水/雷附着的角色（只在没有月感电触发者时当兜底）
     private transient PGCharacter lastDamageSourceChar;
+
+    /**
+     * 造成月感电反应的<b>那一下的触发者</b>（最近一次）—— 周期结算的伤害归他。
+     *
+     * <p>注意口径：<b>不是</b>挂水 / 挂雷的人，也<b>不是</b> dot 自己。
+     */
+    private transient PGCharacter lastLunarTriggerCharacter;
+
+    /**
+     * 上面那位角色的稳定 id（{@link PGCharacter#getCharacterUUID()}，0 = 未知）。
+     *
+     * <p>{@code @Persisted} 对<b>实体</b>无效，所以只有这个 int 走
+     * {@link #addAdditionalSaveData}/{@link #readAdditionalSaveData}，
+     * 运行时再把 {@code PGCharacter} 引用按 id 找回来（找不回就退化回旧行为）。
+     */
+    private int lastLunarTriggerCharacterUUID;
 
     @Persisted(key = "tc_tick_counter")
     private int tickCounter;
@@ -73,6 +90,61 @@ public class ThunderCloudEntity extends AreaEntity {
         }
     }
 
+    /**
+     * 记下「造成月感电反应的那一下」的触发者（最近一次）——
+     * 雷暴云每 2 秒的周期结算就归他，和挂水 / 挂雷的人无关。
+     */
+    public void recordLunarTrigger(PGCharacter triggerCharacter) {
+        if (triggerCharacter == null) return;
+        this.lastLunarTriggerCharacter = triggerCharacter;
+        this.lastLunarTriggerCharacterUUID = triggerCharacter.getCharacterUUID();
+    }
+
+    /**
+     * 取回月感电触发者：先看运行时引用，引用丢了（实体重载）就按落盘的 id 在玩家队伍里找。
+     *
+     * @return 找不到时返回 {@code null}（调用方退化回旧行为）
+     */
+    public PGCharacter resolveLunarTriggerCharacter() {
+        if (lastLunarTriggerCharacter == null && lastLunarTriggerCharacterUUID != 0
+                && this.level() instanceof ServerLevel level) {
+            lastLunarTriggerCharacter =
+                    findCharacterByUUID(level, lastLunarTriggerCharacterUUID);
+        }
+        return lastLunarTriggerCharacter;
+    }
+
+    /** 在所有玩家的队伍里按 {@code PGCharacter.getCharacterUUID()} 找回角色（找不到返回 null）。 */
+    private static PGCharacter findCharacterByUUID(ServerLevel level, int uuid) {
+        for (Player p : level.players()) {
+            PlayerCharactersAttachment att = p.getData(
+                    AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            if (att == null) continue;
+            PGCharacter c = att.getCharacterByUUID(uuid);
+            if (c != null) return c;
+        }
+        return null;
+    }
+
+    /** 找回某个 PGCharacter 所属的 Player（引用 / 队伍两条路）。 */
+    private static Player resolveOwnerPlayer(ServerLevel level, PGCharacter character) {
+        if (character == null) return null;
+        Player directOwner = character.getData().getOwnerPlayer();
+        if (directOwner != null) return directOwner;
+        int targetUuid = character.getCharacterUUID();
+        for (Player p : level.players()) {
+            PlayerCharactersAttachment att = p.getData(
+                    AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+            for (int i = 0; i < 4; i++) {
+                PGCharacter c = att.getPartyCharacter(i);
+                if (c != null && c.getCharacterUUID() == targetUuid) {
+                    return p;
+                }
+            }
+        }
+        return null;
+    }
+
     public void refreshDuration() {
         // 寿命现在记在 AreaEntity.expireGameTime 上（绝对时刻），
         // 不要再写 tickCount = 0 —— 那条路已经被废弃了
@@ -102,8 +174,9 @@ public class ThunderCloudEntity extends AreaEntity {
             ElementalAttachmentInstance electro = ElectroChargedReaction.findElement(container, ModElements.ELECTRO.get());
             if (hydro == null || electro == null || hydro.getUnit() <= 0 || electro.getUnit() <= 0) continue;
 
-            Set<PGCharacter> activeChars = container.getActiveContributors(currentTick,
-                    ModElements.HYDRO.get(), ModElements.ELECTRO.get());
+            Set<PGCharacter> activeChars = container.getActiveContributors(
+                    this.level() instanceof ServerLevel sl ? sl : null,
+                    currentTick, ModElements.HYDRO.get(), ModElements.ELECTRO.get());
             periodContributors.addAll(activeChars);
 
             PGCharacter lastAttacher = container.getLastAttacher(currentTick,
@@ -179,24 +252,38 @@ public class ThunderCloudEntity extends AreaEntity {
 
         LivingEntity attacker = resolveAttacker(level, target);
 
+        // 伤害归因 = 造成月感电反应的那一下的触发者（最近一次）
+        PGCharacter triggerCharacter = resolveLunarTriggerCharacter();
         ModDamageSpec spec = ModDamageSpec.lunar(ElementalReactionType.LUNAR_CHARGED);
+        if (triggerCharacter != null) {
+            spec = spec.withAttackerCharacter(triggerCharacter);
+        }
+        // 贡献者列表要在 withAttackerCharacter 之后再填（它返回的是新 spec）
         spec.setLunarContributors(contributors);
         ModDamageSource source = ModDamageSource.from(spec, attacker);
         target.hurtServer(level, source, 0f);
 
-        LOGGER.info("[雷暴云攻击] target={} | contributors={} | damageSource={}",
+        LOGGER.info("[雷暴云攻击] target={} | contributors={} | damageSource={} | lunarTrigger={}",
                 target.getName().getString(), contributors.size(),
-                lastDamageSourceChar != null ? lastDamageSourceChar.getName() : "none");
+                lastDamageSourceChar != null ? lastDamageSourceChar.getName() : "none",
+                triggerCharacter != null ? triggerCharacter.getName() : "none");
     }
 
     private LivingEntity resolveAttacker(ServerLevel level, LivingEntity fallback) {
-        if (lastDamageSourceChar != null) {
-            Player owner = lastDamageSourceChar.getData().getOwnerPlayer();
+        // 归因口径：造成月感电反应的那一下的触发者（最近一次）
+        PGCharacter trigger = resolveLunarTriggerCharacter();
+        if (trigger != null) {
+            Player owner = resolveOwnerPlayer(level, trigger);
             if (owner != null) return owner;
         }
-        // 回退到贡献者中任意一个的玩家
+        // 回退（旧行为）：最近一次挂水 / 挂雷的角色
+        if (lastDamageSourceChar != null) {
+            Player owner = resolveOwnerPlayer(level, lastDamageSourceChar);
+            if (owner != null) return owner;
+        }
+        // 再回退到贡献者中任意一个的玩家
         for (PGCharacter ch : periodContributors) {
-            Player owner = ch.getData().getOwnerPlayer();
+            Player owner = resolveOwnerPlayer(level, ch);
             if (owner != null) return owner;
         }
         return fallback;
@@ -269,5 +356,21 @@ public class ThunderCloudEntity extends AreaEntity {
         return new AABB(
                 position().x - hw, position().y - hh, position().z - hw,
                 position().x + hw, position().y, position().z + hw);
+    }
+
+    // ==================== 落盘（@Persisted 对实体无效，必须真写 NBT） ====================
+
+    @Override
+    public void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.lastLunarTriggerCharacterUUID = input.getIntOr("mg_lunar_trigger", 0);
+        // 引用在这里丢，后面按 id 找回来
+        this.lastLunarTriggerCharacter = null;
+    }
+
+    @Override
+    protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putInt("mg_lunar_trigger", this.lastLunarTriggerCharacterUUID);
     }
 }

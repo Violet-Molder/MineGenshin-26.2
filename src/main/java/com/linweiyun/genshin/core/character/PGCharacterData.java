@@ -237,6 +237,10 @@ public class PGCharacterData implements IPersistedSerializable, IManaged {
         preserveHpIfMaxHp(type, () -> attributes.setTempFlatModifier(type, source, value));
         markDirty();
     }
+    public void setAttributeTempPercentModifier(AttributeType type, String source, double value) {
+        preserveHpIfMaxHp(type, () -> attributes.setTempPercentModifier(type, source, value));
+        markDirty();
+    }
     public void removeAttributeModifier(AttributeType type, String source) {
         preserveHpIfMaxHp(type, () -> attributes.removeModifier(type, source));
         markDirty();

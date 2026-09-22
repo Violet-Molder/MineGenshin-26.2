@@ -14,7 +14,7 @@ import com.linweiyun.genshin.core.character.sword.vesna.VesnaAnimations;
  * 动画/动作是代码登记的（{@code XxxAnimations}）。
  *
  * <p>本项目所有角色共用同一个 {@link ResourceDrivenActionHandler}：动作时序来自
- * 各自的 {@code XxxResources.ACTION_DATA} → {@code XxxTalent.buildActionSet()}，
+ * 各自的 {@code XxxResources.ACTION_DATA} → {@code XxxSkill.buildActionSet()}，
  * 所以只要角色有 {@code CharacterActionData}，动作就能跑起来，不需要每个角色写一套动作类。
  * 某个角色确实需要特殊编排时，把第二个参数换成自己的 {@code CharacterActionHandler} 实现即可。
  *

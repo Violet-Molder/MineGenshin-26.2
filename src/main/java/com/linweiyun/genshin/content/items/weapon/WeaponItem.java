@@ -85,7 +85,7 @@ public class WeaponItem extends TeyvatItem {
      * 装备者完成了一次治疗（<b>服务端</b>）。
      *
      * <p>这是「角色打出的治疗」的唯一窄口：目前只有沃雅妮莎的
-     * {@code VodyanitsaTalent#songHeal}（后台也照常跑）走这里。
+     * {@code VodyanitsaSkill#songHeal}（后台也照常跑）走这里。
      * 默认什么都不做；带「治疗触发」类被动的武器覆写它。
      *
      * @param healer    施疗的玩家

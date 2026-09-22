@@ -45,8 +45,8 @@ import java.util.List;
  *
  * <p>移植自参考2 的 {@code ActionStateMachine}，本项目做了三处适配：
  * <ol>
- *   <li>状态机与动画时长仍由「资源 → 天赋」链路提供（{@code VesnaResources.ACTION_DATA} →
- *       {@code VesnaTalent} → {@code ActionSet}），动作类只负责把数值喂进来。</li>
+ *   <li>状态机与动画时长仍由「资源 → 技能」链路提供（{@code VesnaResources.ACTION_DATA} →
+ *       {@code VesnaSkill} → {@code ActionSet}），动作类只负责把数值喂进来。</li>
  *   <li>音效 id 随动画同步包一起发出，服务端再广播给其他玩家。</li>
  *   <li>「动作系统开关」关闭时，{@code changeState} 不再设硬直 / 移动锁，{@code canInterrupt} 恒真
  *       —— 即「所有按键及时响应，不采用前后摇」。</li>
