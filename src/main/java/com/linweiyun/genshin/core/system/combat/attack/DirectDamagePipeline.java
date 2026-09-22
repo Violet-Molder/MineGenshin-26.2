@@ -19,6 +19,8 @@ import com.linweiyun.genshin.core.system.reaction.ElementalReactionManager;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
 import com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch;
+import com.linweiyun.genshin.core.system.shield.ShieldService;
+import com.linweiyun.genshin.core.system.shield.ShieldService.AttachDecision;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -76,11 +78,30 @@ final class DirectDamagePipeline {
                     profile.getBaseQuantity(), profile.getLossMultiplier(), 1.0f, 0.5f);
         }
         boolean canAttach = spec.hasAuraPotential() && elementCoefficient > 0;
+
+        // ── ②.5 过盾 ──
+        // 护盾可以「吞掉」某些元素的附着（冰盾遇水、遇冰）。盾的判定优先于附着：
+        //   BLOCK      → 不附着、不反应、不消耗元素量（这次攻击仍然算「受击」，伤害为 0）
+        //   REACT_ONLY → 只反应不附着（盾自挂的元素和它反应，双方一起被吃掉）
+        //   ALLOW      → 照常附着 + 反应
+        boolean canReact = canAttach;
+        if (canAttach) {
+            AttachDecision decision = ShieldService.onElementalAttack(
+                    target, spec.getElement(), spec.getElementAmount() * elementCoefficient, true);
+            if (decision == AttachDecision.BLOCK) {
+                canAttach = false;
+                canReact = false;
+            } else if (decision == AttachDecision.REACT_ONLY) {
+                canAttach = false;
+            }
+        }
+
         if (canAttach && spec.getElement().isInstant()) {
             StatusContainer checkContainer = target.getData(AttachmentRegistration.CONTAINER);
             if (checkContainer == null
                     || !ElementalReactionManager.canElementReact(spec.getElement(), checkContainer)) {
                 canAttach = false;
+                canReact = false;
             }
         }
         StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
@@ -97,7 +118,7 @@ final class DirectDamagePipeline {
 
         // ── ③ 反应 ──
         ReactionResult reactionResult = null;
-        if (canAttach) {
+        if (canReact) {
             ReactionContext ctx = new ReactionContext(
                     spec.getElement(), spec.getElementAmount() * elementCoefficient,
                     AttachmentSource.NORMAL_ATTACK, profile, spec,

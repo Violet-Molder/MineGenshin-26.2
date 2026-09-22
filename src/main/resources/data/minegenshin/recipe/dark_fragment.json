@@ -1,15 +1,11 @@
 {
   "type": "minecraft:crafting_shapeless",
+  "category": "misc",
   "ingredients": [
-    {
-      "item": "minecraft:dragon_egg"
-    },
-    {
-      "item": "minecraft:nether_star"
-    }
+    "minecraft:dragon_egg" ,
+    "minecraft:disc_fragment_5"
   ],
   "result": {
-    "id": "minegenshin:dark_fragment",
-    "count": 1
-  }
+    "count": 1,
+    "id": "minegenshin:dark_fragment" }
 }

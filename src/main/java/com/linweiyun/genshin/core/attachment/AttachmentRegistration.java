@@ -2,6 +2,7 @@ package com.linweiyun.genshin.core.attachment;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatEntityStats;
+import com.linweiyun.genshin.core.system.shield.ShieldState;
 import com.mojang.serialization.Codec;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -73,6 +74,24 @@ public class AttachmentRegistration {
                     .serialize(TeyvatEntityStats.CODEC.fieldOf("entity_stats"))
                     .sync(TeyvatEntityStats.STREAM_CODEC)
                     .copyOnDeath()
+                    .build()
+    );
+
+    /**
+     * 实体身上的护盾状态（还剩多少盾、什么分类、什么时候到期）。
+     *
+     * <p>用附件而不是 Attribute：盾除了「量」还有剩余时长、分类、朝向、最近受击刻，
+     * Attribute 只能表示一个数。默认真造新实例（不是共享单例），
+     * 免得一个实体改盾把别人也改了。
+     *
+     * <p>{@code sync} 是必须的 —— 客户端血条下面那条护盾条读的就是它。
+     */
+    //TEMP
+    public static final Supplier<AttachmentType<ShieldState>> SHIELD = ATTACHMENTS.register(
+            "shield",
+            () -> AttachmentType.builder(ShieldState::new)
+                    .serialize(ShieldState.CODEC.fieldOf("shield"))
+                    .sync(ShieldState.STREAM_CODEC)
                     .build()
     );
 

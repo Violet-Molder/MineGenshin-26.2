@@ -20,7 +20,6 @@ public class LivingHurtEvent {
             LivingEntity entity = event.getEntity();
             float maxHealth = (float) Objects.requireNonNull(entity.getAttribute(Attributes.MAX_HEALTH)).getValue();
             float currentHealth = entity.getHealth();
-            LOGGER.info("LivingEntity {} hurt, maxHealth: {}, currentHealth: {}", entity, maxHealth, currentHealth);
 
         }
     }

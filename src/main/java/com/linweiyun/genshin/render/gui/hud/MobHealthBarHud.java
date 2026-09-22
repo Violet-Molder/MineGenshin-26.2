@@ -12,6 +12,8 @@ import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.about.FrozenDecayState;
+import com.linweiyun.genshin.core.system.combat.damage.DamageIndicatorFactory;
+import com.linweiyun.genshin.core.system.shield.ShieldService;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -60,6 +62,12 @@ public class MobHealthBarHud {
     private static final float FILL_Z_OFFSET = -0.001f;
     private static final float TRAIL_Z_OFFSET = -0.0005f;
     private static final float TRAIL_SPEED = 0.005f;
+
+    // 罩型元素盾：压在血条正上方一条更细的条
+    private static final float SHIELD_BAR_HEIGHT = 0.0336f;
+    private static final float SHIELD_BAR_Y = 0.068f;
+    // 槽用 0.0f、填充用这个，错开共面避免 z-fighting（血条那边同理）
+    private static final float SHIELD_FILL_Z_OFFSET = -0.001f;
 
     private static final float LEVEL_TEXT_Y = 0.3f;
     private static final float LEVEL_TEXT_SCALE = 0.025f;
@@ -190,6 +198,51 @@ public class MobHealthBarHud {
                             healthRatio, 0.0f, 0.0f, 1.0f,
                             r, g, b, 1.0f);
                 });
+
+                // ============ 护盾条 ============
+                // 血条在画（showBar）且有罩型护盾时，在血条正上方叠一条更细的盾条；颜色取护盾元素
+                if (ShieldService.hasAuraShield(living)) {
+                    float shieldRatio = ShieldService.get(living).ratio();
+                    GenshinElement shieldElement = ShieldService.shieldElement(living);
+                    float sr = 1.0f;
+                    float sg = 1.0f;
+                    float sb = 1.0f;
+                    if (shieldElement != null) {
+                        int color = DamageIndicatorFactory.getColorForElement(shieldElement);
+                        sr = (color >> 16 & 0xFF) / 255.0f;
+                        sg = (color >> 8 & 0xFF) / 255.0f;
+                        sb = (color & 0xFF) / 255.0f;
+                    }
+
+                    poseStack.pushPose();
+                    poseStack.translate(0.0f, SHIELD_BAR_Y, 0.0f);
+                    RenderType shieldType = RenderTypes.entityTranslucent(HP_BAR_FILL_TEXTURE);
+
+                    // 空槽
+                    collector.submitCustomGeometry(poseStack, shieldType, (pose, buffer) -> {
+                        Matrix4f matrix = pose.pose();
+                        drawTexturedQuad(buffer, matrix, 0.0f,
+                                -BAR_WIDTH / 2, -SHIELD_BAR_HEIGHT / 2, BAR_WIDTH / 2, SHIELD_BAR_HEIGHT / 2,
+                                0.0f, 0.0f, 1.0f, 1.0f,
+                                0.22f, 0.26f, 0.3f, 1.0f);
+                    });
+
+                    // 填充：按剩余护盾比例从右往左收
+                    // sr/sg/sb 在 if 里赋值过，不是 effectively final，lambda 捕获不了，先拷一份
+                    float shieldWidth = BAR_WIDTH * shieldRatio;
+                    float fillR = sr;
+                    float fillG = sg;
+                    float fillB = sb;
+                    collector.submitCustomGeometry(poseStack, shieldType, (pose, buffer) -> {
+                        Matrix4f matrix = pose.pose();
+                        drawTexturedQuad(buffer, matrix, SHIELD_FILL_Z_OFFSET,
+                                BAR_WIDTH / 2 - shieldWidth, -SHIELD_BAR_HEIGHT / 2,
+                                BAR_WIDTH / 2, SHIELD_BAR_HEIGHT / 2,
+                                shieldRatio, 0.0f, 0.0f, 1.0f,
+                                fillR, fillG, fillB, 1.0f);
+                    });
+                    poseStack.popPose();
+                }
 
                 // ============ 等级文字 ============
                 if (level > 0) {

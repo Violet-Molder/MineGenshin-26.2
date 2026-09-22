@@ -142,6 +142,31 @@ public class ModDamageSpec {
     }
 
     /**
+     * 这一条伤害的<b>削韧值</b>（poise damage）。
+     *
+     * <p>{@code NaN} = 没显式设过，取 {@link #defaultPoise(AttackType)} 的默认值。
+     * 护盾结算（{@code ShieldService#absorbDamage}）用它决定「这一下削掉多少韧性」，
+     * 也是 {@code ShieldBreakType.POISE}（只靠削韧破盾）的依据。
+     */
+    private float poiseDamage = Float.NaN;
+
+    /** 默认削韧：<b>普通攻击 0.15</b>，其余攻击方式一律 0。 */
+    public static float defaultPoise(AttackType attackType) {
+        return attackType == AttackType.NORMAL_ATTACK ? 0.15f : 0f;
+    }
+
+    /** 实际削韧值：没显式设过就走默认。 */
+    public float getPoiseDamage() {
+        return Float.isNaN(this.poiseDamage) ? defaultPoise(this.attackType) : this.poiseDamage;
+    }
+
+    /** 显式指定这一招的削韧值（负数夹到 0）。 */
+    public ModDamageSpec withPoiseDamage(float value) {
+        this.poiseDamage = Math.max(0f, value);
+        return this;
+    }
+
+    /**
      * 覆盖星扩散的<b>基础倍率提升</b>（基础区上的 {@code × (1 + 基础倍率提升)}）。
      *
      * <p>队伍级的星扩散基础伤害提升（例如薇斯娜按攻击力给的那一档）在造伤害时算好盖上来。

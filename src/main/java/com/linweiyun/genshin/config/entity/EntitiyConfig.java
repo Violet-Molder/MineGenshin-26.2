@@ -21,6 +21,8 @@ public class EntitiyConfig {
         EntityHealthConfig.register(builder);
         EntityAttackConfig.register(builder);
         EntityAttributeCapConfig.register(builder);
+        //TEMP 怪物行为参数（攻击欲望 / 技能冷却 / 护盾恢复）
+        MobBehaviorConfig.register(builder);
 
     }
 

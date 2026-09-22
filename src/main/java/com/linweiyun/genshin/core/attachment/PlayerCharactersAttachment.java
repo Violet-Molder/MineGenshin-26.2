@@ -75,7 +75,6 @@ public class PlayerCharactersAttachment implements IPersistedSerializable {
         ownedCharacters.removeIf(c -> c == null);
         for (PGCharacter c : ownedCharacters) {
             c.getData().setOwnerPlayer(player);
-            LOGGER.info("绑定角色 {} 到玩家 {}", c.getCharacterUUID(), player.getName().getString());
         }
     }
     public boolean removeCharacter(int uuid) {

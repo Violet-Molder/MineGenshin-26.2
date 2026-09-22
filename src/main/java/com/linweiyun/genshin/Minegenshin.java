@@ -3,6 +3,7 @@ package com.linweiyun.genshin;
 import com.linweiyun.genshin.config.GenshinConfig;
 import com.linweiyun.genshin.content.attribute.AttributeCapHandler;
 import com.linweiyun.genshin.content.entities.ModEntities;
+import com.linweiyun.genshin.content.entities.test.TestEntities;
 import com.linweiyun.genshin.content.items.ModItems;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
@@ -49,6 +50,8 @@ public class Minegenshin {
         ModItems.register(modEventBus);
         ModItemGroups.register(modEventBus);
         ModEntities.register(modEventBus);
+        //TEMP 测试实体（entity/test*/ 资源 + content/entities/test/）的注册入口
+        TestEntities.register(modEventBus);
         ModDamageTypes.register(modEventBus);
         ModMobEffects.register(modEventBus);
         ModStatusDataComponents.register(modEventBus);

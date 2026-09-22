@@ -12,6 +12,19 @@
   "minegenshin.configuration.section.minegenshin.world.text.color.toml.title": "世界文本颜色配置",
   "minegenshin.configuration.section.minegenshin.entity.toml": "实体配置",
   "minegenshin.configuration.section.minegenshin.entity.toml.title": "实体配置",
+
+  "minegenshin.configuration.slime.attack-desire": "攻击欲望倍率（乘在所有技能概率上）",
+  "minegenshin.configuration.slime.collide-range": "撞击触发距离（也是接近停下的距离）",
+  "minegenshin.configuration.slime.shard-count": "冰刺枚数",
+  "minegenshin.configuration.slime.shard-cooldown": "冰刺冷却（秒）",
+  "minegenshin.configuration.slime.mist-duration": "冰雾持续（秒）",
+  "minegenshin.configuration.slime.mist-cooldown": "冰雾冷却（秒）",
+  "minegenshin.configuration.slime.slam-cooldown": "砸落冷却（秒）",
+  "minegenshin.configuration.slime.shield-value": "护盾值",
+  "minegenshin.configuration.slime.shield-restore-seconds": "失盾后开始补盾的等待（秒）",
+  "minegenshin.configuration.slime.shield-idle-restore-seconds": "多久没挨打就开始补盾（秒）",
+  "minegenshin.configuration.slime.shield-cast-seconds": "补盾抬手时长（秒）",
+
   "minegenshin.configuration.section.minegenshin.weapon.toml": "武器配置",
   "minegenshin.configuration.section.minegenshin.weapon.toml.title": "武器配置",
   "minegenshin.configuration.section.minegenshin.artifact.toml": "圣遗物配置",
@@ -208,6 +221,11 @@
 
   "itemGroup.minegenshin.foodGroup": "像素原神-食物",
   "itemGroup.minegenshin.regularItemGroup": "像素原神-常规物品",
+
+  "entity.minegenshin.large_cryo_slime": "大型冰史莱姆",
+  "entity.minegenshin.test1": "测试实体一号",
+  "entity.minegenshin.test2": "测试实体二号",
+  "entity.minegenshin.ice_block": "冰块",
 
 
   "attribute.minegenshin.max_hp": "生命值上限",

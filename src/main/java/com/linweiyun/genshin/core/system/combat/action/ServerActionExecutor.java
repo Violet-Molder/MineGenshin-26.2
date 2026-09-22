@@ -53,8 +53,6 @@ public final class ServerActionExecutor {
             for (Hit hit : step.hits) {
                 total += previewHitTargets(player, hit);
             }
-            LOGGER.debug("[ActionExecutor] character={} hits={} 预估命中目标数={}（伤害由天赋结算）",
-                    characterId, step.hits.size(), total);
         }
     }
 

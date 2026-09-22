@@ -11,6 +11,7 @@ import com.linweiyun.genshin.core.system.combat.damage.DamageIndicatorFactory;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.damage.TeyvatConvertedDamageSource;
+import com.linweiyun.genshin.core.system.shield.ShieldService;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
@@ -62,6 +63,26 @@ public class LivingEntityHurtMixin {
     private void onLivingEntityHurtServer(ServerLevel level, DamageSource source, float damage,
                                           CallbackInfoReturnable<Boolean> cir) {
 
+        LivingEntity self = (LivingEntity) (Object) this;
+
+        // 护盾：伤害还没落地之前先问盾。
+        //
+        // ⚠️ 两个「不能在这里扣盾」的情况：
+        //   ① ModDamageSource —— 它的真实伤害在下面才算出来，传进来的 damage 通常是 0；
+        //   ② 怪物攻击的「换算」分支 —— 它会带着换算后的伤害<b>递归调用</b> hurtServer，
+        //      在这里扣一次、递归里再扣一次就双倍消耗了。所以让它去递归那一层扣。
+        boolean convertedBelow = usesTeyvatConversion(level, source);
+        if (!convertedBelow && !(source instanceof ModDamageSource)) {
+            // 原版伤害源没有 ModDamageSpec，也就没有削韧信息
+            float through = ShieldService.absorbDamage(self, source, damage, 0f);
+            if (damage > 0f && through <= 0f) {
+                // 盾全吃下了：本次不构成受伤
+                cir.setReturnValue(false);
+                return;
+            }
+            damage = through;
+        }
+
         if (TeyvatWorldInvasion.get(level).isInvaded()
                 && !(source instanceof ModDamageSource)
                 && !(source instanceof TeyvatConvertedDamageSource)) {
@@ -75,7 +96,6 @@ public class LivingEntityHurtMixin {
                         float convertedDamage = damage / vanillaAttack * teyvatAttack;
                         cir.cancel();
                         TeyvatConvertedDamageSource newSource = new TeyvatConvertedDamageSource(source);
-                        LivingEntity self = (LivingEntity) (Object) this;
                         boolean result = self.hurtServer(level, newSource, convertedDamage);
                         cir.setReturnValue(result);
                         return;
@@ -90,12 +110,17 @@ public class LivingEntityHurtMixin {
 
         if (!TeyvatWorldInvasion.get(level).isInvaded()) return;
 
-        LivingEntity target = (LivingEntity) (Object) this;
+        LivingEntity target = self;
         ModDamageSpec spec = modSource.getSpec();
         PGCharacter attackerCharacter = spec.getAttackerCharacter();
         GenshinElement element = spec.getElement();
         float finalDamage = HurtEntityHelper.calculateFinalModDamage(
                 modSource, attackerCharacter, target);
+
+        // 护盾：ModDamageSource 的真实伤害到这里才算出来，所以在这里扣盾
+        if (finalDamage > 0f) {
+            finalDamage = ShieldService.absorbDamage(target, source, finalDamage, spec.getPoiseDamage());
+        }
 
         DamageContainer container = new DamageContainer(source, finalDamage);
         if (CommonHooks.onEntityIncomingDamage(target, container)) {
@@ -190,6 +215,25 @@ public class LivingEntityHurtMixin {
         CommonHooks.onLivingDamagePost(target, container);
 
         cir.setReturnValue(true);
+    }
+
+    /**
+     * 这次伤害会不会走下面那个「怪物攻击力换算」分支。
+     *
+     * <p>那个分支会带着换算后的伤害<b>递归调用</b> {@code hurtServer}，
+     * 所以护盾必须在递归的那一层扣，否则同一次攻击会被扣两遍。
+     */
+    //TEMP
+    private static boolean usesTeyvatConversion(ServerLevel level, DamageSource source) {
+        if (!TeyvatWorldInvasion.get(level).isInvaded()) return false;
+        if (source instanceof ModDamageSource || source instanceof TeyvatConvertedDamageSource) return false;
+        Entity attacker = source.getEntity();
+        if (!(attacker instanceof TeyvatLiving teyvatAttacker)
+                || !(attacker instanceof LivingEntity livingAttacker)) {
+            return false;
+        }
+        if (teyvatAttacker.getEntityStats().attack() <= 0f) return false;
+        return livingAttacker.getAttributeBaseValue(Attributes.ATTACK_DAMAGE) > 0;
     }
 
     private void handleStellarDamageIndicator(LivingEntity target, ModDamageSpec spec,

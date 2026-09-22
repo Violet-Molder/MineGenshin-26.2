@@ -13,6 +13,19 @@
   "minegenshin.configuration.section.minegenshin.world.text.color.toml.title": "World Text Color Config",
   "minegenshin.configuration.section.minegenshin.entity.toml": "Entity Config",
   "minegenshin.configuration.section.minegenshin.entity.toml.title": "Entity Config",
+
+  "minegenshin.configuration.slime.attack-desire": "Attack Desire Multiplier (applied to all skill chances)",
+  "minegenshin.configuration.slime.collide-range": "Collide Trigger Range (also the approach stop distance)",
+  "minegenshin.configuration.slime.shard-count": "Ice Shard Count",
+  "minegenshin.configuration.slime.shard-cooldown": "Ice Shard Cooldown (s)",
+  "minegenshin.configuration.slime.mist-duration": "Ice Mist Duration (s)",
+  "minegenshin.configuration.slime.mist-cooldown": "Ice Mist Cooldown (s)",
+  "minegenshin.configuration.slime.slam-cooldown": "Slam Cooldown (s)",
+  "minegenshin.configuration.slime.shield-value": "Shield Value",
+  "minegenshin.configuration.slime.shield-restore-seconds": "Delay Before Restoring Shield After Break (s)",
+  "minegenshin.configuration.slime.shield-idle-restore-seconds": "Idle Time Before Restoring Shield (s)",
+  "minegenshin.configuration.slime.shield-cast-seconds": "Shield Cast Duration (s)",
+
   "minegenshin.configuration.section.minegenshin.weapon.toml": "Weapon Config",
   "minegenshin.configuration.section.minegenshin.weapon.toml.title": "Weapon Config",
   "minegenshin.configuration.section.minegenshin.artifact.toml": "Artifact Config",
@@ -210,6 +223,11 @@
 
   "itemGroup.minegenshin.foodGroup": "Minegenshin-Foods",
   "itemGroup.minegenshin.regularItemGroup": "Minegenshin-Regular Item",
+
+  "entity.minegenshin.large_cryo_slime": "Large Cryo Slime",
+  "entity.minegenshin.test1": "Test Entity One",
+  "entity.minegenshin.test2": "Test Entity Two",
+  "entity.minegenshin.ice_block": "Ice Block",
 
   "attribute.minegenshin.max_hp": "Max HP",
   "attribute.minegenshin.atk": "ATK",

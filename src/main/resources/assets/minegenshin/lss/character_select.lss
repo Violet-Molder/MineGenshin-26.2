@@ -7,38 +7,49 @@
   flex-direction: row;
 }
 #character-view {
+  flex: 1;                 /* ★ 自适应：占满剩余宽度，头像的百分比宽度跟着一起缩放 */
   height: 100%;
   flex-direction: row;
   padding-all: 5;
-  layout-direction: rtl;
+    width: 60%;
   overflow: hidden;
-
 }
 label {
   background: sdf(#ACCBD, 5);
 }
 #character-container {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;  /* ★ 竖直排：排序器 → 列表 → 按钮 */
+  gap-all: 4;
   overflow: hidden;
 }
+#character-scroller {
+  /* ★ 新加的 view 元素：把角色网格框在里面，内容超出时自动出滚动条。
+     flex: 1 + min-height: 0 是关键 —— 不给它一个「确定的高度」，
+     它就会跟着内容一起变高，永远不会滚动。 */
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
 #character-list-container {
-  overflow: hidden;
-  flex-shrink: 1;
-  padding-all: 2;
+  /* 滚动内容：宽度撑满，高度随内容自然增长 */
+  width: 100%;
 }
 #character-list {
   layout-direction: ltr;
-  width: 210;
-  height: 100%;
-  padding-all: 5;
-  gap-all: 4;
+  width: 100%;
   flex-direction: row;
-  flex-shrink: 1;
+  flex-wrap: wrap;         /* ★ 一行放不下就换行 */
+  gap-all: 2%;
+  padding-all: 2%;
 }
 .character-avatar {
-  width: 38; /* 计算后最优宽度 */
-  height: 46; /* 宽高比263/319 → 38×319÷263≈46 */
+  /* ★ 一行五个：17% × 5 + 2% × 4 = 93%，第 6 个放不下会自动换行。
+     宽度用百分比 = 自适应大小；高度按头像比例 263/319 推出来。 */
+  width: 17%;
+  aspect-rate: 0.825;
   flex-shrink: 0;
-  gap-all: 4;
   transform: scale(1); /* 默认缩放 */
   transition: transform 0.2 quad_in_out; /* 缩放过渡：时长0.2秒，缓动曲线 */
   transform-pivot: 0.5 0.5; /* 缩放锚点居中（避免偏移） */

@@ -5,7 +5,7 @@ import com.linweiyun.genshin.content.entities.area.StellarVortexEntity;
 import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
 import com.linweiyun.genshin.content.entities.area.ThunderCloudEntity;
 import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
-import com.linweiyun.genshin.content.entities.teyvat.monster.slime.SlimeCyro;
+import com.linweiyun.genshin.content.entities.teyvat.monster.slime.LargeCryoSlime;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProjectile;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaSpiritSwordEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -51,18 +51,26 @@ public class ModEntities {
                                     Minegenshin.id("elemental_orb"))
                             )
             );
-    public static final Supplier<EntityType<SlimeCyro>> SLIME_CYRO =
+    /**
+     * 大型冰史莱姆。
+     *
+     * <p>注册 id 就是 {@code large_cryo_slime}，资源文件名也跟着它
+     * （{@code geckolib/models/entity/large_cryo_slime.geo.json} 等，
+     * GeckoLib 的默认路径按实体 id 推导）。
+     */
+    //TEMP
+    public static final Supplier<EntityType<LargeCryoSlime>> LARGE_CRYO_SLIME =
             ENTITIES.register(
-                    "slime_cyro",
+                    "large_cryo_slime",
                     () ->
-                            EntityType.Builder.of(SlimeCyro::new, MobCategory.MONSTER)
+                            EntityType.Builder.of(LargeCryoSlime::new, MobCategory.MONSTER)
                                     .sized(1.3964844F, 1.6F)
                                     .eyeHeight(1.52F)
                                     .passengerAttachments(1.31875F)
                                     .clientTrackingRange(10)
                                     .build(ResourceKey.create(
                                             Registries.ENTITY_TYPE,
-                                            Minegenshin.id("slime_cyro")
+                                            Minegenshin.id("large_cryo_slime")
                                     )));
 
     public static final Supplier<EntityType<ThunderCloudEntity>> THUNDER_CLOUD =
@@ -119,6 +127,6 @@ public class ModEntities {
     }
 
     private static void registerEntityAttributes(EntityAttributeCreationEvent event) {
-        event.put(SLIME_CYRO.get(), SlimeCyro.createAttributes().build());
+        event.put(LARGE_CRYO_SLIME.get(), LargeCryoSlime.createAttributes().build());
     }
 }

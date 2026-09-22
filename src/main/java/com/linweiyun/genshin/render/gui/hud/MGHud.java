@@ -10,7 +10,11 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.status.StatusAccessor;
+import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
+import com.linweiyun.genshin.render.gui.components.state_bind_com.CharacterBuffIcon;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.SupplierDataSource;
 import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
@@ -436,12 +440,15 @@ public class MGHud {
                                             return Component.literal("");
                                         }));
 
+        var characterBuffBar = buildCharacterBuffBar();
+
         root.addChildren(
                 characterList,
                 currentContent
                         .addChildren(
                                 attributeDebug,
                                 characterLevel,
+                                characterBuffBar,
                                 currentCharacterHP,
                                 new UIElement()
                                         .setId("skill-content")
@@ -453,5 +460,64 @@ public class MGHud {
                                 }));
 
         return root;
+    }
+
+    /** 出战角色的元素附着图标栏，最多显示这么多格。 */
+    private static final int CHARACTER_BUFF_SLOTS = 5;
+
+    /**
+     * 出战角色的「元素附着」图标栏。
+     *
+     * <p>每格是一个 {@link CharacterBuffIcon}，数据源是 {@link #currentCharacterBuffIcon(int)}：
+     * 返回贴图路径就显示，返回空串就那一格不显示。
+     * 附着是挂在上场角色的 {@code StatusContainer} 上（不是玩家本体），所以<b>切人即换图标</b>。
+     */
+    private static UIElement buildCharacterBuffBar() {
+        var bar = new UIElement().setId("character_buff_bar");
+        for (int i = 0; i < CHARACTER_BUFF_SLOTS; i++) {
+            int slot = i;
+            var icon = new CharacterBuffIcon()
+                    .bindDataSource(SupplierDataSource.of(() -> currentCharacterBuffIcon(slot)));
+            icon.layout(l -> {
+                l.width(18);
+                l.height(18);
+            });
+            bar.addChildren(icon);
+        }
+        bar.layout(l -> {
+            l.widthPercent(100);
+            l.height(20);
+        });
+        return bar;
+    }
+
+    /**
+     * 第 {@code slot} 格该显示哪个元素的图标。
+     *
+     * <p>遍历上场角色的附着，跳过已结束的、单位量已归零的、以及物理（{@link ModElements#FYSIKOS}，
+     * 它不是真正的元素附着），剩下的按顺序填格子。没有就返回空串。
+     */
+    private static String currentCharacterBuffIcon(int slot) {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return "";
+        var attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        var character = attachment == null ? null : attachment.getCurrentCharacter();
+        if (character == null) return "";
+        var container = StatusAccessor.of(character.getData());
+        if (container == null) return "";
+
+        int seen = 0;
+        for (var instance : container.getAll()) {
+            if (!instance.isFinished() && instance instanceof ElementalAttachmentInstance attached) {
+                var element = attached.getElement();
+                if (element != null
+                        && attached.getUnit() > 0f
+                        && element != ModElements.FYSIKOS.get()
+                        && seen++ == slot) {
+                    return "minegenshin:textures/elemental/" + element.getId() + ".png";
+                }
+            }
+        }
+        return "";
     }
 }

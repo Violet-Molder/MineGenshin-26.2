@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import org.slf4j.Logger;
+import org.slf4j.helpers.NOPLogger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +47,10 @@ import java.util.Locale;
  */
 public final class DamageTrace {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
+    /** 开发环境总开关：false 时 LOGGER 为无操作实现，所有日志完全静默。发布前改为 false。 */
+    private static final boolean DEV_LOGGING = false;
+
+    private static final Logger LOGGER = DEV_LOGGING ? LogUtils.getLogger() : NOPLogger.NOP_LOGGER;
 
     /** 总开关：false 时 {@link #log()} 什么都不做。 */
     public static boolean ENABLED = true;

@@ -82,7 +82,7 @@ public class RaidenShogunSkill extends SkillBase {
 
         for (LivingEntity target : targets) {
             if (target != player) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.CYRO.get())
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.ELECTRO.get())
                         .multiplier(multiplier)
                         .elementAmount(AttachmentType.ULTRA_STRONG.getInitialAmount())
                         .attackerCharacter(character)
@@ -111,7 +111,7 @@ public class RaidenShogunSkill extends SkillBase {
         entities.forEach(
                 entity -> {
                     if (entity != player) {
-                        ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.PYRO.get())
+                        ModDamageSpec spec = ModDamageSpec.builder(AttackType.ELEMENTAL_SKILL, ModElements.ELECTRO.get())
                                 .multiplier(3.5f)
                                 .elementAmount(AttachmentType.WEAK.getInitialAmount())
                                 .decayGroup(DecayGroups.SHENHE_SKILL)

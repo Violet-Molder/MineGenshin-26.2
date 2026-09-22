@@ -80,7 +80,7 @@ public class MinegenshinClient {
         event.registerEntityRenderer(
                 ModEntities.FIELD_TALISMAN_SPIRIT.get(), FieldTalismanSpiritRender::new);
         event.registerEntityRenderer(
-                ModEntities.SLIME_CYRO.get(), context -> new GeoEntityRenderer<>(context, ModEntities.SLIME_CYRO.get())
+                ModEntities.LARGE_CRYO_SLIME.get(), context -> new GeoEntityRenderer<>(context, ModEntities.LARGE_CRYO_SLIME.get())
         );
         event.registerEntityRenderer(
                 ModEntities.ELEMENTAL_ORB.get(), ElementalOrbRenderer::new);

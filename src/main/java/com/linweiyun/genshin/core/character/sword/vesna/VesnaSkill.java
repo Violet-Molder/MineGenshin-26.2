@@ -333,7 +333,7 @@ public class VesnaSkill extends SkillBase {
         for (LivingEntity target : targets) {
             if (target != player) {
                 ModDamageSpec spec = ModDamageSpec.stellarDirect(
-                        ElementalReactionType.STELLAR_SWIRL_ICE, ModElements.CYRO.get(), 1.0f,
+                        ElementalReactionType.STELLAR_SWIRL_WIND, ModElements.ANEMO.get(), 1.0f,
                         0.5f);
                 spec.setStellarContributors(List.of(character));
                 ModDamageSource source = ModDamageSource.from(spec, player);

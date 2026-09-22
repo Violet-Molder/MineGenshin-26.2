@@ -7,8 +7,10 @@ import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUIClientAccess;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.data.ScrollDisplay;
+import com.lowdragmc.lowdraglib2.gui.ui.data.ScrollerMode;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Scroller;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Selector;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.style.StylesheetManager;
@@ -35,9 +37,8 @@ public class ScreenCharacterSelect extends Screen {
     super.init();
       ModularUIClientAccess.setScreenAndInit(this.modularUI, this);
       this.addRenderableWidget(ModularUIClientAccess.getWidget(modularUI));
+      setFocused(ModularUIClientAccess.getWidget(modularUI));
   }
-
-    private static final float SCROLL_COEFFICIENT = 20f;
 
     public enum SortMethod {
         STAR("star", "gui.minegenshin.character_select.sort_star"),
@@ -60,12 +61,17 @@ public class ScreenCharacterSelect extends Screen {
     public static ModularUI createModularUI(Player player, int index) {
         var stylesheet = StylesheetManager.INSTANCE.getStylesheetSafe(
                 Identifier.parse("minegenshin:lss/character_select.lss"));
-        AtomicReference<Float> number = new AtomicReference<>(0.0f);
         var charactersAttachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
 
         var root = new UIElement().setId("root");
         var characterView = new UIElement().setId("character-view");
-        var verticalScroller = new Scroller.Vertical();
+        // ★ 用 ScrollerView 把角色列表「框」起来：内容超出时自动出现滚动条，
+        //   不再手搓「把 character-list 的 bottom 往上挪」那套偏移。
+        var characterScroller = new ScrollerView();
+        characterScroller.setId("character-scroller");
+        characterScroller.scrollerStyle(style -> style
+                .mode(ScrollerMode.VERTICAL)
+                .verticalScrollDisplay(ScrollDisplay.AUTO));
         var characterContainer = new UIElement().setId("character-container");
         var sortSelector = new Selector<SortMethod>();
         var characterListContainer = new UIElement().setId("character-list-container");
@@ -82,12 +88,6 @@ public class ScreenCharacterSelect extends Screen {
         root.layout(layout -> {
             layout.widthPercent(100f);
             layout.heightPercent(100f);
-        });
-
-        verticalScroller.bindObserver(value -> {
-            number.set(value);
-            characterList.layout(l -> l.bottom(number.get() * SCROLL_COEFFICIENT));
-            characterList.markAsInternal();
         });
 
         // ========== 出战按钮 ==========
@@ -265,18 +265,19 @@ public class ScreenCharacterSelect extends Screen {
                 .setCandidates(List.of(SortMethod.values()))
                 .setOnValueChanged(selectedSortMethod -> {
                     currentSort.set(selectedSortMethod);
-                    number.set(0.0f);
-                    characterList.layout(l -> l.bottom(number.get()));
                     renderCharacterAvatars.run();
+                    // 换排序后回到顶部，否则会停在一个已经不存在的内容高度上
+                    characterScroller.verticalScroller.setNormalizedValue(0f);
                     characterList.markAsInternal();
                 });
 
         root.addChildren(
                 characterView.addChildren(
-                        verticalScroller,
                         characterContainer.addChildren(
                                 sortSelector,
-                                characterListContainer.addChildren(characterList),
+                                // ★ 排序器留在外面，只把角色网格放进滚动视图
+                                characterScroller.addScrollViewChild(
+                                        characterListContainer.addChildren(characterList)),
                                 deployButton,
                                 removeCharacterButton,
                                 switchCharacterButton)),
