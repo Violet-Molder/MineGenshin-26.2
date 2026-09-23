@@ -9,7 +9,9 @@
         { "type": "character", "id": "minegenshin:arlecchino", "weight": 10 },
         { "type": "character", "id": "minegenshin:vesna", "weight": 10 },
         { "type": "character", "id": "minegenshin:vodyanitsa", "weight": 10 },
-        { "type": "item", "id": "minegenshin:sweet_madame", "weight": 60, "count": 1 }
+        { "type": "item", "id": "minegenshin:sweet_madame", "weight": 60, "count": 1 },
+        { "type": "item", "id": "minegenshin:hymn_of_the_maelstrom", "weight": 5, "count": 1 },
+        { "type": "item", "id": "minegenshin:beyond_the_chrysalis", "weight": 5, "count": 1 }
       ]
     }
   ]

@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.character;
 
 import com.linweiyun.genshin.config.character.CharacterXpConfig;
+import com.linweiyun.genshin.content.skill_node.ElementalOrbSpawner;
 import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectContainer;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectHelper;
@@ -423,8 +424,7 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
 
     public boolean canUseElementalBurst(Player player) {
         if (data.getElementalBurstCooldownTick() > 0) return false;
-        boolean canUse = data.getCurrentObtainingEnergy() >= data.getMaxObtainingEnergy();
-        return true;
+        return data.getCurrentObtainingEnergy() >= data.getMaxObtainingEnergy();
     }
 
     public void applyElementalBurstCooldown(Player player) {
@@ -445,6 +445,24 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
 
     public void performNormalAttack(Player player, int comboStage) {
         if (skill != null) skill.attack(player, this, comboStage);
+        if (!player.level().isClientSide() && spawnsNormalAttackParticle()) {
+            trySpawnNormalAttackParticle(player);
+        }
+    }
+
+    /**
+     * 普攻是否生成元素微粒。子类（如薇斯娜）覆盖返回 false 关闭，
+     * 因为其技能内部已有自己的产球逻辑。
+     */
+    protected boolean spawnsNormalAttackParticle() {
+        return true;
+    }
+
+    private void trySpawnNormalAttackParticle(Player player) {
+        if (player.level().getRandom().nextFloat() >= 0.5f) return;
+        var element = getElemental();
+        if (element == null || element == ModElements.FYSIKOS.get()) return;
+        new ElementalOrbSpawner(player.level(), element, 1, true, player.position()).execute();
     }
 
     public void performChargedAttack(Player player) {

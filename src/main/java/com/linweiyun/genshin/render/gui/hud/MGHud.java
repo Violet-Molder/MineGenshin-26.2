@@ -384,27 +384,6 @@ public class MGHud {
                 .setId("character-level");
 
         // 属性调试
-        var attributeDebug = new Label();
-        attributeDebug.bindDataSource(
-                        SupplierDataSource.of(
-                                () -> {
-                                    var player = Minecraft.getInstance().player;
-                                    if (player == null) return Component.empty();
-                                    var attachment =
-                                            player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
-                                    var character = attachment.getCurrentCharacter();
-                                    if (character != null) {
-                                        var data = character.getData();
-                                        if (data != null) {
-                                            return Component.literal(
-                                                    "当前攻击力：" + (int) data.getAttributeTotalValue(ModAttributes.ATK.value())
-                                                            + "\n当前防御力：" + (int) data.getAttributeTotalValue(ModAttributes.DEF.value())
-                                                            + "\n当前生命值：" + (int) data.getAttributeTotalValue(ModAttributes.MAX_HP.value()));
-                                        }
-                                    }
-                                    return Component.empty();
-                                }))
-                .setId("character-attribute");
 
         currentContent.bindDataSource(
                 SupplierDataSource.of(
@@ -446,7 +425,6 @@ public class MGHud {
                 characterList,
                 currentContent
                         .addChildren(
-                                attributeDebug,
                                 characterLevel,
                                 characterBuffBar,
                                 currentCharacterHP,
