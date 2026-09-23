@@ -9,6 +9,7 @@ import com.linweiyun.genshin.core.character.PGCharacterData;
 import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -128,6 +129,9 @@ public class BeyondTheChrysalis extends Sword {
                                 Consumer<Component> builder, TooltipFlag flag) {
         super.appendHoverText(stack, context, display, builder, flag);
         builder.accept(Component.empty());
-        builder.accept(Component.translatable("item.minegenshin.diebian.passive"));
+        builder.accept(Component.translatable("item.minegenshin.beyond_the_chrysalis.passive").withStyle(ChatFormatting.YELLOW));
+        builder.accept(Component.empty());
+        builder.accept(Component.literal("溢彩流光的长剑，曾有人以之破除束缚，\n剑风轻盈如同翩跹的蝶舞。"));
+
     }
 }

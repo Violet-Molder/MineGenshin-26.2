@@ -67,7 +67,7 @@ public class ModModeProvider extends ModelProvider {
      */
     private static final Set<Item> HAND_WRITTEN_MODELS = Set.of(
             ModItems.BEYOND_THE_CHRYSALIS.get(),
-            ModItems.WHIRLFLOW_HYMN.get());
+            ModItems.HYMN_OF_THE_MAELSTROM.get());
 
     public ModModeProvider(PackOutput output) {
         super(output, Minegenshin.MOD_ID);

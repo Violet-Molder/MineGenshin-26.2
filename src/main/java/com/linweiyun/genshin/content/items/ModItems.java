@@ -8,9 +8,8 @@ import com.linweiyun.genshin.content.items.food.CharacterFoods;
 import com.linweiyun.genshin.content.items.food.FoodItem;
 import com.linweiyun.genshin.content.items.preicous.ItemPrimogem;
 import com.linweiyun.genshin.content.items.weapon.catalyst.EverlastingMoonglow;
-import com.linweiyun.genshin.content.items.weapon.catalyst.WhirlflowHymn;
+import com.linweiyun.genshin.content.items.weapon.catalyst.HymnTheMaelstrom;
 import com.linweiyun.genshin.content.items.weapon.sword.BeyondTheChrysalis;
-import com.linweiyun.genshin.content.items.weapon.sword.TestSword;
 import com.linweiyun.genshin.core.system.registry.RegistryHelper;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -64,15 +63,13 @@ public class ModItems {
 
   public static final Supplier<EverlastingMoonglow> EVERLASTING_MOONGLOW =
           RegistryHelper.registerOrdinaryItem("everlasting_moonglow", EverlastingMoonglow::new);
-  public static final Supplier<TestSword> TEST_SWORD =
-          RegistryHelper.registerOrdinaryItem("test_sword", TestSword::new);
   /** 蝶变（五星单手剑，三种风轮换的武器被动）。模型暂时直接用钻石剑。 */
   public static final Supplier<BeyondTheChrysalis> BEYOND_THE_CHRYSALIS =
           RegistryHelper.registerOrdinaryItem(BeyondTheChrysalis.NAME, BeyondTheChrysalis::new);
 
   /** 漩流颂歌（五星法器，治疗触发的武器被动）。模型暂时借用书本。 */
-  public static final Supplier<WhirlflowHymn> WHIRLFLOW_HYMN =
-          RegistryHelper.registerOrdinaryItem(WhirlflowHymn.NAME, WhirlflowHymn::new);
+  public static final Supplier<HymnTheMaelstrom> HYMN_OF_THE_MAELSTROM =
+          RegistryHelper.registerOrdinaryItem(HymnTheMaelstrom.NAME, HymnTheMaelstrom::new);
 
 
   public static final Supplier<FoodItem> SWEET_MADAME =

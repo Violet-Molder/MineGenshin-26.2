@@ -187,7 +187,7 @@
   "artifact.effect.scarletproof2.desc": "ATK +18%.",
   "artifact.effect.scarletproof4.desc": "Increases the equipping character's\nCRIT Rate by 16%, and their Stellar\nSwirl reaction DMG dealt by 40%,\nfor 10s after they trigger a Stellar\nSwirl reaction.",
   "artifact.effect.tenacityofthemillelith2.desc": "HP +20%.",
-  "artifact.effect.tenacityofthemillelith4.desc": "When an Elemental Skill hits an\nopponent, all nearby party members\ngain ATK +20% for 3s. This effect\ncan be triggered once every 0.5s.\nIt can still be triggered when the\ncharacter equipping this set is\nnot on the field.",
+  "artifact.effect.tenacityofthemillelith4.desc": "When an Elemental \nSkill hits an opponent, the ATK \nof all nearby party members is \nincreased by 20% and their \nShield Strength is increased by \n30% for 3s. This effect can be \ntriggered once every 0.5s. This\neffect can still be triggered even\nwhen the character who is using \nthis artifact set is not on the \nfield.",
   "artifact.effect.crimsonwitch2.desc": "Pyro DMG Bonus +15%.",
   "artifact.effect.crimsonwitch4.desc": "Increases \nOverloaded,Burning,and \nBurgeon DMG by 40%.Increases\nVaporize and Melt DMG by 15%.\nUsing Elemental Skill increases\nthe 2-Piece Set Bonus by 50% of\nits starting value for 10s. Max 3\n stacks.",
   "artifact.desc.crimson_witch.flower": "A flower touched by the witch who\nonce dreamt of burning away all \nthe demons in the world.The \nanonymous flames affectionately \ncaress the hands of whose who \n touch it.",
@@ -195,6 +195,18 @@
   "artifact.desc.crimson_witch.sands": "A timepiece worn by the witch \nwho dreamt of burning away all \nthe demons in the world. The years\nthe witch dedicated to the flames \nflow within.",
   "artifact.desc.crimson_witch.goblet": "A flame-spitting urn left behind by\nthe Crimson Witch of Flames, who \nonce dreamt of burning away all \nthe demons in the world. The fire \nin the urn burns eternally, as did \nits former master.",
   "artifact.desc.crimson_witch.circlet": "A hat worn by the witch \nwho dreamt of burning away all of the \ndemons in the world. The large \nbrim blocked her sight.",
+
+  "artifact.desc.tenacity_of_the_millelith.flower": "A flower made from gold leaf. It \nrepresents the glories and honors\nattained by its wearer.",
+  "artifact.desc.tenacity_of_the_millelith.plume": "A falcon feather worn on \nceremonial occasions. It displays\n the dignity and resolve of Liyue \nHarbor to the outside world.",
+  "artifact.desc.tenacity_of_the_millelith.sands": "A simple device for telling time, \nThis was once standard-issue for\nthe Millelith during times of war.",
+  "artifact.desc.tenacity_of_the_millelith.goblet": "A golden cup used by the Millelith \nto take their oaths. Still bears the \nlovely scent of wine.",
+  "artifact.desc.tenacity_of_the_millelith.circlet": "A splendorous helmet from ages\npast. Clean the dust away and it \nwill look brand-new once more.",
+
+  "artifact.desc.scarlet_proof.flower": "A bright red flower ornament that \nsymbolizes blazing glory.",
+  "artifact.desc.scarlet_proof.plume": "A bright red quill pen, granted to \nthe youngest blood.",
+  "artifact.desc.scarlet_proof.sands": "A bright red pocket watch marking \nthe time allotted for a \nconversation.",
+  "artifact.desc.scarlet_proof.goblet": "A bright red wine bottle. May you \nnever learn what's been in it.",
+  "artifact.desc.scarlet_proof.circlet": "A bright red helmet. Hopefully it\nhas, once upon a time, protected\nsomeone.",
 
   "item.minegenshin.primogem": "Primogem",
   "item.minegenshin.sweet_madame": "Sweet Madame",
@@ -213,11 +225,7 @@
   "item.minegenshin.tenacity_sands": "Orichalceous Time-Dial",
   "item.minegenshin.tenacity_goblet": "Noble's Pledging Vessel",
   "item.minegenshin.tenacity_circlet": "General's Ancient Helm",
-  "artifact.desc.tenacity_of_the_millelith.flower": "A flower made from gold leaf. It represents the glories and honors won by the tireless fighting spirit of the Millelith.",
-  "artifact.desc.tenacity_of_the_millelith.plume": "A falcon feather worn on ceremonial occasions. It displays the dignity and resolve of the Millelith to all.",
-  "artifact.desc.tenacity_of_the_millelith.sands": "A device for telling time, once used by the Millelith to synchronize their watches.",
-  "artifact.desc.tenacity_of_the_millelith.goblet": "A golden cup used by the Millelith to take their oaths. It was filled with the sweet wine of victory.",
-  "artifact.desc.tenacity_of_the_millelith.circlet": "A gilded helm that once belonged to a general of the Millelith. It bears the scars of countless battles.",
+
 
 
 
@@ -278,10 +286,10 @@
   "message.minegenshin.constellation.set": "Set %s's constellation to %s",
   "message.minegenshin.constellation.invalid": "Constellation must be between 0 and 6",
 
-  "item.minegenshin.diebian": "Metamorphosis",
-  "item.minegenshin.diebian.passive": "After the equipper casts an Elemental Skill or Burst, they gain one of the following effects in order:\n- Wind of Loyalty: CRIT DMG +56% for 10s;\n- Wind of Renunciation: Stellar Swirl reaction DMG +36% for 10s;\n- Wind of Harvest: restores 5 Elemental Energy, at most once every 4s.\nThese effects are removed and the order is reset when the equipper leaves the field.",
-  "item.minegenshin.whirlflow_hymn": "Whirlflow Hymn",
-  "item.minegenshin.whirlflow_hymn.passive": "The equipper gains Healing Bonus +4%.\nWhenever the equipper performs a heal (including while off-field), they gain one stack of Honeyed Truth Mead:\n- the equipper's Max HP +4% per stack, up to 3 stacks;\n- the current on-field character simultaneously gains ATK: computed from the equipper's Max HP after the previous stack, +0.4% for every 1000 points above 40000 (up to 8% per stack), then multiplied by the current number of stacks.\nEach stack lasts 10s; re-triggering refreshes the duration and adds a stack (tracked per recipient).\nWithin 5s after any nearby party member triggers Frozen or Stellar Swirl, both the Max HP and the ATK bonuses above are increased by 75%.",
+  "item.minegenshin.beyond_the_chrysalis": "Beyond the Chrysalis",
+  "item.minegenshin.beyond_the_chrysalis.passive": "After the equipper casts an Elemental Skill or Burst, they gain one of the following effects in order:\n- Wind of Loyalty: CRIT DMG +56% for 10s;\n- Wind of Renunciation: Stellar Swirl reaction DMG +36% for 10s;\n- Wind of Harvest: restores 5 Elemental Energy, at most once every 4s.\nThese effects are removed and the order is reset when the equipper leaves the field.",
+  "item.minegenshin.hymn_of_the_maelstrom": "Hymn of the Maelstrom",
+  "item.minegenshin.hymn_of_the_maelstrom.passive": "The equipper gains Healing Bonus +4%.\nWhenever the equipper performs a heal (including while off-field), they gain one stack of Honeyed Truth Mead:\n- the equipper's Max HP +4% per stack, up to 3 stacks;\n- the current on-field character simultaneously gains ATK: computed from the equipper's Max HP after the previous stack, +0.4% for every 1000 points above 40000 (up to 8% per stack), then multiplied by the current number of stacks.\nEach stack lasts 10s; re-triggering refreshes the duration and adds a stack (tracked per recipient).\nWithin 5s after any nearby party member triggers Frozen or Stellar Swirl, both the Max HP and the ATK bonuses above are increased by 75%.",
   "character.name.vodyanitsa": "Vodyanitsa",
 
   "effect.minegenshin.pyro_infusion": "Pyro Infusion",

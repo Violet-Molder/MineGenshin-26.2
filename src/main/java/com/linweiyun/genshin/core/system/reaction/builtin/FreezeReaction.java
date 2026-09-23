@@ -1,9 +1,9 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
+import com.linweiyun.genshin.content.items.weapon.catalyst.HymnTheMaelstrom;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
-import com.linweiyun.genshin.core.status.StatusAccessor;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.AttachmentProfile;
 import com.linweiyun.genshin.core.system.about.AttachmentSource;
@@ -15,7 +15,6 @@ import com.linweiyun.genshin.core.system.reaction.ReactionResult;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.LivingEntity;
 import org.slf4j.Logger;
 
 /**
@@ -212,7 +211,7 @@ public class FreezeReaction extends ElementalReaction {
             // 武器被动（漩流颂歌）：仅实体端
             if (ctx.targetEntity() != null
                     && ctx.targetEntity().level() instanceof ServerLevel serverLevel) {
-                com.linweiyun.genshin.content.items.weapon.catalyst.WhirlflowHymn.markReactionTriggers(
+                HymnTheMaelstrom.markReactionTriggers(
                         serverLevel, ctx.attackerEntity(),
                         ctx.targetEntity().getX(), ctx.targetEntity().getY(), ctx.targetEntity().getZ());
             }

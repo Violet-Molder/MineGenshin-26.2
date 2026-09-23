@@ -215,10 +215,6 @@ public class WeaponItem extends TeyvatItem {
             builder.accept(Component.empty());
             builder.accept(Component.literal(buildStatText(stats.subStat)).withStyle(ChatFormatting.GRAY));
         }
-
-        if (stats.uid != 0) {
-            builder.accept(Component.literal("UID: " + stats.uid).withStyle(ChatFormatting.DARK_GRAY));
-        }
     }
 
     private String buildStatText(TeyvatItemStat stat) {

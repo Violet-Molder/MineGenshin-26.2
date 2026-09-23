@@ -5,6 +5,7 @@ import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -44,9 +45,9 @@ import java.util.function.Consumer;
  * <p>状态按仓库惯例放<b>角色</b>上：蜜酿是效果实例，反应窗口是
  * {@code PGCharacterData.whirlflowReactionWindowEnd}。
  */
-public class WhirlflowHymn extends Catalyst {
+public class HymnTheMaelstrom extends Catalyst {
 
-    public static final String NAME = "whirlflow_hymn";
+    public static final String NAME = "hymn_of_the_maelstrom";
 
     /**
      * 主词条修正：五星 tier1 的整数基础攻击力是 44，补 +0.34 → 44.34。
@@ -60,7 +61,7 @@ public class WhirlflowHymn extends Catalyst {
     /** 「冻结 / 星扩散」触发算「附近」的半径（格）。 */
     public static final double TRIGGER_RADIUS = 20.0;
 
-    public WhirlflowHymn(Item.Properties properties) {
+    public HymnTheMaelstrom(Item.Properties properties) {
         super(properties);
         this.star = 5;
         // tier1 = 基础攻击力 44 / 副词条生命值 14.4%（就是这一档的 0.144）
@@ -133,7 +134,7 @@ public class WhirlflowHymn extends Catalyst {
     public static boolean holdsWhirlflowHymn(PGCharacter character) {
         if (character == null) return false;
         ItemStack weapon = character.getData().getWeapon();
-        return !weapon.isEmpty() && weapon.getItem() instanceof WhirlflowHymn;
+        return !weapon.isEmpty() && weapon.getItem() instanceof HymnTheMaelstrom;
     }
 
     // ==================== 物品信息 ====================
@@ -143,6 +144,8 @@ public class WhirlflowHymn extends Catalyst {
                                 Consumer<Component> builder, TooltipFlag flag) {
         super.appendHoverText(stack, context, display, builder, flag);
         builder.accept(Component.empty());
-        builder.accept(Component.translatable("item.minegenshin.whirlflow_hymn.passive"));
+        builder.accept(Component.translatable("item.minegenshin.hymn_of_the_maelstrom.passive").withStyle(ChatFormatting.YELLOW));
+        builder.accept(Component.empty());
+        builder.accept(Component.literal("蓝玉髓所铸的精致灯盏，仿若自童话中诞\n生的宝物，据闻尘封着一曲为所有人忘却\n的颂歌。"));
     }
 }

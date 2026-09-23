@@ -7,28 +7,28 @@
         "when": "gui",
         "model": {
           "type": "minecraft:model",
-          "model": "minegenshin:item/whirlflow_hymn"
+          "model": "minegenshin:item/hymn_of_the_maelstrom"
         }
       },
       {
         "when": "ground",
         "model": {
           "type": "minecraft:model",
-          "model": "minegenshin:item/whirlflow_hymn"
+          "model": "minegenshin:item/hymn_of_the_maelstrom"
         }
       },
       {
         "when": "fixed",
         "model": {
           "type": "minecraft:model",
-          "model": "minegenshin:item/whirlflow_hymn"
+          "model": "minegenshin:item/hymn_of_the_maelstrom"
         }
       },
       {
         "when": "head",
         "model": {
           "type": "minecraft:model",
-          "model": "minegenshin:item/whirlflow_hymn"
+          "model": "minegenshin:item/hymn_of_the_maelstrom"
         }
       }
     ],

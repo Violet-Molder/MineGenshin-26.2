@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
+import com.linweiyun.genshin.content.items.weapon.catalyst.HymnTheMaelstrom;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
@@ -291,7 +292,7 @@ public class SwirlReaction extends ElementalReaction {
         applyScarletProofBuff(ctx.attackerEntity() instanceof Player p ? p : null, triggerCharacter);
 
         // 武器被动（漩流颂歌）：附近的队伍成员触发星扩散 → 打开 5 秒强化窗口
-        com.linweiyun.genshin.content.items.weapon.catalyst.WhirlflowHymn.markReactionTriggers(
+        HymnTheMaelstrom.markReactionTriggers(
                 level, ctx.attackerEntity(),
                 ctx.targetEntity().getX(), ctx.targetEntity().getY(), ctx.targetEntity().getZ());
 

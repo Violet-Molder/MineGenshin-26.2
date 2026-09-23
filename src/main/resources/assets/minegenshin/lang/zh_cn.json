@@ -185,9 +185,9 @@
   "artifact_set.scarlet_proof": "血红之证",
   "artifact_set.tenacity_of_the_millelith": "千岩牢固",
   "artifact.effect.scarletproof2.desc": "攻击力提升18%。",
-  "artifact.effect.scarletproof4.desc": "装备者触发星扩散反应后的10秒内，\n暴击率提升16%，星扩散反应伤害提升40%。",
+  "artifact.effect.scarletproof4.desc": "装备者触发星扩散反应后的10\n秒内，暴击率提升16%，星扩散反应伤\n害提升40%。",
   "artifact.effect.tenacityofthemillelith2.desc": "生命值上限提升20%。",
-  "artifact.effect.tenacityofthemillelith4.desc": "元素战技命中敌人后，队伍中附近的\n所有角色攻击力提升20%，持续3秒。\n该效果每0.5秒至多触发一次。装备此\n圣遗物套装的角色处于队伍后台时，\n依然能触发该效果。",
+  "artifact.effect.tenacityofthemillelith4.desc": "元素战技命中敌人后，使队伍\n中附近的所有角色攻击力提升20%，护\n盾强效提升30%，持续3秒。该效果每\n0.5秒至多触发一次。装备此圣遗物套\n装的角色处于队伍后台时，依然能触发\n该效果。",
   "artifact.effect.crimsonwitch2.desc": "获得15%火元素伤害加成。",
   "artifact.effect.crimsonwitch4.desc": "超载、燃烧、列绽放反应造成的\n伤害提升40%，蒸发、融化反应的加成\n系数提高15%。施放元素战技后的10秒\n内，2件套的效果提高50%，该效果最\n多叠加3次。",
   "artifact.desc.crimson_witch.flower": "曾经梦想烧尽世间魔物的魔女触碰过的花\n朵。无名的火舌温暖地舔舐碰触它的人。",
@@ -195,6 +195,18 @@
   "artifact.desc.crimson_witch.sands": "曾经梦想烧尽世间魔物的魔女佩戴的时计\n。其中流淌着的是魔女献给火焰的岁月。",
   "artifact.desc.crimson_witch.goblet": "曾经梦想烧尽世间魔物的炎之魔女留下的\n流火之甕。瓶中火永不熄灭，一如其人。",
   "artifact.desc.crimson_witch.circlet": "曾经梦想烧尽世间魔物的炎之魔女曾经戴\n过的帽子。宽大的帽檐能遮挡她的视线。",
+
+  "artifact.desc.tenacity_of_the_millelith.flower": "以金箔制成的精致花朵。象征了其主人所\n获得的功勋与荣誉。",
+  "artifact.desc.tenacity_of_the_millelith.plume": "在仪仗场合佩戴的鹰翎，用以向外人显明\n璃月港的威严与决心。",
+  "artifact.desc.tenacity_of_the_millelith.sands": "外观朴素的计时道具，在战乱的时代，一\n度是千岩军的制式装备。",
+  "artifact.desc.tenacity_of_the_millelith.goblet": "千岩军用以盟誓的金爵，依旧残留着丝丝\n酒香",
+  "artifact.desc.tenacity_of_the_millelith.circlet": "年代久远的华丽头盔，洗净尘沙后依旧明\n亮如新。",
+
+  "artifact.desc.scarlet_proof.flower": "颜色鲜红的花饰。象征如火的荣光。",
+  "artifact.desc.scarlet_proof.plume": "颜色鲜红的毛笔。赠与最年轻的血液。",
+  "artifact.desc.scarlet_proof.sands": "颜色鲜红的怀表。记录着一场对谈的时限\n。",
+  "artifact.desc.scarlet_proof.goblet": "颜色鲜红的酒瓶。祝你不知道里面装过什\n么。",
+  "artifact.desc.scarlet_proof.circlet": "颜色鲜红的头盔。但愿保护过谁。",
 
   "item.minegenshin.primogem": "原石",
   "item.minegenshin.sweet_madame": "甜甜花酿鸡",
@@ -213,11 +225,7 @@
   "item.minegenshin.tenacity_sands": "金铜时晷",
   "item.minegenshin.tenacity_goblet": "盟誓金爵",
   "item.minegenshin.tenacity_circlet": "将帅兜鍪",
-  "artifact.desc.tenacity_of_the_millelith.flower": "以金箔制成的花朵。它象征着千岩军士卒坚韧不拔的斗志，以及随之而来的荣光。",
-  "artifact.desc.tenacity_of_the_millelith.plume": "典礼上佩戴的鹰羽。它向所有人展示着千岩军的威严与决心。",
-  "artifact.desc.tenacity_of_the_millelith.sands": "千岩军用来对表的时晷。上面记录着一段段或长或短的时光。",
-  "artifact.desc.tenacity_of_the_millelith.goblet": "千岩军立誓时使用的金爵。它曾盛满胜利的甘甜美酒。",
-  "artifact.desc.tenacity_of_the_millelith.circlet": "千岩军将领的鎏金兜鍪。上面满是征战留下的痕迹。",
+
 
   "itemGroup.minegenshin.foodGroup": "像素原神-食物",
   "itemGroup.minegenshin.regularItemGroup": "像素原神-常规物品",
@@ -273,9 +281,11 @@
   "message.minegenshin.constellation.set": "已将 %s 的命座设为 %s 命",
   "message.minegenshin.constellation.invalid": "命座只能是 0~6",
 
-  "item.minegenshin.diebian": "蝶变",  "item.minegenshin.diebian.passive": "装备者每次施放元素战技或元素爆发时，按顺序获得以下效果之一：\n· 忠忱之风：暴击伤害提升56%，持续10秒；\n· 叛弃之风：造成的星扩散反应伤害提升36%，持续10秒；\n· 丰获之风：恢复5点元素能量，每4秒至多触发一次。\n装备者退场时移除这些效果，并重置顺序。",
-  "item.minegenshin.whirlflow_hymn": "漩流颂歌",
-  "item.minegenshin.whirlflow_hymn.passive": "装备者治疗加成提升4%。\n装备者每次完成治疗（含后台治疗）时，获得一层「告真的蜜酿」：\n· 装备者自身的生命值上限提升4%，最多叠加3层；\n· 同时令当前场上角色获得攻击力提升：以装备者「上一层生命值上限」计算，每超出40000点的1000点提升0.4%（每层至多8%），再按当前层数叠加。\n每层持续10秒，重复触发时刷新持续时间并叠加层数（各受益人分别计层）。\n附近队伍成员触发冻结或星扩散后的5秒内，上述生命值上限与攻击力提升效果均提高75%。",
+  "item.minegenshin.beyond_the_chrysalis": "蝶变",
+  "item.minegenshin.beyond_the_chrysalis.passive": "装备者每次施放元素战技或元素爆发时，\n按顺序获得以下效果之一：\n· 忠忱之风：暴击伤害提升56%，持续10秒；\n· 叛弃之风：造成的星扩散反应伤害提升36%，持续10秒；\n· 丰获之风：恢复5点元素能量，每4秒至多触发一次。\n装备者退场时移除这些效果，并重置顺序。",
+
+  "item.minegenshin.hymn_of_the_maelstrom": "漩流颂歌",
+  "item.minegenshin.hymn_of_the_maelstrom.passive": "·装备者治疗加成提升4%;\n进行治疗时，装备者获得「告真的蜜酿」\n效果：生命值提升4%，且基于装备者\n生命值上限超过40000的部分，每1000\n点生命值上限都会使队伍中自己的当前场\n上角色的攻击力提升0.4%，通过这种方 \n式至多提升8%。该效果持续10秒，至多 \n叠加三层。\n·队伍中附近的角色触发冻结反应或星扩\n散反应后的5秒内，上述效果中生命值上 \n限与攻击力提升的效果额外提升75%。 \n·装备者处于队伍后台时，依然能触发上\n述效果。",
   "character.name.vodyanitsa": "沃雅妮莎",
 
   "effect.minegenshin.pyro_infusion": "火元素附魔",
