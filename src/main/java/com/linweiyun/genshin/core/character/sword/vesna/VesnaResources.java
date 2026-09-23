@@ -65,14 +65,14 @@ public final class VesnaResources {
         comboSteps.put(1, new CharacterActionData.ActionStep(
                 "attack_1", 40, 0, 2,
                 List.of(new CharacterActionData.Move(0, 1.2)),
-                List.of(new CharacterActionData.Hit(3, 2.0, 1.5, 1.0, 0.0, 6.0, false)),
+                List.of(new CharacterActionData.Hit(3, 0.0, 1.5, 1.0, 0.0, 6.0, false)),
                 List.of(new CharacterActionData.SoundRef(3, "vesna_attack_1", 1.0f, 1.0f)),
                 0, 2, 0, 8
         ));
         comboSteps.put(2, new CharacterActionData.ActionStep(
                 "attack_2", 48, 0, 2,
                 List.of(new CharacterActionData.Move(0, 1.2)),
-                List.of(new CharacterActionData.Hit(3, 2.0, 1.5, 2.0, 0.0, 6.0, false)),
+                List.of(new CharacterActionData.Hit(3, 0.0, 1.5, 2.0, 0.0, 6.0, false)),
                 List.of(new CharacterActionData.SoundRef(3, "vesna_attack_2", 1.0f, 1.0f)),
                 0, 2, 0, 8
         ));
@@ -80,7 +80,7 @@ public final class VesnaResources {
                 "attack_3", 25, 0, 2,
                 List.of(new CharacterActionData.Move(0, 1.3)),
                 List.of(
-                        new CharacterActionData.Hit(3, 3.0, 1.5, 2.0, 0.0, 8.0, false),
+                        new CharacterActionData.Hit(3, 0.0, 1.5, 2.0, 0.0, 8.0, false),
                         new CharacterActionData.Hit(6, 0.0, 1.5, 2.0, 0.0, 10.0, false)
                 ),
                 List.of(new CharacterActionData.SoundRef(3, "vesna_attack_3", 1.0f, 1.0f)),
@@ -90,10 +90,10 @@ public final class VesnaResources {
                 "attack_4", 30, 0, 2,
                 List.of(new CharacterActionData.Move(2, 1.5)),
                 List.of(
-                        new CharacterActionData.Hit(10, 4.0, 1.5, 1.0, 0.0, 8.0, true),
-                        new CharacterActionData.Hit(12, 4.0, 1.5, 1.0, 0.0, 8.0, true),
-                        new CharacterActionData.Hit(14, 4.0, 1.5, 1.0, 0.0, 8.0, true),
-                        new CharacterActionData.Hit(16, 4.0, 1.5, 1.0, 0.0, 8.0, true)
+                        new CharacterActionData.Hit(10, 0.0, 1.5, 1.0, 0.0, 8.0, true),
+                        new CharacterActionData.Hit(12, 0.0, 1.5, 1.0, 0.0, 8.0, true),
+                        new CharacterActionData.Hit(14, 0.0, 1.5, 1.0, 0.0, 8.0, true),
+                        new CharacterActionData.Hit(16, 0.0, 1.5, 1.0, 0.0, 8.0, true)
                 ),
                 List.of(new CharacterActionData.SoundRef(10, "vesna_attack_4", 1.0f, 1.0f)),
                 0, 4, 0, 8

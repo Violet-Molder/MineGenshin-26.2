@@ -38,7 +38,7 @@ public final class CharacterSystemConfig {
                 .comment("使用专属模型 + GeckoLib 动画的角色 ID 名单。",
                         "不在名单里的角色不做模型替换，只在伤害结算那一刻播一次摆臂。")
                 .defineListAllowEmpty("custom_model_characters",
-                        List.of("vesna"),
+                        List.of(),
                         () -> "vesna",
                         CharacterSystemConfig::isCharacterId);
 
@@ -46,7 +46,7 @@ public final class CharacterSystemConfig {
                 .comment("启用完整动作系统（前摇 / 硬直 / 移动封锁 / 延迟伤害）的角色 ID 名单。",
                         "不在名单里的角色所有按键及时响应，不采用前后摇与延迟伤害。")
                 .defineListAllowEmpty("action_system_characters",
-                        List.of("vesna"),
+                        List.of(),
                         () -> "vesna",
                         CharacterSystemConfig::isCharacterId);
 

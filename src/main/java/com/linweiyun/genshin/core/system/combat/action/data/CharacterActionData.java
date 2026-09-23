@@ -52,7 +52,7 @@ public final class CharacterActionData {
             comboSteps.put(stage, new ActionStep(
                     "attack_" + stage, 20, 0, 2,
                     List.of(new Move(0, 1.0)),
-                    List.of(new Hit(4, 1.5, 1.5, 1.0, 0.0, 3.0, false)),
+                    List.of(new Hit(4, 0, 1.5, 1.0, 0.0, 3.0, false)),
                     List.of(),
                     0, 0, 0, 8
             ));
@@ -61,7 +61,7 @@ public final class CharacterActionData {
         ActionStep skillStep = new ActionStep(
                 "skill", 25, 6, 3,
                 List.of(new Move(0, 1.0)),
-                List.of(new Hit(8, 2.0, 1.5, 1.0, 0.0, 3.0, false)),
+                List.of(new Hit(8, 0, 1.5, 1.0, 0.0, 3.0, false)),
                 List.of(),
                 0, 0, 0, 0
         );
@@ -69,7 +69,7 @@ public final class CharacterActionData {
         ActionStep burstStep = new ActionStep(
                 "burst", 40, 40, 4,
                 List.of(),
-                List.of(new Hit(10, 3.0, 1.5, 1.0, 0.0, 4.0, false)),
+                List.of(new Hit(10, 0, 1.5, 1.0, 0.0, 4.0, false)),
                 List.of(),
                 0, 0, 0, 0
         );

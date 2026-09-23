@@ -70,7 +70,7 @@ public final class ShenheResources {
         ActionStep tap = new ActionStep(
                 "skill", TAP_DURATION, SKILL_HIT_DELAY + 6, 3,
                 List.of(),                                   // ← 位移交给 DashSystem，这里必须为空
-                List.of(new Hit(SKILL_HIT_DELAY, 2.0, 1.5, 1.0, 0.0, 3.0, false)),
+                List.of(new Hit(SKILL_HIT_DELAY, 0, 1.5, 1.0, 0.0, 3.0, false)),
                 List.of(),
                 0, 0, 0, 0
         ).withEngagement(NO_GENERIC_MOVE);
@@ -79,7 +79,7 @@ public final class ShenheResources {
         ActionStep hold = new ActionStep(
                 "skill_hold", HOLD_DURATION, SKILL_HIT_DELAY + 6, 3,
                 List.of(),
-                List.of(new Hit(SKILL_HIT_DELAY, 2.0, 1.5, 1.0, 0.0, 3.0, false)),
+                List.of(new Hit(SKILL_HIT_DELAY, 0, 1.5, 1.0, 0.0, 3.0, false)),
                 List.of(),
                 0, 0, 0, 0
         ).withEngagement(NO_GENERIC_MOVE);
