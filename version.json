@@ -1,0 +1,10 @@
+{
+  "homepage": "https://modrinth.com/mod/minegenshin",
+  "26.2.": {
+    "1.0.0": "26.2新版本，实装薇斯娜和沃雅妮莎"
+  },
+  "promos": {
+    "26.2-latest": "1.0.0",
+    "26.2-recommended": "1.0.0"
+  }
+}

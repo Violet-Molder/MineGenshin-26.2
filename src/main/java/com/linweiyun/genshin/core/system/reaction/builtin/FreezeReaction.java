@@ -14,6 +14,7 @@ import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import org.slf4j.Logger;
 
@@ -27,6 +28,7 @@ import org.slf4j.Logger;
  *   - 不能与 FROZEN 本身发生冻结反应（已经冻住了不能再冻）
  *   - 冻结反应不是增幅反应，不影响伤害
  *   - 冻结反应产生 FROZEN 元素（通过 ElementalAttachmentHelper.attach 添加）
+ *   - 方块端冻结（targetEntity 为 null）：直接向容器添加 FROZEN，不走实体流程
  *
  * TODO: 完整冻结效果（减速、冻结实体等）暂不实现，待后续补充
  * TODO: 冻结藏冰/藏水逻辑 —— 冻结反应发生后还能残留额外的冰或水
@@ -61,10 +63,8 @@ public class FreezeReaction extends ElementalReaction {
      */
     @Override
     public boolean canMatch(GenshinElement attackerElement, GenshinElement defenderElement) {
-        // 精确元素前置过滤：冻元素不参与冻结反应的任何一侧
         if (attackerElement == ModElements.FROZEN.get()) return false;
         if (defenderElement == ModElements.FROZEN.get()) return false;
-        // 主元素归并配对（交给基类默认逻辑）
         return super.canMatch(attackerElement, defenderElement);
     }
 
@@ -76,9 +76,7 @@ public class FreezeReaction extends ElementalReaction {
      */
     @Override
     public boolean canConsume(ElementalAttachmentInstance instance, GenshinElement slotElement) {
-        // 冻元素不参与冻结反应的任何槽位消耗
         if (instance.getElement() == ModElements.FROZEN.get()) return false;
-        // 其他情况交给基类主元素归并匹配
         return super.canConsume(instance, slotElement);
     }
 
@@ -99,6 +97,8 @@ public class FreezeReaction extends ElementalReaction {
      *   ② 算量 —— 遍历目标容器算出先手元素的总量（调用基类 sumConsumable，内部走 canConsume 过滤），按消耗比算双方各扣多少
      *   ③ 扣减 —— 后手元素从全局消耗，先手元素调用基类 consumeFromContainer（内部走 canConsume 过滤）
      *   ④ 生成 —— (消耗总量 × 2) 份 FROZEN 附加到目标身上
+     *
+     *   方块端执行（targetEntity 为 null）：跳过实体附着和武器被动，直接向容器添加 FROZEN。
      *
      * ===== 变量名说明 =====
      *   attacker     = 后手（本次附着的那一方，来自 attacker 攻击）
@@ -177,13 +177,24 @@ public class FreezeReaction extends ElementalReaction {
         if (totalConsumed > 0f) {
             float frozenQty = totalConsumed * FROZEN_MULTIPLIER;
 
-            ElementalAttachmentHelper.attach(
-                    ctx.targetEntity(),
-                    ctx.targetContainer(),
-                    ModElements.FROZEN.get(),
-                    AttachmentSource.SPECIAL,
-                    new AttachmentProfile(frozenQty, 1.0f, 0.0f, 999.0f)
-            );
+            if (ctx.targetEntity() != null) {
+                // 实体端：走 ElementalAttachmentHelper.attach（需要 LivingEntity 做 ElementalAttachable 检查）
+                ElementalAttachmentHelper.attach(
+                        ctx.targetEntity(),
+                        ctx.targetContainer(),
+                        ModElements.FROZEN.get(),
+                        AttachmentSource.SPECIAL,
+                        new AttachmentProfile(frozenQty, 1.0f, 0.0f, 999.0f)
+                );
+            } else {
+                // 方块端：直接向容器添加 FROZEN
+                ElementalAttachmentInstance frozenInst = new ElementalAttachmentInstance(
+                        ModElements.FROZEN.get(),
+                        AttachmentSource.SPECIAL,
+                        new AttachmentProfile(frozenQty, 1.0f, 0.0f, 999.0f),
+                        frozenQty);
+                ctx.targetContainer().add(frozenInst);
+            }
 
             for (var inst : ctx.targetContainer().getAll()) {
                 if (inst.isFinished()) continue;
@@ -198,8 +209,9 @@ public class FreezeReaction extends ElementalReaction {
                 container.getFrozenDecayState().activate();
             }
 
-            // 武器被动（漩流颂歌）：附近的队伍成员触发冻结 → 打开 5 秒强化窗口
-            if (ctx.targetEntity().level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            // 武器被动（漩流颂歌）：仅实体端
+            if (ctx.targetEntity() != null
+                    && ctx.targetEntity().level() instanceof ServerLevel serverLevel) {
                 com.linweiyun.genshin.content.items.weapon.catalyst.WhirlflowHymn.markReactionTriggers(
                         serverLevel, ctx.attackerEntity(),
                         ctx.targetEntity().getX(), ctx.targetEntity().getY(), ctx.targetEntity().getZ());

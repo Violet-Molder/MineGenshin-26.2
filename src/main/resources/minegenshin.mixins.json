@@ -5,15 +5,18 @@
   "compatibilityLevel": "JAVA_25",
   "plugin": "com.linweiyun.genshin.mixin.MixinConfig",
   "mixins": [
+    "AccessorRangedAttribute",
     "BlazeResistanceMixin",
+    "BlockEntityElementalMixin",
     "DamageContainerMixin",
+    "FrostedIceMixin",
     "LivingEntityDecayMixin",
+    "LivingEntityElementalMixin",
     "LivingEntityHurtMixin",
     "LivingEntityTeyvatMixin",
     "MagmaCubeResistanceMixin",
     "PlayerAttackInterceptor",
-    "PlayerHurtInterceptor",
-    "AccessorRangedAttribute"
+    "PlayerHurtInterceptor"
   ],
   "client": [
     "AvatarRendererMixin",

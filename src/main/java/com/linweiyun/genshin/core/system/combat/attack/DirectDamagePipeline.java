@@ -7,8 +7,8 @@ import com.linweiyun.genshin.core.status.StatusAccessor;
 import com.linweiyun.genshin.core.system.about.AttachmentProfile;
 import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
+import com.linweiyun.genshin.core.system.about.block.BlockElementHelper;
 import com.linweiyun.genshin.core.system.combat.damage.CombatMath;
-import com.linweiyun.genshin.core.system.combat.damage.DamageIndicatorFactory;
 import com.linweiyun.genshin.core.system.combat.damage.DamageTrace;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
@@ -18,10 +18,11 @@ import com.linweiyun.genshin.core.system.combat.decay.IDecayCounterHolder;
 import com.linweiyun.genshin.core.system.reaction.ElementalReactionManager;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
-import com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch;
 import com.linweiyun.genshin.core.system.shield.ShieldService;
 import com.linweiyun.genshin.core.system.shield.ShieldService.AttachDecision;
 import com.linweiyun.genshin.enums.ElementalReactionType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
@@ -30,7 +31,7 @@ import net.minecraft.world.entity.LivingEntity;
  * <pre>
  * ① 衰减：算元素量与伤害系数（连续打同一个目标会递减）
  * ② 附着：把元素挂到目标身上
- * ③ 反应：挂上之后尝试触发反应
+ * ③ 反应：挂上之后尝试触发反应（反应飘字由 ElementalReactionManager 内部处理）
  * ④ 乘区：伤害 = 基础区 × 倍率区 × 暴击区 × 增伤区 × 防御区 × 抗性区
  *                  ×（增幅反应）反应倍率 × 反应加成区 × 衰减系数
  * </pre>
@@ -117,6 +118,7 @@ final class DirectDamagePipeline {
         }
 
         // ── ③ 反应 ──
+        // 反应飘字由 ElementalReactionManager.tryReactAfterAttach 内部统一处理，此处不再重复。
         ReactionResult reactionResult = null;
         if (canReact) {
             ReactionContext ctx = new ReactionContext(
@@ -129,12 +131,6 @@ final class DirectDamagePipeline {
                 reactionResult != null && reactionResult.isReacted() ? reactionResult.getReactionType() : null;
         trace.head("反应", reactionType == null ? "无" : reactionType);
 
-        if (reactionType != null
-                && reactionType != ElementalReactionType.LUNAR_CHARGED
-                && !StellarGlimmerBranch.isStellarGlimmer(reactionType)) {
-            // 星烁/月曜自己会飘专属表现，不在这里弹通用反应字
-            DamageIndicatorFactory.reaction(target, reactionType);
-        }
         boolean amplifying = reactionType == ElementalReactionType.MELT
                 || reactionType == ElementalReactionType.VAPORIZE;
 
@@ -198,14 +194,14 @@ final class DirectDamagePipeline {
 
     /** 大权区（按招式显式打开；没打开就是 1）。 */
     private static float damageBonusSovereignty(ModDamageSpec spec) {
-        return DamageZones.sovereigntyZone(spec);
+        return 1f + spec.getSovereigntyBonus();
     }
 
-    /** 元素量 → 附着档位。 */
-    private static AttachmentProfile chooseProfile(float elementAmount) {
-        if (elementAmount >= 4.0f) return AttachmentProfile.ULTRA_STRONG;
-        if (elementAmount >= 2.0f) return AttachmentProfile.STRONG;
-        if (elementAmount >= 1.5f) return AttachmentProfile.MEDIUM;
+    /** 按元素量选附着档次。 */
+    private static AttachmentProfile chooseProfile(float amount) {
+        if (amount <= 0f) return AttachmentProfile.WEAK;
+        if (amount >= 4f) return AttachmentProfile.ULTRA_STRONG;
+        if (amount >= 2f) return AttachmentProfile.MEDIUM;
         return AttachmentProfile.WEAK;
     }
 }

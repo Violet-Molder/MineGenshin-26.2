@@ -12,6 +12,8 @@ import com.geckolib.util.GeckoLibUtil;
 import com.linweiyun.genshin.content.entities.teyvat.monster.TeyvatMonster;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.system.about.AttachmentProfile;
+import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
@@ -110,6 +112,12 @@ public class TeyvatSlime extends TeyvatMonster implements GeoEntity {
         net.minecraft.resources.Identifier key = ModRegistries.ELEMENT_REGISTRY.getKey(element);
         this.entityData.set(DATA_ELEMENT, key != null ? key.toString() : "minegenshin:fysikos");
     }
+
+    @Override
+    public boolean onAttachElement(GenshinElement element, AttachmentSource source, AttachmentProfile profile) {
+        return element == this.getElement();
+    }
+
     static class SlimeMoveControl extends MoveControl {
         private float yRot;              //旋转角度
         private int jumpDelay;           //跳跃间隔

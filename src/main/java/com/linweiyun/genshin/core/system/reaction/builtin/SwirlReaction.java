@@ -117,15 +117,14 @@ public class SwirlReaction extends ElementalReaction {
         float consumedPyroSide;
         float consumedAnemoSide;
 
+        float[] consumed;
         if (attackerIsAnemo) {
-            float[] consumed = calculateConsumption(totalDefenderUnit, attackerQty);
-            consumedPyroSide = consumed[0];
-            consumedAnemoSide = consumed[1];
+            consumed = calculateConsumption(totalDefenderUnit, attackerQty);
         } else {
-            float[] consumed = calculateConsumption(attackerQty, totalDefenderUnit);
-            consumedPyroSide = consumed[0];
-            consumedAnemoSide = consumed[1];
+            consumed = calculateConsumption(attackerQty, totalDefenderUnit);
         }
+        consumedPyroSide = consumed[0];
+        consumedAnemoSide = consumed[1];
         if (consumedPyroSide <= 0f || consumedAnemoSide <= 0f) {
             return ReactionResult.builder(reactionType).build();
         }

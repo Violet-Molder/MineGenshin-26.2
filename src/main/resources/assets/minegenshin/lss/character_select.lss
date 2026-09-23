@@ -7,11 +7,10 @@
   flex-direction: row;
 }
 #character-view {
-  flex: 1;                 /* ★ 自适应：占满剩余宽度，头像的百分比宽度跟着一起缩放 */
   height: 100%;
   flex-direction: row;
   padding-all: 5;
-    width: 60%;
+  width: 40%;
   overflow: hidden;
 }
 label {

@@ -430,8 +430,8 @@ public final class CombatTargeting {
     static {
         // 服务端玩家退出时顺手清掉，避免静态表堆积
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("[CombatTargeting] 软锁定索敌已加载：acquire={} keep={} angle={}/{}",
-                    ACQUIRE_RANGE, KEEP_RANGE, ACQUIRE_ANGLE, KEEP_ANGLE);
+//            LOGGER.debug("[CombatTargeting] 软锁定索敌已加载：acquire={} keep={} angle={}/{}",
+//                    ACQUIRE_RANGE, KEEP_RANGE, ACQUIRE_ANGLE, KEEP_ANGLE);
         }
     }
 

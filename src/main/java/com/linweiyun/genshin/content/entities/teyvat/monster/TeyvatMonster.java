@@ -2,13 +2,14 @@ package com.linweiyun.genshin.content.entities.teyvat.monster;
 
 import com.linweiyun.genshin.content.entities.teyvat.ElementalCreature;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatHostile;
+import com.linweiyun.genshin.core.system.about.ElementalAttachable;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.level.Level;
 
-public abstract class TeyvatMonster extends Monster implements TeyvatHostile {
+public abstract class TeyvatMonster extends Monster implements TeyvatHostile, ElementalAttachable {
     protected TeyvatMonster(EntityType<? extends Monster> type, Level level) {
         super(type, level);
     }

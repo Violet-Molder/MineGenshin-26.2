@@ -6,8 +6,12 @@ import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
+import com.linweiyun.genshin.core.system.combat.damage.DamageIndicatorFactory;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
+import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -17,13 +21,13 @@ import java.util.List;
 /**
  * 元素反应管理器 —— 单例（用静态方法）
  *
- * 核心流程（附着入口调用 tryReactAfterAttach）：
- *   1. 拿到目标身上所有先手元素（遍历 container 里的 ElementalAttachmentInstance）
+ * 核心流程（附着入口调用 tryReactAfterAttach / tryReactForBlock）：
+ *   1. 拿到目标身上所有先手元素
  *   2. 拿到本次后手附着的元素和量
  *   3. 收集所有"后手元素 + 某个先手元素"能触发的反应
  *   4. 按默认优先级排序（优先级小的先）
  *   5. 依次执行反应，每一轮消耗后检查后手是否还有剩余
- *   6. 所有反应执行完后，处理后手残留（NORMAL_ATTACK 残留清 0，其他保留）
+ *   6. 反应飘字由本管理器内部处理（不依赖伤害管线）
  */
 public class ElementalReactionManager {
 
@@ -68,40 +72,19 @@ public class ElementalReactionManager {
         return false;
     }
 
+    // ==================== 实体端反应入口 ====================
     public static ReactionResult tryReactAfterAttach(ReactionContext context) {
         float remainingAttackerQty = context.attackerUnit();
-
         List<ElementalAttachmentInstance> defenders = collectDefenders(context);
-
         if (defenders.isEmpty()) {
             return ReactionResult.builder(null).build();
         }
 
-        List<Candidate> candidates = new ArrayList<>();
-        for (ElementalAttachmentInstance defender : defenders) {
-            GenshinElement defenderMain = defender.getElement().getMainElement();
-            GenshinElement attackerMain = context.attackerElement().getMainElement();
-
-            for (ElementalReaction reaction : ModRegistries.ELEMENTAL_REACTIONS_REGISTRY) {
-                if (!reaction.canMatch(attackerMain, defenderMain)) continue;
-
-                boolean blocked = reaction.isBlocked(context);
-                if (blocked) continue;
-
-                int priority = reaction.getBasePriority();
-                if (priority < 0) {
-                    priority = ReactionPriorityCalculator.computeFor(
-                            context.attackerElement(), defender.getElement(), reaction);
-                }
-
-                candidates.add(new Candidate(reaction, defender, priority));
-            }
-        }
-
-        candidates.sort(Comparator.comparingInt(c -> c.priority));
+        List<Candidate> candidates = buildCandidates(context, defenders);
 
         ReactionResult firstAmplified = null;
         boolean anyReactionOccurred = false;
+        List<ElementalReactionType> reactionTypes = new ArrayList<>();
 
         for (Candidate cand : candidates) {
             if (remainingAttackerQty <= 0f) break;
@@ -123,6 +106,7 @@ public class ElementalReactionManager {
             if (result.isReacted()) {
                 anyReactionOccurred = true;
                 remainingAttackerQty -= result.getConsumedAttacker();
+                reactionTypes.add(result.getReactionType());
                 if (firstAmplified == null && result.isAmplified()) {
                     firstAmplified = result;
                 }
@@ -131,11 +115,86 @@ public class ElementalReactionManager {
 
         if (anyReactionOccurred) {
             applyAttackerResidual(context, remainingAttackerQty);
+            // 反应飘字由管理器内部处理（不再依赖伤害管线）
+            for (ElementalReactionType rt : reactionTypes) {
+                if (rt != null
+                        && rt != ElementalReactionType.LUNAR_CHARGED
+                        && !StellarGlimmerBranch.isStellarGlimmer(rt)) {
+                    if (context.targetEntity() != null) {
+                        DamageIndicatorFactory.reaction(context.targetEntity(), rt);
+                    }
+                }
+            }
         }
 
         return firstAmplified != null ? firstAmplified :
                 ReactionResult.builder(null).build();
     }
+
+    // ==================== 方块端反应入口 ====================
+
+    /**
+     * 方块端反应入口 —— 对附着在方块上的元素实例进行反应。
+     * 飘字通过 DamageIndicatorFactory.reactionAtBlock 显示在方块位置。
+     */
+    public static ReactionResult tryReactForBlock(ReactionContext ctx,
+                                                  ServerLevel level, BlockPos blockPos) {
+        float remainingAttackerQty = ctx.attackerUnit();
+        List<ElementalAttachmentInstance> defenders = collectDefenders(ctx);
+        if (defenders.isEmpty()) {
+            return ReactionResult.builder(null).build();
+        }
+
+        List<Candidate> candidates = buildCandidates(ctx, defenders);
+
+        ReactionResult firstAmplified = null;
+        boolean anyReactionOccurred = false;
+        List<ElementalReactionType> reactionTypes = new ArrayList<>();
+
+        for (Candidate cand : candidates) {
+            if (remainingAttackerQty <= 0f) break;
+            if (cand.defender.isFinished()) continue;
+
+            ReactionContext roundContext = new ReactionContext(
+                    ctx.attackerElement(),
+                    remainingAttackerQty,
+                    ctx.attackerSource(),
+                    ctx.attackerProfile(),
+                    ctx.damageSpec(),
+                    ctx.attackerEntity(),
+                    ctx.targetContainer(),
+                    ctx.targetEntity()
+            );
+
+            ReactionResult result = cand.reaction.execute(roundContext);
+
+            if (result.isReacted()) {
+                anyReactionOccurred = true;
+                remainingAttackerQty -= result.getConsumedAttacker();
+                reactionTypes.add(result.getReactionType());
+                if (firstAmplified == null && result.isAmplified()) {
+                    firstAmplified = result;
+                }
+            }
+        }
+
+        if (anyReactionOccurred) {
+            applyAttackerResidual(ctx, remainingAttackerQty);
+            // 方块端反应飘字：显示在方块位置
+            for (ElementalReactionType rt : reactionTypes) {
+                if (rt != null
+                        && rt != ElementalReactionType.LUNAR_CHARGED
+                        && !StellarGlimmerBranch.isStellarGlimmer(rt)) {
+                    DamageIndicatorFactory.reactionAtBlock(level, blockPos, rt);
+                }
+            }
+        }
+
+        return firstAmplified != null ? firstAmplified :
+                ReactionResult.builder(null).build();
+    }
+
+    // ==================== 内部 ====================
 
     private static List<ElementalAttachmentInstance> collectDefenders(ReactionContext context) {
         List<ElementalAttachmentInstance> result = new ArrayList<>();
@@ -144,20 +203,38 @@ public class ElementalReactionManager {
         for (StatusInstance inst : context.targetContainer().getAll()) {
             if (inst.isFinished()) continue;
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
-
             GenshinElement defMain = ea.getElement().getMainElement();
             if (defMain == attackerMain) continue;
             if (ea.getElement() == ModElements.FYSIKOS.get()) continue;
             if (ea.getElement().isInstant()) continue;
-
             result.add(ea);
         }
         return result;
     }
 
+    private static List<Candidate> buildCandidates(ReactionContext context,
+                                                   List<ElementalAttachmentInstance> defenders) {
+        List<Candidate> candidates = new ArrayList<>();
+        for (ElementalAttachmentInstance defender : defenders) {
+            GenshinElement defenderMain = defender.getElement().getMainElement();
+            GenshinElement attackerMain = context.attackerElement().getMainElement();
+            for (ElementalReaction reaction : ModRegistries.ELEMENTAL_REACTIONS_REGISTRY) {
+                if (!reaction.canMatch(attackerMain, defenderMain)) continue;
+                if (reaction.isBlocked(context)) continue;
+                int priority = reaction.getBasePriority();
+                if (priority < 0) {
+                    priority = ReactionPriorityCalculator.computeFor(
+                            context.attackerElement(), defender.getElement(), reaction);
+                }
+                candidates.add(new Candidate(reaction, defender, priority));
+            }
+        }
+        candidates.sort(Comparator.comparingInt(c -> c.priority));
+        return candidates;
+    }
+
     private static void applyAttackerResidual(ReactionContext context, float remainingQty) {
         if (remainingQty <= 0f) return;
-
         if (context.attackerFollowsNoResidualRule()) {
             ElementalAttachmentHelper.consume(
                     context.targetContainer(), context.attackerElement(), Float.MAX_VALUE);

@@ -45,8 +45,6 @@ public final class DamageIndicatorRpc {
             );
             DamageIndicatorManager.add(indicator);
             DamageIndicatorRenderer.onIndicatorAdded(indicator);
-        } else {
-            LOGGER.warn("[DI-RPC] packet came from client side, ignoring");
         }
     }
 
@@ -68,6 +66,36 @@ public final class DamageIndicatorRpc {
                 "genshin:damage_indicator",
                 targetX, targetY, targetZ,
                 originX, originY, originZ,
+                text,
+                topColor, bottomColor,
+                style,
+                italic,
+                baseScale, startScale,
+                durationMs
+        );
+    }
+
+    /**
+     * 方块位置反应飘字 —— 目标位置和出现位置设为同一坐标（方块中心）。
+     * 复用现有 RPC 通道。
+     */
+    public static void sendReactionAtPos(
+            ServerPlayer player,
+            String text,
+            Vec3 pos,
+            int topColor,
+            int bottomColor,
+            byte style,
+            boolean italic,
+            float baseScale,
+            float startScale,
+            int durationMs
+    ) {
+        RPCPacketDistributor.rpcToPlayer(
+                player,
+                "genshin:damage_indicator",
+                pos.x, pos.y, pos.z,
+                pos.x, pos.y, pos.z,
                 text,
                 topColor, bottomColor,
                 style,

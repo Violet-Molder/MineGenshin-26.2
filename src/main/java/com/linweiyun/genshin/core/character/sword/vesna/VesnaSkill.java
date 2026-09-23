@@ -265,7 +265,7 @@ public class VesnaSkill extends SkillBase {
         List<LivingEntity> targets = new AreaEntityCollector(level, startPos, endPos, 1.0f).execute();
 
         for (LivingEntity target : targets) {
-            if (target != player) {
+            if (target != player && target.isAlive()) {
                 ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.ANEMO.get())
                         .multiplier(multiplier)
                         .elementAmount(AttachmentType.ULTRA_STRONG.getInitialAmount())
@@ -274,7 +274,7 @@ public class VesnaSkill extends SkillBase {
                 ModDamageSource source = ModDamageSource.from(spec, player);
                 if (target.level() instanceof ServerLevel serverLevel) {
                     target.hurtServer(serverLevel, source, 0f);
-                    if (stage == 6) {
+                    if (stage == 6 && target.isAlive()) {
                         target.hurtServer(serverLevel, source, 0f);
                     }
                 }

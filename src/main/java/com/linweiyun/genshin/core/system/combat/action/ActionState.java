@@ -75,10 +75,6 @@ public class ActionState {
         this.tickCount = 0;
         this.finished = false;
 
-        LOGGER.info("[ActionState] START kind={} comboIndex={} anim={} duration={} hits={} protect={} prepare={} side={}",
-                definition.kind, definition.comboIndex,
-                definition.animationName(), totalDuration, hitDelays.length, protectDuration, prepareTicks,
-                context.player.level().isClientSide() ? "CLIENT" : "SERVER");
 
         // ⭐ 触发那一刻（tick 0）—— 「触发即生效」钩子。
         //    必须在 checkHits() 之前：它是「这一招已经放出来了」，不是「伤害在第几帧」。
@@ -125,9 +121,6 @@ public class ActionState {
     }
 
     private void finish() {
-        LOGGER.info("[ActionState] FINISH kind={} comboIndex={} totalTicks={} side={}",
-                definition.kind, definition.comboIndex, tickCount,
-                context.player.level().isClientSide() ? "CLIENT" : "SERVER");
         fire(definition.getOnComplete());
         finished = true;
     }
@@ -144,9 +137,6 @@ public class ActionState {
 
     public void interrupt(InterruptReason reason) {
         if (finished) return;
-        LOGGER.info("[ActionState] INTERRUPT reason={} kind={} side={}",
-                reason, definition.kind,
-                context.player.level().isClientSide() ? "CLIENT" : "SERVER");
         context.markInterrupted(reason);
         fire(definition.getOnInterrupt());
         finished = true;

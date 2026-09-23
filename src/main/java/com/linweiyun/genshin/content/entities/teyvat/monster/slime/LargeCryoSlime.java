@@ -22,9 +22,12 @@ import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.about.AttachmentProfile;
 import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
+import com.linweiyun.genshin.core.system.about.block.BlockElementHelper;
 import com.linweiyun.genshin.core.system.shield.ShieldProfiles;
 import com.linweiyun.genshin.core.system.shield.ShieldService;
 import com.linweiyun.genshin.core.system.shield.ShieldState;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -37,6 +40,8 @@ import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.PathType;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,6 +60,10 @@ import org.jetbrains.annotations.Nullable;
  * <h2>元素生物的统一规则</h2>
  * {@link ElementalCreature} 让它<b>永久免疫冰元素伤害</b>（含「冻」元素，
  * 因为冻的主元素是冰）。免疫判定在 {@code TeyvatMonster#hurtServer} 里统一做。
+ *
+ * <h2>环境交互</h2>
+ * 实现 {@code ElementalAttachable.onAttachElement} 拒绝水元素附着。
+ * 踩水 → 给水附着冰（冻结成浮冰），踩冰 → 给冰附着冻（永不融化）。
  *
  * <h2>数值</h2>
  * 生命 ×2、攻击 ×1.4，接在既有的「按等级查表」系统上
@@ -122,6 +131,17 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
         this.moveControl = new WriggleMoveControl<LargeCryoSlime>(this);
         this.navigation.setCanFloat(false);
         this.setPathfindingMalus(PathType.WATER, -1.0F);
+    }
+
+    // ==================== 元素附着控制 ====================
+
+    /**
+     * 冰史莱姆拒绝所有水元素附着。
+     * 通过 Mixin 注入的 ElementalAttachable 接口实现。
+     */
+    @Override
+    public boolean onAttachElement(GenshinElement element, AttachmentSource source, AttachmentProfile profile) {
+        return element != ModElements.HYDRO.get();
     }
 
     // ==================== 元素生物 ====================
@@ -203,6 +223,32 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
             this.cryoAuraTimer = SELF_AURA_INTERVAL;
             applySelfCryoAura();
         }
+
+        // 落水保护：冰史莱姆绝不允许在水中
+        if (this.isInWater() && this.level() instanceof ServerLevel sl) {
+            BlockPos escapePos = findEscapePos();
+            if (escapePos != null) {
+                this.teleportTo(escapePos.getX() + 0.5, escapePos.getY(), escapePos.getZ() + 0.5);
+                BlockPos under = escapePos.below();
+                if (this.level().getBlockState(under).is(Blocks.WATER)) {
+                    BlockElementHelper.applyElement(sl, under, ModElements.CYRO.get(), 2.0f, 0.2f);
+                }
+            }
+            return;
+        }
+
+        // 环境交互：踩水冻结 / 踩冰强化冻元素
+        if (this.onGround() && this.level() instanceof ServerLevel sl) {
+            BlockPos under = this.blockPosition().below();
+            BlockState underState = this.level().getBlockState(under);
+            if (underState.is(Blocks.WATER)) {
+                // 踩水 → 给水附着冰 → 冻结反应 → 浮冰 + 冻元素
+                BlockElementHelper.applyElement(sl, under, ModElements.CYRO.get(), 1.0f, 0.2f);
+            } else if (underState.is(Blocks.FROSTED_ICE)) {
+                // 踩冰 → 每 tick 刷新冻元素量，靠高频刷新抵消衰减实现永不化
+                BlockElementHelper.applyElement(sl, under, ModElements.FROZEN.get(), 1.0f, 0.2f);
+            }
+        }
     }
 
     /** 给自己挂弱冰附着。 */
@@ -219,6 +265,22 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
                 weak.getBaseQuantity(), 1.0f, weak.getDecayPerSecond(), weak.getDurationSeconds());
         ElementalAttachmentHelper.attach(this, container, ModElements.CYRO.get(),
                 AttachmentSource.SELF_ATTACH, full);
+    }
+
+    /**
+     * 从脚下逐层向上搜索非水空气方块作为安全传送点。
+     */
+    private BlockPos findEscapePos() {
+        BlockPos pos = this.blockPosition();
+        int maxSearch = 16;
+        for (int dy = 0; dy < maxSearch; dy++) {
+            BlockPos check = pos.above(dy);
+            BlockState state = this.level().getBlockState(check);
+            if (!state.is(Blocks.WATER) && state.isAir()) {
+                return check;
+            }
+        }
+        return pos.above(maxSearch);
     }
 
     // ==================== AI ====================

@@ -66,7 +66,8 @@ public class ModModeProvider extends ModelProvider {
      * 否则数据生成会报 “Missing item model definitions”。
      */
     private static final Set<Item> HAND_WRITTEN_MODELS = Set.of(
-            ModItems.TEST_SWORD.get());
+            ModItems.BEYOND_THE_CHRYSALIS.get(),
+            ModItems.WHIRLFLOW_HYMN.get());
 
     public ModModeProvider(PackOutput output) {
         super(output, Minegenshin.MOD_ID);
@@ -102,15 +103,6 @@ public class ModModeProvider extends ModelProvider {
                 // 和手写时保持一致：换手不播交换动画
                 new ClientItem.Properties(false, false, 1.0F));
 
-        // ---- 蝶变：模型暂时直接用钻石剑（借原版 item/diamond_sword） ----
-        borrowModel(itemModels, ModItems.BEYOND_THE_CHRYSALIS.get(),
-                Identifier.withDefaultNamespace("item/diamond_sword"),
-                new ClientItem.Properties(true, false, 1.0F));
-
-        // ---- 漩流颂歌：模型暂时借用书本（借原版 item/book） ----
-        borrowModel(itemModels, ModItems.WHIRLFLOW_HYMN.get(),
-                Identifier.withDefaultNamespace("item/book"),
-                new ClientItem.Properties(false, false, 1.0F));
     }
 
     /**

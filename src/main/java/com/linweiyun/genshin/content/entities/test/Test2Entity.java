@@ -3,6 +3,9 @@ package com.linweiyun.genshin.content.entities.test;
 import com.linweiyun.genshin.content.entities.ai.goal.ApproachTargetGoal;
 import com.linweiyun.genshin.content.entities.ai.control.WriggleMoveControl;
 import com.linweiyun.genshin.content.entities.teyvat.monster.TeyvatMonster;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.system.about.AttachmentProfile;
+import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -109,5 +112,10 @@ public class Test2Entity extends TestMonster {
         if (ice != null) {
             this.level().addFreshEntity(ice);
         }
+    }
+
+    @Override
+    public boolean onAttachElement(GenshinElement element, AttachmentSource source, AttachmentProfile profile) {
+        return false;
     }
 }

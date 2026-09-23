@@ -2,6 +2,7 @@ package com.linweiyun.genshin.core.attachment;
 
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.entities.teyvat.TeyvatEntityStats;
+import com.linweiyun.genshin.core.system.about.block.ChunkBlockElements;
 import com.linweiyun.genshin.core.system.shield.ShieldState;
 import com.mojang.serialization.Codec;
 import net.minecraft.network.FriendlyByteBuf;
@@ -114,6 +115,14 @@ public class AttachmentRegistration {
             ATTACHMENTS.register("locked_target",
                     () -> AttachmentType.builder(() -> LockedTargetData.EMPTY)
                             .serialize(LockedTargetData.CODEC.fieldOf("locked_target"))
+                            .build()
+            );
+
+    public static final Supplier<AttachmentType<ChunkBlockElements>> CHUNK_ELEMENTS =
+            ATTACHMENTS.register("chunk_elements",
+                    () -> AttachmentType.builder(ChunkBlockElements::new)
+                            .serialize(ChunkBlockElements.CODEC.fieldOf("elements"))
+                            .sync(ChunkBlockElements.STREAM_CODEC)
                             .build()
             );
 

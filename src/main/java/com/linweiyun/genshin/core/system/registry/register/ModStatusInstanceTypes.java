@@ -9,11 +9,13 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 public class ModStatusInstanceTypes {
 
-    public static final DeferredRegister<StatusInstanceType<?>> STATUS_INSTANCE_TYPES = ModRegistries.STATUS_INSTANCE_TYPES;
+    public static final DeferredRegister<StatusInstanceType<?>> STATUS_INSTANCE_TYPES =
+            ModRegistries.STATUS_INSTANCE_TYPES;
 
     public static final DeferredHolder<StatusInstanceType<?>, StatusInstanceType<ElementalAttachmentInstance>> ELEMENTAL_ATTACHMENT =
             STATUS_INSTANCE_TYPES.register("elemental_attachment",
                     () -> new StatusInstanceType<>("elemental_attachment", ElementalAttachmentInstance::new));
+
 
     public static void register(IEventBus bus) {
         STATUS_INSTANCE_TYPES.register(bus);

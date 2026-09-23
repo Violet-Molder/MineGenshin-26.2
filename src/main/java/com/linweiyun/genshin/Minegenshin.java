@@ -10,12 +10,14 @@ import com.linweiyun.genshin.core.attachment.Backpack;
 import com.linweiyun.genshin.core.character.attachment.ModCharacterAttachmentTypes;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.network.NetworkManager;
+import com.linweiyun.genshin.core.system.about.block.BlockElementHelper;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.action.ServerTickScheduler;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -102,6 +104,9 @@ public class Minegenshin {
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         ServerTickScheduler.tick();
+        for (ServerLevel level : event.getServer().getAllLevels()) {
+            BlockElementHelper.onServerTick(level);
+        }
     }
 
     @SubscribeEvent

@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.network.DamageIndicatorRpc;
 import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,6 +46,7 @@ public final class DamageIndicatorFactory {
         if (element == ModElements.ELECTRO.get()) return parseColor(WorldTextColorConfig.ELECTRO_COLOR.get());
         if (element == ModElements.ANEMO.get()) return parseColor(WorldTextColorConfig.ANEMO_COLOR.get());
         if (element == ModElements.CYRO.get()) return parseColor(WorldTextColorConfig.CYRO_COLOR.get());
+        if (element == ModElements.FROZEN.get()) return parseColor(WorldTextColorConfig.FROZEN_COLOR.get());
         if (element == ModElements.GEO.get()) return parseColor(WorldTextColorConfig.GEO_COLOR.get());
         return parseColor(WorldTextColorConfig.PHYSICAL_COLOR.get());
     }
@@ -117,7 +119,6 @@ public final class DamageIndicatorFactory {
     //  1. damage
     // =====================================================================
 
-    /** 普通伤害 —— 默认元素色 */
     public static void damage(LivingEntity target, DamageSource source, float finalDamage, GenshinElement element) {
         damage(target, source, finalDamage, element, Options.DEFAULT);
     }
@@ -128,7 +129,6 @@ public final class DamageIndicatorFactory {
         spawnDamage(target, source, finalDamage, color, color, Style.NORMAL, options);
     }
 
-    /** 普通伤害 —— 自定义单色（十六进制） */
     public static void damageCustom(LivingEntity target, DamageSource source, float finalDamage, int color) {
         damageCustom(target, source, finalDamage, color, Options.DEFAULT);
     }
@@ -138,7 +138,6 @@ public final class DamageIndicatorFactory {
         spawnDamage(target, source, finalDamage, color, color, Style.NORMAL, options);
     }
 
-    /** 普通伤害 —— 渐变色（top → bottom） */
     public static void damageGradient(LivingEntity target, DamageSource source, float finalDamage, int topColor, int bottomColor) {
         damageGradient(target, source, finalDamage, topColor, bottomColor, Options.DEFAULT);
     }
@@ -184,7 +183,6 @@ public final class DamageIndicatorFactory {
     //  3. reaction
     // =====================================================================
 
-    /** 反应飘字（默认白色） */
     public static void reaction(LivingEntity target, ElementalReactionType type) {
         reaction(target, type, Options.DEFAULT);
     }
@@ -195,7 +193,6 @@ public final class DamageIndicatorFactory {
         spawnRaw(target, null, type.getDisplayName(), color, color, Style.REACTION, options);
     }
 
-    // 从玩家和目标实体中间飘出
     public static void reaction(LivingEntity target, Entity attacker, ElementalReactionType type) {
         reaction(target, attacker, type, Options.DEFAULT);
     }
@@ -206,7 +203,6 @@ public final class DamageIndicatorFactory {
         spawnRaw(target, attacker, type.getDisplayName(), color, color, Style.REACTION, options);
     }
 
-    /** 反应飘字（自定义单色） */
     public static void reactionCustom(LivingEntity target, ElementalReactionType type, int color) {
         reactionCustom(target, type, color, Options.DEFAULT);
     }
@@ -216,7 +212,6 @@ public final class DamageIndicatorFactory {
         spawnRaw(target, null, type.getDisplayName(), color, color, Style.REACTION, options);
     }
 
-    /** 反应飘字（渐变：top → bottom） */
     public static void reactionGradient(LivingEntity target, ElementalReactionType type, int topColor, int bottomColor) {
         reactionGradient(target, type, topColor, bottomColor, Options.DEFAULT);
     }
@@ -256,10 +251,9 @@ public final class DamageIndicatorFactory {
     }
 
     // =====================================================================
-    //  5. text  （新增）
+    //  5. text
     // =====================================================================
 
-    /** 纯文本飘字 —— 默认白色（物理色） */
     public static void text(LivingEntity target, String text) {
         text(target, text, Options.DEFAULT);
     }
@@ -277,7 +271,6 @@ public final class DamageIndicatorFactory {
         text(target, text == null ? "" : text.getString(), options);
     }
 
-    /** 纯文本 —— 自定义单色 */
     public static void textCustom(LivingEntity target, String text, int color) {
         textCustom(target, text, color, Options.DEFAULT);
     }
@@ -294,7 +287,6 @@ public final class DamageIndicatorFactory {
         textCustom(target, text == null ? "" : text.getString(), color, options);
     }
 
-    /** 纯文本 —— 渐变 */
     public static void textGradient(LivingEntity target, String text, int topColor, int bottomColor) {
         textGradient(target, text, topColor, bottomColor, Options.DEFAULT);
     }
@@ -312,24 +304,50 @@ public final class DamageIndicatorFactory {
     }
 
     // =====================================================================
+    //  6. 方块位置反应飘字
+    // =====================================================================
+
+    /**
+     * 在方块位置显示反应飘字。
+     * 以方块中心为锚点，target 和 origin 设为同一位置，复用现有 RPC 通道。
+     */
+    public static void reactionAtBlock(ServerLevel level, BlockPos pos,
+                                       ElementalReactionType type) {
+        if (type == null) return;
+        int color = getColorForReaction(type);
+        Vec3 center = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        for (ServerPlayer player : level.players()) {
+            if (player.distanceToSqr(center) <= BROADCAST_RADIUS_SQR) {
+                DamageIndicatorRpc.sendReactionAtPos(
+                        player,
+                        type.getDisplayName(),
+                        center,
+                        color, color,
+                        (byte) Style.REACTION.ordinal(),
+                        false,
+                        Options.DEFAULT.baseScale, Options.DEFAULT.startScale,
+                        (int) Options.DEFAULT.durationMs
+                );
+            }
+        }
+    }
+
+    // =====================================================================
     //  内部汇聚点
     // =====================================================================
 
-    /** 伤害类：从最终伤害取整作为文本 */
     private static void spawnDamage(LivingEntity target, DamageSource source, float finalDamage,
                                     int topColor, int bottomColor, Style style, Options options) {
         String text = String.valueOf(Math.round(finalDamage));
         spawnRaw(target, source == null ? null : source.getEntity(), text, topColor, bottomColor, style, options);
     }
 
-    /** 数值类（反应/治疗）：从数值取整作为文本，无攻击者 */
     private static void spawnValue(LivingEntity target, float value,
                                    int topColor, int bottomColor, Style style, Options options) {
         String text = String.valueOf(Math.round(value));
         spawnRaw(target, null, text, topColor, bottomColor, style, options);
     }
 
-    /** 核心 spawn —— 所有方法最终汇聚到这里 */
     private static void spawnRaw(LivingEntity target, Entity attacker, String text,
                                  int topColor, int bottomColor, Style style, Options options,
                                  boolean italic) {
@@ -342,8 +360,8 @@ public final class DamageIndicatorFactory {
     }
 
     private static void spawnRawInternal(LivingEntity target, Entity attacker, String text,
-                                 int topColor, int bottomColor, Style style, Options options,
-                                 boolean italic) {
+                                         int topColor, int bottomColor, Style style, Options options,
+                                         boolean italic) {
         if (options == null) options = Options.DEFAULT;
         if (target == null) return;
         if (text == null || text.isEmpty()) return;
@@ -351,12 +369,9 @@ public final class DamageIndicatorFactory {
 
         RandomSource rand = level.getRandom();
 
-        // 目标上方（落点中心）
         Vec3 targetCenter = target.position()
                 .add(0, target.getBbHeight() * 0.85, 0);
 
-        // 飘字散布范围（大幅扩大）
-        // 反应名统一抬高，和伤害数字拉开距离
         double extraY = (style == Style.REACTION) ? 0.6 : 0.0;
         double spreadH = 1.5;
         double verticalBase = 0.35;
@@ -388,7 +403,6 @@ public final class DamageIndicatorFactory {
             LAST_SPAWN_POS.put(targetId, finalPos);
         }
 
-        // 出现位置：攻击者身体与目标之间
         Vec3 originPos;
         if (attacker != null && attacker != target && attacker.level() == level) {
             Vec3 attackerCenter = attacker.position()

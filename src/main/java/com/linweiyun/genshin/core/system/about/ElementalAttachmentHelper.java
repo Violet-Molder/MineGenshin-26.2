@@ -12,25 +12,28 @@ import org.slf4j.Logger;
  * 元素附着入口 —— 实现附着损耗和覆盖规则，内部调桥接层存实例
  *
  * 附着处理流程：
- * 1. 算出实际附着量 = profile.actualQuantity() （baseQuantity × lossMultiplier）
- * 2. 在容器里查找"同元素 + 同 source"的已有实例
+ * 1. 调用目标身上的 ElementalAttachable.onAttachElement() 判断是否允许
+ * 2. 算出实际附着量 = profile.actualQuantity() （baseQuantity × lossMultiplier）
+ * 3. 在容器里查找"同元素 + 同 source"的已有实例
  *    → 不同 source 的同元素是独立实例，互不干扰
- * 3. 三种情况：
+ * 4. 三种情况：
  *    A. 无匹配实例 → 新建 ElementalAttachmentInstance
  *    B. 有实例 + 后手段量 ≤ 先手段量 → 不覆盖，什么都不做
  *    C. 有实例 + 后手段量 > 先手段量 → 量多则覆盖：
  *       - quantity = 后手段量
  *       - 元素.canOverrideDecay() == true（火/激/燃）→ 衰减速率替换为新值
  *       - 其他元素 → 衰减速率不变（继承原先的）
- * 4. 风/岩（instant=true）附着后立即消失，只能做后手反应
+ * 5. 风/岩（instant=true）附着后立即消失，只能做后手反应
  *
  * 后手不残留规则：本 Helper 只管"附着"，不管"触发反应"。
  * 反应消耗后后手元素是否强制清除，由 ElementalReactionHandler 处理。
  */
 public class ElementalAttachmentHelper {
 
-    // ========== 附着入口 —— 四种宿主 ==========
     public static final Logger LOGGER = LogUtils.getLogger();
+
+    // ========== 附着入口 —— 四种宿主 ==========
+
     public static void attach(LivingEntity target, StatusContainer container,
                               GenshinElement element,
                               AttachmentSource source,
@@ -77,6 +80,13 @@ public class ElementalAttachmentHelper {
                                  AttachmentSource source,
                                  AttachmentProfile profile,
                                  PGCharacter character, long gameTime) {
+
+        // 0. 先问目标是否允许此次附着
+        if (target instanceof ElementalAttachable attachable) {
+            if (!attachable.onAttachElement(element, source, profile)) {
+                return;
+            }
+        }
 
         // 1. 实际附着量 = baseQuantity × lossMultiplier
         float actualQuantity = profile.actualQuantity();

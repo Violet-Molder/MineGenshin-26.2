@@ -11,6 +11,7 @@ public class WorldTextColorConfig {
     public static ModConfigSpec.ConfigValue<String> ELECTRO_COLOR;
     public static ModConfigSpec.ConfigValue<String> ANEMO_COLOR;
     public static ModConfigSpec.ConfigValue<String> CYRO_COLOR;
+    public static ModConfigSpec.ConfigValue<String> FROZEN_COLOR;
     public static ModConfigSpec.ConfigValue<String> GEO_COLOR;
     public static ModConfigSpec.ConfigValue<String> MELT_COLOR;
     public static ModConfigSpec.ConfigValue<String> VAPORIZE_COLOR;
@@ -62,6 +63,9 @@ public class WorldTextColorConfig {
         SWIRL_COLOR = builder
                 .translation("minegenshin.configuration.reaction.swirl")
                 .define("swirl_color", "#68FBCA");
+        FROZEN_COLOR = builder
+                .translation("minegenshin.configuration.elemental.frozen_color")
+                .define("frozen_color", "#99FBFB");
         builder.pop();
 
         builder.push("lunar-stellar-color");

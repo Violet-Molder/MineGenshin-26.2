@@ -3,6 +3,9 @@ package com.linweiyun.genshin.content.entities.test;
 import com.linweiyun.genshin.content.entities.ai.control.WriggleMoveControl;
 import com.linweiyun.genshin.content.entities.ai.goal.ApproachTargetGoal;
 import com.linweiyun.genshin.content.entities.teyvat.monster.TeyvatMonster;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.system.about.AttachmentProfile;
+import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -150,5 +153,10 @@ public class Test1Entity extends TestMonster {
         target.hurtServer(serverLevel, this.damageSources().mobAttack(this), damage);
         // 打中别人 = 进入战斗，交给 CombatTimerHandler 计时
         this.resetCombat();
+    }
+
+    @Override
+    public boolean onAttachElement(GenshinElement element, AttachmentSource source, AttachmentProfile profile) {
+        return true;
     }
 }

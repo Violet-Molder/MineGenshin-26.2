@@ -88,7 +88,7 @@ public class ReactionPriorityCalculator {
      * 不是「能进入星扩散状态」的角色（那个是 {@code IStellarStateHolder}，两回事）。
      */
     public static boolean hasStellarSwirlHousehold(ServerLevel level) {
-        return com.linweiyun.genshin.core.system.reaction.StellarGlimmer.swirlHousehold(level) != null;
+        return StellarGlimmer.swirlHousehold(level) != null;
     }
 
     public static boolean hasStellarSwirlParticipant(ServerLevel level) {
