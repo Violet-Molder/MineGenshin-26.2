@@ -454,11 +454,11 @@ public class PGCharacter implements IPersistedSerializable, ISyncCharacter {
      * 普攻是否生成元素微粒。子类（如薇斯娜）覆盖返回 false 关闭，
      * 因为其技能内部已有自己的产球逻辑。
      */
-    protected boolean spawnsNormalAttackParticle() {
+    public boolean spawnsNormalAttackParticle() {
         return true;
     }
 
-    private void trySpawnNormalAttackParticle(Player player) {
+    public void trySpawnNormalAttackParticle(Player player) {
         if (player.level().getRandom().nextFloat() >= 0.5f) return;
         var element = getElemental();
         if (element == null || element == ModElements.FYSIKOS.get()) return;

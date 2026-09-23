@@ -55,6 +55,7 @@ public final class DamageIndicatorFactory {
         return switch (type) {
             case ELECTRO_CHARGED, LUNAR_CHARGED -> parseColor(WorldTextColorConfig.ELECTRO_CHARGED_COLOR.get());
             case SWIRL -> parseColor(WorldTextColorConfig.SWIRL_COLOR.get());
+            case FROZEN -> parseColor(WorldTextColorConfig.FROZEN_COLOR.get());
             case STELLAR_SWIRL_WIND, STELLAR_SWIRL_ICE -> parseColor(WorldTextColorConfig.STELLAR_BOTTOM_WIND_COLOR.get());
             default -> parseColor(WorldTextColorConfig.VAPORIZE_COLOR.get());
         };

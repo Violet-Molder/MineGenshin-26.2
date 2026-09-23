@@ -8,13 +8,18 @@ import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
 import com.linweiyun.genshin.content.entities.teyvat.monster.slime.LargeCryoSlime;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProjectile;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaSpiritSwordEntity;
+import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.SpawnPlacementTypes;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -124,9 +129,24 @@ public class ModEntities {
     public static void register(IEventBus eventBus) {
         ENTITIES.register(eventBus);
         eventBus.addListener(ModEntities::registerEntityAttributes);
+        eventBus.addListener(ModEntities::registerSpawnPlacements);
     }
 
     private static void registerEntityAttributes(EntityAttributeCreationEvent event) {
         event.put(LARGE_CRYO_SLIME.get(), LargeCryoSlime.createAttributes().build());
+    }
+
+    private static void registerSpawnPlacements(RegisterSpawnPlacementsEvent event) {
+        event.register(
+                LARGE_CRYO_SLIME.get(),
+                SpawnPlacementTypes.ON_GROUND,
+                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                (type, level, spawnType, pos, random) -> {
+                    if (level instanceof ServerLevel sl) {
+                        return TeyvatWorldInvasion.get(sl).isInvaded();
+                    }
+                    return false;
+                },
+                RegisterSpawnPlacementsEvent.Operation.REPLACE);
     }
 }

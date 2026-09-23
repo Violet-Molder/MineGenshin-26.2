@@ -75,7 +75,8 @@ public class WeaponXpConfig {
         XP_5STAR_35 = builder.translation("minsgenshin.configuration.level.35t36").comment("minsgenshin.configuration.level.35 -> Lv.36").defineInRange("35t36",40250, 0, 10000000);
         XP_5STAR_36 = builder.translation("minsgenshin.configuration.level.36t37").comment("minsgenshin.configuration.level.36 -> Lv.37").defineInRange("36t37",42150, 0, 10000000);
         XP_5STAR_37 = builder.translation("minsgenshin.configuration.level.37t38").comment("minsgenshin.configuration.level.37 -> Lv.38").defineInRange("37t38",44100, 0, 10000000);
-        XP_5STAR_38 = builder.translation("minsgenshin.configuration.level.38t39").comment("minsgenshin.configuration.level.38 -> Lv.39").defineInRange("38t38",46100, 0, 10000000);
+        XP_5STAR_38 = builder.translation("minsgenshin.configuration.level.38t39").comment("minsgenshin.configuration.level.38 -> Lv.39").defineInRange("38t39",46100, 0, 10000000);
+        XP_5STAR_39 = builder.translation("minsgenshin.configuration.level.39t40").comment("minsgenshin.configuration.level.39 -> Lv.40").defineInRange("39t40",48125, 0, 10000000);
         XP_5STAR_40 = builder.translation("minsgenshin.configuration.level.40t41").comment("minsgenshin.configuration.level.40 -> Lv.41").defineInRange("40t41",50150, 0, 10000000);
         XP_5STAR_41 = builder.translation("minsgenshin.configuration.level.41t42").comment("minsgenshin.configuration.level.41 -> Lv.42").defineInRange("41t42",54875, 0, 10000000);
         XP_5STAR_42 = builder.translation("minsgenshin.configuration.level.42t43").comment("minsgenshin.configuration.level.42 -> Lv.43").defineInRange("42t42",57125, 0, 10000000);

@@ -472,6 +472,10 @@
   "command.minegenshin.character.not_owned": "目标玩家没有该角色",
   "command.minegenshin.character.remove_success": "已从 %s 移除角色 [%s]",
 
-  "item.minegenshin.weapon.refinement_rank": "精炼等阶 %s"
+  "item.minegenshin.weapon.refinement_rank": "精炼等阶 %s",
+
+  "item.minegenshin.wanderers_advice": "流浪者的经验",
+  "item.minegenshin.adventurers_experience": "冒险家的经验",
+  "item.minegenshin.heros_wit": "大英雄的经验"
 
 }

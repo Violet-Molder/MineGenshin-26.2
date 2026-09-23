@@ -23,7 +23,7 @@ public class EntityAttackConfig {
 
         REFERENCE_ATTACK = StringDoubleValue.defineInRange(
                 builder.translation("minegenshin.configuration.attack.base.coefficient"),
-                "attack-base", 3.0, 0.0, Double.MAX_VALUE);
+                "attack-base", 12.0, 0.0, Double.MAX_VALUE);
 
         ATK_001 = StringDoubleValue.defineInRange(builder.translation("minsgenshin.configuration.level.1"), "lv1", 25.0, 0.0, Double.MAX_VALUE);
         ATK_002 = StringDoubleValue.defineInRange(builder.translation("minsgenshin.configuration.level.2"), "lv2", 29.0, 0.0, Double.MAX_VALUE);

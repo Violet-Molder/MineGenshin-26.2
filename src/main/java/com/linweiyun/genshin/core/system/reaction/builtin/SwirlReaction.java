@@ -404,9 +404,7 @@ public class SwirlReaction extends ElementalReaction {
                             radianceEffect, duration, 0, false);
                     CharacterEffectHelper.addEffect(p, character, instance);
                     // 排查用：挂的时候把时长打出来（含天赋 1 那 4 秒有没有加上）
-                    LOGGER.info("[辉映·星扩散] 挂上 char={} 时长={}刻({}秒) = 基础{} + 天赋1 {} | 遥久之歌覆盖={}",
-                            character.getName().getString(), duration, duration / 20f,
-                            RadianceStellarSwirlEffect.DURATION_TICKS, extend, songCovers);
+
                 }
             }
         }

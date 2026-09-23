@@ -219,7 +219,7 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
         // 只要盾还在，就每秒给自己挂一层弱冰附着 —— 这就是「冰盾自挂元素」：
         // 火打上来会正常挂火、和这层冰反应触发融化、双方被消耗，同时盾按元素表掉量。
         // 盾没了就不再自挂（否则破盾后身上还永远带冰）。
-        if (this.hasShield() && --this.cryoAuraTimer <= 0) {
+        if (--this.cryoAuraTimer <= 0) {
             this.cryoAuraTimer = SELF_AURA_INTERVAL;
             applySelfCryoAura();
         }

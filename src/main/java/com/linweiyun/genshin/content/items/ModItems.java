@@ -1,9 +1,14 @@
 package com.linweiyun.genshin.content.items;
 
 import com.linweiyun.genshin.Minegenshin;
+import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
+import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.content.items.artifact.crimson_witch.*;
 import com.linweiyun.genshin.content.items.artifact.scarlet_proof.*;
 import com.linweiyun.genshin.content.items.artifact.tenacity_of_the_millelith.*;
+import com.linweiyun.genshin.content.items.development.AdviceBookItem;
+import com.linweiyun.genshin.content.items.development.AdventurersExperienceItem;
+import com.linweiyun.genshin.content.items.development.HerosWitItem;
 import com.linweiyun.genshin.content.items.food.CharacterFoods;
 import com.linweiyun.genshin.content.items.food.FoodItem;
 import com.linweiyun.genshin.content.items.preicous.ItemPrimogem;
@@ -11,9 +16,15 @@ import com.linweiyun.genshin.content.items.weapon.catalyst.EverlastingMoonglow;
 import com.linweiyun.genshin.content.items.weapon.catalyst.HymnTheMaelstrom;
 import com.linweiyun.genshin.content.items.weapon.sword.BeyondTheChrysalis;
 import com.linweiyun.genshin.core.system.registry.RegistryHelper;
+import com.linweiyun.genshin.core.system.registry.register.ArtifactSets;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 public class ModItems {
@@ -75,6 +86,30 @@ public class ModItems {
   public static final Supplier<FoodItem> SWEET_MADAME =
           RegistryHelper.registerFoodItem("sweet_madame", props -> new FoodItem(
                   CharacterFoods.SWEET_MADAME, props));
+
+  public static final Supplier<AdviceBookItem> WANDERERS_ADVICE =
+          RegistryHelper.registerOrdinaryItem("wanderers_advice", AdviceBookItem::new);
+  public static final Supplier<AdventurersExperienceItem> ADVENTURERS_EXPERIENCE =
+          RegistryHelper.registerOrdinaryItem("adventurers_experience", AdventurersExperienceItem::new);
+  public static final Supplier<HerosWitItem> HEROS_WIT =
+          RegistryHelper.registerOrdinaryItem("heros_wit", HerosWitItem::new);
+
+  private static final Map<DeferredHolder<ArtifactSet, ArtifactSet>,
+          List<Supplier<? extends ArtifactItem>>> ARTIFACT_SET_ITEMS = new HashMap<>();
+
+  static {
+    ARTIFACT_SET_ITEMS.put(ArtifactSets.CRIMSON_WITCH,
+            List.of(CRIMSON_FLOWER, CRIMSON_PLUME, CRIMSON_SANDS, CRIMSON_GOBLET, CRIMSON_CIRCLET));
+    ARTIFACT_SET_ITEMS.put(ArtifactSets.SCARLET_PROOF,
+            List.of(SCARLET_FLOWER, SCARLET_PLUME, SCARLET_SANDS, SCARLET_GOBLET, SCARLET_CIRCLET));
+    ARTIFACT_SET_ITEMS.put(ArtifactSets.TENACITY_OF_THE_MILLELITH,
+            List.of(TENACITY_FLOWER, TENACITY_PLUME, TENACITY_SANDS, TENACITY_GOBLET, TENACITY_CIRCLET));
+  }
+
+  public static Map<DeferredHolder<ArtifactSet, ArtifactSet>,
+          List<Supplier<? extends ArtifactItem>>> getArtifactSetItemsMap() {
+    return Collections.unmodifiableMap(ARTIFACT_SET_ITEMS);
+  }
 
   public static void register(IEventBus modEventBus) {
     ITEMS.register(modEventBus);

@@ -707,6 +707,10 @@
   "command.minegenshin.character.not_owned": "Target player does not own this character",
   "command.minegenshin.character.remove_success": "Removed character [%s] from %s",
 
-  "item.minegenshin.weapon.refinement_rank": "Refinement Rank %s"
+  "item.minegenshin.weapon.refinement_rank": "Refinement Rank %s",
+
+  "item.minegenshin.wanderers_advice": "Wanderer's Advice",
+  "item.minegenshin.adventurers_experience": "Adventurer's Experience",
+  "item.minegenshin.heros_wit": "Hero's Wit"
 
 }

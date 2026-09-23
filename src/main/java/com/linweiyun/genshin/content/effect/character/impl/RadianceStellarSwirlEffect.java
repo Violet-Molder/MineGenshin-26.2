@@ -31,7 +31,5 @@ public class RadianceStellarSwirlEffect implements ICharacterEffect {
                                  CharacterEffectInstance existingInstance,
                                  CharacterEffectInstance newInstance) {
         existingInstance.setDuration(newInstance.getDuration());
-        LOGGER.debug("[辉映-星扩散] 刷新持续时间 to={} | char={}",
-                newInstance.getDuration(), character.getName());
     }
 }

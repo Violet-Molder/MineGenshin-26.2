@@ -77,7 +77,7 @@ public class ColumbinaSkill extends SkillBase {
 
         for (LivingEntity target : targets) {
             if (target != player) {
-                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.ANEMO.get())
+                ModDamageSpec spec = ModDamageSpec.builder(AttackType.NORMAL_ATTACK, ModElements.HYDRO.get())
                         .multiplier(multiplier)
                         .elementAmount(AttachmentType.ULTRA_STRONG.getInitialAmount())
                         .attackerCharacter(character)

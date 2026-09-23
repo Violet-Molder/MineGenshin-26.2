@@ -5,24 +5,50 @@ import com.linweiyun.genshin.content.items.artifact.inventory.ArtifactInventory;
 import com.linweiyun.genshin.content.items.artifact.type.ArtifactType;
 import com.linweiyun.genshin.content.items.component.ArtifactStatsComponent;
 import com.linweiyun.genshin.content.items.component.WeaponStatsComponent;
+import com.linweiyun.genshin.content.items.preicous.ItemPrimogem;
 import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.PlayerCharactersAttachment;
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.PGCharacterData;
+import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.TriState;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 
 @EventBusSubscriber
 public class PlayerPickupEvent {
+
+    @SubscribeEvent
+    public static void onPickupPrimogem(ItemEntityPickupEvent.Pre event) {
+        ItemEntity itemEntity = event.getItemEntity();
+        ItemStack stack = itemEntity.getItem();
+        if (!(stack.getItem() instanceof ItemPrimogem)) return;
+
+        Player player = event.getPlayer();
+        if (player.level().isClientSide()) return;
+
+        int primogem = player.getData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get()) + stack.getCount();
+        player.setData(AttachmentRegistration.PRIMOGEM_ATTACHMENT.get(), primogem);
+        NetworkManager.setPrimogemToPlayer((ServerPlayer) player, primogem);
+        player.sendSystemMessage(
+                Component.literal("你获得了 " + stack.getCount() + " 个原石，" + "当前原石数量为 " + primogem));
+
+        itemEntity.discard();
+        event.setCanPickup(TriState.FALSE);
+    }
+
     @SubscribeEvent
     public static void onPickupXpOrb(PlayerXpEvent.XpChange event) {
         Player player = event.getEntity();

@@ -99,6 +99,7 @@ public class CharacterCommand {
             return 0;
         }
         attachment.addCharacterToPlayer(target ,character);
+        attachment.syncToPlayer(target);
 
         context.getSource().sendSuccess(
                 () -> Component.translatable("command.minegenshin.character.add_success", target.getName().getString(), character.getName().getString()),
@@ -120,6 +121,7 @@ public class CharacterCommand {
         String characterName = definition != null ? definition.getName().getString() : String.valueOf(uuid);
 
         attachment.removeCharacterToPlayer(target, uuid);
+        attachment.syncToPlayer(target);
 
         context.getSource().sendSuccess(
                 () -> Component.translatable("command.minegenshin.character.remove_success", target.getName().getString(), characterName),

@@ -111,6 +111,13 @@ public class LivingEntityHurtMixin {
         if (!TeyvatWorldInvasion.get(level).isInvaded()) return;
 
         LivingEntity target = self;
+
+        // 目标已死亡（如多段连击前段已击杀），跳过后续伤害和事件触发
+        if (!target.isAlive()) {
+            cir.setReturnValue(false);
+            return;
+        }
+
         ModDamageSpec spec = modSource.getSpec();
         PGCharacter attackerCharacter = spec.getAttackerCharacter();
         GenshinElement element = spec.getElement();
@@ -123,7 +130,7 @@ public class LivingEntityHurtMixin {
         }
 
         DamageContainer container = new DamageContainer(source, finalDamage);
-        if (CommonHooks.onEntityIncomingDamage(target, container)) {
+        if (target.isAlive() && CommonHooks.onEntityIncomingDamage(target, container)) {
             cir.setReturnValue(false);
             return;
         }

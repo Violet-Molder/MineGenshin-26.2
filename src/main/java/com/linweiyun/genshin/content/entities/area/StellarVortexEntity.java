@@ -159,8 +159,7 @@ public class StellarVortexEntity extends AreaEntity {
     public void addContributor(PGCharacter character) {
         if (character != null && !accumulatedContributors.contains(character)) {
             accumulatedContributors.add(character);
-            LOGGER.info("[星辉风旋] 添加累积贡献者 char={} total={}",
-                    character.getName(), accumulatedContributors.size());
+
         }
     }
 

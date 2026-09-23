@@ -431,7 +431,9 @@ public class VesnaSkill extends SkillBase {
         // 而且只有先叠，第六层才可能在「三阶#3 / 大招」那一刻刚好叠满。
         VesnaTalent talent = (VesnaTalent) vesna.getTalent();
         VesnaConstellation constellation = (VesnaConstellation) vesna.getConstellationObj();
-        talent.grantDecree(vesna);
+        if (talent.hasSpringRiteTalent(vesna)) {
+            talent.grantDecree(vesna);
+        }
 
         int castLevel = vesna.getXiangfengJianLevel();
         if (constellation.lv3CastIsFreeNow(vesna)) {
@@ -655,7 +657,10 @@ public class VesnaSkill extends SkillBase {
 
         // 叠层放在伤害**之后**：大招是「叠到满层」的那一下之一，
         // 但它自己不吃这一层 —— 第六层整肃就是「能叠上、却没有任何伤害吃得到」。
-        ((VesnaTalent) vesna.getTalent()).grantDecree(vesna);
+        VesnaTalent vesnaTalent = (VesnaTalent) vesna.getTalent();
+        if (vesnaTalent.hasSpringRiteTalent(vesna)) {
+            vesnaTalent.grantDecree(vesna);
+        }
     }
 
     // ==================== 伤害工具 ====================

@@ -112,7 +112,12 @@ public class SkillBase {
                                         .step(step)
                                         .onCastStart(ctx -> onCastStart(ctx.player, ctx.character,
                                                 ActionKind.NORMAL_ATTACK))
-                                        .onActiveStart(ctx -> attack(ctx.player, ctx.character, s))
+                                        .onActiveStart(ctx -> {
+                                            attack(ctx.player, ctx.character, s);
+                                            if (ctx.character.spawnsNormalAttackParticle()) {
+                                                ctx.character.trySpawnNormalAttackParticle(ctx.player);
+                                            }
+                                        })
                                         .build()
                         );
                     }

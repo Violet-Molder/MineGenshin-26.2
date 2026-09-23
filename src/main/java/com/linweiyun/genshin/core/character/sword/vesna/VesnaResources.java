@@ -55,7 +55,7 @@ public final class VesnaResources {
     public static final CharacterActionData.ActionStep BIANYI_STEP = new CharacterActionData.ActionStep(
             "skill_bianyi", 20, BIANYI_HIT_DELAY + 2, 4,
             List.of(new CharacterActionData.Move(0, 0.8)),
-            List.of(new CharacterActionData.Hit(BIANYI_HIT_DELAY, 2.0, 1.0, 1.5, 0.0, 2.5, false)),
+            List.of(new CharacterActionData.Hit(BIANYI_HIT_DELAY, 0.0, 1.0, 1.5, 0.0, 2.5, false)),
             List.of(new CharacterActionData.SoundRef(BIANYI_HIT_DELAY, "vesna_skill", 1.0f, 1.0f)),
             0, 0, 0, 0
     );
@@ -64,21 +64,21 @@ public final class VesnaResources {
         Map<Integer, CharacterActionData.ActionStep> comboSteps = new LinkedHashMap<>();
         comboSteps.put(1, new CharacterActionData.ActionStep(
                 "attack_1", 40, 0, 2,
-                List.of(new CharacterActionData.Move(0, 1.2)),
+                List.of(),
                 List.of(new CharacterActionData.Hit(3, 0.0, 1.5, 1.0, 0.0, 6.0, false)),
                 List.of(new CharacterActionData.SoundRef(3, "vesna_attack_1", 1.0f, 1.0f)),
                 0, 2, 0, 8
         ));
         comboSteps.put(2, new CharacterActionData.ActionStep(
                 "attack_2", 48, 0, 2,
-                List.of(new CharacterActionData.Move(0, 1.2)),
+                List.of(),
                 List.of(new CharacterActionData.Hit(3, 0.0, 1.5, 2.0, 0.0, 6.0, false)),
                 List.of(new CharacterActionData.SoundRef(3, "vesna_attack_2", 1.0f, 1.0f)),
                 0, 2, 0, 8
         ));
         comboSteps.put(3, new CharacterActionData.ActionStep(
                 "attack_3", 25, 0, 2,
-                List.of(new CharacterActionData.Move(0, 1.3)),
+                List.of(),
                 List.of(
                         new CharacterActionData.Hit(3, 0.0, 1.5, 2.0, 0.0, 8.0, false),
                         new CharacterActionData.Hit(6, 0.0, 1.5, 2.0, 0.0, 10.0, false)
@@ -88,7 +88,7 @@ public final class VesnaResources {
         ));
         comboSteps.put(4, new CharacterActionData.ActionStep(
                 "attack_4", 30, 0, 2,
-                List.of(new CharacterActionData.Move(2, 1.5)),
+                List.of(),
                 List.of(
                         new CharacterActionData.Hit(10, 0.0, 1.5, 1.0, 0.0, 8.0, true),
                         new CharacterActionData.Hit(12, 0.0, 1.5, 1.0, 0.0, 8.0, true),
@@ -100,7 +100,7 @@ public final class VesnaResources {
         ));
         comboSteps.put(5, new CharacterActionData.ActionStep(
                 "attack_5", 50, 0, 2,
-                List.of(new CharacterActionData.Move(4, 1.8)),
+                List.of(),
                 List.of(
                         new CharacterActionData.Hit(2, 0.0, 1.5, 1.0, 0.0, 10.0, false),
                         new CharacterActionData.Hit(4, 0.0, 1.5, 1.0, 0.0, 10.0, false),
@@ -119,7 +119,7 @@ public final class VesnaResources {
                 // 后面全靠 hold 撑满 7 秒），而第 6 段根本不需要那么长的恢复。
                 // 直接播完整的第 2 段动画：动作连贯、时长和动画天然对齐，也不用收尾机制。
                 "attack_2", 48, 0, 2,
-                List.of(new CharacterActionData.Move(6, 2.0)),
+                List.of(),
                 List.of(
                         new CharacterActionData.Hit(5, 0.0, 1.5, 2.0, 0.0, 12.0, false),
                         new CharacterActionData.Hit(10, 0.0, 1.5, 2.0, 0.0, 12.0, false),
@@ -167,7 +167,7 @@ public final class VesnaResources {
         // 想改成「有吟唱」的角色：withPrepareTicks(n) 把 n 刻划成可打断的准备阶段即可。
         CharacterActionData.ActionStep skillStep = new CharacterActionData.ActionStep(
                 "skill_no_energy", 20, 8, 3,
-                List.of(new CharacterActionData.Move(0, 0.8)),
+                List.of(),
                 List.of(new CharacterActionData.Hit(6, 2.0, 1.0, 1.2, 0.0, 2.5, false)),
                 List.of(new CharacterActionData.SoundRef(6, "vesna_skill", 1.0f, 1.0f)),
                 0, 0, 360, 0

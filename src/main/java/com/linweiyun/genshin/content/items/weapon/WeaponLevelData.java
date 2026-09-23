@@ -14,12 +14,11 @@ public class WeaponLevelData {
 
     public static long getExpToNextLevel(int star, int currentLevel) {
         if (currentLevel >= MAX_LEVEL) return 0;
-        int nextLevel = currentLevel + 1;
         try {
             return switch (Math.min(star, 5)) {
-                case 5 -> WeaponXpConfig.get5Star(nextLevel);
-                case 4 -> WeaponXpConfig.get4Star(nextLevel);
-                case 3 -> WeaponXpConfig.get3Star(nextLevel);
+                case 5 -> WeaponXpConfig.get5Star(currentLevel);
+                case 4 -> WeaponXpConfig.get4Star(currentLevel);
+                case 3 -> WeaponXpConfig.get3Star(currentLevel);
                 default -> 0;
             };
         } catch (Exception e) {

@@ -15,6 +15,7 @@ import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.action.ServerTickScheduler;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
+import com.linweiyun.genshin.data.loot.modifier.LTModifiers;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -70,6 +71,7 @@ public class Minegenshin {
 
         ModStatusInstanceTypes.register(modEventBus);
 
+        LTModifiers.register(modEventBus);
 
         PlayerUIMenuType.register(
                 Identifier.fromNamespaceAndPath("minegenshin", "backpack"),

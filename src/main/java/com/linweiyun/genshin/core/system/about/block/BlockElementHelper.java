@@ -180,15 +180,11 @@ public final class BlockElementHelper {
 
         inst.tick();
 
-        LOGGER.info("[BlockElement] tick at {}: element={}, unit={}, decayPerSec={}, finished={}",
-                pos, inst.getElement().getId(), inst.getUnit(),
-                inst.getCurrentDecayPerSecond(), inst.isFinished());
 
         if (inst.isFinished()) {
             data.remove(pos);
             chunk.setData(AttachmentRegistration.CHUNK_ELEMENTS, data);
             if (level.getBlockState(pos).is(Blocks.FROSTED_ICE)) {
-                LOGGER.info("[BlockElement] FROSTED_ICE at {} expired, reverting to water", pos);
                 level.setBlock(pos, Blocks.WATER.defaultBlockState(), 3);
             }
         }
@@ -312,8 +308,6 @@ public final class BlockElementHelper {
         ElementalAttachmentInstance existing = data.get(pos);
         if (existing != null && !existing.isFinished()) {
             existing.refreshQuantity(gauge);
-            LOGGER.info("[BlockElement] Strengthen FROZEN at {}: qty={}, decay unchanged={}",
-                    pos, gauge, existing.getCurrentDecayPerSecond());
         } else {
             ElementalAttachmentInstance inst = new ElementalAttachmentInstance(
                     ModElements.FROZEN.get(),
@@ -322,7 +316,6 @@ public final class BlockElementHelper {
                     gauge);
             inst.overrideDecayRate(decayPerSec);
             data.put(pos, inst);
-            LOGGER.info("[BlockElement] New FROZEN at {}: qty={}, decay={}", pos, gauge, decayPerSec);
         }
 
         chunk.setData(AttachmentRegistration.CHUNK_ELEMENTS, data);

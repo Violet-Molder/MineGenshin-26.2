@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.core.character.catalyst.columbina;
 
 import com.linweiyun.genshin.config.character.ColumbinaAttributeConfig;
+import com.linweiyun.genshin.config.character.ShenheAttributeConfig;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.catalyst.CatalystCharacter;
@@ -19,9 +20,9 @@ public class Columbina extends CatalystCharacter {
                 "minegenshin:hydro", CharacterAscendAttribute.ATK,
                 17 * 20, 20 * 20, 80f, "columbina",
                 Map.of(
-                        ModAttributes.MAX_HP.getId(), ColumbinaAttributeConfig::getAllHp,
-                        ModAttributes.ATK.getId(), ColumbinaAttributeConfig::getAllAtk,
-                        ModAttributes.DEF.getId(), ColumbinaAttributeConfig::getAllDef
+                        ModAttributes.MAX_HP.getId(), ShenheAttributeConfig::getAllHp,
+                        ModAttributes.ATK.getId(), ShenheAttributeConfig::getAllAtk,
+                        ModAttributes.DEF.getId(), ShenheAttributeConfig::getAllDef
                 ));
         // 三个协作者都在无参构造器里建（客户端反序列化走 newInstance()，会跑到这里）。
         this.skill = new ColumbinaSkill();
@@ -44,9 +45,9 @@ public class Columbina extends CatalystCharacter {
     @Override
     public Map<Identifier, Supplier<List<? extends Integer>>> getStatGrowthMap() {
         return Map.of(
-                ModAttributes.MAX_HP.getId(), ColumbinaAttributeConfig::getAllHp,
-                ModAttributes.ATK.getId(), ColumbinaAttributeConfig::getAllAtk,
-                ModAttributes.DEF.getId(), ColumbinaAttributeConfig::getAllDef
+                ModAttributes.MAX_HP.getId(), ShenheAttributeConfig::getAllHp,
+                ModAttributes.ATK.getId(), ShenheAttributeConfig::getAllAtk,
+                ModAttributes.DEF.getId(), ShenheAttributeConfig::getAllDef
         );
     }
 }

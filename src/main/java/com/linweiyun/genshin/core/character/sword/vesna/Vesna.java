@@ -131,7 +131,7 @@ public class Vesna extends SwordCharacter implements IStellarHousehold, IStellar
     }
 
     @Override
-    protected boolean spawnsNormalAttackParticle() {
+    public boolean spawnsNormalAttackParticle() {
         return false;
     }
 

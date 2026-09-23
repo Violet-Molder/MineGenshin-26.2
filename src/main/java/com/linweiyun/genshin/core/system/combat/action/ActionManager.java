@@ -127,7 +127,6 @@ public class ActionManager {
         character.applyElementalSkillCooldown(player, skillTime);
         // 4. 武器被动：装备者施放战技（触发即生效，服务端权威）
         notifyWeaponAbilityCast(player, character, def.kind);
-        LOGGER.info("[ActionManager] [{}] elementalSkill STARTED", side);
         return true;
     }
 
