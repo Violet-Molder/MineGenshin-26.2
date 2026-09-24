@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.asset;
 
+import com.linweiyun.genshin.core.asset.pack.GeoPackSource;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -28,6 +29,13 @@ import java.util.Set;
  * {@code Minecraft.getInstance().getResourceManager()}。
  * 这里刻意<b>不</b>引用任何客户端类，好让本类在服务端也能安全加载。
  * 不缓存任何东西 —— 资源重载后结果必须立刻变。
+ *
+ * <h2>整包</h2>
+ * geo 模型 / 动画不再以单个文件存在，全在 {@code .minegenshin} 整包里
+ * （见 {@link GeoPackSource}）。所以存在性判断除了问资源管理器，还要问一次包内索引，
+ * 否则「包里明明有模型」会被判成 MISSING（拿不到整包读取器时包内索引恒为空，
+ * 结果就是这些模型被判成 MISSING，这是预期行为）。包外的资源（贴图、音效、原版入口文件）
+ * 不受影响，照旧只看资源管理器。
  */
 public final class AssetPathResolver {
 
@@ -36,12 +44,13 @@ public final class AssetPathResolver {
 
     // ==================== 基础查询 ====================
 
-    /** 文件是否存在。 */
+    /** 文件是否存在（磁盘上的真实文件，或整包里的条目）。 */
     public static boolean existing(@Nullable ResourceManager resourceManager, @Nullable Identifier location) {
         if (resourceManager == null || location == null) {
             return false;
         }
-        return resourceManager.getResource(location).isPresent();
+        return resourceManager.getResource(location).isPresent()
+                || GeoPackSource.contains(resourceManager, location);
     }
 
     /**
@@ -139,7 +148,12 @@ public final class AssetPathResolver {
         return location == null ? "MISSING" : location.toString();
     }
 
-    /** 取一个 Optional 形式的资源；给需要读文件内容的调用方用。 */
+    /**
+     * 取一个 Optional 形式的资源；给需要读文件内容的调用方用。
+     *
+     * <p>只看磁盘：整包里的条目没有对应的 {@link Resource}，要读它们的内容请走
+     * {@code GeoPackSource.entries(manager)}（见 {@link com.linweiyun.genshin.core.asset.pack.GeoJsonReader}）。
+     */
     public static Optional<Resource> resource(@Nullable ResourceManager resourceManager, @Nullable Identifier location) {
         if (resourceManager == null || location == null) {
             return Optional.empty();

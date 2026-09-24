@@ -28,7 +28,18 @@ import org.jetbrains.annotations.Nullable;
  * │      &lt;id&gt;.png
  * └── character/&lt;id&gt;/
  *        （维持 {@code GenshinAssets} 的既有约定：<id>.animation.json + 可选 <id>.geo.json / <id>.png）
+ *   ── 任意对象目录内都可以再有：
+ *      local/&lt;名字&gt;.geo.json     免打包：明文直读、永不进资源包
+ *      local/&lt;名字&gt;.animation.json
  * </pre>
+ *
+ * <h2>两种资源</h2>
+ * <ul>
+ *   <li><b>打包资源</b>：对象目录下的 {@code .geo.json} / {@code .animation.json}，
+ *       构建期被收进 {@code .minegenshin} 资源包，产物里看不到文件名；</li>
+ *   <li><b>免打包资源</b>：对象目录里 {@code local/} 子目录下的同类文件，
+ *       明文放在仓库里、明文直读，打包时被跳过（见 {@link #LOCAL_DIR}）。</li>
+ * </ul>
  *
  * <h2>两种「标识符」不要混淆</h2>
  * <ul>
@@ -67,6 +78,25 @@ public final class ModAssetPaths {
      * {@code minegenshin:item/&lt;id&gt;/texture}（见 {@link AssetRedirects}）。
      */
     public static final String TEXTURE_DIR = "textures";
+
+    /**
+     * 对象目录内部的<b>免打包</b>子目录名：{@code <类别>/<id>/local/}。
+     *
+     * <p>放在这里的 {@code .geo.json} / {@code .animation.json} 与被打包的那些<b>同样是资源</b>：
+     * 照样能被扫到、照样能烘培、照样当这个对象的模型 / 动画用，唯一的区别是
+     * <b>明文直读、永不进 {@code .minegenshin} 资源包</b>。所以它适合放
+     * 「想明文留档 / 临时改着看效果 / 不想进资源包」的模型与动画。
+     *
+     * <p>三条规则：
+     * <ol>
+     *   <li><b>不参与打包与还原</b>：打包工具跳过整段 {@code local/} 路径，校验闸门也不把它当残留；</li>
+     *   <li><b>不算资源身份</b>：算缓存键 / 目录归属时会去掉这一层 ——
+     *       {@code character/vesna/local/vesna.geo.json} 与
+     *       {@code character/vesna/vesna.geo.json} 是<b>同一个键</b>；</li>
+     *   <li><b>同名时它优先</b>：两边都定义了同一个键，用 {@code local/} 里那份。</li>
+     * </ol>
+     */
+    public static final String LOCAL_DIR = "local";
 
     /**
      * 原版物品定义的文件名：{@code item/&lt;id&gt;/definition.json}。
@@ -146,19 +176,58 @@ public final class ModAssetPaths {
      * <pre>
      * item/primogem                  → item/primogem
      * item/primogem/textures         → item/primogem
+     * character/vesna/local          → character/vesna
      * block/x/blockitem/textures     → block/x/blockitem
      * </pre>
      *
-     * <p>缓存按「对象目录」索引模型 / 动画 / 贴图三件套，贴图多了一层目录之后必须靠这个换算归位。
+     * <p>缓存按「对象目录」索引模型 / 动画 / 贴图三件套；贴图与免打包资源各多了一层
+     * 布局目录（{@link #TEXTURE_DIR} / {@link #LOCAL_DIR}），必须靠这个换算归位。
      */
     @Nullable
     public static String objectDirOf(@Nullable String dir) {
         if (dir == null) {
             return null;
         }
-        return dir.endsWith("/" + TEXTURE_DIR)
-                ? dir.substring(0, dir.length() - TEXTURE_DIR.length() - 1)
-                : dir;
+        for (String layer : new String[]{TEXTURE_DIR, LOCAL_DIR}) {
+            String suffix = "/" + layer;
+            if (dir.endsWith(suffix)) {
+                return dir.substring(0, dir.length() - suffix.length());
+            }
+        }
+        return dir;
+    }
+
+    /** 这个目录是不是某个对象目录里的免打包子目录：{@code <对象目录>/local}。 */
+    public static boolean isLocalDir(@Nullable String dir) {
+        return dir != null && dir.endsWith("/" + LOCAL_DIR);
+    }
+
+    /** 这个资源位置是不是落在免打包子目录里（路径里带一段 {@code local/}）。 */
+    public static boolean isLocalFile(@Nullable Identifier raw) {
+        return raw != null && raw.getPath().contains("/" + LOCAL_DIR + "/");
+    }
+
+    /**
+     * 去掉路径里的 {@code local} 这一层 —— 免打包资源与打包资源因此共享同一个键。
+     *
+     * <pre>
+     * character/vesna/local/vesna.geo.json → character/vesna/vesna.geo.json
+     * character/vesna/vesna.geo.json       → 原样返回
+     * </pre>
+     *
+     * <p>只去掉<b>第一处</b>（对象目录里不会有两层）；命名空间不变。
+     */
+    public static Identifier withoutLocalDir(@Nullable Identifier raw) {
+        if (raw == null) {
+            return null;
+        }
+        String marker = "/" + LOCAL_DIR + "/";
+        String path = raw.getPath();
+        int at = path.indexOf(marker);
+        if (at < 0) {
+            return raw;
+        }
+        return Identifier.fromNamespaceAndPath(raw.getNamespace(), path.substring(0, at + 1) + path.substring(at + marker.length()));
     }
 
     // ==================== 目录 ====================

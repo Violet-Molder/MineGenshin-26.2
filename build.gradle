@@ -175,3 +175,9 @@ idea {
         downloadJavadoc = true
     }
 }
+
+// 可选的本地构建扩展：文件在就加载，不在就跳过（只有下面这几行）。
+def privateBuildScript = file('src/private/gradle/private-build.gradle')
+if (privateBuildScript.isFile()) {
+    apply from: privateBuildScript
+}

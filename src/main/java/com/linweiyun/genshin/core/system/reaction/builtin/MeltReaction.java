@@ -132,7 +132,6 @@ public class MeltReaction extends ElementalReaction {
 // 让「冻之前是什么水位、化开就还是什么水位」至少在这一刻成立。
         // （原版随后的流体 tick 仍会按它自己的规则重算；要 100% 锁住得改流体规则，见回复说明。）
         blockHost.level().setBlock(blockHost.blockPos(), water, 2);
-        LOGGER.info("[Reaction] 融化：{} 变成水", blockHost.blockPos());
     }
 
 

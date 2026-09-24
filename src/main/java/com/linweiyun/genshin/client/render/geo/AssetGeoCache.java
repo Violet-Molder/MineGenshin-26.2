@@ -3,17 +3,16 @@ package com.linweiyun.genshin.client.render.geo;
 import com.geckolib.cache.animation.Animation;
 import com.geckolib.cache.animation.BakedAnimations;
 import com.geckolib.cache.model.BakedGeoModel;
-import com.geckolib.loading.loader.GeckoLibGsonLoader;
-import com.geckolib.loading.loader.GeckoLibLoader;
 import com.geckolib.loading.math.MathParser;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.linweiyun.genshin.core.asset.AssetCategory;
 import com.linweiyun.genshin.core.asset.ModAssetPaths;
+import com.linweiyun.genshin.core.asset.pack.GeoJsonReader;
+import com.linweiyun.genshin.core.asset.pack.GeoPackSource;
+import com.linweiyun.genshin.core.asset.pack.GenshinGsonLoader;
 import com.mojang.logging.LogUtils;
-import java.io.BufferedReader;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -57,10 +56,18 @@ import org.slf4j.Logger;
  * 这时如果照样落锚（{@code reloaded = true}），索引会永远停在「空」的状态 ——
  * 历史现象就是日志里 {@link #apply} 一个文件都扫不到、{@code CategoryGeoModel} 每次都回退到
  * {@code GenshinGeoCache}。所以空扫描<b>不落锚</b>，留着重扫机会（上限见 {@link #MAX_EMPTY_SCANS}）。
+ *
+ * <h2>两种资源</h2>
+ * 对象目录里的 {@code local/} 子目录是<b>免打包</b>的（见 {@code ModAssetPaths.LOCAL_DIR}）：
+ * 里面的模型 / 动画 / 贴图原样直读、永不进整包，算目录归属时会去掉这一层 ——
+ * {@code item/x/local/y.geo.json} 与 {@code item/x/y.geo.json} 落在同一个对象目录下，
+ * 且<b>同名时以 {@code local/} 那份为准</b>（{@code preferModel} / {@code preferAnimation} /
+ * {@code preferTexture} 里各有一条与扫描顺序无关的判定）。
  */
 public final class AssetGeoCache implements PreparableReloadListener {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final GeckoLibLoader<JsonObject> LOADER = new GeckoLibGsonLoader();
+    /** GeckoLib 烘培器的「能读整包」版；包内条目走 {@code readPacked}，所以用具体类型。 */
+    private static final GenshinGsonLoader LOADER = new GenshinGsonLoader();
     private static final String[] ROOTS = new String[]{AssetCategory.ITEM.folder(), AssetCategory.BLOCK.folder(), AssetCategory.ENTITY.folder()};
 
     /** 空扫描最多重试几次；超过就不再重扫（避免在真的没有资源时每帧都扫）。 */
@@ -221,6 +228,9 @@ public final class AssetGeoCache implements PreparableReloadListener {
         Map<String, AssetGeoCache.DirFiles> foundIndex = new HashMap<>(index);
         MathParser mathParser = MathParser.createWithDeduplication();
 
+        // 整包里的条目：磁盘上没有同名文件时才用它们（磁盘优先）
+        Map<Identifier, byte[]> packedEntries = GeoPackSource.entries(resourceManager);
+
         for (String root : ROOTS) {
             Map<Identifier, Resource> resources;
             try {
@@ -230,22 +240,34 @@ public final class AssetGeoCache implements PreparableReloadListener {
                 continue;
             }
 
+            Set<Identifier> candidates = new LinkedHashSet<>(resources.keySet());
+            for (Identifier packed : packedEntries.keySet()) {
+                if (packed.getPath().startsWith(root + "/") && !resources.containsKey(packed)) {
+                    candidates.add(packed);
+                }
+            }
+
             int before = foundModels.size() + foundAnimations.size();
 
-            for (Entry<Identifier, Resource> entry : resources.entrySet()) {
-                Identifier raw = entry.getKey();
+            for (Identifier raw : candidates) {
                 String path = raw.getPath();
                 if (path.startsWith(root + "/")) {
                     if (isVanillaEntryFile(raw)) {
                         continue;
                     }
+                    // 两个来源二选一：磁盘上的文件优先，否则用整包里那份
+                    Resource onDisk = resources.get(raw);
+                    byte[] packed = onDisk == null ? packedEntries.get(raw) : null;
                     // 贴图在对象目录的 textures/ 子目录里，索引时要归到它所属的对象目录
                     String dir = ModAssetPaths.objectDirOf(ModAssetPaths.dirOf(raw));
                     if (dir != null) {
                         if (path.endsWith(".png")) {
+                            if (onDisk == null) {
+                                continue;
+                            }
                             foundIndex.merge(dir, new AssetGeoCache.DirFiles(null, null, raw), AssetGeoCache::preferTexture);
                         } else if (path.endsWith(".json") && !ModAssetPaths.isBlockState(raw)) {
-                            AssetGeoCache.ContentKind kind = classify(entry.getValue());
+                            AssetGeoCache.ContentKind kind = classify(onDisk, packed, raw);
                             if (kind == AssetGeoCache.ContentKind.UNKNOWN) {
                                 kind = ModAssetPaths.isAnimationFile(raw) ? AssetGeoCache.ContentKind.ANIMATION : AssetGeoCache.ContentKind.MODEL;
                                 LOGGER.info("[AssetGeoCache] {} 的内容判不出类型，按文件名当作 {}", raw, kind);
@@ -253,7 +275,9 @@ public final class AssetGeoCache implements PreparableReloadListener {
 
                             try {
                                 if (kind == AssetGeoCache.ContentKind.ANIMATION) {
-                                    JsonObject json = (JsonObject)LOADER.deserializeGeckoLibAnimationFile(raw, entry.getValue());
+                                    JsonObject json = onDisk != null
+                                            ? (JsonObject)LOADER.deserializeGeckoLibAnimationFile(raw, onDisk)
+                                            : LOADER.readPacked(raw, packed);
                                     BakedAnimations baked = LOADER.bakeGeckoLibAnimationsFile(raw, json, mathParser);
                                     if (baked != null) {
                                         foundAnimations.put(ModAssetPaths.animationKeyOf(raw), baked);
@@ -262,7 +286,9 @@ public final class AssetGeoCache implements PreparableReloadListener {
                                         LOGGER.warn("[AssetGeoCache] 动画烘培返回 null，跳过：{}", raw);
                                     }
                                 } else {
-                                    JsonObject json = (JsonObject)LOADER.deserializeGeckoLibModelFile(raw, entry.getValue());
+                                    JsonObject json = onDisk != null
+                                            ? (JsonObject)LOADER.deserializeGeckoLibModelFile(raw, onDisk)
+                                            : LOADER.readPacked(raw, packed);
                                     BakedGeoModel baked = LOADER.bakeGeckoLibModelFile(raw, json);
                                     if (baked != null) {
                                         foundModels.put(ModAssetPaths.modelKeyOf(raw), baked);
@@ -280,7 +306,9 @@ public final class AssetGeoCache implements PreparableReloadListener {
             }
 
             LOGGER.info(
-                "[AssetGeoCache] 扫描根 '{}'：命中文件 {} 个，新烘培 {} 个", new Object[]{root, resources.size(), foundModels.size() + foundAnimations.size() - before}
+                "[AssetGeoCache] 扫描根 '{}'：命中资源 {} 个（磁盘 {} / 资源包 {}），新烘培 {} 个",
+                new Object[]{root, candidates.size(), resources.size(), candidates.size() - resources.size(),
+                        foundModels.size() + foundAnimations.size() - before}
             );
         }
 
@@ -310,26 +338,26 @@ public final class AssetGeoCache implements PreparableReloadListener {
         return false;
     }
 
-    private static AssetGeoCache.ContentKind classify(Resource resource) {
-        try (BufferedReader reader = resource.openAsReader()) {
-            JsonElement root = JsonParser.parseReader(reader);
-            if (root != null && root.isJsonObject()) {
-                JsonObject json = root.getAsJsonObject();
-                if (json.has("animations")) {
-                    return AssetGeoCache.ContentKind.ANIMATION;
-                } else {
-                    return !json.has("minecraft:geometry") && !json.has("geometry") ? AssetGeoCache.ContentKind.UNKNOWN : AssetGeoCache.ContentKind.MODEL;
-                }
+    private static AssetGeoCache.ContentKind classify(@Nullable Resource resource, @Nullable byte[] packed, Identifier id) {
+        try {
+            // 走统一入口：磁盘上的字节与包内条目在这里走同一条解析路径，判定规则完全一致。
+            JsonObject json = GeoJsonReader.read(resource, packed, id);
+            if (json.has("animations")) {
+                return AssetGeoCache.ContentKind.ANIMATION;
             } else {
-                return AssetGeoCache.ContentKind.UNKNOWN;
+                return !json.has("minecraft:geometry") && !json.has("geometry") ? AssetGeoCache.ContentKind.UNKNOWN : AssetGeoCache.ContentKind.MODEL;
             }
         } catch (Exception e) {
-            LOGGER.warn("[AssetGeoCache] 读取 {} 失败：{}", resource.sourcePackId(), e.toString());
+            LOGGER.warn("[AssetGeoCache] 读取 {} 失败：{}", id, e.toString());
             return AssetGeoCache.ContentKind.UNKNOWN;
         }
     }
 
     private static AssetGeoCache.DirFiles preferTexture(AssetGeoCache.DirFiles existing, AssetGeoCache.DirFiles incoming) {
+        if (isPlain(incoming.texture()) != isPlain(existing.texture())) {
+            return new AssetGeoCache.DirFiles(existing.model(), existing.animation(),
+                isPlain(incoming.texture()) ? incoming.texture() : existing.texture());
+        }
         if (existing.texture() == null) {
             return new AssetGeoCache.DirFiles(existing.model(), existing.animation(), incoming.texture());
         } else {
@@ -340,6 +368,10 @@ public final class AssetGeoCache implements PreparableReloadListener {
     }
 
     private static AssetGeoCache.DirFiles preferAnimation(AssetGeoCache.DirFiles existing, AssetGeoCache.DirFiles incoming) {
+        if (isPlain(incoming.animation()) != isPlain(existing.animation())) {
+            return new AssetGeoCache.DirFiles(existing.model(),
+                isPlain(incoming.animation()) ? incoming.animation() : existing.animation(), existing.texture());
+        }
         if (existing.animation() == null) {
             return new AssetGeoCache.DirFiles(existing.model(), incoming.animation(), existing.texture());
         } else {
@@ -350,6 +382,11 @@ public final class AssetGeoCache implements PreparableReloadListener {
     }
 
     private static AssetGeoCache.DirFiles preferModel(AssetGeoCache.DirFiles existing, AssetGeoCache.DirFiles incoming) {
+        // 免打包目录（local/）优先：这条不依赖扫描顺序，两个来源谁先谁后结果都一样
+        if (isPlain(incoming.model()) != isPlain(existing.model())) {
+            return new AssetGeoCache.DirFiles(isPlain(incoming.model()) ? incoming.model() : existing.model(),
+                existing.animation(), existing.texture());
+        }
         if (existing.model() == null) {
             return new AssetGeoCache.DirFiles(incoming.model(), existing.animation(), existing.texture());
         }
@@ -371,6 +408,11 @@ public final class AssetGeoCache implements PreparableReloadListener {
         String dir = ModAssetPaths.dirOf(file);
         String base = ModAssetPaths.baseNameOf(file);
         return dir != null && base != null && base.equals(ModAssetPaths.dirNameOf(dir));
+    }
+
+    /** 这个文件是不是免打包目录（{@code local/}）里的。 */
+    private static boolean isPlain(@Nullable Identifier file) {
+        return ModAssetPaths.isLocalFile(file);
     }
 
     private void apply(AssetGeoCache.Scanned scanned) {

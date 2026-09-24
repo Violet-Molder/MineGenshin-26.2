@@ -38,9 +38,20 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+logs/
+!**/src/**/logs/
 
-### 不公开发布的私有美术资产（只在本机参与构建，勿提交） ###
-# 共用角色模型 + 薇斯娜动画：被抄走代价高，仓库与历史里都不留
-/src/main/resources/assets/minegenshin/character/default/default.geo.json
-/src/main/resources/assets/minegenshin/character/vesna/vesna.animation.json
-/src/main/resources/assets/minegenshin/character/vesna/vesna_fp.animation.json
+### 本地私有目录：不上传 ###
+/src/private/
+
+### 逐文件的 geo / 动画母本：本地保留、不进仓库（构建期收进整包） ###
+# 母本就放在正常的资源路径下（开发时看得见、直接改、Blockbench 直接放），
+# 构建期被收进整包文件，母本本身不提交。
+/src/main/resources/assets/minegenshin/**/*.geo.json
+/src/main/resources/assets/minegenshin/**/*.animation.json
+# 例外：对象目录里的 local/ 免打包，照常提交。
+!/src/main/resources/assets/minegenshin/**/local/**
+
+### 整包资源：本地产出的单个文件，不进仓库 ###
+# 由本机母本收进去的那一个文件；克隆下来没有它，构建出的 jar 自然就没有内置模型。
+/src/main/resources/assets/minegenshin/geo/

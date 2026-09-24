@@ -34,6 +34,9 @@
 
 客户端与服务端都需要安装相同版本的依赖 Mod（LowDragLib2、GeckoLib）。
 
+发行物只有一个文件：`build/libs/minegenshin-<版本>.jar`。把它与依赖 Mod 一起放进 `mods/` 即可，
+没有任何附加文件、附加目录，也没有需要单独下载的资源。
+
 ## 文档
 
 文档站由 [`web/`](web/) 模块提供（Spring Boot + Java，独立于 Mod 构建）。启动后访问 <http://localhost:8081/>；
@@ -41,14 +44,14 @@
 
 | 文档 | 内容 |
 |---|---|
-| [/doc](/doc) | 文档站首页 |
+| [首页](/) | 文档站首页（卡片导航，进入下面各篇） |
 | 文档站「系统详解」分组 | **技术文档**：注册、角色、附件同步、战斗（攻击/动作）、元素反应、属性效果、掉落与怪物等级、护盾与状态、资源渲染、网络事件——每篇含关键类、数据流、扩展步骤与常见坑 |
 | [/entity-development.html](/entity-development.html) | **实体开发文档**：注册、实体类、属性、AI、同步、渲染、投射物范例与检查清单 |
-| [web/entity-ai.html](web/entity-ai.html) | 实体 AI 深入指南：原版 Goal 原理与清单、自定义 Goal、Brain/Behavior 对照 |
+| [/doc/entity-ai](/doc/entity-ai) | 实体 AI 深入指南：原版 Goal 原理与清单、自定义 Goal、Brain/Behavior 对照 |
 | [/doc/character-system](/doc/character-system) | 角色系统详解：动作时序、技能数值、渲染与骨骼替换 |
-| [web/character-implementations.html](web/character-implementations.html) | 角色实现清单 |
+| [/doc/character-implementations](/doc/character-implementations) | 角色实现清单 |
 | [/doc/changelog](/doc/changelog) | 更新日志（从 1.0.0 起） |
-| [web/port-targeting.html](web/port-targeting.html) | 索敌系统移植参考 |
+| [/doc/port-targeting](/doc/port-targeting) | 索敌系统移植参考 |
 
 ## 开源协议
 
