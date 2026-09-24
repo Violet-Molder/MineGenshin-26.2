@@ -61,7 +61,7 @@ public class SkillProgressBar extends ProgressBar {
                     layout.positionType(TaffyPosition.ABSOLUTE);
                 })
                 .style(s -> s.background(SpriteTexture.of(
-                        Identifier.fromNamespaceAndPath("minegenshin", "textures/empty.png"))));
+                        Identifier.fromNamespaceAndPath("minegenshin", "gui/empty.png"))));
         bar.addChild(barIcon = new UIElement().layout(layout -> {
             layout.width(width);
             layout.height(height);
@@ -94,10 +94,10 @@ public class SkillProgressBar extends ProgressBar {
         String textureId = character.getTextureId();
         this.barContainer.style(s -> s.background(
                 SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin",
-                        "textures/skill/" + textureId + "_burst.png"))));
+                        "character/" + textureId + "/textures/burst.png"))));
 
         this.barIcon.style(s -> s.background(
-                SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin", "textures/skill/cd.png"))));
+                SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin", "gui/skill_cd.png"))));
     }
 
     private void setCharacterSkill(PGCharacter character) {
@@ -106,9 +106,9 @@ public class SkillProgressBar extends ProgressBar {
         String textureId = character.getTextureId();
         this.barContainer.style(s -> s.background(
                 SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin",
-                        "textures/skill/" + textureId + "_skill.png"))));
+                        "character/" + textureId + "/textures/skill.png"))));
         this.barIcon.style(s -> s.background(
-                SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin", "textures/skill/cd.png"))));
+                SpriteTexture.of(Identifier.fromNamespaceAndPath("minegenshin", "gui/skill_cd.png"))));
     }
 
     public SkillProgressBar unbindCharacterSource(IDataProvider<PGCharacterData> dataProvider) {

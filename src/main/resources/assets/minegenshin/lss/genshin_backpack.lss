@@ -82,13 +82,13 @@
 
 .backpack-item-hover {
   transform: scale(1.1);
-  overlay: "minegenshin:textures/character_avatar/selected_border.png";
+  overlay: "minegenshin:gui/selected_border.png";
   border: 2px #ffffffcc;
 }
 
 .backpack-item-selected {
   transform: scale(1.1);
-  overlay: "minegenshin:textures/character_avatar/selected_border.png";
+  overlay: "minegenshin:gui/selected_border.png";
   border: 2px #ffffffcc;
 }
 

@@ -6,6 +6,7 @@ import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
+import com.linweiyun.genshin.core.system.about.host.ElementalHost;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.Identifier;
@@ -61,7 +62,7 @@ public class ElementalAttachmentInstance extends StatusInstance {
     private java.util.List<String> frozenHydroSourceKeys = new java.util.ArrayList<>();
 
     private transient StatusContainer container;
-    private transient LivingEntity owner;
+    private transient ElementalHost host;
 
     public ElementalAttachmentInstance(GenshinElement element, AttachmentSource source,
                                        AttachmentProfile profile, float initialUnit,
@@ -146,14 +147,19 @@ public class ElementalAttachmentInstance extends StatusInstance {
         this.container = container;
     }
 
-    public void setOwner(LivingEntity owner) {
-        this.owner = owner;
+    /** 记下这条附着挂在哪个宿主上 —— 分离时要用它回调元素钩子。 */
+    public void setHost(ElementalHost host) {
+        this.host = host;
+    }
+
+    public ElementalHost getHost() {
+        return host;
     }
 
     @Override
     public void onRemove() {
-        if (element != null && owner != null && GenshinElement.isNonPlayerLiving(owner)) {
-            element.onDetach(owner);
+        if (element != null && host != null) {
+            host.onElementDetached(element);
         }
     }
 
@@ -197,7 +203,11 @@ public class ElementalAttachmentInstance extends StatusInstance {
     public float getUnit() { return unit; }
     public float getCurrentDecayPerSecond() { return currentDecayPerSecond; }
     public boolean isPermanent() { return permanent; }
-    public LivingEntity getOwner() { return owner; }
+    /**
+     * 宿主是生物时返回该实体，否则 {@code null}（方块坐标与出战角色宿主没有实体）。
+     * 保留这个入口是为了既有调用点（如感电的伤害来源解析）不必改签名。
+     */
+    public LivingEntity getOwner() { return host == null ? null : host.entity(); }
     public String getSourceCharacterKey() { return sourceCharacterKey; }
     public long getAttachTick() { return attachTick; }
 

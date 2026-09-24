@@ -22,24 +22,19 @@ import java.util.EnumSet;
  */
 public class CryoSlimeShieldRestoreGoal extends Goal {
 
-    //TEMP
     private final LargeCryoSlime slime;
 
-    //TEMP
     private int elapsed;
 
     /** 盾是什么时候破的（服务端刻）；-1 = 未知/还没破。 */
-    //TEMP
     private long shieldBrokenAt = -1L;
 
-    //TEMP
     public CryoSlimeShieldRestoreGoal(LargeCryoSlime slime) {
         this.slime = slime;
         // 占 MOVE：补盾时要停下来，不能被漫游抢走
         this.setFlags(EnumSet.of(Flag.MOVE));
     }
 
-    //TEMP
     @Override
     public boolean canUse() {
         if (this.slime.hasShield()) {
@@ -59,19 +54,16 @@ public class CryoSlimeShieldRestoreGoal extends Goal {
         return brokenLongAgo || idleLongEnough;
     }
 
-    //TEMP
     @Override
     public boolean canContinueToUse() {
         return this.elapsed <= MobBehaviorConfig.shieldCastTicks() + 5 && !this.slime.hasShield();
     }
 
-    //TEMP
     @Override
     public boolean requiresUpdateEveryTick() {
         return true;
     }
 
-    //TEMP
     @Override
     public void start() {
         this.elapsed = 0;
@@ -79,7 +71,6 @@ public class CryoSlimeShieldRestoreGoal extends Goal {
         this.slime.setAggressive(false);
     }
 
-    //TEMP
     @Override
     public void tick() {
         this.elapsed++;
@@ -92,7 +83,6 @@ public class CryoSlimeShieldRestoreGoal extends Goal {
         }
     }
 
-    //TEMP
     @Override
     public void stop() {
         this.elapsed = 0;

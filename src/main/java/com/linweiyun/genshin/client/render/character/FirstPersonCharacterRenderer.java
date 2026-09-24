@@ -1,5 +1,7 @@
 package com.linweiyun.genshin.client.render.character;
 
+import com.linweiyun.genshin.core.character.CharacterHelper;
+
 import com.linweiyun.genshin.config.character.CharacterSystemConfig;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderRepository;
@@ -114,7 +116,7 @@ public final class FirstPersonCharacterRenderer {
             return;
         }
 
-        String charId = AttachmentHelper.getActiveCharacterId(player);
+        String charId = CharacterHelper.getActiveCharacterId(player);
         if (charId == null || charId.isEmpty() || !AttachmentHelper.isGenshinMode(player)) {
             return;
         }

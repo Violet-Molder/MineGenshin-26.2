@@ -35,27 +35,56 @@ import org.slf4j.Logger;
  * 把与目录同名的模型 / 动画 / 贴图预烘培成 GeckoLib 的对象，供 {@link CategoryGeoModel}
  * 按「目录」一次性取用（{@link #files(String)}）。
  *
- * <p><b>刻意不注册成全局资源重载监听器。</b>它实现 {@link PreparableReloadListener}
- * 只是为了「万一要注册」时可用；实际靠 {@link #warmUp()} 和首次查询时的
- * {@link #ensureLoaded()} 同步兜底。原因见 {@code TestEntityRenderers} 的注释：
- * 它一旦作为重载监听器抛异常，<b>整个客户端资源重载都会失败</b>，
- * 表现是「所有资源驱动的东西一起失效」，排查时完全指不到这里。
+ * <p><b>既注册成客户端资源重载监听器，也保留懒加载兜底。</b>
+ * 注册见 {@code MinegenshinClient#addReloadListeners}：这样每次资源重载（含 F3+T）都会重新扫描，
+ * 索引不会在第一次重载之后变成陈旧的。
  *
- * <p>两类防御是那次事故的直接产物：
+ * <p>但「注册成监听器」本身有历史教训：监听器一旦抛异常，<b>整个客户端资源重载都会失败</b>，
+ * 表现是「所有资源驱动的东西一起失效」，排查时完全指不到这里。所以这里有三道保险：
+ * {@link #reload} 返回的 future 用 {@code exceptionally} 兜住、{@link #scan} 用
+ * try/catch(Throwable) 把失败限制在「本次跳过统一布局资源」、以及
+ * {@link #warmUp()} / {@link #ensureLoaded()} 守住「监听器还没跑」的那个窗口。
+ *
+ * <p>另外两类防御也是那次事故的直接产物：
  * <ul>
  *   <li>{@link #scan} 用 try/catch(Throwable) 把失败限制在「本次跳过统一布局资源」；</li>
  *   <li>所有 Map 复制都走 {@link #copyNonNull} —— GeckoLib 的 loader 解析失败时
  *       会往 Map 里塞 null，直接 {@code Map.copyOf} 会 NPE 并炸掉整个重载。</li>
  * </ul>
+ *
+ * <p>还有一类防御针对的是「<b>资源还没就绪就扫了一遍</b>」：客户端初始化阶段
+ * {@code Minecraft#getResourceManager()} 可能还没有任何资源，扫出来是空的。
+ * 这时如果照样落锚（{@code reloaded = true}），索引会永远停在「空」的状态 ——
+ * 历史现象就是日志里 {@link #apply} 一个文件都扫不到、{@code CategoryGeoModel} 每次都回退到
+ * {@code GenshinGeoCache}。所以空扫描<b>不落锚</b>，留着重扫机会（上限见 {@link #MAX_EMPTY_SCANS}）。
  */
 public final class AssetGeoCache implements PreparableReloadListener {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final GeckoLibLoader<JsonObject> LOADER = new GeckoLibGsonLoader();
     private static final String[] ROOTS = new String[]{AssetCategory.ITEM.folder(), AssetCategory.BLOCK.folder(), AssetCategory.ENTITY.folder()};
+
+    /** 空扫描最多重试几次；超过就不再重扫（避免在真的没有资源时每帧都扫）。 */
+    private static final int MAX_EMPTY_SCANS = 5;
+
+    /**
+     * 原版入口层的文件名 —— 这些文件<b>不是</b> GeckoLib 资源，扫描时必须跳过。
+     *
+     * <p>{@code block/<id>/blockstate.json} 与 {@code item/<id>/{definition,model}.json} 是给
+     * 原版物品定义 / 模型 / 方块状态管线用的（由 {@code core.asset.AssetRedirects} 供料）。
+     * 不跳过的话它们会走到「内容判不出类型 → 按文件名当作模型 → 烘培失败」这条路上，
+     * 每次扫描都刷一片错误日志。
+     *
+     * <p>名字与 {@code ModAssetPaths} 的常量保持一致（{@code BLOCKSTATE_FILE} /
+     * {@code DEFINITION_FILE} / {@code MODEL_FILE}）。
+     */
+    private static final String[] VANILLA_ENTRY_FILES = {"blockstate.json", "definition.json", "model.json"};
+
     private static volatile Map<Identifier, BakedGeoModel> models = Map.of();
     private static volatile Map<Identifier, BakedAnimations> animations = Map.of();
     private static volatile Map<String, AssetGeoCache.DirFiles> index = Map.of();
     private static volatile boolean reloaded = false;
+    /** 连续空扫描计数；扫到东西就归零。 */
+    private static int emptyScans = 0;
 
     @Nullable
     public static BakedGeoModel model(@Nullable Identifier location) {
@@ -155,7 +184,7 @@ public final class AssetGeoCache implements PreparableReloadListener {
                 if (resourceManager != null) {
                     synchronized (AssetGeoCache.class) {
                         if (!reloaded) {
-                            LOGGER.warn("[AssetGeoCache] 重载监听器未生效，改为首次查询时同步扫描");
+                            LOGGER.info("[AssetGeoCache] 首次查询时同步补扫一次统一布局资源");
                             AssetGeoCache instance = new AssetGeoCache();
                             instance.apply(instance.scan(resourceManager));
                         }
@@ -169,7 +198,12 @@ public final class AssetGeoCache implements PreparableReloadListener {
         ResourceManager resourceManager = sharedState.resourceManager();
         return CompletableFuture.<AssetGeoCache.Scanned>supplyAsync(() -> this.scan(resourceManager), prepExecutor)
             .<AssetGeoCache.Scanned>thenCompose(barrier::wait)
-            .thenAcceptAsync(this::apply, applyExecutor);
+            .thenAcceptAsync(this::apply, applyExecutor)
+            // 本监听器绝不允许把异常抛回重载链：那会让整个客户端资源重载失败。
+            .exceptionally(t -> {
+                LOGGER.error("[AssetGeoCache] 重载监听器执行失败，保持上一次的索引（不影响其它资源重载）", t);
+                return null;
+            });
     }
 
     private AssetGeoCache.Scanned scan(ResourceManager resourceManager) {
@@ -202,7 +236,11 @@ public final class AssetGeoCache implements PreparableReloadListener {
                 Identifier raw = entry.getKey();
                 String path = raw.getPath();
                 if (path.startsWith(root + "/")) {
-                    String dir = ModAssetPaths.dirOf(raw);
+                    if (isVanillaEntryFile(raw)) {
+                        continue;
+                    }
+                    // 贴图在对象目录的 textures/ 子目录里，索引时要归到它所属的对象目录
+                    String dir = ModAssetPaths.objectDirOf(ModAssetPaths.dirOf(raw));
                     if (dir != null) {
                         if (path.endsWith(".png")) {
                             foundIndex.merge(dir, new AssetGeoCache.DirFiles(null, null, raw), AssetGeoCache::preferTexture);
@@ -257,6 +295,19 @@ public final class AssetGeoCache implements PreparableReloadListener {
             }
         });
         return Map.copyOf(clean);
+    }
+
+    /** 是不是原版入口层的文件（见 {@link #VANILLA_ENTRY_FILES}）；这些不是 GeckoLib 资源。 */
+    private static boolean isVanillaEntryFile(Identifier raw) {
+        String path = raw.getPath();
+        int slash = path.lastIndexOf('/');
+        String file = slash < 0 ? path : path.substring(slash + 1);
+        for (String name : VANILLA_ENTRY_FILES) {
+            if (name.equals(file)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static AssetGeoCache.ContentKind classify(Resource resource) {
@@ -326,6 +377,20 @@ public final class AssetGeoCache implements PreparableReloadListener {
         models = scanned.models();
         animations = scanned.animations();
         index = scanned.index();
+
+        boolean empty = index.isEmpty() && models.isEmpty() && animations.isEmpty();
+        if (empty && ++emptyScans < MAX_EMPTY_SCANS) {
+            LOGGER.warn(
+                "[AssetGeoCache] 本次一个文件都没扫到（资源可能还没就绪），保留重扫机会：第 {} / {} 次",
+                new Object[]{emptyScans, MAX_EMPTY_SCANS}
+            );
+            return;
+        }
+        if (empty) {
+            LOGGER.error("[AssetGeoCache] 连续 {} 次没扫到任何统一布局资源，停止重扫", emptyScans);
+        }
+
+        emptyScans = 0;
         reloaded = true;
         LOGGER.info("[AssetGeoCache] 已索引 {} 个目录 / {} 个模型 / {} 个动画文件", new Object[]{index.size(), models.size(), animations.size()});
         if (LOGGER.isInfoEnabled()) {

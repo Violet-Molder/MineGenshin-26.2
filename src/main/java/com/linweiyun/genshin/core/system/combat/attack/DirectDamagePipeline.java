@@ -1,13 +1,12 @@
 package com.linweiyun.genshin.core.system.combat.attack;
 
-import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.status.StatusAccessor;
 import com.linweiyun.genshin.core.system.about.AttachmentProfile;
 import com.linweiyun.genshin.core.system.about.AttachmentSource;
+import com.linweiyun.genshin.core.system.about.ElementalAttachable;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
-import com.linweiyun.genshin.core.system.about.block.BlockElementHelper;
+import com.linweiyun.genshin.core.system.about.host.EntityHost;
 import com.linweiyun.genshin.core.system.combat.damage.CombatMath;
 import com.linweiyun.genshin.core.system.combat.damage.DamageTrace;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
@@ -20,10 +19,10 @@ import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
 import com.linweiyun.genshin.core.system.shield.ShieldService;
 import com.linweiyun.genshin.core.system.shield.ShieldService.AttachDecision;
-import com.linweiyun.genshin.enums.ElementalReactionType;
-import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import net.minecraft.world.entity.LivingEntity;
+import com.linweiyun.genshin.core.system.about.AttachContext;
+import com.linweiyun.genshin.core.system.about.AttachResult;
 
 /**
  * <b>直伤管线</b> —— 角色技能打出来的那一下。
@@ -34,6 +33,7 @@ import net.minecraft.world.entity.LivingEntity;
  * ③ 反应：挂上之后尝试触发反应（反应飘字由 ElementalReactionManager 内部处理）
  * ④ 乘区：伤害 = 基础区 × 倍率区 × 暴击区 × 增伤区 × 防御区 × 抗性区
  *                  ×（增幅反应）反应倍率 × 反应加成区 × 衰减系数
+ * ⑤ 免疫：目标免疫这个元素时把伤害归零 —— <b>只归零伤害</b>，②③ 已经发生过了
  * </pre>
  *
  * <p>日志里每个乘区一个【】，只写真正生效的项（见 {@code DamageTrace}）。
@@ -72,20 +72,25 @@ final class DirectDamagePipeline {
         float elementCoefficient = decayResult.getElementCoefficient();
 
         // ── ② 附着 ──
-        AttachmentProfile profile = chooseProfile(spec.getElementAmount());
+        // 「元素量 → 附着档次」的映射只有一份真相，在 AttachmentProfile.forAmount。
+        AttachmentProfile profile = AttachmentProfile.forAmount(spec.getElementAmount());
         if (spec.getElement().isInstant()) {
             // 瞬发元素（风/岩这类）不参与常规衰减，附着量固定按 1.0 / 0.5 结算
             profile = new AttachmentProfile(
                     profile.getBaseQuantity(), profile.getLossMultiplier(), 1.0f, 0.5f);
         }
         boolean canAttach = spec.hasAuraPotential() && elementCoefficient > 0;
+        boolean canReact = canAttach;
+
+        // 宿主 —— 生物是「实体 + 它自带的容器」。附着、两段筛查、元素钩子全部走这一个契约
+        // （方块是 BlockHost，同一个 ElementalHost）。
+        EntityHost host = EntityHost.of(target);
 
         // ── ②.5 过盾 ──
         // 护盾可以「吞掉」某些元素的附着（冰盾遇水、遇冰）。盾的判定优先于附着：
         //   BLOCK      → 不附着、不反应、不消耗元素量（这次攻击仍然算「受击」，伤害为 0）
         //   REACT_ONLY → 只反应不附着（盾自挂的元素和它反应，双方一起被吃掉）
         //   ALLOW      → 照常附着 + 反应
-        boolean canReact = canAttach;
         if (canAttach) {
             AttachDecision decision = ShieldService.onElementalAttack(
                     target, spec.getElement(), spec.getElementAmount() * elementCoefficient, true);
@@ -97,36 +102,38 @@ final class DirectDamagePipeline {
             }
         }
 
+        StatusContainer container = host != null ? host.container() : null;
         if (canAttach && spec.getElement().isInstant()) {
-            StatusContainer checkContainer = target.getData(AttachmentRegistration.CONTAINER);
-            if (checkContainer == null
-                    || !ElementalReactionManager.canElementReact(spec.getElement(), checkContainer)) {
+            // 瞬发元素（风/岩）只为触发一次反应而来：宿主连一个候选反应都不收，就不该留下附着。
+            if (container == null
+                    || !ElementalReactionManager.canElementReact(spec.getElement(), container, host)) {
                 canAttach = false;
                 canReact = false;
             }
         }
-        StatusContainer container = target.getData(AttachmentRegistration.CONTAINER);
-        if (canAttach) {
+
+        // ── 附着本身 ──
+        // 顺序要求：附着发生在任何免疫/伤害生效判断<b>之前</b>，只受宿主筛查与护盾裁决影响。
+        ReactionResult reactionResult = null;
+        if (canAttach && host != null) {
             long gameTime = target.level().getGameTime();
-            if (hasAttacker && container != null) {
-                ElementalAttachmentHelper.attach(target, container, spec.getElement(),
-                        AttachmentSource.NORMAL_ATTACK, profile, attacker, gameTime);
+            AttachContext attachContext = AttachContext.attack(
+                    hasAttacker ? attacker : null,
+                    hasAttacker ? gameTime : 0L,
+                    damageSource.getEntity(),
+                    spec,
+                    spec.getElementAmount() * elementCoefficient);
+            AttachResult attachResult = ElementalAttachmentHelper.attach(
+                    host, spec.getElement(), AttachmentSource.NORMAL_ATTACK, profile, attachContext);
+            if (!attachResult.attached()) {
+                // 宿主拒收这次附着 → 反应同样不发生。
+                // 「没挂上去就没有反应」是附着与反应之间的唯一顺序约束；先手元素保留 = 共存。
+                canReact = false;
             } else {
-                ElementalAttachmentHelper.attach(target, StatusAccessor.of(target), spec.getElement(),
-                        AttachmentSource.NORMAL_ATTACK, profile);
+                reactionResult = attachResult.reaction();
             }
         }
 
-        // ── ③ 反应 ──
-        // 反应飘字由 ElementalReactionManager.tryReactAfterAttach 内部统一处理，此处不再重复。
-        ReactionResult reactionResult = null;
-        if (canReact) {
-            ReactionContext ctx = new ReactionContext(
-                    spec.getElement(), spec.getElementAmount() * elementCoefficient,
-                    AttachmentSource.NORMAL_ATTACK, profile, spec,
-                    damageSource.getEntity(), container, target);
-            reactionResult = ElementalReactionManager.tryReactAfterAttach(ctx);
-        }
         ElementalReactionType reactionType =
                 reactionResult != null && reactionResult.isReacted() ? reactionResult.getReactionType() : null;
         trace.head("反应", reactionType == null ? "无" : reactionType);
@@ -154,7 +161,7 @@ final class DirectDamagePipeline {
         float emBonus = amplifying ? DamageZones.emBonus(attacker, reactionType) : 0f;
         float decayCoefficient = decayResult.getDamageCoefficient();
 
-        float finalDamage = baseDamage
+        float computedDamage = baseDamage
                 * (1f + baseMultiplierBonus)
                 * critRoll.zone()
                 * (1f + elementalBonus + effectBonus + specDamageBonus)
@@ -163,6 +170,14 @@ final class DirectDamagePipeline {
                 * (amplifying ? amplifyMultiplier * (1f + emBonus) : 1f)
                 * damageBonusSovereignty(spec)
                 * decayCoefficient;
+
+        // ── ⑤ 元素免疫 ──
+        // 「免疫只拦伤害」：附着与反应在上面已经跑完了（挂得上、能反应、能飘字），
+        // 只是这一下伤害按 0 结算。以前免疫写在 hurtServer 的提前 return 里，
+        // 而附着是在本管线内部做的 → 免疫等于「连附着都不发生」。
+        boolean immuneToDamage =
+                ElementalAttachable.isImmuneToDamage(target, spec.getElement());
+        float finalDamage = immuneToDamage ? 0f : computedDamage;
 
         // ── 日志（每个乘区一个【】）──
         //
@@ -187,6 +202,9 @@ final class DirectDamagePipeline {
         }
         trace.zone("大权区", "1 + 大权加成", "1 + " + DamageTrace.fmt(spec.getSovereigntyBonus()));
         trace.zone("衰减区", "衰减伤害系数", DamageTrace.fmt(decayCoefficient));
+        if (immuneToDamage) {
+            trace.zone("免疫区", "元素免疫", "0");
+        }
         trace.result(finalDamage);
         trace.log();
         return finalDamage;
@@ -195,13 +213,5 @@ final class DirectDamagePipeline {
     /** 大权区（按招式显式打开；没打开就是 1）。 */
     private static float damageBonusSovereignty(ModDamageSpec spec) {
         return 1f + spec.getSovereigntyBonus();
-    }
-
-    /** 按元素量选附着档次。 */
-    private static AttachmentProfile chooseProfile(float amount) {
-        if (amount <= 0f) return AttachmentProfile.WEAK;
-        if (amount >= 4f) return AttachmentProfile.ULTRA_STRONG;
-        if (amount >= 2f) return AttachmentProfile.MEDIUM;
-        return AttachmentProfile.WEAK;
     }
 }

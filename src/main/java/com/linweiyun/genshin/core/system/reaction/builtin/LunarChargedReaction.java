@@ -12,7 +12,7 @@ import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionPriorityCalculator;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
 import com.linweiyun.genshin.content.entities.ModEntities;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;

@@ -26,7 +26,6 @@ import com.mojang.logging.LogUtils;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.resources.language.I18n;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
@@ -510,8 +509,8 @@ public class BackpackMenu {
             if (equipped && entry.equippedByCharacterTextureId() != null) {
                 var avatarOverlay = new UIElement().addClass("equipped-avatar-overlay");
                 avatarOverlay.style(s -> s.background(SpriteTexture.of(
-                        "minegenshin:textures/character_avatar/hud/"
-                                + entry.equippedByCharacterTextureId() + ".png")));
+                        "minegenshin:character/"
+                                + entry.equippedByCharacterTextureId() + "/textures/avatar_hud.png")));
                 itemElement.addChild(avatarOverlay);
             }
 
@@ -655,8 +654,8 @@ public class BackpackMenu {
     /**
      * GUI 里这件物品画哪张图。
      *
-     * <p>走 {@link ItemIcons}：优先本 MOD 的图标
-     * {@code minegenshin:icon/item/<物品名>.png}，没有才退回物品自己的贴图 ——
+     * <p>走 {@link ItemIcons}：优先物品自己的图标
+     * {@code minegenshin:item/<物品名>/icon.png}，没有才退回物品自己的贴图 ——
      * geo 物品的贴图是 3D 模型的 UV 图集，直接当 2D 精灵画会是一坨错位色块。
      */
     private static String getItemTexturePath(ItemStack stack) {
@@ -712,8 +711,8 @@ public class BackpackMenu {
                         if (entry.equippedByCharacterTextureId() != null) {
                             var avatarOverlay = new UIElement().addClass("equipped-avatar-overlay");
                             avatarOverlay.style(s -> s.background(SpriteTexture.of(
-                                    "minegenshin:textures/character_avatar/hud/"
-                                            + entry.equippedByCharacterTextureId() + ".png")));
+                                    "minegenshin:character/"
+                                            + entry.equippedByCharacterTextureId() + "/textures/avatar_hud.png")));
                             wrapper.addChild(avatarOverlay);
                         }
                     }

@@ -22,19 +22,23 @@ import java.util.concurrent.ConcurrentHashMap;
  * <b>3D 模型的 UV 展开图集</b>（32×32 起），直接当 2D 精灵画出来是一坨错位色块，
  * 尺寸也对不上。所以这类物品必须另配一张图标。
  *
- * <h2>解析顺序</h2>
+ * <h2>解析顺序（自上而下，第一个存在的胜出）</h2>
  * <ol>
- *   <li>{@code minegenshin:icon/item/<物品名>.png} —— 本 MOD 的图标目录；
+ *   <li>{@code minegenshin:item/<物品名>/icon.png} —— <b>物品自己的图标</b>
+ *       （入口按对象：物品文件夹里放它自己的图标）；</li>
+ *   <li>{@code minegenshin:icon/item/<物品名>.png} —— 本 MOD 的通用图标目录（兼容旧资源）；
  *       物品来自别的命名空间时也先找本 MOD 的，方便给原版/其它 MOD 的物品补图标。</li>
  *   <li>{@code <该物品自己的命名空间>:icon/item/<物品名>.png} —— 让其它 MOD 也能自带图标。</li>
- *   <li>都找不到就退回 {@code <命名空间>:textures/item/<物品名>.png}（旧的画法，原版平面物品仍然正确）。</li>
+ *   <li>{@code minegenshin:item/<物品名>/texture.png} —— 本项目的平面物品贴图（贴图本身就是图标）；</li>
+ *   <li>{@code <该物品自己的命名空间>:textures/item/<物品名>.png} —— 别的 MOD 的原版平面贴图；</li>
+ *   <li>{@code minegenshin:item/<物品名>/<物品名>.png} —— geo 物品贴图的兜底。</li>
  * </ol>
  *
  * <h2>目录约定</h2>
  * <pre>
- * assets/minegenshin/icon/item/test_sword.png
- * assets/minegenshin/icon/artifact/crimson_flower.png
- * assets/minegenshin/icon/weapon/everlasting_moonglow.png
+ * assets/minegenshin/item/test_sword/icon.png     物品自己的图标（对象目录内）
+ * assets/minegenshin/icon/item/test_sword.png     本 MOD 的通用 item 图标（兼容旧资源）
+ * assets/minegenshin/icon/elemental/pyro.png      跨对象 / 跨命名空间的通用图标
  * </pre>
  */
 public final class ItemIcons {
@@ -42,7 +46,7 @@ public final class ItemIcons {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /** 找不到任何图时用的兜底。 */
-    public static final String EMPTY = GenshinAssets.MOD_ID + ":textures/empty.png";
+    public static final String EMPTY = GenshinAssets.MOD_ID + ":gui/empty.png";
 
     /** 分类：物品图标。 */
     public static final String CATEGORY_ITEM = "item";
@@ -95,14 +99,21 @@ public final class ItemIcons {
 
         // 退回物品自己的贴图：原版平面物品的贴图就是图标，画出来是对的。
         // geo 物品的贴图是 UV 图集，画出来会是一坨错位色块 —— 所以这类物品请补一张图标。
+        // 平面物品的贴图在本项目布局里是 item/<物品名>/textures/texture.png
+        Identifier objectTexture = ModAssetPaths.itemTexture(itemId.getPath());
+        if (exists(objectTexture)) {
+            return objectTexture.toString();
+        }
+
+        // 物品来自别的命名空间时，退回它自己的原版平面贴图
         Identifier flat = flatTexture(itemId);
         if (exists(flat)) {
             return flat.toString();
         }
 
-        // 再退一步：统一布局里 item/<名字>/<名字>.png（geo 物品的贴图通常在这）
-        Identifier unified = Identifier.fromNamespaceAndPath(
-                GenshinAssets.MOD_ID, GenshinAssets.ITEM_ROOT + "/" + itemId.getPath() + "/" + itemId.getPath() + ".png");
+        // 再退一步：统一布局里 item/<名字>/textures/<名字>.png（geo 物品的贴图通常在这）
+        Identifier unified = ModAssetPaths.textureIn(
+                GenshinAssets.ITEM_ROOT + "/" + itemId.getPath(), itemId.getPath() + ".png");
         if (exists(unified)) {
             return unified.toString();
         }
@@ -110,9 +121,18 @@ public final class ItemIcons {
         return null;
     }
 
-    /** 按「本 MOD 优先 → 物品自己的命名空间」找一个真实存在的图标。 */
+    /**
+     * 按「对象自己的图标 → 本 MOD 通用图标目录 → 物品自己的命名空间」找一个真实存在的图标。
+     *
+     * <p>前两条的差别是<b>目录</b>：{@code item/<名字>/icon.png}（对象目录）
+     * 与 {@code icon/item/<名字>.png}（通用图标目录）。
+     */
     @Nullable
     private static Identifier iconFor(Identifier itemId) {
+        Identifier objectIcon = objectIcon(itemId.getPath());
+        if (exists(objectIcon)) {
+            return objectIcon;
+        }
         Identifier own = GenshinAssets.icon(CATEGORY_ITEM, itemId.getPath());
         if (exists(own)) {
             return own;
@@ -123,6 +143,11 @@ public final class ItemIcons {
             return their;
         }
         return null;
+    }
+
+    /** 物品自己的图标：{@code item/<物品名>/icon.png}。 */
+    private static Identifier objectIcon(String itemName) {
+        return ModAssetPaths.textureIn(GenshinAssets.ITEM_ROOT + "/" + itemName, "icon.png");
     }
 
     private static Identifier flatTexture(Identifier itemId) {

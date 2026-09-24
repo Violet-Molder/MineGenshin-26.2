@@ -5,7 +5,7 @@ import com.linweiyun.genshin.core.character.IStellarStateHolder;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.polearm.PolearmCharacter;
-import com.linweiyun.genshin.enums.CharacterAscendAttribute;
+import com.linweiyun.genshin.core.character.CharacterAscendAttribute;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;

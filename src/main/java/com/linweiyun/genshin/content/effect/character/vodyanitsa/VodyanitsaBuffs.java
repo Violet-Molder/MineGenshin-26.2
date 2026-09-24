@@ -7,7 +7,7 @@ import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
-import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
 import net.minecraft.world.entity.player.Player;
 
 /**

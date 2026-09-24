@@ -1,11 +1,15 @@
 package com.linweiyun.genshin.core.character.talent;
+import com.linweiyun.genshin.core.system.combat.action.data.ComboData;
+import com.linweiyun.genshin.core.system.combat.action.data.SkillData;
+import com.linweiyun.genshin.core.system.combat.action.data.BurstData;
+import com.linweiyun.genshin.core.system.combat.action.data.DodgeData;
 
 import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.system.combat.action.ActionDefinition;
 import com.linweiyun.genshin.core.system.combat.action.ActionKind;
 import com.linweiyun.genshin.core.system.combat.action.ActionSet;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.ActionStep;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
 import net.minecraft.world.entity.player.Player;
 
 /**
@@ -27,7 +31,7 @@ import net.minecraft.world.entity.player.Player;
  * 三个基类同包（都在 {@code core.character.talent} 下）；每个角色的三个协作者文件放在角色自己的包
  * （{@code core.character.{weapon}.{name}}）里，和主类并排。
  *
- * <p>时序由 {@link CharacterActionData.ActionStep} 提供（唯一来源），不再自行定义前摇/执行/后摇。
+ * <p>时序由 {@link ActionStep} 提供（唯一来源），不再自行定义前摇/执行/后摇。
  * 子类只需覆盖回调方法和 maxCombo。
  *
  * <h2>「这一招能不能放」写在别处</h2>
@@ -99,7 +103,7 @@ public class SkillBase {
 
         SetBuilder sb = setBuilder();
         if (actionData != null) {
-            CharacterActionData.ComboData combo = actionData.combo();
+            ComboData combo = actionData.combo();
             if (combo != null) {
                 int steps = Math.min(maxCombo, combo.maxCombo());
                 for (int stage = 1; stage <= steps; stage++) {
@@ -124,7 +128,7 @@ public class SkillBase {
                 }
             }
 
-            CharacterActionData.SkillData skill = actionData.skill();
+            SkillData skill = actionData.skill();
             if (skill != null) {
                 if (skill.tap() != null) {
                     sb.addSkillTap(
@@ -148,7 +152,7 @@ public class SkillBase {
                 }
             }
 
-            CharacterActionData.BurstData burst = actionData.burst();
+            BurstData burst = actionData.burst();
             if (burst != null && burst.step() != null) {
                 sb.addBurst(
                         ActionDefinition.builder(ActionKind.ELEMENTAL_BURST)
@@ -160,7 +164,7 @@ public class SkillBase {
                 );
             }
 
-            CharacterActionData.DodgeData dodgeData = actionData.dodge();
+            DodgeData dodgeData = actionData.dodge();
             if (dodgeData != null && dodgeData.step() != null) {
                 sb.addDodge(
                         ActionDefinition.builder(ActionKind.DODGE)

@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
 import com.linweiyun.genshin.core.element.GenshinElement;
-import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;

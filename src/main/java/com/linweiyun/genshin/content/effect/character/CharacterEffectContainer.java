@@ -3,7 +3,7 @@ package com.linweiyun.genshin.content.effect.character;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
-import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 

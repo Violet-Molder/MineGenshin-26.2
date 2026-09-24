@@ -1,10 +1,7 @@
 package com.linweiyun.genshin.core.system.registry.register;
 
-import com.linweiyun.genshin.content.attribute.AttributeType;
 import com.linweiyun.genshin.content.items.artifact.ArtifactSet;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
-import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
-import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;

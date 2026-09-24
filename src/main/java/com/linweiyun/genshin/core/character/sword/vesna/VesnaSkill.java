@@ -1,4 +1,6 @@
 package com.linweiyun.genshin.core.character.sword.vesna;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
+import com.linweiyun.genshin.core.system.combat.action.data.Hit;
 
 import java.util.List;
 
@@ -22,9 +24,9 @@ import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroup;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
 import com.linweiyun.genshin.core.system.reaction.StellarGlimmer;
-import com.linweiyun.genshin.enums.AttachmentType;
-import com.linweiyun.genshin.enums.AttackType;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.about.AttachmentType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -149,10 +151,10 @@ public class VesnaSkill extends SkillBase {
     public static final float NORMAL_ATTACK_PARTICLE_CHANCE = 0.5f;
 
     /** 一个动作步里最后一个伤害点的时刻（刻）；没有 hits 时是 0。 */
-    private static int lastHitDelay(CharacterActionData.ActionStep step) {
+    private static int lastHitDelay(ActionStep step) {
         int last = 0;
         if (step != null && step.hits != null) {
-            for (CharacterActionData.Hit hit : step.hits) {
+            for (Hit hit : step.hits) {
                 last = Math.max(last, hit.delay);
             }
         }
@@ -210,7 +212,7 @@ public class VesnaSkill extends SkillBase {
         if (actionData == null || actionData.skill() == null || actionData.skill().tap() == null)
             return base;
 
-        CharacterActionData.ActionStep oldTap = actionData.skill().tap();
+        ActionStep oldTap = actionData.skill().tap();
         boolean threeStage = "windrider_2".equals(stateKey);
 
         // 三阶 E：原神的效果是「起跳 → 人消失 → 化作细长螺旋 → 朝目标突刺」。
@@ -225,7 +227,7 @@ public class VesnaSkill extends SkillBase {
                         dashDelay + lastHitDelay(oldTap) + EXECUTION_TAIL_TICKS)
                 : oldTap.protectDuration;
 
-        CharacterActionData.ActionStep newTap = new CharacterActionData.ActionStep(
+        ActionStep newTap = new ActionStep(
                 skillAnim,
                 oldTap.duration, protect, oldTap.priority,
                 oldTap.moves, oldTap.hits, oldTap.sounds,

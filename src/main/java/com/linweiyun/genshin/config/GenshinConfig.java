@@ -3,7 +3,7 @@ package com.linweiyun.genshin.config;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import com.linweiyun.genshin.config.character.CharacterConfig;
 
-import com.linweiyun.genshin.config.entity.EntitiyConfig;
+import com.linweiyun.genshin.config.entity.EntityConfig;
 import com.linweiyun.genshin.config.weapon.WeaponConfig;
 import com.linweiyun.genshin.config.artifact.ArtifactConfig;
 import com.linweiyun.genshin.config.reaction.ReactionConfig;
@@ -26,7 +26,7 @@ public class GenshinConfig {
     static {
         CharacterConfig.register(CHARACTER_BUILDER);
         WorldTextColorConfig.register(WORLD_TEXT_COLOR_BUILDER);
-        EntitiyConfig.register(ENTITY_BUILDER);
+        EntityConfig.register(ENTITY_BUILDER);
         WeaponConfig.register(WEAPON_BUILDER);
         ArtifactConfig.register(ARTIFACT_BUILDER);
         ReactionConfig.register(REACTION_BUILDER);

@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.content.skill_node;
 
-import com.linweiyun.genshin.content.skill_node.math.HorizonEndVec3;
+import com.linweiyun.genshin.content.skill_node.HorizonEndVec3;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 

@@ -1,6 +1,5 @@
 package com.linweiyun.genshin.core.system.combat.animation.config;
 
-import com.linweiyun.genshin.core.system.combat.animation.state.PlayerAnimationController;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
@@ -8,7 +7,7 @@ import java.util.Set;
 /**
  * 一个角色的动画配置入口：常态动画集合 + 动作动画名单 + 过渡刻数 + 音效表。
  *
- * <p>由角色的动画常量类实现（如 {@code VesnaAnimations}），交给 {@link PlayerAnimationController}
+ * <p>由角色的动画常量类实现（如 {@code VesnaAnimations}），交给 {@code PlayerAnimationController}
  * 使用，使运动状态机逻辑全工程只写一份。
  *
  * <p>移植自参考2 的同名接口。

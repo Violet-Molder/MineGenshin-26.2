@@ -27,74 +27,57 @@ import net.minecraft.world.phys.Vec3;
 public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
 
     /** 压缩蓄力刻数（2 秒）。 */
-    //TEMP
     private static final int COMPRESS_TICKS = 40;
 
     /** 上升到最高点的刻数。 */
-    //TEMP
     private static final int RISE_TICKS = 14;
 
     /** 滞空刻数（0.6 秒）—— 原来 1.5 秒太长，实战里就是干等着。 */
-    //TEMP
     private static final int HOVER_TICKS = 12;
 
     /** 落点扩散刻数（1.5 秒）：玩家用来跑出去的时间。 */
-    //TEMP
     private static final int MARKER_TICKS = 30;
 
     /** 起跳竖直初速（调低过：太高会飞出视野，也不好看）。 */
-    //TEMP
     private static final double RISE_SPEED = 0.5D;
 
     /** 砸下来的速度。 */
-    //TEMP
     private static final double FALL_SPEED = 1.6D;
 
     /** 落点半径（5×5 → 半宽 2.5）。 */
-    //TEMP
     private static final double SLAM_RADIUS = 2.5D;
 
     /** 落地伤害倍率（攻击力 × 3）。 */
-    //TEMP
     private static final float SLAM_MULTIPLIER = 3.0f;
 
-    //TEMP
     private enum Phase { NONE, COMPRESS, RISE, HOVER, MARKING, LAND }
 
-    //TEMP
     private Phase phase = Phase.NONE;
 
-    //TEMP
     private int elapsed;
 
-    //TEMP
     private Vec3 landingSpot = Vec3.ZERO;
 
-    //TEMP
     public CryoSlimeSlamGoal(LargeCryoSlime slime) {
         super(slime, MobBehaviorConfig.slamCooldownTicks(), 20);
     }
 
-    //TEMP
     @Override
     protected boolean extraCanUse(LivingEntity target) {
         return horizontalDistanceTo(target) <= 16.0D;
     }
 
-    //TEMP
     @Override
     protected float chance() {
         // 技能是点缀、撞击是主食，但也不能半天不出一招
         return 0.45f;
     }
 
-    //TEMP
     @Override
     public boolean canContinueToUse() {
         return this.phase != Phase.NONE;
     }
 
-    //TEMP
     @Override
     public void start() {
         this.phase = Phase.COMPRESS;
@@ -103,7 +86,6 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
         this.slime.setAggressive(true);
     }
 
-    //TEMP
     @Override
     public void tick() {
         this.elapsed++;
@@ -122,7 +104,6 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
         }
     }
 
-    //TEMP
     private void tickCompress() {
         if (this.elapsed >= COMPRESS_TICKS) {
             this.phase = Phase.RISE;
@@ -132,7 +113,6 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
         }
     }
 
-    //TEMP
     private void tickRise() {
         this.slime.setDeltaMovement(0.0D, RISE_SPEED, 0.0D);
         this.slime.move(net.minecraft.world.entity.MoverType.SELF, this.slime.getDeltaMovement());
@@ -143,7 +123,6 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
         }
     }
 
-    //TEMP
     private void tickHover() {
         this.slime.setDeltaMovement(Vec3.ZERO);
         if (this.elapsed >= HOVER_TICKS) {
@@ -154,7 +133,6 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
     }
 
     /** 在目标当前位置画落点；扩满的那一刻回调砸落。 */
-    //TEMP
     private void spawnMarker() {
         if (!(this.slime.level() instanceof ServerLevel serverLevel)) {
             this.phase = Phase.NONE;
@@ -166,13 +144,11 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
         GroundMarker.spawn(serverLevel, center, SLAM_RADIUS, MARKER_TICKS, spot -> this.beginLanding(spot));
     }
 
-    //TEMP
     private void tickMarking() {
         this.slime.setDeltaMovement(Vec3.ZERO);
     }
 
     /** 落点提示扩满 → 开始砸。 */
-    //TEMP
     private void beginLanding(Vec3 spot) {
         this.landingSpot = spot;
         this.phase = Phase.LAND;
@@ -183,7 +159,6 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
         this.slime.setDeltaMovement(0.0D, -FALL_SPEED, 0.0D);
     }
 
-    //TEMP
     private void tickLand() {
         this.slime.setDeltaMovement(0.0D, -FALL_SPEED, 0.0D);
         this.slime.move(net.minecraft.world.entity.MoverType.SELF, this.slime.getDeltaMovement());
@@ -194,7 +169,6 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
     }
 
     /** 3×3 范围伤害，倍率 3.0。 */
-    //TEMP
     private void slamDamage() {
         if (!(this.slime.level() instanceof ServerLevel serverLevel)) {
             return;
@@ -213,7 +187,6 @@ public class CryoSlimeSlamGoal extends CryoSlimeSkillGoal {
         this.slime.resetCombat();
     }
 
-    //TEMP
     @Override
     protected void onStopped() {
         this.phase = Phase.NONE;

@@ -4,7 +4,7 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch;
-import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;

@@ -44,25 +44,19 @@ import java.util.List;
 public final class IceMistField {
 
     /** 每次结算的间隔刻数（0.5 秒）。 */
-    //TEMP
     public static final int TICK_INTERVAL = 10;
 
     /** 每次结算的伤害倍率（占攻击力的比例）。 */
-    //TEMP
     public static final float DAMAGE_MULTIPLIER = 0.3f;
 
     /** 3×3 的半宽。 */
-    //TEMP
     public static final double RADIUS = 1.5D;
 
     /** 每 tick 撒的粒子数。 */
-    //TEMP
     private static final int PARTICLE_COUNT = 10;
 
-    //TEMP
     private static final List<Field> ACTIVE = new ArrayList<>();
 
-    //TEMP
     private IceMistField() {
     }
 
@@ -74,7 +68,6 @@ public final class IceMistField {
      * @param caster        施法者（决定伤害来源与伤害换算用的基础攻击力）
      * @param attackDamage  施法者的原版 {@code ATTACK_DAMAGE}，伤害 = 它 × {@link #DAMAGE_MULTIPLIER}
      */
-    //TEMP
     public static void spawn(ServerLevel level, Vec3 center, int durationTicks,
                              LivingEntity caster, float attackDamage) {
         if (level == null || caster == null || durationTicks <= 0) {
@@ -83,12 +76,10 @@ public final class IceMistField {
         ACTIVE.add(new Field(level, center, durationTicks, caster, attackDamage));
     }
 
-    //TEMP
     public static int activeCount() {
         return ACTIVE.size();
     }
 
-    //TEMP
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         if (ACTIVE.isEmpty()) {
@@ -109,14 +100,12 @@ public final class IceMistField {
     }
 
     /** 粒子：只在最底下那一层铺满 3×3。 */
-    //TEMP
     private static void spawnParticles(Field field) {
         field.level.sendParticles(ParticleTypes.SNOWFLAKE,
                 field.center.x, field.center.y + 0.1D, field.center.z,
                 PARTICLE_COUNT, RADIUS, 0.05D, RADIUS, 0.01D);
     }
 
-    //TEMP
     private static void applyDamage(Field field) {
         double height = 2.0D;
         AABB area = AABB.ofSize(
@@ -141,7 +130,6 @@ public final class IceMistField {
      * <p>挂在角色的容器上而不是玩家身上：这样切人之后是「另一个角色」的附着，
      * 切回来只要没掉就还在。
      */
-    //TEMP
     private static void attachChillToActiveCharacter(ServerLevel level, LivingEntity victim) {
         if (!(victim instanceof Player player)) {
             return;
@@ -164,22 +152,14 @@ public final class IceMistField {
     }
 
     /** 一片正在生效的冰雾。 */
-    //TEMP
     private static final class Field {
-        //TEMP
         private final ServerLevel level;
-        //TEMP
         private final Vec3 center;
-        //TEMP
         private final int durationTicks;
-        //TEMP
         private final LivingEntity caster;
-        //TEMP
         private final float attackDamage;
-        //TEMP
         private int age;
 
-        //TEMP
         private Field(ServerLevel level, Vec3 center, int durationTicks,
                       LivingEntity caster, float attackDamage) {
             this.level = level;

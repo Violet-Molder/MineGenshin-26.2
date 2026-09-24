@@ -22,21 +22,16 @@ import net.minecraft.world.entity.ai.goal.Goal;
  */
 public abstract class CryoSlimeSkillGoal extends Goal {
 
-    //TEMP
     protected final LargeCryoSlime slime;
 
     /** 两次发动之间的最短间隔（刻）。 */
-    //TEMP
     private final int cooldownTicks;
 
     /** 平均每多少刻尝试一次。 */
-    //TEMP
     private final int checkInterval;
 
-    //TEMP
     private long nextAllowedTick;
 
-    //TEMP
     protected CryoSlimeSkillGoal(LargeCryoSlime slime, int cooldownTicks, int checkInterval) {
         this.slime = slime;
         this.cooldownTicks = Math.max(0, cooldownTicks);
@@ -44,23 +39,19 @@ public abstract class CryoSlimeSkillGoal extends Goal {
     }
 
     /** 基础发动概率（0~1），再乘攻击欲望。 */
-    //TEMP
     protected float chance() {
         return 1.0f;
     }
 
     /** 额外的发动条件（距离、目标状态之类）。 */
-    //TEMP
     protected boolean extraCanUse(LivingEntity target) {
         return true;
     }
 
     /** 技能结束的额外收尾（解锁动作、复位之类）。 */
-    //TEMP
     protected void onStopped() {
     }
 
-    //TEMP
     @Override
     public final boolean canUse() {
         if (this.slime.level().getGameTime() < this.nextAllowedTick) {
@@ -80,26 +71,22 @@ public abstract class CryoSlimeSkillGoal extends Goal {
         return target != null && extraCanUse(target);
     }
 
-    //TEMP
     @Override
     public boolean canContinueToUse() {
         return true;
     }
 
     /** 技能一旦起手就别被打断：抬手到一半断了会出现「跳一半停住」。 */
-    //TEMP
     @Override
     public boolean isInterruptable() {
         return false;
     }
 
-    //TEMP
     @Override
     public boolean requiresUpdateEveryTick() {
         return true;
     }
 
-    //TEMP
     @Override
     public void stop() {
         this.nextAllowedTick = this.slime.level().getGameTime()
@@ -108,7 +95,6 @@ public abstract class CryoSlimeSkillGoal extends Goal {
     }
 
     /** 水平距离。 */
-    //TEMP
     protected double horizontalDistanceTo(LivingEntity target) {
         double dx = target.getX() - this.slime.getX();
         double dz = target.getZ() - this.slime.getZ();

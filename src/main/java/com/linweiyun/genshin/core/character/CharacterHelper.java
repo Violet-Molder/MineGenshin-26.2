@@ -37,4 +37,13 @@ public class CharacterHelper {
 
     // 根据突破属性类型获取对应的 AttributeType
 
+    /** 当前出战角色的资源 id（模型/贴图目录名）；没有出战角色时返回 null。 */
+    public static String getActiveCharacterId(Player player) {
+        PlayerCharactersAttachment attachment = player.getData(AttachmentRegistration.PLAYER_CHARACTERS_ATTACHMENT);
+        PGCharacter current = attachment.getCurrentCharacter();
+        if (current == null) return null;
+        String id = current.getTextureId();
+        return (id == null || id.isEmpty()) ? null : id;
+    }
+
 }

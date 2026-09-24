@@ -1,6 +1,5 @@
 package com.linweiyun.genshin.core.network;
 
-import com.linweiyun.genshin.content.items.artifact.ArtifactItem;
 import com.linweiyun.genshin.core.attachment.AdventurerInfoAttachment;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
@@ -148,7 +147,7 @@ public class ClientHandler {
 
         // 界面不是每刻重建的 —— 不显式刷新的话，点了「激活」之后面板会一直停在未激活，
         // 要玩家再点一次别的圣遗物才更新。
-        com.linweiyun.genshin.render.gui.screens.atrifact.ScreenArtifactEquip.refreshIfOpen();
+        com.linweiyun.genshin.render.gui.screens.artifact.ScreenArtifactEquip.refreshIfOpen();
     }
 
 //    // ========== 原神背包同步（服务端→客户端） ==========

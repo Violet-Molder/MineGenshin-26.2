@@ -17,7 +17,7 @@ public class AttributeType implements IPersistedSerializable {
     public static final Codec<AttributeType> CODEC = PersistedParser.createCodec(AttributeType::new);
     public static final StreamCodec<ByteBuf, AttributeType> STREAM_CODEC = PersistedParser.createStreamCodec(AttributeType::new);
 
-    //TEMP 让 PersistedParser 能识别这些字段
+    // 让 PersistedParser 能识别这些字段
     @Persisted(key = "attr_id")
     private Identifier id;
 

@@ -1,0 +1,20 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: minegenshin-docs
+  web:
+    resources:
+      cache:
+        period: 0
+
+site:
+  # Markdown 源文件所在目录：默认取仓库根（在 web/ 下运行时即 ..）。
+  # 用系统属性或环境变量覆盖：-Dsite.docs-root=E:/MCMOD/MineGenshin-26.2
+  docs-root: ${SITE_DOCS_ROOT:..}
+  title: MineGenshin 文档
+
+logging:
+  level:
+    root: warn

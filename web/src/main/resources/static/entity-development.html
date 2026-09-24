@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>实体开发文档 · MineGenshin</title>
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body data-page="entity-development">
+<button id="menu-toggle">目录</button>
+<div class="layout">
+  <aside id="sidebar"></aside>
+  <main id="content">
+    <h1>实体开发文档</h1>
+    <p class="lede">从零写一个实体：注册 → 实体类 → 属性 → 生成 → AI → 同步 → 渲染。所有路径与示例都取自当前代码（1.0.1）。</p>
+
+    <div class="note">
+      AI 部分本文只给"怎么选、怎么挂"，Goal 与 Brain 的完整原理见 <a href="/doc/entity-ai">实体 AI 深入指南</a>（1500+ 行，含原版 Goal 全清单）。
+    </div>
+
+    <h2>1. 实体在项目里的位置</h2>
+    <table>
+      <tr><th>目录</th><th>放什么</th><th>现有例子</th></tr>
+      <tr><td><code>content/entities/</code></td><td>实体注册表 <code>ModEntities</code> 与实体基类</td><td><code>ModEntities.java</code></td></tr>
+      <tr><td><code>content/entities/teyvat/</code></td><td>提瓦特生物（怪物、Boss、召唤物）</td><td><code>monster/slime/LargeCryoSlime</code>、<code>skill/vesna/VesnaAttackProjectile</code></td></tr>
+      <tr><td><code>content/entities/area/</code></td><td>领域型实体（范围效果、场地）</td><td><code>TalismanSpiritArea</code>、<code>ThunderCloudEntity</code>、<code>StellarVortexEntity</code></td></tr>
+      <tr><td><code>content/entities/misc/</code></td><td>非生物、非领域的杂项实体与投射物</td><td><code>ElementalOrb</code>、<code>IceBlockProjectile</code></td></tr>
+      <tr><td><code>content/entities/ai/</code></td><td>可复用的 AI 部件（Goal / MoveControl）</td><td><code>goal/ApproachTargetGoal</code>、<code>control/WriggleMoveControl</code></td></tr>
+      <tr><td><code>render/entity/</code></td><td>客户端渲染器（非 GeckoLib 的）</td><td><code>ElementalOrbRenderer</code>、<code>IceBlockProjectileRenderer</code></td></tr>
+    </table>
+
+    <h2>2. 第一步：注册实体类型</h2>
+    <p>所有实体类型集中在 <code>content/entities/ModEntities.java</code> 的 <code>DeferredRegister&lt;EntityType&lt;?&gt;&gt;</code> 里注册，不要在别处另开注册表。</p>
+    <pre><code>public static final DeferredHolder&lt;EntityType&lt;?&gt;, EntityType&lt;IceBlockProjectile&gt;&gt; ICE_BLOCK =
+        ENTITIES.register(
+                "ice_block",
+                () -&gt; EntityType.Builder.&lt;IceBlockProjectile&gt;of(IceBlockProjectile::new, MobCategory.MISC)
+                        .sized(0.9F, 0.9F)
+                        .clientTrackingRange(8)
+                        .updateInterval(2)
+                        .build(ResourceKey.create(Registries.ENTITY_TYPE, Minegenshin.id("ice_block")))
+        );</code></pre>
+    <table>
+      <tr><th>要点</th><th>说明</th></tr>
+      <tr><td>注册名</td><td><code>EntityType.Builder.build(ResourceKey)</code> 与 <code>ENTITIES.register(name, …)</code> 两处必须一致，这是存档与数据包里的实体 ID</td></tr>
+      <tr><td><code>MobCategory</code></td><td>生物用 <code>MONSTER</code>/<code>CREATURE</code>；投射物、领域、非生物一律用 <code>MISC</code>（不占刷怪名额，也不需要属性）</td></tr>
+      <tr><td><code>sized</code></td><td>碰撞箱宽高。<code>eyeHeight</code> 决定视线与命中判定高度</td></tr>
+      <tr><td><code>clientTrackingRange</code> / <code>updateInterval</code></td><td>同步距离与位置同步间隔（tick）。高速投射物给小的 <code>updateInterval</code></td></tr>
+      <tr><td>注册入口</td><td>在 <code>Minegenshin.java</code> 里由 <code>ModEntities.register(modEventBus)</code> 统一挂载</td></tr>
+    </table>
+
+    <h2>3. 第二步：写实体类</h2>
+    <p>按"要不要 AI、是不是投射物"选择基类：</p>
+    <table>
+      <tr><th>基类</th><th>适用</th><th>要覆写</th></tr>
+      <tr><td><code>Entity</code></td><td>投射物、纯数据实体</td><td><code>defineSynchedData</code>、<code>readAdditionalSaveData</code>/<code>addAdditionalSaveData</code>、<code>tick</code></td></tr>
+      <tr><td><code>PathfinderMob</code> / <code>Monster</code></td><td>会走路的生物</td><td><code>registerGoals</code>、<code>createAttributes</code>；通常还要 <code>customServerAiStep</code></td></tr>
+      <tr><td><code>AbstractArrow</code> / 其它原版投射物</td><td>能用原版飞行与命中逻辑时</td><td>只做伤害与特效，不要重写飞行</td></tr>
+      <tr><td><code>Projectile</code></td><td>自定义飞行轨迹的投射物</td><td><code>shoot</code>、<code>onHit</code>、<code>tick</code></td></tr>
+    </table>
+    <div class="warn">
+      <b>构造期陷阱</b>：<code>registerGoals()</code> 在构造函数里被调用，此时字段还没初始化；Goal 里要用的值必须来自构造参数或静态数据，不要在 Goal 构造时读实例字段。
+    </div>
+    <p>实体类骨架（以投射物为例，完整实现见 <code>content/entities/misc/IceBlockProjectile.java</code>）：</p>
+    <pre><code>public class IceBlockProjectile extends Entity {
+    private static final EntityDataAccessor&lt;Boolean&gt; DATA_CHARGING = SynchedEntityData.defineId(IceBlockProjectile.class, EntityDataSerializers.BOOLEAN);
+
+    public IceBlockProjectile(EntityType&lt;? extends IceBlockProjectile&gt; type, Level level) { super(type, level); }
+
+    @Override protected void defineSynchedData(SynchedEntityData.Builder builder) { /* 同步字段在这里声明 */ }
+    @Override protected void readAdditionalSaveData(ValueInput input) { /* 存档读取 */ }
+    @Override protected void addAdditionalSaveData(ValueOutput output) { /* 存档写入 */ }
+    @Override public void tick() { /* 服务端推进 + 命中判定 */ }
+}</code></pre>
+
+    <h2>4. 属性与生物类别</h2>
+    <p>生物必须在 <code>ModEntities.registerEntityAttributes</code> 里注册属性，否则加载期会报 <code>Entity minegenshin:xxx has no attributes</code>：</p>
+    <pre><code>private static void registerEntityAttributes(EntityAttributeCreationEvent event) {
+    event.put(LARGE_CRYO_SLIME.get(), LargeCryoSlime.createAttributes().build());
+}</code></pre>
+    <p>属性表用 <code>Monster.createMonsterAttributes()</code> 或 <code>Mob.createMobAttributes()</code> 起手，再 <code>add</code> 生命/攻击/移速/护甲等——具体数值走本项目的属性系统（见技术文档"属性与效果"）。</p>
+
+    <h2>5. 生成、刷怪与生成蛋</h2>
+    <p>自然生成位置在 <code>ModEntities.registerSpawnPlacements</code> 里声明；本项目的怪物只在"入侵状态"下生成：</p>
+    <pre><code>event.register(LARGE_CRYO_SLIME.get(), SpawnPlacementTypes.ON_GROUND,
+        Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+        (type, level, spawnType, pos, random) -&gt;
+            level instanceof ServerLevel sl &amp;&amp; TeyvatWorldInvasion.get(sl).isInvaded(),
+        RegisterSpawnPlacementsEvent.Operation.REPLACE);</code></pre>
+    <p>生成蛋走物品注册（<code>core/system/registry/register</code>），用 <code>SpawnEggItem</code> 绑定 <code>ModEntities.XXX</code>。</p>
+
+    <h2>6. AI：Goal 还是 Brain</h2>
+    <table>
+      <tr><th>想要的效果</th><th>用什么</th></tr>
+      <tr><td>近战追击、远程放技能、逃跑、开门、巡逻</td><td>Goal（<code>registerGoals</code> + <code>addGoal(优先级, new XxxGoal(...))</code>）</td></tr>
+      <tr><td>多条状态机、要记忆/感知/日程的复杂怪物</td><td>Brain + Behavior + Memory + Sensor</td></tr>
+      <tr><td>只想复用一套走法</td><td>自定义 <code>MoveControl</code>/<code>JumpControl</code>，如 <code>WriggleMoveControl</code></td></tr>
+    </table>
+    <p>本项目现有怪物一律用 Goal（如 <code>CryoSlimeShardGoal</code>、<code>CryoSlimeMistGoal</code>、<code>CryoSlimeSkillGoal</code>）。写自定义 Goal 的模板、原版 Goal 全清单、标志位仲裁与优先级规则，见 <a href="/doc/entity-ai">实体 AI 深入指南</a>。</p>
+
+    <h2>7. 数据同步</h2>
+    <table>
+      <tr><th>需求</th><th>做法</th></tr>
+      <tr><td>少量状态（是否蓄力、剩余时间、方块状态）</td><td><code>SynchedEntityData.defineId</code> + <code>setData</code>/<code>getEntityData()</code>，客户端自动可见</td></tr>
+      <tr><td>一方向客户端发事件（伤害飘字、特效指令）</td><td>走 <code>core/network</code> 的 RPC（见 <code>DamageIndicatorRpc</code>）</td></tr>
+      <tr><td>玩家数据/角色数据</td><td>不要放实体里，走附件系统（<code>core/attachment</code> + <code>core/sync</code>）</td></tr>
+    </table>
+    <div class="warn">同步字段一旦发布就不能改类型或删改语义：它参与网络协议与存档兼容。改字段名/顺序要安排版本迁移。</div>
+
+    <h2>8. 渲染与资源布局</h2>
+    <p>客户端渲染器在 <code>MinegenshinClient.registerEntityRenderers</code> 里统一注册（<code>@EventBusSubscriber(Dist.CLIENT)</code>）：</p>
+    <pre><code>event.registerEntityRenderer(ModEntities.ICE_BLOCK.get(), IceBlockProjectileRenderer::new);</code></pre>
+    <table>
+      <tr><th>渲染方式</th><th>用在哪</th><th>资源位置</th></tr>
+      <tr><td>GeckoLib 模型（<code>GeoEntityRenderer</code> + <code>CategoryGeoModel</code>）</td><td>有动画的生物/召唤物</td><td><code>assets/minegenshin/entity/&lt;id&gt;/&lt;id&gt;.json</code>、<code>.animation.json</code>、<code>.png</code></td></tr>
+      <tr><td>原版风格渲染器</td><td>方块造型投射物、无骨骼模型的对象</td><td>无模型文件，用原版方块/物品模型</td></tr>
+    </table>
+    <div class="note">
+      GeckoLib 只扫自己的目录，本项目把实体资源统一放在 <code>assets/minegenshin/entity/&lt;id&gt;/</code>，由 <code>CategoryGeoModel</code> 与 <code>AssetGeoCache</code> 解析。
+      <b>不要把 <code>AssetGeoCache</code> 注册成全局资源重载监听器</b>：它一旦抛异常会让整个客户端资源重载失败，所有资源驱动的表现（动作、动画、贴图）一起失效。它在客户端 setup 时预热，并有"首次查询时同步扫一次"的兜底。
+    </div>
+
+    <h2>9. 投射物专章：照抄"冰块"这条完整链</h2>
+    <p><code>IceBlockProjectile</code> 是本项目最干净的投射物范例，全流程如下：</p>
+    <table>
+      <tr><th>环节</th><th>做法</th></tr>
+      <tr><td>创建</td><td>静态工厂 <code>create(level, caster, target, scale, chargeTicks)</code>，由技能自己调用（如 <code>CryoSlimeShardGoal</code>）</td></tr>
+      <tr><td>实体类型</td><td><code>ModEntities.ICE_BLOCK</code>，<code>MobCategory.MISC</code>，尺寸 0.9×0.9</td></tr>
+      <tr><td>外观</td><td>同步 <code>BlockState</code>，客户端用 <code>IceBlockProjectileRenderer</code> 复用原版方块渲染并自转</td></tr>
+      <tr><td>蓄力/缩放</td><td><code>SynchedEntityData</code> 同步蓄力进度与缩放，服务端决定发射时机</td></tr>
+      <tr><td>命中</td><td><code>tick()</code> 里做 AABB 检测，命中后造成伤害（走 attack 系统）并销毁</td></tr>
+      <tr><td>渲染注册</td><td><code>MinegenshinClient.registerEntityRenderers</code> 一行</td></tr>
+    </table>
+
+    <h2>10. 项目内实体范例索引</h2>
+    <table>
+      <tr><th>要看什么</th><th>看哪个类</th></tr>
+      <tr><td>会走路、会放技能的怪物</td><td><code>content/entities/teyvat/monster/slime/LargeCryoSlime</code> + 同包下的 <code>CryoSlime*Goal</code></td></tr>
+      <tr><td>投射物（方块造型）</td><td><code>content/entities/misc/IceBlockProjectile</code>、<code>render/entity/IceBlockProjectileRenderer</code></td></tr>
+      <tr><td>投射物（GeckoLib 模型）</td><td><code>content/entities/teyvat/skill/vesna/VesnaAttackProjectile</code></td></tr>
+      <tr><td>召唤物</td><td><code>content/entities/teyvat/skill/vesna/VesnaSpiritSwordEntity</code></td></tr>
+      <tr><td>领域/场地</td><td><code>content/entities/area/TalismanSpiritArea</code>、<code>ThunderCloudEntity</code>、<code>StellarVortexEntity</code></td></tr>
+      <tr><td>非生物杂项</td><td><code>content/entities/misc/ElementalOrb</code></td></tr>
+      <tr><td>自定义移动方式</td><td><code>content/entities/ai/control/WriggleMoveControl</code></td></tr>
+    </table>
+
+    <h2>11. 新增实体检查清单</h2>
+    <ol>
+      <li>在 <code>ModEntities</code> 注册 <code>EntityType</code>（名字与 <code>ResourceKey</code> 一致）</li>
+      <li>写实体类，覆写 <code>defineSynchedData</code> 与存档读写</li>
+      <li>是生物 → 在 <code>registerEntityAttributes</code> 注册属性；<code>registerGoals</code> 挂 AI</li>
+      <li>要自然生成 → 在 <code>registerSpawnPlacements</code> 里声明，并遵守"入侵状态才生成"的项目约定</li>
+      <li>客户端渲染器 + 在 <code>MinegenshinClient.registerEntityRenderers</code> 注册（GeckoLib 模型还要按 <code>entity/&lt;id&gt;/</code> 放资源）</li>
+      <li>语言文件补 <code>entity.minegenshin.&lt;id&gt;</code>（<code>zh_cn.json</code> 与 <code>en_us.json</code>）</li>
+      <li>需要掉落 → 走 <code>core/system/loot</code>（<code>EntityDeathDropHandler</code>）或数据包战利品表</li>
+      <li>编译（批量改动后加 <code>--rerun-tasks</code>），进游戏用生成蛋或命令实测一次</li>
+    </ol>
+
+    <h2>12. 常见坑</h2>
+    <table>
+      <tr><th>现象</th><th>原因与处理</th></tr>
+      <tr><td>加载期报 <code>Entity xxx has no attributes</code></td><td>生物类别忘了注册属性；投射物/领域用 <code>MobCategory.MISC</code> 就不会有这条</td></tr>
+      <tr><td>客户端看不见实体/没有模型</td><td>渲染器没注册，或资源不在 <code>entity/&lt;id&gt;/</code> 布局下，或 <code>AssetGeoCache</code> 未预热</td></tr>
+      <tr><td>动画不播 / 键名对不上</td><td>GeckoLib 动画键与 <code>.animation.json</code> 里的名字不一致；见 AI 指南里 <code>CategoryGeoModel</code> 的解析失败提示</td></tr>
+      <tr><td>Goal 在构造时报空指针</td><td><code>registerGoals()</code> 在构造期调用，读不到实例字段</td></tr>
+      <tr><td>投射物位置抖动/命中判定偏移</td><td><code>updateInterval</code> 太大；配合 <code>clientTrackingRange</code> 调小</td></tr>
+      <tr><td>专用服务器崩溃（<code>NoClassDefFoundError</code>）</td><td>公共侧代码引用了客户端类。实体/公共类里不要 import <code>net.minecraft.client.*</code> 或本项目的 <code>client.*</code></td></tr>
+    </table>
+  </main>
+</div>
+<script src="assets/docs.js"></script>
+</body>
+</html>

@@ -6,10 +6,11 @@ import com.linweiyun.genshin.core.system.reaction.builtin.ElectroChargedReaction
 import com.linweiyun.genshin.core.system.reaction.builtin.FreezeReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.LunarChargedReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.MeltReaction;
+import com.linweiyun.genshin.core.system.reaction.builtin.SuperConductReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.SwirlReaction;
 import com.linweiyun.genshin.core.system.reaction.builtin.VaporizeReaction;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -69,6 +70,15 @@ public class ModElementalReactions {
             () -> new ElectroChargedReaction(
                     ElementalReactionType.ELECTRO_CHARGED,
                     "minegenshin:hydro", "minegenshin:electro",
+                    1f, 1f,
+                    0));
+
+    // 超导：雷:冰 = 1:1，剧变反应（冰元素伤害 + 减物抗），伤害冷却 0.5s
+    public static final DeferredHolder<ElementalReaction, SuperConductReaction> SUPERCONDUCT = ELEMENTAL_REACTIONS.register(
+            "superconduct",
+            () -> new SuperConductReaction(
+                    ElementalReactionType.SUPERCONDUCT,
+                    "minegenshin:electro", "minegenshin:cyro",
                     1f, 1f,
                     0));
 

@@ -1,8 +1,8 @@
 package com.linweiyun.genshin.client.combat;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
 
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.Engagement;
-import com.linweiyun.genshin.core.system.combat.animation.state.ActionStateMachine;
-import com.linweiyun.genshin.core.system.combat.targeting.CombatTargeting;
+import com.linweiyun.genshin.core.system.combat.action.data.Engagement;
+import com.linweiyun.genshin.client.combat.state.ActionStateMachine;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
@@ -67,7 +67,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * <h2>参数来自招式</h2>
  * 停几格、冲多快、最多冲几刻、最快转多少度，全部由
- * {@code CharacterActionData.ActionStep.engagement} 带进来 ——
+ * {@code ActionStep.engagement} 带进来 ——
  * 想按角色/按招式调手感，不用改这个类。
  */
 public final class AttackApproach {

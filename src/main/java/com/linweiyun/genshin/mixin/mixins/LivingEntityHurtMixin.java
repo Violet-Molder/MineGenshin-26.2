@@ -15,7 +15,7 @@ import com.linweiyun.genshin.core.system.shield.ShieldService;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
@@ -230,7 +230,6 @@ public class LivingEntityHurtMixin {
      * <p>那个分支会带着换算后的伤害<b>递归调用</b> {@code hurtServer}，
      * 所以护盾必须在递归的那一层扣，否则同一次攻击会被扣两遍。
      */
-    //TEMP
     private static boolean usesTeyvatConversion(ServerLevel level, DamageSource source) {
         if (!TeyvatWorldInvasion.get(level).isInvaded()) return false;
         if (source instanceof ModDamageSource || source instanceof TeyvatConvertedDamageSource) return false;

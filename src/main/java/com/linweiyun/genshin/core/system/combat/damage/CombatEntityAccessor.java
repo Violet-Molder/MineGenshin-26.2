@@ -5,7 +5,6 @@ import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
-import net.minecraft.client.model.animal.fish.PufferfishBigModel;
 import net.minecraft.world.entity.LivingEntity;
 
 /**

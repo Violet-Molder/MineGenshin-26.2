@@ -10,25 +10,40 @@ import org.jetbrains.annotations.Nullable;
  * <h2>统一布局</h2>
  * <pre>
  * assets/minegenshin/
- * ├── character/&lt;角色id&gt;/          ← 角色：模型 / 动画 / 贴图 全在这一个文件夹
- * │      vesna.geo.json
- * │      vesna.animation.json
- * │      vesna.png
- * ├── item/&lt;物品名&gt;/               ← 物品（GeckoLib geo 物品）
- * │      test_sword.geo.json
- * │      test_sword.animation.json
- * │      test_sword.png
- * ├── entity/&lt;实体名&gt;/             ← 提瓦特实体
- * └── icon/&lt;分类&gt;/&lt;名字&gt;.png        ← GUI 图标（背包 / 装备槽用）
- *        item/test_sword.png
+ * ├── character/&lt;角色id&gt;/     ← 角色：一个角色一个文件夹，内部再按类型分
+ * │      &lt;角色id&gt;.animation.json                动画（模型/动画留对象根，文件名自带类型后缀）
+ * │      textures/&lt;角色id&gt;.png                   角色模型贴图
+ * │      textures/avatar.png  avatar_hud.png     列表头像 / HUD 头像
+ * │      textures/pose_prepare.png  pose_already.png
+ * │      textures/skill.png  burst.png           战技 / 爆发图标
+ * │      sounds.json  sounds/*.ogg               音效定义与音频
+ * ├── item/&lt;物品id&gt;/          ← 物品：定义 / 平面模型（入口文件）+ 贴图与图标
+ * │      definition.json  model.json             （原版入口，见 AssetRedirects）
+ * │      textures/texture.png  icon.png          平面贴图 / GUI 图标（geo 物品另有 textures/&lt;id&gt;.png）
+ * ├── block/&lt;方块id&gt;/         ← 方块：状态 / 模型（入口文件）+ 贴图 + 方块物品
+ * │      blockstate.json  model.json
+ * │      textures/texture.png  icon.png
+ * │      blockitem/{definition,model}.json  blockitem/textures/…
+ * ├── entity/&lt;实体id&gt;/        ← 提瓦特实体
+ * │      &lt;id&gt;.geo.json  &lt;id&gt;.animation.json  textures/&lt;id&gt;.png
+ * ├── gui/  icon/&lt;分类&gt;/      ← 共用界面贴图、跨对象图标（背包 / 装备槽用）
+ * └── lss/  lang/             ← 样式表、语言文件（语言文件是原版硬性入口，一个语言一个文件）
  * </pre>
+ *
+ * <p><b>入口按对象、对象内部按类型。</b>原版引擎钉死的入口层（{@code items/}、{@code models/}、
+ * {@code blockstates/}、{@code textures/} 四个根）由 {@code core.asset.AssetRedirects} +
+ * {@code FileToIdConverterRedirectMixin} 在读取时改写成上面的布局，<b>只对本 MOD 命名空间生效</b>，
+ * 整合包里其它 MOD 的目录完全不受影响。
  *
  * <h2>注意 GeckoLib 的扫描根</h2>
  * GeckoLib 5.5.6 只会扫描 {@code assets/<ns>/geckolib/models/**} 与
  * {@code assets/<ns>/geckolib/animations/**}（见 {@code GeckoLibResources.MODELS_PATH} /
- * {@code ANIMATIONS_PATH}，是硬编码常量）。本 MOD 通过
- * {@code GeckoLibResourcesMixin} 额外把 {@code assets/minegenshin/character/**}
- * 也加进扫描范围，<b>只对本 MOD 命名空间生效</b>，不影响整合包里其它 MOD。
+ * {@code ANIMATIONS_PATH}，是硬编码常量），也没有公开接口能加根目录。本 MOD 的做法是
+ * <b>自己扫、自己烘培</b>：{@code GenshinGeoCache} 扫 {@code character/}、{@code item/}、
+ * {@code entity/} 三个根（只认 {@code .geo.json} / {@code .animation.json} 两种后缀），
+ * 烘培结果由 {@code GenshinGeoModel} 覆盖的两个 public 方法取用
+ * （{@code GeoModel#getBakedModel} 与 {@code GeoModel#getBakedAnimation} 都是 public 非 final，
+ * 所有查找都收敛在这两个方法上）。这样<b>不动 GeckoLib 任何全局状态</b>，整合包里其它 MOD 完全不受影响。
  * 贴图不受这个限制，放哪都行。
  *
  * <h2>改路径怎么办</h2>
@@ -67,7 +82,7 @@ public final class GenshinAssets {
      * <p>本 MOD 基本上只有一套角色模型，所以<b>默认模型和贴图都放这里</b>：
      * <pre>
      * character/default/default.geo.json
-     * character/default/default.png
+     * character/default/textures/default.png
      * </pre>
      * 角色只有动画是独立的。真需要专属模型时，用显式路径构造
      * {@link com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData} 即可。
@@ -85,9 +100,9 @@ public final class GenshinAssets {
         return DEFAULT_ASSET_DIR + "/" + DEFAULT_MODEL_FILE;
     }
 
-    /** 共用贴图的完整相对路径：{@code character/default/default.png}。 */
+    /** 共用贴图的完整相对路径：{@code character/default/textures/default.png}。 */
     public static String defaultTexturePath() {
-        return DEFAULT_ASSET_DIR + "/" + DEFAULT_TEXTURE_FILE;
+        return DEFAULT_ASSET_DIR + "/" + ModAssetPaths.TEXTURE_DIR + "/" + DEFAULT_TEXTURE_FILE;
     }
 
     /** 某个角色的动画文件相对路径：{@code character/<角色id>/<角色id>.animation.json}。 */
@@ -100,9 +115,9 @@ public final class GenshinAssets {
         return CHARACTER_ROOT + "/" + characterId + "/" + characterId + ".geo.json";
     }
 
-    /** 某个角色的专属贴图相对路径（大多数角色用不到）：{@code character/<角色id>/<角色id>.png}。 */
+    /** 某个角色的专属贴图相对路径（大多数角色用不到）：{@code character/<角色id>/textures/<角色id>.png}。 */
     public static String characterTexturePath(String characterId) {
-        return CHARACTER_ROOT + "/" + characterId + "/" + characterId + ".png";
+        return CHARACTER_ROOT + "/" + characterId + "/" + ModAssetPaths.TEXTURE_DIR + "/" + characterId + ".png";
     }
 
     /** 默认模型文件名：{@code <id>.geo.json} */
@@ -154,9 +169,9 @@ public final class GenshinAssets {
         return id(CHARACTER_ROOT + "/" + characterId + "/" + stripAnimationSuffix(fileName));
     }
 
-    /** 角色贴图路径（贴图是普通资源位置，保留扩展名）。 */
+    /** 角色贴图路径（贴图进 {@code textures/} 子目录，保留扩展名）。 */
     public static Identifier characterTexture(String characterId, String fileName) {
-        return id(CHARACTER_ROOT + "/" + characterId + "/" + fileName);
+        return ModAssetPaths.textureIn(CHARACTER_ROOT + "/" + characterId, fileName);
     }
 
     // ==================== 物品 ====================
@@ -182,7 +197,7 @@ public final class GenshinAssets {
     }
 
     public static Identifier itemTexture(String itemName, String fileName) {
-        return id(ITEM_ROOT + "/" + itemName + "/" + fileName);
+        return ModAssetPaths.textureIn(ITEM_ROOT + "/" + itemName, fileName);
     }
 
     // ==================== 实体 ====================
@@ -196,7 +211,7 @@ public final class GenshinAssets {
     }
 
     public static Identifier entityTexture(String entityName, String fileName) {
-        return id(ENTITY_ROOT + "/" + entityName + "/" + fileName);
+        return ModAssetPaths.textureIn(ENTITY_ROOT + "/" + entityName, fileName);
     }
 
     // ==================== 角色音效 ====================

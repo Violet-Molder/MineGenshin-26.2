@@ -8,7 +8,7 @@ import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionPriorityCalculator;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 
 /**
  * 蒸发反应 —— 增幅反应

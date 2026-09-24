@@ -18,25 +18,19 @@ import net.minecraft.world.phys.Vec3;
 public class CryoSlimeMistGoal extends CryoSlimeSkillGoal {
 
     /** 抬手刻数。 */
-    //TEMP
     private static final int WINDUP_TICKS = 14;
 
     /** 冰雾铺在身前几格。 */
-    //TEMP
     private static final double FORWARD_OFFSET = 3.0D;
 
-    //TEMP
     private int elapsed;
 
-    //TEMP
     private boolean spawned;
 
-    //TEMP
     public CryoSlimeMistGoal(LargeCryoSlime slime) {
         super(slime, MobBehaviorConfig.mistCooldownTicks(), 16);
     }
 
-    //TEMP
     @Override
     protected boolean extraCanUse(LivingEntity target) {
         // 近中距离才喷：太远喷了也白喷
@@ -44,19 +38,16 @@ public class CryoSlimeMistGoal extends CryoSlimeSkillGoal {
         return distance >= 2.0D && distance <= 14.0D;
     }
 
-    //TEMP
     @Override
     protected float chance() {
         return 0.55f;
     }
 
-    //TEMP
     @Override
     public boolean canContinueToUse() {
         return this.elapsed <= WINDUP_TICKS + 20;
     }
 
-    //TEMP
     @Override
     public void start() {
         this.elapsed = 0;
@@ -65,7 +56,6 @@ public class CryoSlimeMistGoal extends CryoSlimeSkillGoal {
         this.slime.setAggressive(true);
     }
 
-    //TEMP
     @Override
     public void tick() {
         this.elapsed++;
@@ -79,7 +69,6 @@ public class CryoSlimeMistGoal extends CryoSlimeSkillGoal {
         }
     }
 
-    //TEMP
     private void spray() {
         if (!(this.slime.level() instanceof ServerLevel serverLevel)) {
             return;
@@ -93,7 +82,6 @@ public class CryoSlimeMistGoal extends CryoSlimeSkillGoal {
                 this.slime, this.slime.attackDamageValue());
     }
 
-    //TEMP
     @Override
     protected void onStopped() {
         this.slime.setAggressive(false);

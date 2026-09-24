@@ -1,11 +1,10 @@
 package com.linweiyun.genshin.core.character.catalyst.columbina;
 
-import com.linweiyun.genshin.config.character.ColumbinaAttributeConfig;
 import com.linweiyun.genshin.config.character.ShenheAttributeConfig;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.character.catalyst.CatalystCharacter;
-import com.linweiyun.genshin.enums.CharacterAscendAttribute;
+import com.linweiyun.genshin.core.character.CharacterAscendAttribute;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 

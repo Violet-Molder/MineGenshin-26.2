@@ -5,8 +5,8 @@ import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroup;
 import com.linweiyun.genshin.core.system.combat.decay.DecayGroups;
-import com.linweiyun.genshin.enums.AttackType;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 
 import javax.annotation.Nullable;
 import java.util.List;

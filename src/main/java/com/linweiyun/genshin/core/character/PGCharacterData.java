@@ -697,7 +697,7 @@ public class PGCharacterData implements IPersistedSerializable, IManaged {
      *   <li>{@link #syncToClient()} —— LDLib2 增量包。<b>角色身上收不到</b>：
      *       客户端没绑 ownerPlayer（{@code ISyncCharacter.handleCharacterSyncPacket} 会直接返回），
      *       而且它和「角色自己的字段」共用同一个包名，索引空间不同，不能混用。</li>
-     *   <li>{@code CharacterTickEvent} 里检查 {@code isDirty()} → 整包
+     *   <li>{@code CharacterTickHandler} 里检查 {@code isDirty()} → 整包
      *       （{@code syncSingleCharacterToPlayer}）。<b>这条路是通的</b>，
      *       所以「想让客户端看到什么」就得标 dirty。</li>
      * </ol>

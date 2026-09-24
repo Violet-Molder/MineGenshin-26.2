@@ -3,8 +3,7 @@ package com.linweiyun.genshin.core.status;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.StatusContainer;
 import com.linweiyun.genshin.core.character.PGCharacterData;
-import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
-import com.linweiyun.genshin.core.system.about.block.ChunkBlockElements;
+import com.linweiyun.genshin.core.system.about.block.BlockElementStore;
 import com.linweiyun.genshin.core.system.registry.register.ModStatusDataComponents;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
@@ -12,16 +11,15 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.chunk.LevelChunk;
 import org.slf4j.Logger;
 
 /**
- * 宿主访问器 —— 五种宿主 → StatusContainer
+ * 宿主访问器 —— 四种现有载体 → StatusContainer（写入统一走 ElementalHost 入口）
  *
  * LivingEntity / BlockEntity → NeoForge Attachment
  * PGCharacterData           → @Persisted 字段
  * ItemStack                 → DataComponent
- * BlockPos（方块）           → Chunk Attachment 中提取 ElementalAttachmentInstance
+ * BlockPos（方块）           → Chunk 数据里的 StatusContainer（返回只读快照）
  */
 public class StatusAccessor {
     public static final Logger LOGGER = LogUtils.getLogger();
@@ -43,21 +41,16 @@ public class StatusAccessor {
         return c != null ? c : StatusContainer.EMPTY;
     }
 
+    /**
+     * 方块身上的容器（只读快照）。
+     *
+     * <p>方块容器现在是一等公民（见 {@code BlockElementStore}），但外部读取仍然给
+     * <b>拷贝</b>：调用方拿到快照，不能顺着它改到 Chunk 数据里去。
+     * 需要写入请走宿主入口 {@code ElementalAttachmentHelper.attach(BlockHost, ...)}。
+     */
     public static StatusContainer of(ServerLevel level, BlockPos pos) {
-        LevelChunk chunk = level.getChunkAt(pos);
-        if (!chunk.hasData(AttachmentRegistration.CHUNK_ELEMENTS)) {
-            return StatusContainer.EMPTY;
-        }
-        ChunkBlockElements data = chunk.getData(AttachmentRegistration.CHUNK_ELEMENTS);
-        if (data == null || data.isEmpty()) {
-            return StatusContainer.EMPTY;
-        }
-        ElementalAttachmentInstance inst = data.get(pos);
-        if (inst == null || inst.isFinished()) {
-            return StatusContainer.EMPTY;
-        }
-        StatusContainer container = new StatusContainer();
-        container.add(inst.copy());
-        return container;
+        // 走宿主层的只读入口（不建容器、不补自附着、不落盘）—— 见 element-host.md 的读写纪律
+        StatusContainer stored = com.linweiyun.genshin.core.system.about.host.BlockHost.of(level, pos).peekContainer();
+        return stored == null ? StatusContainer.EMPTY : stored.copy();
     }
 }

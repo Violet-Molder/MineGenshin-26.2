@@ -178,7 +178,7 @@ public class MGHud {
                             s ->
                                     s.background(
                                             SpriteTexture.of(
-                                                    Minegenshin.id("textures/gui/short_character_hp_bar_green.png"))))
+                                                    Minegenshin.id("gui/short_character_hp_bar_green.png"))))
                     .layout(
                             l -> {
                                 l.width(80);
@@ -190,7 +190,7 @@ public class MGHud {
                                     s ->
                                             s.background(
                                                     SpriteTexture.of(
-                                                            Minegenshin.id("textures/gui/short_character_hp_green.png")))));
+                                                            Minegenshin.id("gui/short_character_hp_green.png")))));
 
             characterList.addChild(
                     characterSate.addChildren(
@@ -331,7 +331,7 @@ public class MGHud {
                         s ->
                                 s.background(
                                         SpriteTexture.of(
-                                                Minegenshin.id("textures/gui/long_character_hp_bar_green.png"))))
+                                                Minegenshin.id("gui/long_character_hp_bar_green.png"))))
                 .layout(
                         l -> {
                             l.width(210);
@@ -343,7 +343,7 @@ public class MGHud {
                                 s ->
                                         s.background(
                                                 SpriteTexture.of(
-                                                        Minegenshin.id("textures/gui/long_character_hp_green.png")))));
+                                                        Minegenshin.id("gui/long_character_hp_green.png")))));
         currentCharacterHP.label.bindDataSource(
                 SupplierDataSource.of(
                         () -> {
@@ -491,8 +491,9 @@ public class MGHud {
                 if (element != null
                         && attached.getUnit() > 0f
                         && element != ModElements.FYSIKOS.get()
+                        && !element.isEffectCarrier()
                         && seen++ == slot) {
-                    return "minegenshin:textures/elemental/" + element.getId() + ".png";
+                    return "minegenshin:icon/elemental/" + element.getId() + ".png";
                 }
             }
         }

@@ -27,6 +27,12 @@ public abstract class FrostedIceMixin {
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
     private void genshin$tick(BlockState state, ServerLevel level,
                               BlockPos pos, RandomSource random, CallbackInfo ci) {
+        // 只有「在元素体系里」的浮冰才由冻元素接管（有容器 = 我们冻出来的）。
+        // 没有容器的浮冰（例如原版冰霜行者踩出来的）保持原版行为：不接管、照常融化。
+        if (com.linweiyun.genshin.core.system.about.block.BlockElementStore.peek(level, pos) == null) {
+            return;
+        }
+
         // 取消原版邻居检查融化逻辑
         ci.cancel();
 
@@ -58,5 +64,20 @@ public abstract class FrostedIceMixin {
 
         // 重调度 next tick —— 确保衰减链不断
         level.scheduleTick(pos, state.getBlock(), 1);
+    }
+
+    /**
+     * 原版 {@code FrostedIceBlock.neighborChanged}：邻居变化时「周围同类少于 2 个」就把自己化水。
+     *
+     * <p>浮冰的存亡必须由冻元素决定（{@code BlockElementHelper.tickBlockElementDecay} +
+     * {@code BlockElementMigrations}），所以这里整段拦掉 —— 否则挖掉旁边一块浮冰就可能
+     * 连带把这一块变成水，绕过了元素链。
+     */
+    @Inject(method = "neighborChanged", at = @At("HEAD"), cancellable = true)
+    private void genshin$blockNeighborMelt(BlockState state, net.minecraft.world.level.Level level, BlockPos pos,
+                                            net.minecraft.world.level.block.Block block,
+                                            net.minecraft.world.level.redstone.Orientation orientation,
+                                            boolean movedByPiston, CallbackInfo ci) {
+        ci.cancel();
     }
 }

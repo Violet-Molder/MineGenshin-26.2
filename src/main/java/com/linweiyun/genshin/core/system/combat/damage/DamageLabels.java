@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.core.system.combat.damage;
 
 import com.linweiyun.genshin.core.element.GenshinElement;
-import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
 
 /**
  * 伤害日志里用的<b>中文名字</b>（元素 / 攻击类型 / 属性）。

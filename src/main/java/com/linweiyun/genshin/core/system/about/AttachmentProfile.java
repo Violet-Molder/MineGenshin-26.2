@@ -53,9 +53,15 @@ public class AttachmentProfile implements IPersistedSerializable {
         this.permanent = durationSeconds < 0;
     }
 
-    /** 恒定附着专用构造（衰减 0，无限时间，仅需指定满量） */
+    /**
+     * 恒定附着专用构造（衰减 0，无限时间，仅需指定满量）。
+     *
+     * <p>时长必须传 <b>-1</b>：构造器是用 {@code durationSeconds < 0} 判定「常驻」的，
+     * 以前这里传 999，于是 {@code isPermanent()} 恒为 false —— 环境自附着（方块自带的元素）
+     * 一直被当成会衰减的普通附着。
+     */
     public static AttachmentProfile permanent(float baseQuantity) {
-        return new AttachmentProfile(baseQuantity, 1.0f, 0f, 999f);
+        return new AttachmentProfile(baseQuantity, 1.0f, 0f, -1f);
     }
 
     /**
@@ -70,18 +76,33 @@ public class AttachmentProfile implements IPersistedSerializable {
         return new AttachmentProfile(x, 0.8f, v, t);
     }
 
+    /**
+     * 按元素量选附着档次 —— <b>「元素量 → 附着参数」的唯一映射</b>。
+     *
+     * <p>技能里填的 {@code elementAmount()} 是损耗前的附着量，管线拿它换档次；
+     * 阈值与原神一致：4U=超强 / 2U=强 / 1.5U=中 / 其余=弱。
+     *
+     * @param amount 本次攻击的元素量（U），{@code <= 0} 视作弱附着
+     */
+    public static AttachmentProfile forAmount(float amount) {
+        if (amount >= 4f) return ULTRA_STRONG;
+        if (amount >= 2f) return STRONG;
+        if (amount >= 1.5f) return MEDIUM;
+        return WEAK;
+    }
+
     // ========== 五个预设常量 ==========
 
     /** 弱附着：1U → 损耗后 0.8U，衰减 ≈ 0.084U/s，时长 9.5s */
     public static final AttachmentProfile WEAK = normal(1.0f);
 
-    /** 中附着：1.5U → 损耗后 1.2U，衰减 ≈ 0.101U/s，时长 10.75s */
+    /** 中附着：1.5U → 损耗后 1.2U，衰减 ≈ 0.112U/s（1.2/10.75），时长 10.75s */
     public static final AttachmentProfile MEDIUM = normal(1.5f);
 
-    /** 强附着：2U → 损耗后 1.6U，衰减 ≈ 0.128U/s，时长 12s */
+    /** 强附着：2U → 损耗后 1.6U，衰减 ≈ 0.133U/s（1.6/12），时长 12s */
     public static final AttachmentProfile STRONG = normal(2.0f);
 
-    /** 超强附着：4U → 损耗后 3.2U，衰减 ≈ 0.178U/s，时长 17s */
+    /** 超强附着：4U → 损耗后 3.2U，衰减 ≈ 0.188U/s（3.2/17），时长 17s */
     public static final AttachmentProfile ULTRA_STRONG = normal(4.0f);
 
     /** 恒定附着：无限时间，衰减 0。荆棘方块、元素方碑等用 */

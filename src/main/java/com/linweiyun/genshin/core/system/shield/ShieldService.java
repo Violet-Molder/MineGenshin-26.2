@@ -43,10 +43,8 @@ import org.jetbrains.annotations.Nullable;
 public final class ShieldService {
 
     /** 盾牌型盾的正面扇形半角（度）：只有落在这个范围内的攻击才打在盾面上。 */
-    //TEMP
     public static final float HELD_FRONT_HALF_ANGLE = 70f;
 
-    //TEMP
     private ShieldService() {
     }
 
@@ -55,21 +53,18 @@ public final class ShieldService {
      *
      * <p>⚠️ NeoForge 的附件是「<b>原地改对象不算改</b>」—— 不调 {@code setData} 的话
      * 服务端自己看得到新数值，客户端永远拿的是旧值（血条下面的盾条就是这么消失的）。
-     * 项目里 {@code StatusTickEvent} 每 tick 手动 setData 也是同一个原因。
+     * 项目里 {@code StatusTickHandler} 每 tick 手动 setData 也是同一个原因。
      */
-    //TEMP
     private static void push(LivingEntity entity, ShieldState state) {
         entity.setData(AttachmentRegistration.SHIELD.get(), state);
     }
 
     // ==================== 存取 ====================
 
-    //TEMP
     public static ShieldState get(LivingEntity entity) {
         return entity.getData(AttachmentRegistration.SHIELD.get());
     }
 
-    //TEMP
     public static boolean has(LivingEntity entity) {
         return get(entity).isActive();
     }
@@ -80,7 +75,6 @@ public final class ShieldService {
      * <p>盾牌型（{@link ShieldShape#HELD}）的盾量画在手持物品模型上，
      * 而且不随动画位移（那一块目前是占位）。
      */
-    //TEMP
     public static boolean hasAuraShield(LivingEntity entity) {
         ShieldState state = get(entity);
         if (!state.isActive()) {
@@ -95,7 +89,6 @@ public final class ShieldService {
      *
      * @param durationTicks 持续刻数；{@link ShieldState#FOREVER} = 永续
      */
-    //TEMP
     public static void grant(LivingEntity entity, ShieldProfile profile, float shieldValue, int durationTicks) {
         ShieldState state = get(entity);
         state.apply(profile, shieldValue, durationTicks,
@@ -111,7 +104,6 @@ public final class ShieldService {
         }
     }
 
-    //TEMP
     public static void clear(LivingEntity entity) {
         ShieldState state = get(entity);
         state.clear();
@@ -119,7 +111,6 @@ public final class ShieldService {
     }
 
     /** 服务端每 tick 调用：处理到期。 */
-    //TEMP
     public static void tick(LivingEntity entity) {
         ShieldState state = get(entity);
         if (state.isActive()) {
@@ -129,7 +120,6 @@ public final class ShieldService {
     }
 
     /** 把某个元素从身上彻底移除（会触发 {@code onDetach}，例如解除冻结/减速）。 */
-    //TEMP
     private static void purgeAttachment(LivingEntity entity, GenshinElement element) {
         StatusContainer container = entity.getData(AttachmentRegistration.CONTAINER);
         if (container == null) {
@@ -149,7 +139,6 @@ public final class ShieldService {
      * @param poiseDamage  本次攻击的削韧量（0 表示不削韧）
      * @return 还能落到<b>本体</b>身上的伤害；盾全吃下时为 0
      */
-    //TEMP
     public static float absorbDamage(LivingEntity target, DamageSource source, float incoming, float poiseDamage) {
         if (incoming <= 0f && poiseDamage <= 0f) {
             return incoming;
@@ -199,7 +188,6 @@ public final class ShieldService {
      * @param toShield 这一次按效用划分给盾的那一份伤害
      * @return 穿透到本体的伤害
      */
-    //TEMP
     private static float absorbByShield(LivingEntity target, ShieldState state, ShieldProfile profile,
                                         ShieldElement element, float incoming, float toShield) {
         boolean shieldEatsDamage = profile.breakType() == ShieldBreakType.DAMAGE
@@ -223,7 +211,6 @@ public final class ShieldService {
     }
 
     /** 破盾时清一下状态（表现交给调用方/实体自己）。 */
-    //TEMP
     private static void onShieldChanged(LivingEntity target, ShieldState state, ShieldProfile profile) {
         if (!state.isActive()) {
             state.clear();
@@ -231,7 +218,6 @@ public final class ShieldService {
     }
 
     /** 盾牌型：判断攻击是不是从正面来的。 */
-    //TEMP
     private static boolean isFrontal(LivingEntity target, ShieldState state, DamageSource source) {
         Entity attacker = source.getEntity();
         if (attacker == null) {
@@ -247,7 +233,6 @@ public final class ShieldService {
         return diff <= HELD_FRONT_HALF_ANGLE;
     }
 
-    //TEMP
     private static ShieldElement elementOf(@Nullable DamageSource source) {
         if (source instanceof ModDamageSource modSource && modSource.getSpec() != null) {
             return ShieldElement.of(modSource.getSpec().getElement());
@@ -260,7 +245,6 @@ public final class ShieldService {
     /**
      * 元素攻击打上来时先过盾，返回「这次附着/反应怎么处理」。
      */
-    //TEMP
     public static AttachDecision onElementalAttack(LivingEntity target, @Nullable GenshinElement element,
                                                    float unit, boolean canAttach) {
         if (!canAttach || element == null) {
@@ -303,7 +287,6 @@ public final class ShieldService {
     }
 
     /** 这次元素附着怎么处理。 */
-    //TEMP
     public enum AttachDecision {
         /** 正常：附着 + 反应。 */
         ALLOW,
@@ -314,13 +297,11 @@ public final class ShieldService {
     }
 
     /** 读一下当前盾量（调试/表现用）。 */
-    //TEMP
     public static float shieldValue(LivingEntity entity) {
         return get(entity).value();
     }
 
     /** 盾的元素（盾条颜色用）；没有元素的白盾返回 null。 */
-    //TEMP
     @Nullable
     public static GenshinElement shieldElement(LivingEntity entity) {
         ShieldProfile profile = get(entity).profile();
@@ -328,7 +309,6 @@ public final class ShieldService {
     }
 
     /** 身上有没有能反应的非瞬发元素（给「风/岩要不要参与」这类判断复用）。 */
-    //TEMP
     public static boolean hasReactiveAura(LivingEntity entity) {
         StatusContainer container = entity.getData(AttachmentRegistration.CONTAINER);
         if (container == null) {

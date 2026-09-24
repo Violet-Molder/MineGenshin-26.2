@@ -5,7 +5,7 @@ import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.status.StatusInstance;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -158,4 +158,22 @@ public abstract class ElementalReaction {
      * 例：冻结状态下禁止感电/蒸发
      */
     public boolean isBlocked(ReactionContext context) { return false; }
+
+    /**
+     * <b>反应成立之后的宿主侧效果</b> —— 「附着 → 附着内反应 → 反应内处理效果」的最后一环。
+     *
+     * <p>默认什么都不做。需要改变宿主形态的反应在这里实现，例：火把冰烧成水（{@link
+     * com.linweiyun.genshin.core.system.reaction.builtin.MeltReaction}）。
+     * 之所以放在反应里、而不是塞进方块的状态迁移规则：迁移规则只能看到「容器里现在有什么」，
+     * 于是「没有冰元素就化水」会把「冰本来就没被挂过元素」也当成融化 —— 表现一样、内核不同。
+     *
+     * <p>实现里不要再去写附着（那是 {@code execute} 的活），只处理反应之外的表现。
+     */
+    public void applyHostEffect(ReactionContext context) {
+    }
+
+    /** 本次反应要不要生成飘字（默认 true）。方块上的形态变化（水结冰/冰化水）不显示文字。 */
+    public boolean showsIndicator(ReactionContext context) {
+        return true;
+    }
 }

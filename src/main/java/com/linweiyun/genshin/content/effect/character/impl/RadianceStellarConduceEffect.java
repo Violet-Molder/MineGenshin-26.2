@@ -1,6 +1,5 @@
 package com.linweiyun.genshin.content.effect.character.impl;
 
-import com.linweiyun.genshin.content.effect.character.CharacterEffectContainer;
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.core.character.PGCharacter;

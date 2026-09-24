@@ -25,20 +25,15 @@ import java.util.EnumSet;
  */
 public class ApproachTargetGoal extends Goal {
 
-    //TEMP
     private final PathfinderMob mob;
 
-    //TEMP
     private final double speedModifier;
 
     /** 走到这个水平距离就收工，把位置让给出招 Goal。 */
-    //TEMP
     private final double stopDistance;
 
-    //TEMP
     private int repathCooldown;
 
-    //TEMP
     public ApproachTargetGoal(PathfinderMob mob, double speedModifier, double stopDistance) {
         this.mob = mob;
         this.speedModifier = speedModifier;
@@ -46,33 +41,28 @@ public class ApproachTargetGoal extends Goal {
         this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
     }
 
-    //TEMP
     @Override
     public boolean canUse() {
         LivingEntity target = this.mob.getTarget();
         return target != null && target.isAlive() && horizontalDistanceTo(target) > this.stopDistance;
     }
 
-    //TEMP
     @Override
     public boolean canContinueToUse() {
         return canUse();
     }
 
-    //TEMP
     @Override
     public boolean requiresUpdateEveryTick() {
         return false;
     }
 
-    //TEMP
     @Override
     public void start() {
         this.repathCooldown = 0;
         this.mob.setAggressive(true);
     }
 
-    //TEMP
     @Override
     public void tick() {
         LivingEntity target = this.mob.getTarget();
@@ -88,14 +78,12 @@ public class ApproachTargetGoal extends Goal {
         }
     }
 
-    //TEMP
     @Override
     public void stop() {
         this.mob.setAggressive(false);
         this.mob.getNavigation().stop();
     }
 
-    //TEMP
     private double horizontalDistanceTo(LivingEntity target) {
         double dx = target.getX() - this.mob.getX();
         double dz = target.getZ() - this.mob.getZ();

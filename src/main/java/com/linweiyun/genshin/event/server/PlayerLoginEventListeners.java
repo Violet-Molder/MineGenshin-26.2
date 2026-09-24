@@ -1,6 +1,7 @@
 package com.linweiyun.genshin.event.server;
 
 import com.linweiyun.genshin.Minegenshin;
+import com.linweiyun.genshin.core.sync.CharacterDataSyncEventHandler;
 import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;

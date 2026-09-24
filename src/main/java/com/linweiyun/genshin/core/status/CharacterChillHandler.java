@@ -39,19 +39,15 @@ import net.neoforged.neoforge.event.tick.EntityTickEvent;
 public final class CharacterChillHandler {
 
     /** 减速修饰符的 id。 */
-    //TEMP
     private static final Identifier SLOW_MODIFIER_ID =
             Identifier.fromNamespaceAndPath(Minegenshin.MOD_ID, "character_cryo_slow");
 
     /** 减速幅度（百分比，负数是减速）。 */
-    //TEMP
     private static final float SLOW_AMOUNT = -0.15f;
 
-    //TEMP
     private CharacterChillHandler() {
     }
 
-    //TEMP
     @SubscribeEvent
     public static void onEntityTick(EntityTickEvent.Post event) {
         if (!(event.getEntity() instanceof Player player)) {
@@ -76,7 +72,6 @@ public final class CharacterChillHandler {
     }
 
     /** 出战角色身上有没有冰（或冻）附着。 */
-    //TEMP
     private static boolean isActiveCharacterChilled(Player player) {
         if (!player.getData(AttachmentRegistration.GENSHIN_MODE_ATTACHMENT)) {
             return false;
@@ -93,7 +88,6 @@ public final class CharacterChillHandler {
         return hasCryoAura(StatusAccessor.of(current.getData()));
     }
 
-    //TEMP
     private static boolean hasCryoAura(StatusContainer container) {
         if (container == null) {
             return false;

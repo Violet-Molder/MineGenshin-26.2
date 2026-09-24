@@ -1,4 +1,5 @@
 package com.linweiyun.genshin.core.system.combat.action;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
 
 import com.linweiyun.genshin.core.network.ActionServer;
 import net.minecraft.world.entity.player.Player;
@@ -22,7 +23,7 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
  * 「执行期不可打断」这条是刻意的：位移和伤害点都在执行期里，
  * 放行的话就是「CD 扣了、能量没了、效果没出来」。
  * 准备阶段（{@code prepareTicks} 那段吟唱）不属于执行期，照样能被打断 ——
- * 这是「前摇分两种」的另一半，见 {@code CharacterActionData.ActionStep#protectDuration}。
+ * 这是「前摇分两种」的另一半，见 {@code ActionStep#protectDuration}。
  * <p>
  * 想额外加"击退打断"？复制一份 onKnockback，把事件换成
  * {@code net.neoforged.neoforge.event.entity.living.LivingKnockBackEvent}，

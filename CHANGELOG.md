@@ -1,318 +1,182 @@
-# MineGenshin 更新日志
+# 更新日志
+
+> **本日志自 1.0.0 重新建立。** 1.0.0 之前的 0.x 记录不再维护（需要时见 git 历史）。
+>
+> 记录约定：**每个版本的条目只在该版本发布时写一次**，后续版本只写"新增 / 变更 / 修复"，不重复 1.0.0 已记录的内容。新增版本时复制文末模板。
 
 ---
 
-## v0.4.0 — 2026-09-11
+## 1.0.1 — 2026-09-24
 
-### 伤害飘字系统（全新）
+本版两条主线：**资源布局统一**（项目自己的「入口按对象、对象内部按类型」布局成为唯一真相，
+原版四个写死路径的入口改由本 MOD 的重定向层供料）与**元素起源**
+（元素附着与元素反应收敛成单一入口，生物、方块、出战角色共用同一套「可附着宿主」，
+元素不再只是挂在某个方块上的旁路）。
 
-引入完整的屏幕空间伤害飘字系统，在实体受伤时显示浮动数字/反应名称/自定义文本。采用**服务端 → 客户端 RPC 单向下发**架构，客户端通过 LDLib2 的 `ModularHudLayer` 渲染。
+### 新增
 
-#### 五种飘字类型 + 三种颜色模式
+- **资源重定向层**（`core/asset/AssetRedirects` + `mixin/mixins/FileToIdConverterRedirectMixin`）：
+  在 `FileToIdConverter` 上补进虚拟入口，让原版四条通道都读我们的布局 ——
+  `blockstates/<id>.json` ← `block/<id>/blockstate.json`、
+  `items/<id>.json` ← `item/<id>/definition.json`（方块物品回落 `block/<方块id>/blockitem/definition.json`）、
+  `models/<路径>.json` ← `<路径>.json`、`textures/<路径>.png` ← `<路径>.png`。
+  **只对本 MOD 命名空间生效**，整合包里其它 MOD 的目录完全不受影响。
+- **对象目录内的 `textures/` 与 `sounds/` 子目录**：一个角色以后会有很多张图与很多条语音，
+  所以对象内部按类型再分一层（模型与动画留在对象根，文件名自带类型后缀）。
+- **元素载体「可附着宿主」抽象**（`core/system/about/host/`）：生物、方块、出战角色共用同一个附着入口
+  `ElementalAttachmentHelper.attach(宿主, ...)` —— 「附着 → 附着内反应 → 反应引发效果」这条链只有一份实现。
+  新增一种"与元素有关的方块"只需要注册两条（能不能被附着、挂上之后变成什么），**不用改核心代码**。
+- **环境自附着**：完整水源自带水元素、冰族自带冰元素，不衰减。"冰打水面能冻结"靠的是水这边这份先手元素，
+  而不是"方块状态对不上就改状态"。
+- **攻击范围附着**：原神模式每次攻击的伤害点按这一招的攻击距离取一次范围，把范围内的可附着方块
+  送进同一个附着入口 —— 方块不再是一条只能靠左键点击去补的支线。
+- **寒元素（`COLD`）与伴随机制**：冰的减速、冻的禁 AI 不再由冰/冻元素各自硬编码，而是集中到"效果载体"
+  子元素寒身上 —— 冰/冻只负责附着，寒由 `ColdAura` 每 tick 伴随同步（有冰/冻就补、冰和冻都没了就撤）。
 
-| 类型 | Style 枚举 | 用途 |
-|------|-----------|------|
-| NORMAL | 普通伤害数字 | 伤害飘字 |
-| CRIT | 暴击伤害数字 | 暴击飘字，附加 `.crit` class |
-| REACTION | 元素反应名称 | "蒸发""融化"等反应名飘字 |
-| HEAL | 治疗数字 | 治疗量飘字 |
-| TEXT | 纯文本 | "免疫"等自定义消息 |
+### 变更
 
-| 颜色模式 | 说明 |
-|----------|------|
-| Default | 按元素/反应类型从 `damage-indicator.toml` 取色 |
-| Custom | 传入单个十六进制颜色 |
-| Gradient | 传入顶部+底部两个颜色，客户端垂直渐变 |
+- **资源布局全面收敛**：`assets/minegenshin/` 下只剩 `character/ item/ block/ entity/ gui/ icon/ lss/ lang/`
+  七个顶层目录。原版的 `items/`、`models/`、`blockstates/`、`textures/` 在本命名空间下**不再存在**，
+  `lang/` 是唯一保留的原版硬性入口（一种语言一个文件，不做重定向）。
+- **物品资源全部进 `item/<物品id>/`**：`definition.json`（物品定义）、`model.json`（平面模型）、
+  `textures/{texture,icon}.png`（平面贴图 / GUI 图标），geo 物品另有 `<id>.geo.json` 与 `textures/<id>.png`。
+- **方块通道就位**：`block/<方块id>/` 下 `blockstate.json`、`model.json`、`textures/`、
+  `blockitem/{definition,model}.json` + `blockitem/textures/`。
+- **数据生成改产出我们的布局**：`ModModeProvider` 不再继承原版 `ModelProvider`，
+  直接写 `item/<物品id>/{definition,model}.json`（模型 `layer0` 指向 `item/<物品id>/textures/texture.png`），
+  并自带「本命名空间每个物品都要有定义」的等价校验。
+- **角色美术归位**：头像 / HUD 头像 / 两种立绘 / 技能图标进 `character/<角色id>/textures/`，
+  共用界面贴图进 `gui/`，元素图标进 `icon/elemental/`，实体三件套进 `entity/<实体id>/`。
+- `ItemIcons` 解析顺序调整为「对象目录图标 → 通用图标目录 → 平面贴图 → geo 贴图兜底」。
+- **免疫只拦伤害，不再吞附着**：元素生物（冰史莱姆、冰方块）照样会被挂上火/水并正常反应，同元素伤害仍为 0。
+- **拒收附着 = 不反应**：修复"大型冰史莱姆明确拒绝水、水打上去却照样冻结"这类规则与行为不一致。
+- **冻结对原版怪也生效**：冻元素存在期间关掉 AI 并清掉位移 —— 以前只对本 MOD 生物生效，
+  而且水流推动/浮力仍会累积位移，解冻瞬间会"弹"回原位。
+- **方块上的冻结/融化不显示反应文字**：水结冰、冰化水是形态变化，不再飘"冻结/融化"；
+  同样的反应打在生物身上照常出字。
+- **流动水完全不参与元素体系**：只有完整水源会被冻成浮冰（流动水既不自带水、也不收冰）——
+  从根上避免"化开之后水位对不上 / 被原版水流灌回满水方块"。
+- 附着档位映射修正：2.0U 现在走 `STRONG`（1.6U / 12s），此前被错误映射成 `MEDIUM`（1.2U / 10.75s）。
+- 雷 + 冰的**超导反应**已注册并接入伤害（实现一直存在，却从未注册，配置项是死的）。
+- **元素生物"免疫冰"的落地方式改了**：从"跳过减速"改成**不收寒**
+  （`ElementalCreature.acceptsElementAttachment`）。冰史莱姆照样给自己挂冰、也能被挂冻，
+  但收不到寒 → 既不被拖慢也不被冻住；豁免只需表达一次，不必在每个效果里各判一遍。
+- `CryoElement` / `FrozenElement` 已删除（效果搬进寒之后只剩空壳，留着就是两份真相）。
+- 冻结期间的位移锁判据改为"有寒且有冻"（`StatusTickHandler` → `ColdAura`）——
+  冻元素没被宿主接受寒的单位本就不该被冻住，位移自然也不该锁。
 
-#### 动画系统
+### 修复
 
-- **缩放**：`startScale=6.2 → baseScale=2.2`，easeOutCubic 缓出曲线（`1-(1-t)³`）
-- **飞向落点**：200ms 内从攻击者与目标中间飞到目标上方落点
-- **上升**：整个生命周期匀速上升 `RISE_HEIGHT=0.23` 格
-- **淡出**：最后 300ms alpha 1→0
-- **REACTION 额外偏移**：反应名飘字额外抬高 +0.2 Y 轴，与伤害数字错开
-- **随机散布**：每次落点 ±0.275 格，避免连续命中数字重叠
+- `AssetGeoCache` 原先在客户端初始化阶段预热（那时资源还没就绪），索引恒为空、
+  每次都回退到 `GenshinGeoCache`；现在注册为客户端资源重载监听器，异常全兜住，空扫描不落锚、最多重扫 5 次。
+- `ModBlocks.register(modEventBus)` 从来没被主类调用（空注册器死脚手架），已接线。
+- `GenshinAssets` 的 javadoc 声称「通过 `GeckoLibResourcesMixin` 把 `character/**` 加进 GeckoLib 扫描范围」——
+  该 mixin 并不存在，已改写成真实机制（`GenshinGeoCache` 自扫自烘 + `GenshinGeoModel` 覆写两个 public 方法）。
+- 删除 22 个死文件与误粘文件（`blockstates/flower_block.json`、`textures/block/*`、
+  `textures/icon/**` 的逐字节副本、两张 `slime_cyro`、`textures/item/img.png`、`textures/gui/shenhe.png`、
+  `character/vesna/{vesna.json, vesna_texture.png, a.json}`、`assets/color.txt`、`code.txt`、`render.txt`、
+  `latest.log`、`data/.../untitled-1.java`）；其中不可从 git 恢复的 `vesna/a.json` 已另行归档。
+- 方块元素的推进从"原版方块 tick 链"改为集中式推进（`BlockElementTicker`）：修掉"一片冰里边缘逐个化、
+  中间一直冻着"（排期链断掉）与"一起结的冰不同时化"（同一 tick 被重复推进一次衰减）。
+- 浮冰的融化判据只看**冻元素**是否耗尽，不再看冰元素 —— 此前任何一份残留冰元素都会把浮冰永久钉住（永不化）。
+- 自然融化收尾时的掉帧：以前每 tick 都 `setData` 把整张 chunk 元素表同步给客户端（掉帧元凶）；
+  现在去掉该同步、去重改为纯内存、提交幂等化。
+- 原版旁路切断：已在元素体系里的冰被**破坏**时不再直接变成水（原版 `IceBlock.playerDestroy` 的行为），
+  浮冰也不再被"周围同类少于 2 个"的原版规则旁路融化；没有元素容器的浮冰仍交还原版。
+- `AttachmentProfile.permanent()` 的常驻标志恒为 `false`（时长参数与判据不一致），已修正。
+- `LargeCryoSlime` 直接覆盖 `onAttachElement`（只拒水）导致**整体绕过**元素生物的默认筛查，
+  寒照样被收下 → 冰史莱姆会被减速甚至冻住；已改为"先拒水、其余委托默认筛查"。
 
-#### 可配置参数（Options）
+### 兼容性
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `baseScale` | `2.2` | 稳定后基础大小 |
-| `startScale` | `6.2` | 出场瞬间大小 |
-| `durationMs` | `950` | 总持续时间（毫秒） |
+- **引用过旧资源路径的资源包 / 材质包需要迁移**：`textures/character_avatar/**`、`textures/character_party_pose/**`、
+  `textures/skill/**`、`textures/elemental/**`、`geckolib/models|animations/entity/**`、
+  `items/*.json`、`models/item/*.json`、`textures/item/*.png` 这些旧位置**全部失效**，请按新布局放置。
+- **存档与配置不受影响**：没有改动注册 ID、数据组件、序列化格式与网络协议字段。
+- 数据生成产物位置变了：跑 `runData` 现在产出到 `src/generated/resources/assets/minegenshin/item/<id>/`。
+- **方块元素容器换了格式**（坐标 → 完整状态容器）：旧存档里的方块元素态**不做迁移** ——
+  它本来就是秒级瞬态（浮冰几秒化回水），重进世界重新附着即可。
+- 浮冰的寿命与之前的手感可能不同：冻元素现在与实体走同一套衰减（0.4U/s 起、冻结中逐秒加快），
+  不再是固定 0.2U/s。
 
-#### 距离缩放
+### 文档
 
-| 常量 | 值 | 说明 |
-|------|-----|------|
-| `NEAR_DISTANCE` | `4.0` | 此距离内保持原大小 |
-| `FAR_DISTANCE` | `32.0` | 此距离外缩至 `FAR_SCALE` |
-| `FAR_SCALE` | `0.25` | 远端缩放下限 |
-| `MAX_RENDER_DISTANCE` | `128.0` | 超过不绘制 |
-| `BROADCAST_RADIUS` | `48.0` | RPC 发送半径 |
-
-#### 颜色配置
-
-配置文件 `./config/minegenshin/damage-indicator.toml`，分两大组：
-
-- **元素伤害颜色**（8 项）：火/冰/水/风/雷/草/岩/物理，可自定义十六进制颜色
-- **元素反应颜色**（17 项）：融化、蒸发、碎冰、超导、扩散、感电、超载、燃烧、绽放、超绽放、烈绽放、原激化、超激化、蔓激化、冻结、结晶
-
-类元素（FROZEN/DENDRO_QUICKEN/BURNING）自动归并到主元素取色。
-
-### 文件变动
-
-**新增**：
-
-| 文件 | 说明 |
-|------|------|
-| `core/system/combat/damage/DamageIndicatorFactory.java` | 飘字工厂，20+ 便捷方法统一入口 |
-| `config/DamageIndicatorConfig.java` | 元素色 + 反应色配置（8+17 项） |
-| `core/network/DamageIndicatorRpc.java` | 服务端→客户端 RPC 通道 |
-| `client/damage/DamageIndicator.java` | 客户端动画状态（位置/缩放/透明度） |
-| `client/damage/DamageIndicatorManager.java` | 活跃飘字列表管理 |
-| `client/damage/DamageIndicatorRenderer.java` | HUD 渲染（世界坐标→屏幕投影） |
-| `client/damage/ClientHudRegistration.java` | ModularHudLayer 注册 |
-| `resources/assets/minegenshin/lss/hud/damage_indicator.lss` | 飘字样式表（5 种 class） |
-
-**修改**：
-
-| 文件 | 改动 |
-|------|------|
-| `core/system/combat/attack/HurtEntityHelper.java` | processPipeline 中调用 `DamageIndicatorFactory.damage()` |
-| `mixin/mixins/LivingEntityHurtMixin.java` | 受伤后触发飘字生成 |
+- `docs/systems/render-asset.md` 按新布局重写：四条重定向通道的对应关系、实测注入日志、
+  以及「还剩下的原版硬性项（只剩 `lang/`）」。
+- `CHARACTER_SYSTEM.md` 第九部分同步布局与图标解析顺序，并补第三轮迁移对照表；
+  `docs/entity-ai-goal-guide.md` 的资源契约一节同步，并标注早期测试实体已被删除。
+- 更新日志新增 1.0.1 小节；`gradle.properties`、`version.json`、README 与站点首页的版本号同步抬到 1.0.1。
+- 新增 `docs/systems/element-host.md`（可附着宿主：宿主契约、三段判断、环境自附着、攻击范围附着、性能纪律）；
+  `docs/systems/element-reaction.md` 与 `docs/systems/combat-attack.md` 同步反应入口、飘字开关与方块附着路径；
+  `CHARACTER_SYSTEM.md` 4.7 补环境自附着与攻击范围附着。
 
 ---
 
-## v0.3.0 — 2026-09-06
+## 1.0.0 — 2026-09-24
 
-### 圣遗物系统（全新）
+首个正式版本：把原神的核心玩法机制完整接入 Minecraft 26.2 / NeoForge。
 
-从 v0.2.0 到 v0.3.0 最大的更新是引入了完整的圣遗物系统，还原原神圣遗物的生成、升级和装备机制。
+### 玩法内容
 
-#### 配置驱动架构
+| 系统 | 内容 |
+|---|---|
+| 角色 | 薇斯娜、申鹤、阿蕾奇诺、雷电将军、哥伦比娅、沃雅妮莎；等级、突破、天赋、命座、编队 |
+| 属性 | HP/ATK/DEF 等属性与修饰器（固定/百分比、临时/永久），支持上限放宽 |
+| 元素 | 元素附着与量级、附着冷却（衰减序列） |
+| 元素反应 | 蒸发、融化、冻结、超导等，倍率可配置 |
+| 战斗 | 普攻/战技/闪避/爆发四键动作系统；攻击判定与伤害管线；索敌锁；动作打断 |
+| 伤害表现 | 屏幕空间伤害飘字：普通/暴击/反应/治疗/文本五类，元素配色与渐变 |
+| 圣遗物 | 配置驱动的套装、主副词条、升级经验、背包与装备栏 |
+| 武器 | 按类别（单手剑/法器/长柄/弓/双手剑）的等级与词条、精炼 |
+| 祈愿 | 原石抽卡与重复角色返还 |
+| 怪物 | 等级与防御注入、可按入侵状态生成 |
+| 护盾 | 护盾吸收、元素与形状配置、每 tick 结算 |
+| 状态 | 附着状态容器，作用于生物、方块与物品 |
+| 掉落 | 入侵状态下生物额外掉落（原石、随机圣遗物） |
+| 界面 | 角色信息、背包、升格、编队、祈愿界面与 HUD |
 
-圣遗物所有数值均可通过 `./config/minegenshin/artifact.toml` 修改，无需改代码。
+### 架构与规范（1.0.0 起确立）
 
-| 配置类 | 管理内容 |
-|--------|----------|
-| `ArtifactConfig` | 主入口，管理共享 Builder |
-| `ArtifactLevelConfig` | 3/4/5 星升级经验值 |
-| `ArtifactMainStatConfig` | 主词条 base+growth（3/4/5 星，18 种属性） |
-| `ArtifactMainStatConfig.mainStatWeight` | 时之沙/空之杯/理之冠主词条抽取权重 |
-| `ArtifactSubStatConfig` | 副词条 4 档数值（5 星，10 种属性） |
+- **分层与依赖方向**：`config`/`enums` → `core` → `content` → 客户端（`client`/`render`）；公共侧不得依赖客户端。
+- **钩子归属规范**：跨模块入口放 `event/`，单模块监听点下沉到模块包并命名 `XxxHandler`；同一事件允许多个监听点（前提是归属清晰、不是同一职责被写两遍）。
+- **攻击统一**：攻击相关处理一律并入 `core/system/combat/attack`，技能与其它模块不得自行注册攻击监听。
+- **分类维度**：武器/角色按武器类型分包；实体按"生物 / 领域 / 杂项"分包；配置按域分包。
+- **测试内容清理**：移除早期的测试实体、测试物品与相关资源，并把其中混用的真功能（冰块投射物、实体渲染器、资源缓存预热）迁到正式位置。
+- **命名与路径整理**：修正包名拼写、包与目录不一致、双 `render` 目录、监听类命名等问题。
+- **结构整理（全量，2026-09-24 完成）**：事件监听按"跨模块入口留 `event/`、单模块下沉到模块包"归位；顶层 `enums` 包按功能拆分归位（`ElementalsGIM`→`core.element`、`AttackType`→`combat.attack`、`AttachmentType`→`core.system.about`、`ElementalReactionType`→`core.system.reaction`、`CharacterAscendAttribute`→`core.character`）；`AttackType` 与 `DamageTypeEnum` 的重叠合并（删除零引用重复定义）；公共侧引用客户端类的问题清零——飘字改走 `api/damage` 契约、`getActiveCharacterId` 下沉到 `CharacterHelper`、动作与按键相关类整体迁到 `client.combat.{action,state}`；四个大类完成拆分或判定：`CharacterActionData`（684→146 行 + 10 个同包顶层类型）、`ResourceDrivenActionHandler`（707→554 行 + 2 个新类）、`ActionStateMachine`（716→680 行 + 2 个新类）、`ModDamageSpec` 判定不拆（内聚的不可变规格）。
 
-#### 五种圣遗物类型
+### 文档
 
-| 类型 | 英文 | 主词条 |
-|------|------|--------|
-| 生之花 | FLOWER | 固定数值生命值 |
-| 死之羽 | PLUME | 固定数值攻击力 |
-| 时之沙 | SANDS | 随机 HP%/ATK%/DEF%/元素精通/元素充能 |
-| 空之杯 | GOBLET | 随机 HP%/ATK%/DEF%/8 种元素伤害/元素精通 |
-| 理之冠 | CIRCLET | 随机 HP%/ATK%/DEF%/暴击率/暴击伤害/治疗加成/元素精通 |
+- 新增文档站（`docs/index.html`，带侧边栏导航）：技术文档、实体开发文档。
+- README 改为项目介绍与开源协议；原 README 的开发者内容重写进技术文档。
+- 更新日志从本版本重新建立。
+- 文档站改为 `web/` 模块（Spring Boot + Java），Markdown 请求时实时渲染，菜单由后端 `/api/docs` 提供（`DocCatalog` 为唯一来源）；系统详解按模块拆成 11 篇。
+- **全量同步（2026-09-24，两轮）**：按 20+ 个"结构整理中改过名的符号"扫描全部文档面（根目录 Markdown、`docs/**`、`web/**` 的源码与手写页），修正此前累积的滞后——`CHARACTER_SYSTEM.md`/`CHARACTER_IMPLEMENTATIONS.md` 的旧监听类名与旧路径、`entity-ai-goal-guide.md` 提到的已删除测试实体与旧资源路径、`README.md` 指向已不存在静态页的链接、`web/README.md` 路由表、站点首页指向已删除 `/technical.html` 的死链卡片，以及 `CHANGELOG` 的待办清单（重写为四条真实未决项）。
 
-#### 主词条系统
+### 已知待办
 
-- **数值公式**：`value = base + level × growth`，从 0 级开始随等级线性增长
-- **加权随机抽取**：时之沙/空之杯/理之冠的主词条按配置权重抽取（如 HP% 权重 26.68、元素精通 10.0），而非等概率
-- 生之花/死之羽主词条固定，无需抽取
+- 客户端手感需实机确认：本轮把动作与按键相关类整体迁到 `client.combat.{action,state}`，已通过编译与冒烟加载（14 个 Mixin 全部注入），但按键与动作手感需在游戏中实测。
+- `textures/skill/raiden_shogun_skill.png` 资源缺失（客户端日志会报 Missing resource，与本次结构整理无关）。
+- `ClaymoreCharacter` 暂无子类（第四个武器类别的结构占位）；`MaskGenerator` 是生成飘字遮罩贴图的开发工具（带 `main()`），都非死代码，保留。
+- 命令行执行 `runClient` 需注意 `build.gradle` 里的 `-XX:+AllowEnhancedClassRedefinition` 是 JBR 专有参数：用 IDEA（自带 JBR）可直接运行，用命令行 JDK 会拒绝启动。
 
-#### 副词条系统
-
-- **档位机制**：10 种副词条属性 × 4 个档位，初始随机 1-4 档
-- **生成流程**：从候选池不放回随机抽取 2-4 个副词条（1-2星:2个, 3星:3个, 4-5星:4个），排除与主词条冲突的属性
-- **初始解锁概率**：25% 全部解锁，75% 锁定最后一个（还原原神 3 词条/4 词条掉落机制）
-
-#### 副词条升级机制
-
-每 4 级触发一次（4/8/12/16/20 级）：
-
-1. 存在未解锁副词条 → 优先解锁（4 级时触发）
-2. 全部已解锁 → 随机选一条升级
-
-**升级公式**：`value = 档位基础值 × (upgradeCount + 1)`
-
-| 档位 | 小攻击基础值 | 升级 1 次 | 升级 2 次 |
-|------|-------------|-----------|-----------|
-| 1 档 | 14 | 14×2 = 28 | 14×3 = 42 |
-| 3 档 | 18 | 18×2 = 36 | 18×3 = 54 |
-
-升级次数通过 `TeyvatItemStat.upgradeCount` 持久化存储。
-
-#### 圣遗物套装
-
-首套实装 **炽烈的炎之魔女（Crimson Witch of Flames）**，包含 5 件。
-
-#### 圣遗物升级
-
-- 使用原石右键圣遗物可喂 1000 经验
-- 经验累积到阈值自动升级，同时更新主词条数值和触发副词条提升
-- 升级经验值按星级区分（3/4/5 星各自独立配置）
-
-#### 角色装备
-
-- `PGCharacterData` 新增 5 个圣遗物槽位（flower/plume/sands/goblet/circlet）
-- 角色信息界面（`ScreenCharacterInfo`）显示已装备圣遗物
-
-#### 悬停文本
-
-圣遗物物品悬浮提示显示：类型、星级（★）、等级、主词条、副词条（含锁定/解锁状态）。
-
-### TeyvatItemStat 扩展
-
-| 新增字段 | 用途 |
-|----------|------|
-| `tier` | 副词条档位（1-4），持久化存储 |
-| `upgradeCount` | 升级次数，用于计算当前值 = 档位值 × (upgradeCount + 1) |
-| `unlocked` | 副词条是否解锁 |
-
-### Bug 修复
-
-| 问题 | 修复 |
-|------|------|
-| 创造模式物品栏查看圣遗物崩溃 | `ArtifactItem.appendHoverText` 改用 `getOrDefault` 安全取值 |
-| 原石喂圣遗物时组件为 null 崩溃 | `ItemPrimogem.use` 增加组件 null 检查 |
-| 暴击率/暴击伤害/充能/治疗加成属性值显示为 0 | `ModAttributes` 修正 AttributeType ID 与注册表一致 |
-
-### 文件变动
-
-**新增**：
-
-| 文件 | 说明 |
-|------|------|
-| `config/ArtifactConfig.java` | 圣遗物配置主入口 |
-| `config/ArtifactLevelConfig.java` | 升级经验配置 |
-| `config/ArtifactMainStatConfig.java` | 主词条数值 + 权重配置 |
-| `config/ArtifactSubStatConfig.java` | 副词条档位配置 |
-| `content/items/artifact/ArtifactType.java` | 圣遗物类型枚举 |
-| `content/items/artifact/ArtifactSet.java` | 套装枚举 |
-| `content/items/artifact/ArtifactStatData.java` | 属性数据管理器 |
-| `content/items/artifact/ArtifactLevelData.java` | 等级数据管理 |
-| `content/items/artifact/ArtifactMainStatGenerator.java` | 主词条生成器（加权随机） |
-| `content/items/artifact/ArtifactSubStatGenerator.java` | 副词条生成器（档位抽取） |
-| `content/items/artifact/ArtifactItem.java` | 圣遗物物品基类 |
-| `content/items/component/ArtifactStatsComponent.java` | 圣遗物数据组件 |
-| `content/items/artifact/FlowerArtifact.java` | 生之花 |
-| `content/items/artifact/PlumeArtifact.java` | 死之羽 |
-| `content/items/artifact/SandsArtifact.java` | 时之沙 |
-| `content/items/artifact/GobletArtifact.java` | 空之杯 |
-| `content/items/artifact/CircletArtifact.java` | 理之冠 |
-| `content/items/artifact/crimson_witch/CrimsonFlower.java` | 魔女之花 |
-| `content/items/artifact/crimson_witch/CrimsonPlume.java` | 魔女之羽 |
-| `content/items/artifact/crimson_witch/CrimsonSands.java` | 魔女之时 |
-| `content/items/artifact/crimson_witch/CrimsonGoblet.java` | 魔女之心 |
-| `content/items/artifact/crimson_witch/CrimsonCirclet.java` | 魔女之帽 |
-
-**修改**：
-
-| 文件 | 改动 |
-|------|------|
-| `content/stat/TeyvatItemStat.java` | 新增 tier/upgradeCount/unlocked 字段及方法 |
-| `content/items/custom/ItemPrimogem.java` | 新增圣遗物喂经验功能 |
-| `core/system/registry/register/ModDataComponents.java` | 注册 ARTIFACT_STATS 组件 |
-| `core/system/registry/register/ModAttributes.java` | 修正 CR/ER/CDG/HB 属性 ID |
-| `core/character/PGCharacterData.java` | 新增 5 个圣遗物槽位 |
-| `client/gui/screens/ScreenCharacterInfo.java` | 新增圣遗物槽位显示 |
-
-## v0.2.0 — 2026-09-04
-
-### 架构重构
-
-#### 伤害管线入口迁移至实体 hurtServer
-
-- 移除 `HurtEntityHelper.hurtEntityForPlayer` 统一入口模式
-- 新增 `LivingEntityHurtMixin`，在 `LivingEntity.hurtServer` HEAD 拦截 `ModDamageSource` 伤害
-- 新增 `PlayerHurtInterceptor`，在 `Player.actuallyHurt` HEAD 拦截非 MOD 伤害（原神模式下扣 PGCharacter 血）
-- `PlayerAttackInterceptor` 改为调用 `target.hurtServer(level, modSource, 0f)` 触发管线
-- `TeyvatLivingEntity` 子类自行重写 `hurtServer`，不走 Mixin
-
-#### HurtEntityHelper 重构
-
-- 重构为纯计算工具类，移除所有伤害入口逻辑
-- 新入口：`calculateFinalModDamage(ModDamageSource, PGCharacter, LivingEntity)`
-- 内部拆解为 `processPipeline`（衰减→附着→反应→乘区）和 `calculateFinalDamage`（暴击区→加成区→防御区→抗性区）
-
-#### ModDamageSpec 扩展
-
-- 新增 `attackerCharacter`（@Nullable），攻击者角色信息封装进伤害规格
-- Builder 新增 `attackerCharacter(PGCharacter)` 方法
-
-#### PGCharacter 新增受伤与倒下逻辑
-
-- 新增 `hurt(float amount)` —— 扣角色血量，返回是否倒下
-- 新增 `incapacitate(PlayerCharactersAttachment)` —— 倒下后自动切到队伍下一个角色
-
-#### 新增 CombatMath / CombatEntityAccessor
-
-- `CombatMath` —— 防御区、抗性区、等级系数公式集中管理
-- `CombatEntityAccessor` —— 统一从 LivingEntity / PGCharacter / IMonsterLevel 读取等级、防御、抗性
-
-### Bug 修复
-
-| 问题 | 修复 |
-|------|------|
-| flatBonus 在效果处理后丢失 | 效果循环结束后刷新 `spec = damageSource.getSpec()` |
-| 效果遍历 ConcurrentModificationException | 改为 `new ArrayList<>(effects)` 快照遍历 |
-| IcyQuillEffect 冰凌数量不消耗 | 每次成功应用后 -1，为 0 时 `removeEffect` 清除 |
-| invulnerableTime 挡住连续攻击 | LivingEntityHurtMixin 在 hurtServer HEAD 处 cancel 原版流程 |
-| 伤害有造成但无标记（markHurt 缺失） | 使用 `level.broadcastDamageEvent(target, source)` 同步客户端 |
-
-### 文件变动
-
-**新增**：
-
-| 文件 | 说明 |
-|------|------|
-| `mixin/mixins/LivingEntityHurtMixin.java` | 拦截 LivingEntity.hurtServer，ModDamageSource 伤害应用 |
-| `mixin/mixins/PlayerHurtInterceptor.java` | 拦截 Player.actuallyHurt，非 MOD 伤害扣 PGCharacter 血 |
-| `core/system/combat/damage/CombatMath.java` | 伤害数学工具类 |
-| `core/system/combat/damage/CombatEntityAccessor.java` | 实体属性读取器 |
-
-**修改**：
-
-| 文件 | 改动 |
-|------|------|
-| `core/system/combat/attack/HurtEntityHelper.java` | 重构为纯计算工具类 |
-| `core/system/combat/damage/ModDamageSpec.java` | 新增 attackerCharacter 字段 + Builder 方法 |
-| `core/character/PGCharacter.java` | 新增 hurt() / incapacitate() |
-| `content/effect/character/shenhe/IcyQuillEffect.java` | 冰凌消耗逻辑 + 快照遍历 |
-| `content/effect/character/CharacterEffectHelper.java` | removeEffect 新增 Player 参数重载 |
-| `content/entities/teyvat/monster/slime/TeyvatSlime.java` | 重写 hurtServer + dealDamage 使用 ModDamageSource |
-| `mixin/MixinConfig.java` | 跳过 TeyvatLivingEntity 的 LivingEntityHurtMixin / MonsterMixin |
-| `resources/minegenshin.mixins.json` | 注册 LivingEntityHurtMixin、PlayerHurtInterceptor |
 
 ---
 
-## v0.1.0 — 2026-09-04
+## 新版本模板
 
-### 新功能
+```markdown
+## x.y.z — YYYY-MM-DD
 
-#### 怪物等级与防御系统
+### 新增
+- 
 
-通过 Mixin 为所有 `Monster` 子类（排除本 Mod 自定义的 `TeyvatMonster`）注入等级与防御力属性。
+### 变更
+- 
 
-- 怪物生成时等级一次性确定，永久固定
-- 防御力公式：`等级 × 500 + 500`
-- 无经验值、无升级功能
-- 冒险等阶计算模式：`NEAREST` / `HIGHEST` / `LOWEST` / `COMPREHENSIVE`（4 种）
-- 生成模式：`NATURAL` / `FIXED` / `BIAS`（3 种）
+### 修复
+- 
 
-**配置文件**：`./config/minegenshin/monster-level.toml`
-
-**新增文件**：
-
-| 文件 | 说明 |
-|------|------|
-| `mixin/interfaces/IMonsterLevel.java` | Mixin 接口 |
-| `mixin/mixins/MonsterMixin.java` | 注入 Monster.class |
-| `config/MonsterLevelConfig.java` | 配置类 |
-| `core/monster/MonsterLevelCalculator.java` | 等级计算核心 + 三个 API 入口 |
-| `core/monster/MonsterLevelSpawnHandler.java` | FinalizeSpawnEvent 监听 |
-
-**修改文件**：
-
-| 文件 | 说明 |
-|------|------|
-| `Minegenshin.java` | 注册新配置 + SpawnHandler |
-| `minegenshin.mixins.json` | 注册 MonsterMixin |
+### 兼容性
+- 需要版本迁移的存档 / 数据包 / 网络协议变化
+```

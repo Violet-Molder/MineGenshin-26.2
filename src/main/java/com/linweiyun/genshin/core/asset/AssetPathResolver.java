@@ -31,14 +31,12 @@ import java.util.Set;
  */
 public final class AssetPathResolver {
 
-    //TEMP
     private AssetPathResolver() {
     }
 
     // ==================== 基础查询 ====================
 
     /** 文件是否存在。 */
-    //TEMP
     public static boolean existing(@Nullable ResourceManager resourceManager, @Nullable Identifier location) {
         if (resourceManager == null || location == null) {
             return false;
@@ -51,7 +49,6 @@ public final class AssetPathResolver {
      *
      * @return 命中的文件；一个都不存在时返回 null
      */
-    //TEMP
     @Nullable
     public static Identifier firstExisting(@Nullable ResourceManager resourceManager, Identifier... candidates) {
         if (resourceManager == null || candidates == null) {
@@ -68,21 +65,18 @@ public final class AssetPathResolver {
     // ==================== 套装解析 ====================
 
     /** 模型文件（{@code .json} 优先，其次 {@code .geo.json}）；都不在时返回 null。 */
-    //TEMP
     @Nullable
     public static Identifier resolveModel(@Nullable ResourceManager resourceManager, AssetSet set) {
         return firstExisting(resourceManager, set.modelCandidates());
     }
 
     /** 动画文件；不在时返回 null。 */
-    //TEMP
     @Nullable
     public static Identifier resolveAnimation(@Nullable ResourceManager resourceManager, AssetSet set) {
         return firstExisting(resourceManager, set.animationCandidates());
     }
 
     /** 贴图文件；不在时返回 null。 */
-    //TEMP
     @Nullable
     public static Identifier resolveTexture(@Nullable ResourceManager resourceManager, AssetSet set) {
         return firstExisting(resourceManager, set.textureCandidates());
@@ -91,7 +85,6 @@ public final class AssetPathResolver {
     // ==================== 枚举 ====================
 
     /** 某个类别下的全部资源文件。 */
-    //TEMP
     public static Map<Identifier, Resource> listCategory(@Nullable ResourceManager resourceManager,
                                                          AssetCategory category) {
         if (resourceManager == null) {
@@ -107,7 +100,6 @@ public final class AssetPathResolver {
      *
      * <p>返回的是插入顺序稳定的集合，方便直接打印。
      */
-    //TEMP
     public static Set<String> listIds(@Nullable ResourceManager resourceManager, AssetCategory category) {
         Set<String> ids = new LinkedHashSet<>();
         for (Identifier location : listCategory(resourceManager, category).keySet()) {
@@ -120,7 +112,6 @@ public final class AssetPathResolver {
     }
 
     /** 某个类别下某个 id 已经存在的「角色」文件名（{@code test1.json} / {@code blockitem/a.png} …）。 */
-    //TEMP
     public static Set<String> listRoles(@Nullable ResourceManager resourceManager,
                                         AssetCategory category, String id) {
         Set<String> roles = new LinkedHashSet<>();
@@ -137,7 +128,6 @@ public final class AssetPathResolver {
     }
 
     /** 调试用：把某个 id 的三件套存在情况打成一行。 */
-    //TEMP
     public static String describe(@Nullable ResourceManager resourceManager, AssetSet set) {
         return set.describe()
                 + " model=" + presence(resolveModel(resourceManager, set))
@@ -145,13 +135,11 @@ public final class AssetPathResolver {
                 + " texture=" + presence(resolveTexture(resourceManager, set));
     }
 
-    //TEMP
     private static String presence(@Nullable Identifier location) {
         return location == null ? "MISSING" : location.toString();
     }
 
     /** 取一个 Optional 形式的资源；给需要读文件内容的调用方用。 */
-    //TEMP
     public static Optional<Resource> resource(@Nullable ResourceManager resourceManager, @Nullable Identifier location) {
         if (resourceManager == null || location == null) {
             return Optional.empty();

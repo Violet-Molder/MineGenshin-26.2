@@ -43,39 +43,132 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class ModAssetPaths {
 
-    //TEMP
     public static final String JSON_SUFFIX = ".json";
-    //TEMP
     public static final String GEO_SUFFIX = ".geo.json";
-    //TEMP
     public static final String ANIMATION_SUFFIX = ".animation.json";
-    //TEMP
     public static final String ANIMATIONS_SUFFIX = ".animations.json";
-    //TEMP
     public static final String PNG_SUFFIX = ".png";
 
     /** 方块状态定义的文件名：{@code block/&lt;id&gt;/blockstate.json}。 */
-    //TEMP
     public static final String BLOCKSTATE_FILE = "blockstate.json";
 
     /** 方块物品资源所在子目录名：{@code block/&lt;id&gt;/blockitem/}。 */
-    //TEMP
     public static final String BLOCK_ITEM_DIR = "blockitem";
 
-    //TEMP
+    /**
+     * 对象目录内部的<b>贴图</b>子目录名：{@code &lt;类别&gt;/&lt;id&gt;/textures/}。
+     *
+     * <p>一个角色 / 方块以后会有很多张图（模型贴图、头像、HUD 头像、立绘、技能图标……），
+     * 所以对象目录里按类型再分一层：贴图全部进 {@code textures/}，音频进 {@code sounds/}
+     * （{@link GenshinAssets#SOUNDS_DIR}），模型与动画留在对象根（文件名已经带类型后缀）。
+     *
+     * <p><b>这一层是「布局」而不是「资源身份」</b>：镜像给原版入口时会把这段 {@code textures/}
+     * 去掉，所以 {@code item/&lt;id&gt;/textures/texture.png} 的图集 sprite id 仍然是
+     * {@code minegenshin:item/&lt;id&gt;/texture}（见 {@link AssetRedirects}）。
+     */
+    public static final String TEXTURE_DIR = "textures";
+
+    /**
+     * 原版物品定义的文件名：{@code item/&lt;id&gt;/definition.json}。
+     *
+     * <p>它对应原版的 {@code items/&lt;id&gt;.json}，由 {@code AssetRedirects} 供料 ——
+     * 之所以不叫 {@code items.json}，是为了在同一个对象目录里能和模型（{@code model.json}）
+     * 各占一个名字、一眼看出谁是什么。
+     */
+    public static final String DEFINITION_FILE = "definition.json";
+
+    /** 原版模型的文件名：{@code <类别>/&lt;id&gt;/model.json}（对应 {@code models/&lt;路径&gt;.json}）。 */
+    public static final String MODEL_FILE = "model.json";
+
+    /** 图集贴图的文件名：{@code <类别>/&lt;id&gt;/texture.png}（对应 {@code textures/&lt;路径&gt;.png}）。 */
+    public static final String TEXTURE_FILE = "texture.png";
+
     private ModAssetPaths() {
+    }
+
+    // ==================== 原版入口文件（由 AssetRedirects 供料） ====================
+
+    /** 物品定义：{@code item/<物品id>/definition.json}。 */
+    public static Identifier itemDefinition(String itemId) {
+        return inDir(dir(AssetCategory.ITEM, itemId), DEFINITION_FILE, "");
+    }
+
+    /** 平面物品模型：{@code item/<物品id>/model.json}。 */
+    public static Identifier itemModel(String itemId) {
+        return inDir(dir(AssetCategory.ITEM, itemId), MODEL_FILE, "");
+    }
+
+    /** 平面物品贴图：{@code item/<物品id>/textures/texture.png}。 */
+    public static Identifier itemTexture(String itemId) {
+        return textureIn(dir(AssetCategory.ITEM, itemId), TEXTURE_FILE);
+    }
+
+    /** 方块模型：{@code block/<方块id>/model.json}。 */
+    public static Identifier blockModel(String blockId) {
+        return inDir(dir(AssetCategory.BLOCK, blockId), MODEL_FILE, "");
+    }
+
+    /** 方块贴图：{@code block/<方块id>/textures/texture.png}。 */
+    public static Identifier blockTexture(String blockId) {
+        return textureIn(dir(AssetCategory.BLOCK, blockId), TEXTURE_FILE);
+    }
+
+    /** 方块物品定义：{@code block/<方块id>/blockitem/definition.json}。 */
+    public static Identifier blockItemDefinition(String blockId) {
+        return inDir(blockItemDir(blockId), DEFINITION_FILE, "");
+    }
+
+    /** 方块物品模型：{@code block/<方块id>/blockitem/model.json}。 */
+    public static Identifier blockItemModel(String blockId) {
+        return inDir(blockItemDir(blockId), MODEL_FILE, "");
+    }
+
+    /** 方块物品贴图：{@code block/<方块id>/blockitem/textures/texture.png}。 */
+    public static Identifier blockItemTexture(String blockId) {
+        return textureIn(blockItemDir(blockId), TEXTURE_FILE);
+    }
+
+    // ==================== 对象目录内的贴图 ====================
+
+    /** 某个对象目录的贴图目录：{@code <对象目录>/textures}。 */
+    public static String textureDir(String objectDir) {
+        return objectDir + "/" + TEXTURE_DIR;
+    }
+
+    /** 某个对象目录下的贴图文件：{@code <对象目录>/textures/<文件名>}。 */
+    public static Identifier textureIn(String objectDir, String fileName) {
+        return Minegenshin.id(textureDir(objectDir) + "/" + fileName);
+    }
+
+    /**
+     * 贴图的「归属对象目录」：把布局里的 {@code textures} 这一层去掉。
+     *
+     * <pre>
+     * item/primogem                  → item/primogem
+     * item/primogem/textures         → item/primogem
+     * block/x/blockitem/textures     → block/x/blockitem
+     * </pre>
+     *
+     * <p>缓存按「对象目录」索引模型 / 动画 / 贴图三件套，贴图多了一层目录之后必须靠这个换算归位。
+     */
+    @Nullable
+    public static String objectDirOf(@Nullable String dir) {
+        if (dir == null) {
+            return null;
+        }
+        return dir.endsWith("/" + TEXTURE_DIR)
+                ? dir.substring(0, dir.length() - TEXTURE_DIR.length() - 1)
+                : dir;
     }
 
     // ==================== 目录 ====================
 
     /** 某个类别下某个 id 的目录：{@code <类别>/<id>}。 */
-    //TEMP
     public static String dir(AssetCategory category, String id) {
         return category.folder() + "/" + id;
     }
 
     /** 某个方块对应的物品资源目录：{@code block/<方块id>/blockitem}。 */
-    //TEMP
     public static String blockItemDir(String blockId) {
         return dir(AssetCategory.BLOCK, blockId) + "/" + BLOCK_ITEM_DIR;
     }
@@ -83,67 +176,56 @@ public final class ModAssetPaths {
     // ==================== 文件位置 ====================
 
     /** 类别目录下的任意文件：{@code <类别>/<id>/<relative>}。 */
-    //TEMP
     public static Identifier file(AssetCategory category, String id, String relative) {
         return Minegenshin.id(dir(category, id) + "/" + relative);
     }
 
     /** 按目录 + 基名拼文件：{@code <目录>/<基名><扩展名>}。 */
-    //TEMP
     public static Identifier inDir(String directory, String baseName, String suffix) {
         return Minegenshin.id(directory + "/" + baseName + suffix);
     }
 
     /** 模型文件：{@code <类别>/<id>/<id>.json}。 */
-    //TEMP
     public static Identifier geoModel(AssetCategory category, String id) {
         return file(category, id, id + JSON_SUFFIX);
     }
 
     /** 模型文件（GeckoLib 原生后缀写法）：{@code <类别>/<id>/<id>.geo.json}。 */
-    //TEMP
     public static Identifier geoModelWithSuffix(AssetCategory category, String id) {
         return file(category, id, id + GEO_SUFFIX);
     }
 
     /** 动画文件：{@code <类别>/<id>/<id>.animation.json}。 */
-    //TEMP
     public static Identifier animation(AssetCategory category, String id) {
         return file(category, id, id + ANIMATION_SUFFIX);
     }
 
     /** 贴图文件：{@code <类别>/<id>/<id>.png}。 */
-    //TEMP
     public static Identifier texture(AssetCategory category, String id) {
         return file(category, id, id + PNG_SUFFIX);
     }
 
     /** 方块状态定义：{@code block/<id>/blockstate.json}。 */
-    //TEMP
     public static Identifier blockState(String blockId) {
         return file(AssetCategory.BLOCK, blockId, BLOCKSTATE_FILE);
     }
 
     /** 方块物品的模型：{@code block/<方块id>/blockitem/<物品名>.json}。 */
-    //TEMP
     public static Identifier blockItemGeoModel(String blockId, String itemName) {
         return inDir(blockItemDir(blockId), itemName, JSON_SUFFIX);
     }
 
     /** 方块物品的模型（GeckoLib 原生后缀写法）。 */
-    //TEMP
     public static Identifier blockItemGeoModelWithSuffix(String blockId, String itemName) {
         return inDir(blockItemDir(blockId), itemName, GEO_SUFFIX);
     }
 
     /** 方块物品的动画：{@code block/<方块id>/blockitem/<物品名>.animation.json}。 */
-    //TEMP
     public static Identifier blockItemAnimation(String blockId, String itemName) {
         return inDir(blockItemDir(blockId), itemName, ANIMATION_SUFFIX);
     }
 
     /** 方块物品的贴图：{@code block/<方块id>/blockitem/<物品名>.png}。 */
-    //TEMP
     public static Identifier blockItemTexture(String blockId, String itemName) {
         return inDir(blockItemDir(blockId), itemName, PNG_SUFFIX);
     }
@@ -156,13 +238,11 @@ public final class ModAssetPaths {
      * <p>GeckoLib 对模型和动画剥掉的是同一个后缀集合（{@code .geo.json} / {@code .animation.json} /
      * {@code .json}），所以两者共用同一个键。
      */
-    //TEMP
     public static Identifier assetKey(AssetCategory category, String id) {
         return Minegenshin.id(dir(category, id) + "/" + id);
     }
 
     /** 方块物品的缓存键：{@code block/<方块id>/blockitem/<物品名>}。 */
-    //TEMP
     public static Identifier blockItemKey(String blockId, String itemName) {
         return Minegenshin.id(blockItemDir(blockId) + "/" + itemName);
     }
@@ -174,7 +254,6 @@ public final class ModAssetPaths {
      *
      * <p>{@code .geo.json} 同样算模型 —— 两种写法都收。
      */
-    //TEMP
     public static boolean isGeoModelFile(Identifier raw) {
         if (raw == null) {
             return false;
@@ -187,7 +266,6 @@ public final class ModAssetPaths {
     }
 
     /** 动画文件判定：{@code .animation.json} 或 {@code .animations.json} 结尾。 */
-    //TEMP
     public static boolean isAnimationFile(Identifier raw) {
         if (raw == null) {
             return false;
@@ -197,18 +275,15 @@ public final class ModAssetPaths {
     }
 
     /** 从文件位置算出模型缓存键（剥 {@code .geo.json}，再剥 {@code .json}）。 */
-    //TEMP
     public static Identifier modelKeyOf(Identifier raw) {
         return strip(raw, GEO_SUFFIX, JSON_SUFFIX);
     }
 
     /** 从文件位置算出动画缓存键（剥 {@code .animation.json} / {@code .animations.json} / {@code .json}）。 */
-    //TEMP
     public static Identifier animationKeyOf(Identifier raw) {
         return strip(raw, ANIMATION_SUFFIX, ANIMATIONS_SUFFIX, JSON_SUFFIX);
     }
 
-    //TEMP
     private static Identifier strip(@Nullable Identifier raw, String... suffixes) {
         if (raw == null) {
             return null;
@@ -226,7 +301,6 @@ public final class ModAssetPaths {
     // ==================== 反查 ====================
 
     /** 这个资源位置属于哪个类别；不在四种统一布局里就返回 null。 */
-    //TEMP
     @Nullable
     public static AssetCategory categoryOf(@Nullable Identifier raw) {
         if (raw == null || !Minegenshin.MOD_ID.equals(raw.getNamespace())) {
@@ -250,7 +324,6 @@ public final class ModAssetPaths {
      * item/test_sword/test_sword.png     → test_sword
      * </pre>
      */
-    //TEMP
     @Nullable
     public static String idOf(@Nullable Identifier raw) {
         AssetCategory category = categoryOf(raw);
@@ -272,7 +345,6 @@ public final class ModAssetPaths {
      * block/first_block/blockitem/a.png  → blockitem/a.png
      * </pre>
      */
-    //TEMP
     @Nullable
     public static String roleOf(@Nullable Identifier raw) {
         AssetCategory category = categoryOf(raw);
@@ -289,7 +361,6 @@ public final class ModAssetPaths {
     }
 
     /** 这个资源位置是不是方块状态定义。 */
-    //TEMP
     public static boolean isBlockState(@Nullable Identifier raw) {
         return raw != null
                 && AssetCategory.BLOCK.matchesPath(raw.getPath())
@@ -297,7 +368,6 @@ public final class ModAssetPaths {
     }
 
     /** 这个资源位置是不是方块物品资源（{@code block/<id>/blockitem/…}）。 */
-    //TEMP
     public static boolean isBlockItem(@Nullable Identifier raw) {
         return raw != null
                 && AssetCategory.BLOCK.matchesPath(raw.getPath())
@@ -312,7 +382,6 @@ public final class ModAssetPaths {
      * block/first_block/blockitem/a.png   → block/first_block/blockitem
      * </pre>
      */
-    //TEMP
     @Nullable
     public static String dirOf(@Nullable Identifier raw) {
         if (raw == null) {
@@ -333,7 +402,6 @@ public final class ModAssetPaths {
      * block/first_block/blockstate.json   → blockstate
      * </pre>
      */
-    //TEMP
     @Nullable
     public static String baseNameOf(@Nullable Identifier raw) {
         if (raw == null) {
@@ -351,7 +419,6 @@ public final class ModAssetPaths {
     }
 
     /** 目录的最后一段：{@code entity/test1} → {@code test1}。 */
-    //TEMP
     @Nullable
     public static String dirNameOf(@Nullable String dir) {
         if (dir == null) {

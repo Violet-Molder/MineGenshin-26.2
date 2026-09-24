@@ -30,7 +30,7 @@ import com.linweiyun.genshin.core.system.combat.action.ActionSet;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
-import com.linweiyun.genshin.enums.CharacterAscendAttribute;
+import com.linweiyun.genshin.core.character.CharacterAscendAttribute;
 import com.linweiyun.genshin.core.sync.ISyncCharacter;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
@@ -46,7 +46,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 

@@ -27,7 +27,7 @@ public class StackBindUIElement extends BindableUIElement<PGCharacter> {
       if (this.character != null) {
           String textureId = character.getTextureId();
           this.style(s -> s.background(
-                  SpriteTexture.of("minegenshin:textures/character_avatar/hud/" + textureId + ".png")));
+                  SpriteTexture.of("minegenshin:character/" + textureId + "/textures/avatar_hud.png")));
       } else {
         this.style(s -> s.background(null));
       }

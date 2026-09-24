@@ -11,7 +11,6 @@ import com.linweiyun.genshin.core.system.combat.action.ActionManager;
 import com.linweiyun.genshin.core.system.combat.action.InterruptReason;
 import com.linweiyun.genshin.core.system.combat.animation.server.ServerAnimationTicker;
 import com.linweiyun.genshin.core.system.registry.register.ModDataComponents;
-import com.linweiyun.genshin.render.gui.menu.BackpackMenu;
 import com.linweiyun.genshin.render.gui.menu.CharacterInfoMenu;
 import com.linweiyun.genshin.core.system.wish.WishSystem;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
@@ -19,7 +18,6 @@ import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
 import com.mojang.logging.LogUtils;
-import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -27,11 +25,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.TagValueInput;
-import net.minecraft.world.level.storage.TagValueOutput;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 

@@ -10,6 +10,7 @@ import com.linweiyun.genshin.core.system.about.AttachmentProfile;
 import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentHelper;
 import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
+import com.linweiyun.genshin.core.system.about.host.EntityHost;
 import com.linweiyun.genshin.core.system.combat.damage.DamageIndicatorFactory;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
@@ -24,8 +25,8 @@ import com.linweiyun.genshin.core.system.reaction.ReactionPriorityCalculator;
 import com.linweiyun.genshin.core.system.registry.register.ModCharacterEffects;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
-import com.linweiyun.genshin.enums.AttackType;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import com.linweiyun.genshin.content.entities.area.StellarVortexEntity;
 import com.linweiyun.genshin.core.character.catalyst.vodyanitsa.VodyanitsaTalent;
 import com.linweiyun.genshin.core.character.PGCharacter;
@@ -80,6 +81,8 @@ public class SwirlReaction extends ElementalReaction {
 
     @Override
     public boolean isBlocked(ReactionContext context) {
+        // 扩散以实体为中心向周围传播，方块端没有实体载体，直接不参与（否则下面会 NPE）。
+        if (context.targetEntity() == null) return true;
         long gameTime = context.targetEntity().level().getGameTime();
         UUID targetId = context.targetEntity().getUUID();
         Long last = lastSwirlTick.get(targetId);
@@ -131,7 +134,8 @@ public class SwirlReaction extends ElementalReaction {
         }
 
         // 在消耗元素前收集星扩散贡献者（消耗后 isFinished 会返回 true）
-        ServerLevel serverLevel = ctx.targetEntity().level() instanceof ServerLevel sl ? sl : null;
+        ServerLevel serverLevel = ctx.targetEntity() != null
+                && ctx.targetEntity().level() instanceof ServerLevel sl ? sl : null;
         boolean isStellarSwirl = attackerIsAnemo && spreadElement == ModElements.CYRO.get()
                 && serverLevel != null
                 && ReactionPriorityCalculator.hasStellarSwirlHousehold(serverLevel);
@@ -254,16 +258,18 @@ public class SwirlReaction extends ElementalReaction {
 
             StatusContainer nearbyContainer = nearby.getData(AttachmentRegistration.CONTAINER);
             if (nearbyContainer != null) {
-                ElementalAttachmentHelper.attach(
-                        nearby, nearbyContainer, spreadElement,
-                        AttachmentSource.SPECIAL, spreadProfile);
-
-                ReactionContext spreadCtx = new ReactionContext(
-                        spreadElement, spreadQuantity,
+                EntityHost nearbyHost = EntityHost.of(nearby);
+                // 扩散把元素「再挂」到旁边的人身上，走的是同一个宿主入口：
+                // 拒收这次附着的目标不会跟着反应（与直接攻击同一条规则）。
+                // 挂上之后的反应由附着入口接着做（附着 → 附着内反应），这里不再单独调反应系统；
+                // 带上传染规格与攻击者，让入口内部的反应拿到与原来一致的上下文。
+                if (nearbyHost == null) {
+                    continue;
+                }
+                ElementalAttachmentHelper.attach(nearbyHost, spreadElement,
                         AttachmentSource.SPECIAL, spreadProfile,
-                        dmgSpec, ctx.attackerEntity(),
-                        nearbyContainer, nearby);
-                ElementalReactionManager.tryReactAfterAttach(spreadCtx);
+                        com.linweiyun.genshin.core.system.about.AttachContext.reactionWrite(
+                                ctx.attackerEntity(), dmgSpec));
             }
         }
     }

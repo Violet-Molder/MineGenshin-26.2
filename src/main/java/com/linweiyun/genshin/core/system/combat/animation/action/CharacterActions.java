@@ -1,8 +1,9 @@
 package com.linweiyun.genshin.core.system.combat.animation.action;
 
+import com.linweiyun.genshin.core.character.CharacterHelper;
+
 import com.linweiyun.genshin.core.system.combat.animation.config.CharacterAnimations;
 import com.linweiyun.genshin.core.system.combat.animation.config.DefaultCharacterAnimations;
-import com.linweiyun.genshin.client.render.character.AttachmentHelper;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,13 +48,13 @@ public final class CharacterActions {
 
     /** 取某个玩家当前角色的动作编排；没登记就返回兜底编排（什么都不做）。 */
     public static CharacterActionHandler getFor(Player player) {
-        CharacterActionHandler handler = get(AttachmentHelper.getActiveCharacterId(player));
+        CharacterActionHandler handler = get(CharacterHelper.getActiveCharacterId(player));
         return handler == null ? CharacterActionHandler.EMPTY : handler;
     }
 
     /** 取某个玩家当前角色的动画配置；没登记就返回兜底配置（只有通用常态动画）。 */
     public static CharacterAnimations animationsFor(Player player) {
-        CharacterAnimations animations = animations(AttachmentHelper.getActiveCharacterId(player));
+        CharacterAnimations animations = animations(CharacterHelper.getActiveCharacterId(player));
         return animations == null ? DefaultCharacterAnimations.INSTANCE : animations;
     }
 }

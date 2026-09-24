@@ -11,19 +11,19 @@ import java.util.Map;
 
 public class ArtifactStatData {
 
-    //TEMP 主词条数据：key = star#attrKey#kind，value = double[2] {base, growth}
-    //TEMP 公式：value = base + level × growth
+    // 主词条数据：key = star#attrKey#kind，value = double[2] {base, growth}
+    // 公式：value = base + level × growth
     private static final Map<String, double[]> MAIN_STAT = new HashMap<>();
     private static volatile boolean loaded = false;
 
-    //TEMP 从配置文件读取，支持热重载
+    // 从配置文件读取，支持热重载
     private static synchronized void ensureLoaded() {
         if (loaded) return;
         loaded = true;
         reloadFromConfig();
     }
 
-    //TEMP 从 ArtifactConfigurable 读取所有主词条数据
+    // 从 ArtifactConfigurable 读取所有主词条数据
     public static void reloadFromConfig() {
         MAIN_STAT.clear();
 
@@ -147,7 +147,7 @@ public class ArtifactStatData {
         return 3;
     }
 
-    //TEMP 新公式：value = base + level × growth
+    // 新公式：value = base + level × growth
     public static double getMainStatValue(AttributeType attr, TeyvatItemStat.StatKind kind, int star, int level) {
         ensureLoaded();
         int bucket = getStarBucket(star);
@@ -158,7 +158,7 @@ public class ArtifactStatData {
         return base + level * growth;
     }
 
-    //TEMP 1级时的值
+    // 1级时的值
     public static double getMainStatInitialValue(AttributeType attr, TeyvatItemStat.StatKind kind, int star) {
         return getMainStatValue(attr, kind, star, 1);
     }
@@ -174,7 +174,7 @@ public class ArtifactStatData {
         return 0;
     }
 
-    //TEMP 返回初始值（base）
+    // 返回初始值（base）
     public static double getMainStatBase(AttributeType attr, TeyvatItemStat.StatKind kind, int star) {
         ensureLoaded();
         int bucket = getStarBucket(star);
@@ -182,7 +182,7 @@ public class ArtifactStatData {
         return pair != null ? pair[0] : 0;
     }
 
-    //TEMP 返回每级系数（growth）
+    // 返回每级系数（growth）
     public static double getMainStatGrowth(AttributeType attr, TeyvatItemStat.StatKind kind, int star) {
         ensureLoaded();
         int bucket = getStarBucket(star);

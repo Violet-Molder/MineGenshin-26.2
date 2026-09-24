@@ -26,116 +26,93 @@ import org.jetbrains.annotations.Nullable;
 public class ShieldState implements IPersistedSerializable {
 
     /** 有没有盾。 */
-    //TEMP
     @Persisted(key = "active")
     private boolean active;
 
     /** 用的是哪份模板（{@link ShieldProfiles} 里的 key）。 */
-    //TEMP
     @Persisted(key = "profile")
     private String profileKey = "";
 
     /** 当前盾量。 */
-    //TEMP
     @Persisted(key = "value")
     private float value;
 
     /** 上限，给血条下面的护盾条算比例用。 */
-    //TEMP
     @Persisted(key = "max_value")
     private float maxValue;
 
     /** 剩余刻数；{@link #FOREVER} 表示永续（元素盾、白盾这种）。 */
-    //TEMP
     @Persisted(key = "remaining")
     private int remainingTicks = FOREVER;
 
     /** 衰减型盾打到盾上的比例（从模板复制过来，允许逐个体覆盖）。 */
-    //TEMP
     @Persisted(key = "partial_ratio")
     private float partialRatio = 0.9f;
 
     /** 盾牌型盾的盾面朝向（度）。罩型忽略。 */
-    //TEMP
     @Persisted(key = "held_yaw")
     private float heldYaw;
 
     /** 最近一次被攻击命中的时刻，用来算「多久没挨打」。 */
-    //TEMP
     @Persisted(key = "last_hit")
     private long lastHitGameTime;
 
     /** 永续盾的剩余刻数标记。 */
-    //TEMP
     public static final int FOREVER = -1;
 
-    //TEMP
     public static final Codec<ShieldState> CODEC = PersistedParser.createCodec(ShieldState::new);
-    //TEMP
     public static final StreamCodec<ByteBuf, ShieldState> STREAM_CODEC =
             PersistedParser.createStreamCodec(ShieldState::new);
 
-    //TEMP
     public ShieldState() {
     }
 
     // ==================== 读写 ====================
 
-    //TEMP
     public boolean isActive() {
         return this.active && this.value > 0f;
     }
 
-    //TEMP
     public float value() {
         return this.value;
     }
 
-    //TEMP
     public float maxValue() {
         return this.maxValue;
     }
 
     /** 护盾条比例；没盾时 0。 */
-    //TEMP
     public float ratio() {
         return this.maxValue <= 0f ? 0f : Math.max(0f, Math.min(1f, this.value / this.maxValue));
     }
 
-    //TEMP
     public int remainingTicks() {
         return this.remainingTicks;
     }
 
-    //TEMP
     public boolean isForever() {
         return this.remainingTicks == FOREVER;
     }
 
-    //TEMP
     public float partialRatio() {
         return this.partialRatio;
     }
 
-    //TEMP
     public float heldYaw() {
         return this.heldYaw;
     }
 
-    //TEMP
     public long lastHitGameTime() {
         return this.lastHitGameTime;
     }
 
     /** 取模板；没注册过就返回 null（调用方要能处理）。 */
-    //TEMP
     @Nullable
     public ShieldProfile profile() {
         return ShieldProfiles.get(this.profileKey);
     }
 
     /** 盾还有没有「本体」那部分（模板丢了就当没有）。 */
-    //TEMP
     @Nullable
     public ShieldBreakType breakType() {
         ShieldProfile profile = profile();
@@ -145,7 +122,6 @@ public class ShieldState implements IPersistedSerializable {
     // ==================== 写入（只由 ShieldService 调） ====================
 
     /** 套盾 / 换盾。 */
-    //TEMP
     void apply(ShieldProfile profile, float shieldValue, int durationTicks, long gameTime, float heldYaw) {
         this.active = true;
         this.profileKey = profile.key();
@@ -157,7 +133,6 @@ public class ShieldState implements IPersistedSerializable {
         this.lastHitGameTime = gameTime;
     }
 
-    //TEMP
     void clear() {
         this.active = false;
         this.value = 0f;
@@ -170,7 +145,6 @@ public class ShieldState implements IPersistedSerializable {
      *
      * @return 实际扣掉的数量（盾量不足时小于请求值）
      */
-    //TEMP
     float consume(float amount) {
         if (amount <= 0f || !this.active) {
             return 0f;
@@ -184,13 +158,11 @@ public class ShieldState implements IPersistedSerializable {
         return actual;
     }
 
-    //TEMP
     void markHit(long gameTime) {
         this.lastHitGameTime = gameTime;
     }
 
     /** 走时间：到期的盾自己消失。 */
-    //TEMP
     void tickDuration(long gameTime) {
         if (!this.active || this.remainingTicks == FOREVER) {
             return;

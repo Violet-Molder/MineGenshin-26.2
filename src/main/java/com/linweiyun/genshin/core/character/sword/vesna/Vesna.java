@@ -1,22 +1,18 @@
 package com.linweiyun.genshin.core.character.sword.vesna;
 
-import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.character.IStellarHousehold;
 import com.linweiyun.genshin.core.character.IStellarStateHolder;
-import com.linweiyun.genshin.core.character.PGCharacter;
 import com.linweiyun.genshin.core.character.sword.SwordCharacter;
 import com.linweiyun.genshin.core.element.ModElements;
 import com.linweiyun.genshin.core.system.reaction.StellarGlimmerBranch;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderRepository;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
-import com.linweiyun.genshin.enums.CharacterAscendAttribute;
+import com.linweiyun.genshin.core.character.CharacterAscendAttribute;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.DescSynced;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.mojang.logging.LogUtils;
 import lombok.Getter;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
@@ -189,7 +185,7 @@ public class Vesna extends SwordCharacter implements IStellarHousehold, IStellar
      *
      * <p>为什么不能只靠 {@code syncRealtimeState()}：那是 LDLib2 的增量包，
      * 客户端收不到（客户端没绑 ownerPlayer，处理函数直接返回）。
-     * 真正到得了客户端的是 {@code CharacterTickEvent} 里「{@code data.isDirty()} → 整包同步」
+     * 真正到得了客户端的是 {@code CharacterTickHandler} 里「{@code data.isDirty()} → 整包同步」
      * 那条路，而它只认 {@code PGCharacterData.markDirty()}。
      *
      * <p>不标的话：没有 CD 在转的时候 {@code PGCharacterData.tick()} 不会标 dirty，

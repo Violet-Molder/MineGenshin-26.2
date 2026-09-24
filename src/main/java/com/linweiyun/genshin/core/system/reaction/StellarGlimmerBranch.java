@@ -2,7 +2,7 @@ package com.linweiyun.genshin.core.system.reaction;
 
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import org.jetbrains.annotations.Nullable;
 
 /**

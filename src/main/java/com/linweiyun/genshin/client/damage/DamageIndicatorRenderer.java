@@ -143,7 +143,7 @@ public class DamageIndicatorRenderer {
                 topWrapper.addClass(CLASS_GRADIENT_WRAPPER);
 //                topWrapper.style(s -> {
 //                    s.clip(Clip.MASK)
-//                            .mask(SpriteTexture.of(Minegenshin.id("textures/gui/damage_indicator_mask.png")));
+//                            .mask(SpriteTexture.of(Minegenshin.id("gui/damage_indicator_mask.png")));
 //                });
             } else {
                 // 非渐变：顶层完全透明，避免叠影

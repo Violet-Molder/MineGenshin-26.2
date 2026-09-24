@@ -1,24 +1,52 @@
 package com.linweiyun.genshin.core.system.reaction.builtin;
 
-import com.linweiyun.genshin.config.reaction.ReactionConfig;
 import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.element.ModElements;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
+import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
+import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
-import com.linweiyun.genshin.enums.ElementalReactionType;
 import com.mojang.logging.LogUtils;
+import net.minecraft.world.entity.LivingEntity;
 import org.slf4j.Logger;
 
-public class SuperConductReaction extends ElementalReaction {
-    public static final Logger LOGGER = LogUtils.getLogger();
-    private static float getReactionMultiplier() { return (float) ReactionConfig.SUPERCONDUCT.get(); }
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
-    protected SuperConductReaction(ElementalReactionType reactionType,
-                                   String elementAId, String elementBId,
-                                   float ratioA, float ratioB, int basePriority) {
+/**
+ * 超导反应 —— 雷 + 冰，<b>剧变反应</b>。
+ *
+ * <h2>消耗</h2>
+ * 注册比 1:1，双方同时消耗，哪边先耗尽就停（同基类规则）：
+ * 后手是 A 还是 B 由 {@code attackerIsA} 映射回固定槽位，之后按槽位扣减。
+ *
+ * <h2>伤害</h2>
+ * 消耗结束后对目标结算一次<b>冰元素剧变伤害</b>：
+ * 走 {@link ModDamageSpec#transformative} → {@code TransformativeDamage} 管线，
+ * 倍率取 {@code ReactionConfig.SUPERCONDUCT}。
+ *
+ * <p>同一目标两次超导伤害之间至少隔 {@value #DAMAGE_COOLDOWN_TICKS} tick（0.5 秒）：
+ * 冷却期内反应照常发生、元素照常消耗，只是不再结算伤害。方块端没有实体，
+ * 只做消耗，不出伤害。
+ */
+public class SuperConductReaction extends ElementalReaction {
+
+    public static final Logger LOGGER = LogUtils.getLogger();
+
+    /** 超导伤害冷却：同一目标 10 tick 内不重复结算伤害（元素照常消耗）。 */
+    private static final int DAMAGE_COOLDOWN_TICKS = 10;
+
+    private static final Map<UUID, Long> lastDamageTick = new HashMap<>();
+
+    public SuperConductReaction(ElementalReactionType reactionType,
+                                String elementAId, String elementBId,
+                                float ratioA, float ratioB, int basePriority) {
         super(reactionType, elementAId, elementBId, ratioA, ratioB, basePriority);
     }
-
 
     @Override
     public ReactionResult execute(ReactionContext context) {
@@ -26,24 +54,55 @@ public class SuperConductReaction extends ElementalReaction {
         GenshinElement elB = getElementB();
         GenshinElement attackerMain = context.attackerElement().getMainElement();
         boolean attackerIsA = (attackerMain == elA);
+
         GenshinElement defenderTarget = attackerIsA ? elB : elA;
         float totalDefenderUnit = sumConsumable(context.targetContainer(), defenderTarget);
-
-        if (totalDefenderUnit <= 0) {
+        if (totalDefenderUnit <= 0f) {
             return ReactionResult.builder(reactionType).build();
         }
-        float attackerUnit = context.attackerUnit();
 
-        float consumedA, consumedB;
-        float[] consumed;
-        if (attackerIsA) {
-            consumed = calculateConsumption(attackerUnit, totalDefenderUnit);
-        } else {
-            consumed = calculateConsumption(totalDefenderUnit, attackerUnit);
+        float attackerUnit = context.attackerUnit();
+        float[] consumed = attackerIsA
+                ? calculateConsumption(attackerUnit, totalDefenderUnit)
+                : calculateConsumption(totalDefenderUnit, attackerUnit);
+        float consumedA = consumed[0];
+        float consumedB = consumed[1];
+        if (consumedA <= 0f || consumedB <= 0f) {
+            return ReactionResult.builder(reactionType).build();
         }
-        consumedA = consumed[0]; consumedB = consumed[1];
+
         consumeElementUnit(context.targetContainer(), elB, consumedB);
         consumeElementUnit(context.targetContainer(), elA, consumedA);
-        return null;
+
+        applyDamageOffCooldown(context);
+
+        return ReactionResult.builder(reactionType)
+                .reacted()
+                .consumedAttacker(attackerIsA ? consumedA : consumedB)
+                .consumedDefender(attackerIsA ? consumedB : consumedA)
+                .build();
+    }
+
+    /**
+     * 结算一次冰元素剧变伤害；冷却期内或方块端（无实体）直接跳过。
+     *
+     * <p>飘字不在这里发 —— 由 {@code ElementalReactionManager} 统一按反应类型出字，
+     * 见 {@code shouldShowIndicator}。
+     */
+    private static void applyDamageOffCooldown(ReactionContext context) {
+        LivingEntity target = context.targetEntity();
+        if (target == null) return;
+
+        long gameTime = target.level().getGameTime();
+        Long last = lastDamageTick.get(target.getUUID());
+        if (last != null && gameTime - last < DAMAGE_COOLDOWN_TICKS) {
+            return;
+        }
+        lastDamageTick.put(target.getUUID(), gameTime);
+
+        ModDamageSpec spec = ModDamageSpec.transformative(
+                ElementalReactionType.SUPERCONDUCT, ModElements.CYRO.get(), AttackType.SPECIAL);
+        ModDamageSource source = ModDamageSource.from(spec, context.attackerEntity());
+        target.hurt(source, 0f);
     }
 }

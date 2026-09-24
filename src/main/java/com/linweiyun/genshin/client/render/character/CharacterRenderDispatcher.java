@@ -1,5 +1,7 @@
 package com.linweiyun.genshin.client.render.character;
 
+import com.linweiyun.genshin.core.character.CharacterHelper;
+
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.config.character.CharacterSystemConfig;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterRenderData;
@@ -44,7 +46,7 @@ public final class CharacterRenderDispatcher {
 
         if (!AttachmentHelper.isGenshinMode(player)) return false;
 
-        String charId = AttachmentHelper.getActiveCharacterId(player);
+        String charId = CharacterHelper.getActiveCharacterId(player);
         if (charId == null || charId.isEmpty()) return false;
 
         // 角色没有专属模型 → 不做模型替换，交回原版渲染（攻击延迟仍在，见 ResourceDrivenActionHandler）

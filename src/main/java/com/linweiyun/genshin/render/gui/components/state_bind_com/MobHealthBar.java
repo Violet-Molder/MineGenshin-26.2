@@ -33,17 +33,17 @@ public class MobHealthBar extends ProgressBar {
                 .layout(layout -> layout.positionType(TaffyPosition.ABSOLUTE))
                 .style(s -> {
                     s.background(SpriteTexture.of(
-                            Identifier.fromNamespaceAndPath("minegenshin", "textures/empty.png")));
+                            Identifier.fromNamespaceAndPath("minegenshin", "gui/empty.png")));
                     s.clip(Clip.SCISSOR);
                 });
 
         // 填充纹理（绿色基础血条）
         this.barIcon.style(s -> s.background(SpriteTexture.of(
-                Minegenshin.id("textures/gui/short_character_hp_bar_green.png"))));
+                Minegenshin.id("gui/short_character_hp_bar_green.png"))));
 
         // 空槽背景纹理
         this.barContainer(c -> c.style(s -> s.background(
-                SpriteTexture.of(Minegenshin.id("textures/gui/short_character_hp_green.png")))));
+                SpriteTexture.of(Minegenshin.id("gui/short_character_hp_green.png")))));
 
         // 不显示数字
         this.label.setText("");

@@ -14,20 +14,20 @@
 
 /* 正常血量（绿色基础纹理，无额外着色） */
 .mob-health-bar.normal .bar-icon {
-    background: sprite(minegenshin:textures/gui/short_character_hp_bar_green.png);
+    background: sprite(minegenshin:gui/short_character_hp_bar_green.png);
 }
 
 /* 低于 50%：橙色覆盖 */
 .mob-health-bar.low .bar-icon {
-    background: sprite(minegenshin:textures/gui/short_character_hp_bar_green.png) color(#FFAA00);
+    background: sprite(minegenshin:gui/short_character_hp_bar_green.png) color(#FFAA00);
 }
 
 /* 低于 30%：红色覆盖 */
 .mob-health-bar.critical .bar-icon {
-    background: sprite(minegenshin:textures/gui/short_character_hp_bar_green.png) color(#FF3333);
+    background: sprite(minegenshin:gui/short_character_hp_bar_green.png) color(#FF3333);
 }
 
 /* 空槽背景，不参与着色 */
 .mob-health-bar .bar-container {
-    background: sprite(minegenshin:textures/gui/short_character_hp_green.png);
+    background: sprite(minegenshin:gui/short_character_hp_green.png);
 }

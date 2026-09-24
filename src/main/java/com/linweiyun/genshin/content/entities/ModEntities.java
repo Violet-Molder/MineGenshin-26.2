@@ -5,6 +5,7 @@ import com.linweiyun.genshin.content.entities.area.StellarVortexEntity;
 import com.linweiyun.genshin.content.entities.area.TalismanSpiritArea;
 import com.linweiyun.genshin.content.entities.area.ThunderCloudEntity;
 import com.linweiyun.genshin.content.entities.misc.ElementalOrb;
+import com.linweiyun.genshin.content.entities.misc.IceBlockProjectile;
 import com.linweiyun.genshin.content.entities.teyvat.monster.slime.LargeCryoSlime;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaAttackProjectile;
 import com.linweiyun.genshin.content.entities.teyvat.skill.vesna.VesnaSpiritSwordEntity;
@@ -59,11 +60,11 @@ public class ModEntities {
     /**
      * 大型冰史莱姆。
      *
-     * <p>注册 id 就是 {@code large_cryo_slime}，资源文件名也跟着它
-     * （{@code geckolib/models/entity/large_cryo_slime.geo.json} 等，
-     * GeckoLib 的默认路径按实体 id 推导）。
+     * <p>注册 id 就是 {@code large_cryo_slime}，资源目录也跟着它：
+     * {@code assets/minegenshin/entity/large_cryo_slime/} 下的
+     * {@code large_cryo_slime.geo.json} / {@code large_cryo_slime.animation.json} /
+     * {@code large_cryo_slime.png}，由 {@code CategoryGeoModel}（类别 + id）解析。
      */
-    //TEMP
     public static final Supplier<EntityType<LargeCryoSlime>> LARGE_CRYO_SLIME =
             ENTITIES.register(
                     "large_cryo_slime",
@@ -125,6 +126,25 @@ public class ModEntities {
                                     Registries.ENTITY_TYPE,
                                     Minegenshin.id("vesna_spirit_sword"))
                             ));
+
+    /**
+     * 技能投射物：一块悬空旋转、砸向玩家的原版冰块。
+     *
+     * <p>用 {@link MobCategory#MISC}：它不是生物，不占刷怪名额，也不需要属性
+     * （属性缺失的报错只针对 CREATURE / MONSTER 之类的生物类别）。
+     * {@code updateInterval} 给小值让位置同步跟得上高速飞行。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<IceBlockProjectile>> ICE_BLOCK =
+            ENTITIES.register(
+                    "ice_block",
+                    () -> EntityType.Builder.<IceBlockProjectile>of(IceBlockProjectile::new, MobCategory.MISC)
+                            .sized(0.9F, 0.9F)
+                            .clientTrackingRange(8)
+                            .updateInterval(2)
+                            .build(ResourceKey.create(
+                                    Registries.ENTITY_TYPE,
+                                    Minegenshin.id("ice_block")))
+            );
 
     public static void register(IEventBus eventBus) {
         ENTITIES.register(eventBus);

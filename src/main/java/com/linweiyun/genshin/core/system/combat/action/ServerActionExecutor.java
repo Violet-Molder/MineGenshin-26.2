@@ -1,11 +1,9 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.ActionStep;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.Hit;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.Move;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
+import com.linweiyun.genshin.core.system.combat.action.data.Hit;
+import com.linweiyun.genshin.core.system.combat.action.data.Move;
 import com.mojang.logging.LogUtils;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;

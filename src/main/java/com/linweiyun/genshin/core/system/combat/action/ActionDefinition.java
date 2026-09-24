@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.ActionStep;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
 import lombok.Getter;
 
 import java.util.function.Consumer;

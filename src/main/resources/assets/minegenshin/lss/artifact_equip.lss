@@ -148,13 +148,13 @@
 
 .artifact-list-hover {
   transform: scale(1.1);
-  overlay: "minegenshin:textures/character_avatar/selected_border.png";
+  overlay: "minegenshin:gui/selected_border.png";
   border: 2px #ffffffcc;
 }
 
 .artifact-list-selected {
   transform: scale(1.1);
-  overlay: "minegenshin:textures/character_avatar/selected_border.png";
+  overlay: "minegenshin:gui/selected_border.png";
   border: 2px #ffffffcc;
 }
 

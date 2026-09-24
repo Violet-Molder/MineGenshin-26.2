@@ -11,7 +11,7 @@ import com.linweiyun.genshin.content.items.development.AdventurersExperienceItem
 import com.linweiyun.genshin.content.items.development.HerosWitItem;
 import com.linweiyun.genshin.content.items.food.CharacterFoods;
 import com.linweiyun.genshin.content.items.food.FoodItem;
-import com.linweiyun.genshin.content.items.preicous.ItemPrimogem;
+import com.linweiyun.genshin.content.items.precious.ItemPrimogem;
 import com.linweiyun.genshin.content.items.weapon.catalyst.EverlastingMoonglow;
 import com.linweiyun.genshin.content.items.weapon.catalyst.HymnTheMaelstrom;
 import com.linweiyun.genshin.content.items.weapon.sword.BeyondTheChrysalis;

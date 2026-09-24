@@ -87,7 +87,6 @@ public class AttachmentRegistration {
      *
      * <p>{@code sync} 是必须的 —— 客户端血条下面那条护盾条读的就是它。
      */
-    //TEMP
     public static final Supplier<AttachmentType<ShieldState>> SHIELD = ATTACHMENTS.register(
             "shield",
             () -> AttachmentType.builder(ShieldState::new)
@@ -122,7 +121,7 @@ public class AttachmentRegistration {
             ATTACHMENTS.register("chunk_elements",
                     () -> AttachmentType.builder(ChunkBlockElements::new)
                             .serialize(ChunkBlockElements.CODEC.fieldOf("elements"))
-                            .sync(ChunkBlockElements.STREAM_CODEC)
+                            // 方块元素只服务端用，不需要同步给客户端（每 tick 同步整 chunk 表会掉帧）
                             .build()
             );
 

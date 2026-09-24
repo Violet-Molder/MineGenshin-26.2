@@ -21,10 +21,10 @@
  *   wrapper 会遮罩自身 + 所有子元素，让子 Label 的文字
  *   只在 mask 上半部分可见 → 形成上→下颜色过渡
  *
- *   遮罩 PNG：assets/minegenshin/textures/gui/damage_indicator_mask.png
+ *   遮罩 PNG：assets/minegenshin/gui/damage_indicator_mask.png
  *   1×64 白色，顶部 alpha=255，底部 alpha=0
  */
 .di-gradient-top {
     clip: mask;
-    mask: sprite(minegenshin:textures/gui/damage_indicator_mask1.png);
+    mask: sprite(minegenshin:gui/damage_indicator_mask1.png);
 }

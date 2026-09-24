@@ -37,7 +37,7 @@ public class HPProgressBar extends ProgressBar {
                 })
                 .style(s -> {
                     s.background(SpriteTexture.of(
-                            Identifier.fromNamespaceAndPath("minegenshin", "textures/empty.png")));
+                            Identifier.fromNamespaceAndPath("minegenshin", "gui/empty.png")));
                     s.clip(Clip.SCISSOR);
                 });
     }

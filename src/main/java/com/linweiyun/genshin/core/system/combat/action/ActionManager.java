@@ -1,9 +1,10 @@
 package com.linweiyun.genshin.core.system.combat.action;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
+import com.linweiyun.genshin.core.system.combat.attack.ElementalAttackSweep;
 
 import com.linweiyun.genshin.config.character.CharacterSystemConfig;
 import com.linweiyun.genshin.content.items.weapon.WeaponItem;
 import com.linweiyun.genshin.core.character.PGCharacter;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
 import com.linweiyun.genshin.core.system.combat.targeting.CombatTargeting;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.player.Player;
@@ -30,7 +31,7 @@ public class ActionManager {
      * 当前正在驱动状态机的角色实例。
      * <p>
      * 一个 ActionManager 是 per-player 的，但一个玩家有多个 party 角色。
-     * 服务端的 CharacterTickEvent 会 tick 所有 party 成员——如果每个成员的 tick
+     * 服务端的 CharacterTickHandler 会 tick 所有 party 成员——如果每个成员的 tick
      * 都无条件推进状态机，会导致 party 之间的动作互相打断。
      * <p>
      * activeCharacter 记录"当前动作属于哪个角色"，只有它的 tick / request 才会
@@ -109,7 +110,7 @@ public class ActionManager {
         }
 
         // 1. CD / 能量检查
-        //    和客户端 {@code ResourceDrivenActionHandler.canCast} 走的是同一个方法 ——
+        //    和客户端 {@code ActionCastGuard.canCast} 走的是同一个方法 ——
         //    一处规则两端一致：客户端不通过就连动画都不播，服务端这里是权威复核。
         if (!character.canCast(player, def.kind, skillTime)) {
             LOGGER.info("[ActionManager] [{}] canCast=false, rejected", side);
@@ -264,10 +265,25 @@ public class ActionManager {
             }
         }
 
+        // 过渡期：临时分支（动作系统关闭、当场结算）也要把元素留给范围内的方块。
+        // 与永久分支 ActionState.fireDamagePoint 调的是同一个 helper，逻辑只有一份。
+        //
+        // 这里一次调用覆盖整段动作、不放进下面的 hits 循环：临时分支的所有 hit 都在同一 tick
+        // 结算，站位与朝向一模一样，而附着本身是「同元素同来源刷新量」的幂等操作 ——
+        // 循环 N 次与一次的结果相同，只是白扫 N 遍盒子。（永久分支的 hit 分散在时间轴上，
+        // 那里每个伤害点各附着一次是有意义的，两边语义因此仍然对齐。）
+        //
+        // ⚠️ 本调用随「即时结算」这条临时分支一并删除。
+        try {
+            ElementalAttackSweep.forAction(player, character, def);
+        } catch (Exception e) {
+            LOGGER.error("[ElementalAttackSweep] 临时分支方块附着失败 kind={}", def.kind, e);
+        }
+
         Consumer<ActionContext> hook = def.getOnActiveStart();
         if (hook == null) return;
 
-        CharacterActionData.ActionStep step = def.step;
+        ActionStep step = def.step;
         int times = (step == null || step.hits == null || step.hits.isEmpty()) ? 1 : step.hits.size();
 
         for (int i = 0; i < times; i++) {

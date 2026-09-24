@@ -41,7 +41,7 @@
 #character-button-image-empty {
   width: 50%;
   aspect-rate: 1.0f;
-  overlay: sprite(minegenshin:textures/gui/character_party/add_character_button.png);
+  overlay: sprite(minegenshin:gui/character_party/add_character_button.png);
   left: 0;
   top: 0;
   right: 0;

@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ShieldProfiles {
 
-    //TEMP
     private static final Map<String, ShieldProfile> REGISTRY = new ConcurrentHashMap<>();
 
     // ==================== 占位 / 已实现的 key ====================
@@ -45,31 +44,24 @@ public final class ShieldProfiles {
      *   <tr><td>物理</td><td>0</td><td>只吃削韧</td></tr>
      * </table>
      */
-    //TEMP
     public static final String CRYO_ELEMENT = "minegenshin:cryo_element";
 
     /** 占位：伤害盾（打多少伤害扣多少盾量，元素附着不影响）。 */
-    //TEMP
     public static final String DAMAGE = "minegenshin:damage_shield";
 
     /** 占位：混合盾（伤害 + 元素 + 削韧一起扣）。 */
-    //TEMP
     public static final String MIXED = "minegenshin:mixed_shield";
 
     /** 占位：白盾（全靠削韧击破）。 */
-    //TEMP
     public static final String POISE = "minegenshin:poise_shield";
 
     /** 占位：衰减型盾（默认 90% 打到盾上）。 */
-    //TEMP
     public static final String PARTIAL = "minegenshin:partial_shield";
 
     /** 占位：盾牌型盾（只挡正面一个扇形，盾量显示在手持物品上）。 */
-    //TEMP
     public static final String HELD = "minegenshin:held_shield";
 
     /** 占位：玩家元素盾（对应元素 250% 吸收、岩 150%、其余 100%）。 */
-    //TEMP
     public static final String PLAYER_ELEMENTAL = "minegenshin:player_elemental_shield";
 
     static {
@@ -82,19 +74,16 @@ public final class ShieldProfiles {
         register(placeholderPlayerElementalShield());
     }
 
-    //TEMP
     private ShieldProfiles() {
     }
 
     // ==================== 注册 / 查询 ====================
 
-    //TEMP
     public static ShieldProfile register(ShieldProfile profile) {
         REGISTRY.put(profile.key(), profile);
         return profile;
     }
 
-    //TEMP
     @Nullable
     public static ShieldProfile get(@Nullable String key) {
         return key == null ? null : REGISTRY.get(key);
@@ -108,7 +97,6 @@ public final class ShieldProfiles {
      * <p>伤害完全打不进本体（{@link ShieldEffect#FULL}），但伤害<b>不消耗盾量</b>
      * （{@link ShieldBreakType#ELEMENT}）—— 破盾只能靠元素附着和削韧。
      */
-    //TEMP
     public static ShieldProfile cryoElementShield() {
         return ShieldProfile.builder(CRYO_ELEMENT)
                 .effect(ShieldEffect.FULL)
@@ -136,7 +124,6 @@ public final class ShieldProfiles {
      * <p>机制：打多少伤害扣多少盾量，附着不影响。
      * <b>待补</b>：不同元素对盾的伤害吸收差异（现在全 100%）。
      */
-    //TEMP
     private static ShieldProfile placeholderDamageShield() {
         return ShieldProfile.builder(DAMAGE)
                 .effect(ShieldEffect.FULL)
@@ -150,7 +137,6 @@ public final class ShieldProfiles {
      *
      * <p>机制：伤害、元素附着、削韧三者一起扣盾量。
      */
-    //TEMP
     private static ShieldProfile placeholderMixedShield() {
         return ShieldProfile.builder(MIXED)
                 .effect(ShieldEffect.FULL)
@@ -165,7 +151,6 @@ public final class ShieldProfiles {
      * <p>机制：伤害和元素都不扣，只有削韧扣。
      * <b>待补</b>：独立的韧性条与破韧硬直（现在只是把削韧量扣到盾上）。
      */
-    //TEMP
     private static ShieldProfile placeholderPoiseShield() {
         return ShieldProfile.builder(POISE)
                 .effect(ShieldEffect.FULL)
@@ -179,7 +164,6 @@ public final class ShieldProfiles {
      *
      * <p>机制：伤害的 {@code partialRatio}（默认 90%）打到盾上，其余穿透。
      */
-    //TEMP
     private static ShieldProfile placeholderPartialShield() {
         return ShieldProfile.builder(PARTIAL)
                 .effect(ShieldEffect.PARTIAL)
@@ -195,7 +179,6 @@ public final class ShieldProfiles {
      * <p>机制：只抵挡正面扇形内的攻击。
      * <b>待补</b>：手持物品模型上的盾量显示（且不随动画位移）。
      */
-    //TEMP
     private static ShieldProfile placeholderHeldShield() {
         return ShieldProfile.builder(HELD)
                 .effect(ShieldEffect.FULL)
@@ -211,7 +194,6 @@ public final class ShieldProfiles {
      * （「100 量的火盾能挡 250 火伤和 100 其他伤害」）。
      * <b>待补</b>：接入角色技能提供的护盾。
      */
-    //TEMP
     private static ShieldProfile placeholderPlayerElementalShield() {
         return ShieldProfile.builder(PLAYER_ELEMENTAL)
                 .effect(ShieldEffect.FULL)

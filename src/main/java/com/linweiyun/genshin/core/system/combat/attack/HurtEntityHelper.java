@@ -2,6 +2,8 @@ package com.linweiyun.genshin.core.system.combat.attack;
 
 import com.linweiyun.genshin.content.effect.character.CharacterEffectInstance;
 import com.linweiyun.genshin.core.character.PGCharacter;
+import com.linweiyun.genshin.core.element.GenshinElement;
+import com.linweiyun.genshin.core.system.about.ElementalAttachable;
 import com.linweiyun.genshin.core.system.combat.damage.DamageTrace;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
@@ -57,7 +59,7 @@ public final class HurtEntityHelper {
         // 非直伤 → 各自独立的管线（不跑附着/衰减，也不吃增伤区与防御区）
         if (spec.getDamageType() != ModDamageSpec.DamageType.DIRECT) {
             LivingEntity sourceEntity = (LivingEntity) damageSource.getEntity();
-            return switch (spec.getDamageType()) {
+            float dealt = switch (spec.getDamageType()) {
                 case TRANSFORMATIVE -> TransformativeDamage.calculate(sourceEntity, target, spec);
                 case LUNAR -> LunarDamage.calculate(sourceEntity, attacker, target, spec);
                 case STELLAR -> StellarDamage.calculate(attacker, target, spec);
@@ -65,6 +67,7 @@ public final class HurtEntityHelper {
                 case QUICKEN -> 0f;
                 default -> 0f;
             };
+            return applyElementImmunity(target, spec.getElement(), dealt);
         }
 
         // 直伤：先给角色效果一次改写伤害的机会（onAttacked），再进直伤管线
@@ -77,7 +80,24 @@ public final class HurtEntityHelper {
         com.linweiyun.genshin.content.effect.character.artifact.TenacityOfTheMillelith4
                 .notifySkillHit(damageSource, attacker, target);
 
-        return finalDamage;
+        // 直伤的免疫在 DirectDamagePipeline 里已经按「免疫区」结算过（附着与反应也都在那里跑完了），
+        // 这里再问一次是幂等的：已经免疫过就是 0。
+        return applyElementImmunity(target, spec.getElement(), finalDamage);
+    }
+
+    /**
+     * 元素免疫 —— <b>只把伤害归零，不拦附着、不拦反应</b>。
+     *
+     * <p>谁免疫什么由目标自己回答（{@link ElementalAttachable#isImmuneToElementDamage}）：
+     * 元素生物免疫自己的主元素，普通史莱姆免疫自己那种元素。附着与反应在伤害管线里
+     * 已经发生过，所以「打上去会挂元素、会反应、但不掉血」。
+     */
+    private static float applyElementImmunity(LivingEntity target, GenshinElement element,
+                                              float damage) {
+        if (damage <= 0f) {
+            return damage;
+        }
+        return ElementalAttachable.isImmuneToDamage(target, element) ? 0f : damage;
     }
 
     /**

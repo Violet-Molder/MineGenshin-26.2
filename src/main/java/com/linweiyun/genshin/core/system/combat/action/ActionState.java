@@ -1,7 +1,8 @@
 package com.linweiyun.genshin.core.system.combat.action;
 
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.ActionStep;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.Hit;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
+import com.linweiyun.genshin.core.system.combat.action.data.Hit;
+import com.linweiyun.genshin.core.system.combat.attack.ElementalAttackSweep;
 import com.mojang.logging.LogUtils;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -107,7 +108,7 @@ public class ActionState {
         if (firesWithoutHits) {
             if (tickCount == 0 && !hitsFired.get(0)) {
                 hitsFired.set(0);
-                fire(definition.getOnActiveStart());
+                fireDamagePoint();
             }
             return;
         }
@@ -115,9 +116,34 @@ public class ActionState {
         for (int i = 0; i < hitDelays.length; i++) {
             if (!hitsFired.get(i) && tickCount >= hitDelays[i]) {
                 hitsFired.set(i);
-                fire(definition.getOnActiveStart());
+                fireDamagePoint();
             }
         }
+    }
+
+    /**
+     * 一个<b>伤害点</b>：先把这一招的元素留给范围内的「可附着方块」，再跑天赋自己的伤害结算。
+     *
+     * <p>放在这里（而不是 {@code ActionManager} 的动作启动处）是因为它才是
+     * 「hits[] 里那一下真正发生」的时刻：多段招式每段各附着一次，前摇被打断也不会提前留下元素。
+     * 实体那一侧不在这里做 —— 它由 {@code hurtServer → DirectDamagePipeline} 负责，
+     * 两边最终都落进 {@code ElementalAttachmentHelper} 这一个附着入口。
+     *
+     * <p>{@code ElementalAttackSweep} 内部自带门禁（仅服务端 + 仅原神模式 + 必须有元素），
+     * 所以客户端这一份状态机跑过去不会有任何副作用。
+     */
+    private void fireDamagePoint() {
+        try {
+            int attached = ElementalAttackSweep.forAction(context.player, context.character, definition);
+            if (attached > 0) {
+                LOGGER.info("[ElementalAttackSweep] kind={} 附着方块数={} tick={}",
+                        definition.kind, attached, tickCount);
+            }
+        } catch (Exception e) {
+            LOGGER.error("[ElementalAttackSweep] 方块附着抛异常 kind={} tick={}",
+                    definition.kind, tickCount, e);
+        }
+        fire(definition.getOnActiveStart());
     }
 
     private void finish() {

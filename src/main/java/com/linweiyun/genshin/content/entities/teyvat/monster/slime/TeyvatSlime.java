@@ -12,17 +12,14 @@ import com.geckolib.util.GeckoLibUtil;
 import com.linweiyun.genshin.content.entities.teyvat.monster.TeyvatMonster;
 import com.linweiyun.genshin.core.element.GenshinElement;
 import com.linweiyun.genshin.core.element.ModElements;
-import com.linweiyun.genshin.core.system.about.AttachmentProfile;
-import com.linweiyun.genshin.core.system.about.AttachmentSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSource;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.registry.ModRegistries;
-import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
@@ -62,15 +59,6 @@ public class TeyvatSlime extends TeyvatMonster implements GeoEntity {
         super.registerGoals();
     }
 
-    @Override
-    public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
-        if (source instanceof ModDamageSource teyvatSource) {
-            if (teyvatSource.getSpec().getElement() == this.getElement()) {
-                return false;
-            }
-        }
-        return super.hurtServer(level, source, damage);
-    }
     // 创建实体属性（注册时调用）
     public static AttributeSupplier.Builder createAttributes() {
         return Monster.createMonsterAttributes()
@@ -113,9 +101,19 @@ public class TeyvatSlime extends TeyvatMonster implements GeoEntity {
         this.entityData.set(DATA_ELEMENT, key != null ? key.toString() : "minegenshin:fysikos");
     }
 
+    /**
+     * 史莱姆对自己那种元素免疫。
+     *
+     * <p><b>只免疫伤害，不拒收附着</b>：打上去照样挂元素、照样能反应，只是这一下不掉血。
+     *
+     * <p>以前这条规则写在两次错误的位置上：{@code hurtServer} 提前 {@code return false}
+     * （附着在伤害管线内部做 → 连附着都不发生），以及
+     * {@code onAttachElement → element == getElement()}（含义写反了：拦掉的是「别人打来的元素」，
+     * 于是史莱姆除了自己那种元素什么都挂不上）。现在附着走默认实现（全收）。
+     */
     @Override
-    public boolean onAttachElement(GenshinElement element, AttachmentSource source, AttachmentProfile profile) {
-        return element == this.getElement();
+    public boolean isImmuneToElementDamage(GenshinElement element) {
+        return element != null && element == this.getElement();
     }
 
     static class SlimeMoveControl extends MoveControl {

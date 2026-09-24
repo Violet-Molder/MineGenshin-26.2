@@ -59,10 +59,12 @@ import org.jetbrains.annotations.Nullable;
  *
  * <h2>元素生物的统一规则</h2>
  * {@link ElementalCreature} 让它<b>永久免疫冰元素伤害</b>（含「冻」元素，
- * 因为冻的主元素是冰）。免疫判定在 {@code TeyvatMonster#hurtServer} 里统一做。
+ * 因为冻的主元素是冰）。免疫判定统一在 {@code TeyvatMonster#isImmuneToElementDamage}，
+ * 而且<b>只拦伤害</b>：火/水照样挂得上来、照样触发反应，只是冰伤害按 0 结算。
  *
  * <h2>环境交互</h2>
- * 实现 {@code ElementalAttachable.onAttachElement} 拒绝水元素附着。
+ * 实现 {@code ElementalAttachable.onAttachElement} 拒绝水元素附着 —— 这是第一段筛查的范例：
+ * <b>拒收 = 水挂不上 = 不会触发冻结反应</b>（拒收的附着不会绕过去反应）。
  * 踩水 → 给水附着冰（冻结成浮冰），踩冰 → 给冰附着冻（永不融化）。
  *
  * <h2>数值</h2>
@@ -72,15 +74,12 @@ import org.jetbrains.annotations.Nullable;
 public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, GeoEntity {
 
     /** 生命值系数（配置表基础值 × 它）。 */
-    //TEMP
     public static final float HEALTH_MULTIPLIER = 2.0f;
 
     /** 攻击力系数（配置表基础值 × 它）。 */
-    //TEMP
     public static final float ATTACK_MULTIPLIER = 1.4f;
 
     /** 只有一个跳跃动画，浮空时播。 */
-    //TEMP
     private static final RawAnimation JUMPING = RawAnimation.begin().thenPlay("move.jump");
 
     /**
@@ -90,42 +89,32 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
      * {@code frameSnapshot} 决定），所以「隐藏一根骨骼」最省事、最稳的做法就是
      * 用一段动画把它缩成 0 —— 不碰渲染器、不用改模型文件。
      */
-    //TEMP
     private static final RawAnimation SHIELD_DOWN = RawAnimation.begin().thenPlayAndHold("shield.down");
 
     /** 补盾：把 {@code hat} 骨骼缩回 1，帽子回来。 */
-    //TEMP
     private static final RawAnimation SHIELD_UP = RawAnimation.begin().thenPlayAndHold("shield.up");
 
-    //TEMP
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     /** 护盾是不是已经给过了（决定要不要在第一次 tick 补盾）。 */
-    //TEMP
     private boolean shieldInitialized;
 
     /** 自挂冰附着的计时器（刻）。 */
-    //TEMP
     private int cryoAuraTimer = SELF_AURA_INTERVAL;
 
     /** 自挂冰附着的间隔：每秒一次。 */
-    //TEMP
     private static final int SELF_AURA_INTERVAL = 20;
 
     /** 帽子形态这条控制器是不是还没做过第一次判断（第一帧只记录、不播动画）。 */
-    //TEMP
     private boolean shieldAnimInitialized;
 
     /** 上一帧的持盾状态。 */
-    //TEMP
     private boolean lastShielded = true;
 
     /** 当前该播哪段帽子动画；null = 还没发生过变化，保持默认（帽子在）。 */
-    //TEMP
     @Nullable
     private RawAnimation shieldAnim;
 
-    //TEMP
     public LargeCryoSlime(EntityType<? extends TeyvatMonster> type, Level level) {
         super(type, level);
         this.moveControl = new WriggleMoveControl<LargeCryoSlime>(this);
@@ -138,33 +127,38 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
     /**
      * 冰史莱姆拒绝所有水元素附着。
      * 通过 Mixin 注入的 ElementalAttachable 接口实现。
+     *
+     * <p>注意它<b>不拒绝</b>火/冰/冻：火打上来要能触发融化、自挂冰要能进容器。
+     *
+     * <p><b>但水与寒除外</b>：水由这条规则直接拒收；寒走 {@link ElementalCreature} 的默认规则
+     * （「免疫冰的元素生物不收寒」）。这里必须显式委托过去 —— 本方法整体覆盖了默认实现，
+     * 少了这一句就会绕过寒的豁免，冰史莱姆又会被减速/冻结。
      */
     @Override
     public boolean onAttachElement(GenshinElement element, AttachmentSource source, AttachmentProfile profile) {
-        return element != ModElements.HYDRO.get();
+        if (element == ModElements.HYDRO.get()) {
+            return false;
+        }
+        return ElementalCreature.super.acceptsElementAttachment(element);
     }
 
     // ==================== 元素生物 ====================
 
-    //TEMP
     @Override
     public GenshinElement getCreatureElement() {
         return ModElements.CYRO.get();
     }
 
-    //TEMP
     @Override
     public float getHealthMultiplier() {
         return HEALTH_MULTIPLIER;
     }
 
-    //TEMP
     @Override
     public float getAttackMultiplier() {
         return ATTACK_MULTIPLIER;
     }
 
-    //TEMP
     public static AttributeSupplier.Builder createAttributes() {
         return Monster.createMonsterAttributes()
                 .add(Attributes.FOLLOW_RANGE, 40.0D)
@@ -175,19 +169,16 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
     // ==================== 护盾 ====================
 
     /** 套上（或补回）冰元素盾。 */
-    //TEMP
     public void grantCryoShield() {
         ShieldService.grant(this, ShieldProfiles.cryoElementShield(),
                 MobBehaviorConfig.shieldValue(), ShieldState.FOREVER);
     }
 
-    //TEMP
     public boolean hasShield() {
         return ShieldService.has(this);
     }
 
     /** 最近一次挨打的时刻（护盾恢复逻辑用）。 */
-    //TEMP
     public long lastHitGameTime() {
         return ShieldService.get(this).lastHitGameTime();
     }
@@ -198,14 +189,12 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
      * <p>还没初始化过（{@code shieldInitialized == false}）不算破 ——
      * 否则刚生成的那一 tick 恢复 Goal 就会误判成「盾没了」。
      */
-    //TEMP
     public boolean isShieldBroken() {
         return this.shieldInitialized && !hasShield();
     }
 
     // ==================== tick ====================
 
-    //TEMP
     @Override
     public void tick() {
         super.tick();
@@ -252,7 +241,6 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
     }
 
     /** 给自己挂弱冰附着。 */
-    //TEMP
     private void applySelfCryoAura() {
         StatusContainer container = this.getData(AttachmentRegistration.CONTAINER);
         if (container == null) {
@@ -292,7 +280,6 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
      * 要么原地抬手，所以能和优先级 6 的接近 Goal 并行 ——
      * 一边挪一边放技能，不会互相抢占。
      */
-    //TEMP
     @Override
     protected void registerGoals() {
         // 1：普通攻击 —— <b>向前大跳撞击，撞到之后落回起跳点</b>
@@ -321,21 +308,18 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
 
     // ==================== GeckoLib ====================
 
-    //TEMP
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return this.geoCache;
     }
 
     /** 现有资源只有一条 {@code move.jump}，浮空时播它；盾没了再叠一层 {@code shield.down}。 */
-    //TEMP
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>("jump", 0, this::jumpingState));
         controllers.add(new AnimationController<>("shield", 0, this::shieldState));
     }
 
-    //TEMP
     private PlayState jumpingState(AnimationTest<GeoAnimatable> test) {
         if (!this.onGround()) {
             return test.setAndContinue(JUMPING);
@@ -356,7 +340,6 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
      * 所以：第一帧只记录、不播；之后只在状态翻转时切到 {@code shield.down} / {@code shield.up}，
      * 两段动画都 {@code thenPlayAndHold}（停在最后一帧），谁也不用循环。
      */
-    //TEMP
     private PlayState shieldState(AnimationTest<GeoAnimatable> test) {
         boolean shielded = this.hasShield();
         if (!this.shieldAnimInitialized) {
@@ -377,12 +360,10 @@ public class LargeCryoSlime extends TeyvatMonster implements ElementalCreature, 
     // ==================== 工具 ====================
 
     /** 攻击力数值（技能伤害都按它的倍率算）。 */
-    //TEMP
     public float attackDamageValue() {
         return (float) this.getAttributeValue(Attributes.ATTACK_DAMAGE);
     }
 
-    //TEMP
     @Nullable
     public LivingEntity currentTarget() {
         LivingEntity target = this.getTarget();

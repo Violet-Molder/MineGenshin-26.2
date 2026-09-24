@@ -385,7 +385,7 @@ public float getSovereigntyBonus() {
 
 `decreeTicks` 是 `@DescSynced @Persisted`，但客户端处理增量同步的回调需要 `ownerPlayer`，而 Vesna 在客户端没有绑 ownerPlayer → `syncRealtimeState()` 直接返回。
 
-所以依赖**整包同步**路径：`PGCharacterData.markDirty()` → `CharacterTickEvent` → 整包发给客户端。
+所以依赖**整包同步**路径：`PGCharacterData.markDirty()` → `CharacterTickHandler` → 整包发给客户端。
 
 `syncSkillState()` 同时调这两个（Vesna.java:404-407），**只在事件型的改状态方法里调**，不要在每刻 tick 里调，避免每刻整包同步。
 

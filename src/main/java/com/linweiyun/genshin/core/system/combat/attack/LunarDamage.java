@@ -8,7 +8,7 @@ import com.linweiyun.genshin.core.system.combat.damage.CombatMath;
 import com.linweiyun.genshin.core.system.combat.damage.DamageTrace;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
 import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
 

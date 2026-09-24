@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.action.data;
 
+
 import com.linweiyun.genshin.core.asset.GenshinAssets;
 import net.minecraft.resources.Identifier;
 
@@ -14,9 +15,9 @@ import java.util.Map;
  * 三个字段都是相对 {@code assets/minegenshin/} 的路径。默认组合是
  * <b>模型贴图共用、动画独立</b>：
  * <pre>
- * character/default/default.geo.json      ← 所有角色共用
- * character/default/default.png           ← 所有角色共用
- * character/vesna/vesna.animation.json    ← 每个角色自己的
+ * character/default/default.geo.json              ← 所有角色共用
+ * character/default/textures/default.png          ← 所有角色共用
+ * character/vesna/vesna.animation.json            ← 每个角色自己的
  * </pre>
  * 用 {@link #character(String, Map, float, CharacterBoneMount...)} 就是这套默认值；
  * 某个角色要做专属模型时，用显式路径构造。

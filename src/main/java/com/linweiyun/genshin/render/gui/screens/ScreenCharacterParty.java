@@ -53,8 +53,8 @@ public class ScreenCharacterParty extends Screen {
                   .setId("character-button-image-" + partyChar.getName().getString())
                   .addClass("character-button-image-pose")
                   .style(style -> style.overlay(
-                          SpriteTexture.of("minegenshin:textures/character_party_pose/"
-                                  + textureId + "_already.png")));
+                          SpriteTexture.of("minegenshin:character/"
+                                  + textureId + "/textures/pose_already.png")));
           haveCharacter = true;
       }
 

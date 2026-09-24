@@ -5,7 +5,7 @@ import com.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.geckolib.animatable.manager.AnimatableManager;
 import com.geckolib.util.GeckoLibUtil;
 import com.linweiyun.genshin.core.system.combat.animation.animatable.IPlayerAnimatableProxy;
-import com.linweiyun.genshin.core.system.combat.animation.state.PlayerAnimationController;
+import com.linweiyun.genshin.client.combat.state.PlayerAnimationController;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 

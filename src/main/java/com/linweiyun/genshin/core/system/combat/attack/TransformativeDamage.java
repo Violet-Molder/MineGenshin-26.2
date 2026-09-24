@@ -8,7 +8,7 @@ import com.linweiyun.genshin.core.system.combat.damage.CombatEntityAccessor;
 import com.linweiyun.genshin.core.system.combat.damage.CombatMath;
 import com.linweiyun.genshin.core.system.combat.damage.DamageTrace;
 import com.linweiyun.genshin.core.system.combat.damage.ModDamageSpec;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
@@ -40,6 +40,7 @@ final class TransformativeDamage {
         double levelCoefficient = DamageZones.levelCoefficient(level);
         float reactionMultiplier = switch (reactionType) {
             case ELECTRO_CHARGED -> (float) ReactionConfig.ELECTROCHARGED.get();
+            case SUPERCONDUCT -> (float) ReactionConfig.SUPERCONDUCT.get();
             case SWIRL -> (float) ReactionConfig.SWIRL.get();
             default -> 1.0f;
         };

@@ -1,8 +1,8 @@
 package com.linweiyun.genshin.client.combat;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
 
 import com.linweiyun.genshin.core.network.ActionServer;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
-import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData.ActionStep.DiveBurst;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep.DiveBurst;
 import com.linweiyun.genshin.core.system.combat.targeting.CombatTargeting;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
@@ -65,7 +65,7 @@ public final class BurstDive {
      * @param target 这一发锁到的目标；没有目标时往正前方砸
      */
     public static void begin(LocalPlayer player, @Nullable LivingEntity target,
-                             CharacterActionData.ActionStep step) {
+                             ActionStep step) {
         DiveBurst config = step == null ? null : step.diveBurst;
         if (config == null) {
             return;

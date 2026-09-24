@@ -1,4 +1,13 @@
 package com.linweiyun.genshin.core.character.sword.vesna;
+import com.linweiyun.genshin.core.system.combat.action.data.ComboData;
+import com.linweiyun.genshin.core.system.combat.action.data.SkillData;
+import com.linweiyun.genshin.core.system.combat.action.data.BurstData;
+import com.linweiyun.genshin.core.system.combat.action.data.DodgeData;
+import com.linweiyun.genshin.core.system.combat.action.data.ActionStep;
+import com.linweiyun.genshin.core.system.combat.action.data.Engagement;
+import com.linweiyun.genshin.core.system.combat.action.data.Hit;
+import com.linweiyun.genshin.core.system.combat.action.data.Move;
+import com.linweiyun.genshin.core.system.combat.action.data.SoundRef;
 
 import com.linweiyun.genshin.core.system.combat.action.data.BoneMountSource;
 import com.linweiyun.genshin.core.system.combat.action.data.CharacterActionData;
@@ -52,65 +61,65 @@ public final class VesnaResources {
      */
     public static final int BIANYI_HIT_DELAY = 6;
 
-    public static final CharacterActionData.ActionStep BIANYI_STEP = new CharacterActionData.ActionStep(
+    public static final ActionStep BIANYI_STEP = new ActionStep(
             "skill_bianyi", 20, BIANYI_HIT_DELAY + 2, 4,
-            List.of(new CharacterActionData.Move(0, 0.8)),
-            List.of(new CharacterActionData.Hit(BIANYI_HIT_DELAY, 0.0, 1.0, 1.5, 0.0, 2.5, false)),
-            List.of(new CharacterActionData.SoundRef(BIANYI_HIT_DELAY, "vesna_skill", 1.0f, 1.0f)),
+            List.of(new Move(0, 0.8)),
+            List.of(new Hit(BIANYI_HIT_DELAY, 0.0, 1.0, 1.5, 0.0, 2.5, false)),
+            List.of(new SoundRef(BIANYI_HIT_DELAY, "vesna_skill", 1.0f, 1.0f)),
             0, 0, 0, 0
     );
 
     private static CharacterActionData buildActionData() {
-        Map<Integer, CharacterActionData.ActionStep> comboSteps = new LinkedHashMap<>();
-        comboSteps.put(1, new CharacterActionData.ActionStep(
+        Map<Integer, ActionStep> comboSteps = new LinkedHashMap<>();
+        comboSteps.put(1, new ActionStep(
                 "attack_1", 40, 0, 2,
                 List.of(),
-                List.of(new CharacterActionData.Hit(3, 0.0, 1.5, 1.0, 0.0, 6.0, false)),
-                List.of(new CharacterActionData.SoundRef(3, "vesna_attack_1", 1.0f, 1.0f)),
+                List.of(new Hit(3, 0.0, 1.5, 1.0, 0.0, 6.0, false)),
+                List.of(new SoundRef(3, "vesna_attack_1", 1.0f, 1.0f)),
                 0, 2, 0, 8
         ));
-        comboSteps.put(2, new CharacterActionData.ActionStep(
+        comboSteps.put(2, new ActionStep(
                 "attack_2", 48, 0, 2,
                 List.of(),
-                List.of(new CharacterActionData.Hit(3, 0.0, 1.5, 2.0, 0.0, 6.0, false)),
-                List.of(new CharacterActionData.SoundRef(3, "vesna_attack_2", 1.0f, 1.0f)),
+                List.of(new Hit(3, 0.0, 1.5, 2.0, 0.0, 6.0, false)),
+                List.of(new SoundRef(3, "vesna_attack_2", 1.0f, 1.0f)),
                 0, 2, 0, 8
         ));
-        comboSteps.put(3, new CharacterActionData.ActionStep(
+        comboSteps.put(3, new ActionStep(
                 "attack_3", 25, 0, 2,
                 List.of(),
                 List.of(
-                        new CharacterActionData.Hit(3, 0.0, 1.5, 2.0, 0.0, 8.0, false),
-                        new CharacterActionData.Hit(6, 0.0, 1.5, 2.0, 0.0, 10.0, false)
+                        new Hit(3, 0.0, 1.5, 2.0, 0.0, 8.0, false),
+                        new Hit(6, 0.0, 1.5, 2.0, 0.0, 10.0, false)
                 ),
-                List.of(new CharacterActionData.SoundRef(3, "vesna_attack_3", 1.0f, 1.0f)),
+                List.of(new SoundRef(3, "vesna_attack_3", 1.0f, 1.0f)),
                 0, 3, 0, 8
         ));
-        comboSteps.put(4, new CharacterActionData.ActionStep(
+        comboSteps.put(4, new ActionStep(
                 "attack_4", 30, 0, 2,
                 List.of(),
                 List.of(
-                        new CharacterActionData.Hit(10, 0.0, 1.5, 1.0, 0.0, 8.0, true),
-                        new CharacterActionData.Hit(12, 0.0, 1.5, 1.0, 0.0, 8.0, true),
-                        new CharacterActionData.Hit(14, 0.0, 1.5, 1.0, 0.0, 8.0, true),
-                        new CharacterActionData.Hit(16, 0.0, 1.5, 1.0, 0.0, 8.0, true)
+                        new Hit(10, 0.0, 1.5, 1.0, 0.0, 8.0, true),
+                        new Hit(12, 0.0, 1.5, 1.0, 0.0, 8.0, true),
+                        new Hit(14, 0.0, 1.5, 1.0, 0.0, 8.0, true),
+                        new Hit(16, 0.0, 1.5, 1.0, 0.0, 8.0, true)
                 ),
-                List.of(new CharacterActionData.SoundRef(10, "vesna_attack_4", 1.0f, 1.0f)),
+                List.of(new SoundRef(10, "vesna_attack_4", 1.0f, 1.0f)),
                 0, 4, 0, 8
         ));
-        comboSteps.put(5, new CharacterActionData.ActionStep(
+        comboSteps.put(5, new ActionStep(
                 "attack_5", 50, 0, 2,
                 List.of(),
                 List.of(
-                        new CharacterActionData.Hit(2, 0.0, 1.5, 1.0, 0.0, 10.0, false),
-                        new CharacterActionData.Hit(4, 0.0, 1.5, 1.0, 0.0, 10.0, false),
-                        new CharacterActionData.Hit(6, 0.0, 1.5, 1.0, 0.0, 10.0, false),
-                        new CharacterActionData.Hit(8, 0.0, 1.5, 1.0, 0.0, 10.0, false)
+                        new Hit(2, 0.0, 1.5, 1.0, 0.0, 10.0, false),
+                        new Hit(4, 0.0, 1.5, 1.0, 0.0, 10.0, false),
+                        new Hit(6, 0.0, 1.5, 1.0, 0.0, 10.0, false),
+                        new Hit(8, 0.0, 1.5, 1.0, 0.0, 10.0, false)
                 ),
-                List.of(new CharacterActionData.SoundRef(2, "vesna_attack_5", 1.0f, 1.0f)),
+                List.of(new SoundRef(2, "vesna_attack_5", 1.0f, 1.0f)),
                 0, 5, 0, 10
         ));
-        CharacterActionData.ActionStep attack6Step = new CharacterActionData.ActionStep(
+        ActionStep attack6Step = new ActionStep(
                 // 第 6 段直接复用第 2 段的完整动画。
                 //
                 // 原来这里写的是 air_attack_long + 收尾 air_attack_end ——
@@ -121,12 +130,12 @@ public final class VesnaResources {
                 "attack_2", 48, 0, 2,
                 List.of(),
                 List.of(
-                        new CharacterActionData.Hit(5, 0.0, 1.5, 2.0, 0.0, 12.0, false),
-                        new CharacterActionData.Hit(10, 0.0, 1.5, 2.0, 0.0, 12.0, false),
-                        new CharacterActionData.Hit(15, 0.0, 1.5, 2.0, 0.0, 12.0, false),
-                        new CharacterActionData.Hit(20, 0.0, 1.5, 2.5, 0.0, 14.0, true)
+                        new Hit(5, 0.0, 1.5, 2.0, 0.0, 12.0, false),
+                        new Hit(10, 0.0, 1.5, 2.0, 0.0, 12.0, false),
+                        new Hit(15, 0.0, 1.5, 2.0, 0.0, 12.0, false),
+                        new Hit(20, 0.0, 1.5, 2.5, 0.0, 14.0, true)
                 ),
-                List.of(new CharacterActionData.SoundRef(5, "vesna_attack_6", 1.0f, 1.0f)),
+                List.of(new SoundRef(5, "vesna_attack_6", 1.0f, 1.0f)),
                 0, 6, 0, 12
         );
         comboSteps.put(6, attack6Step);
@@ -146,7 +155,7 @@ public final class VesnaResources {
         // 反例（什么时候要关掉）：如果以后给她加一段「原地蓄力炮」，
         // 那一段就该 withAdhesion(0, 0) —— 蓄力时被往前带会很难看。
 
-        CharacterActionData.ComboData combo = new CharacterActionData.ComboData(6, comboSteps);
+        ComboData combo = new ComboData(6, comboSteps);
 
         // ─── 战技（E）：巡风列装入门 + 翔风剑，共用这一份时序 ───
         //
@@ -165,11 +174,11 @@ public final class VesnaResources {
         // ③ 8 刻之后是后摇（12 刻）：伤害已经结算完，随便取消 —— 连招手感靠它。
         //
         // 想改成「有吟唱」的角色：withPrepareTicks(n) 把 n 刻划成可打断的准备阶段即可。
-        CharacterActionData.ActionStep skillStep = new CharacterActionData.ActionStep(
+        ActionStep skillStep = new ActionStep(
                 "skill_no_energy", 20, 8, 3,
                 List.of(),
-                List.of(new CharacterActionData.Hit(6, 2.0, 1.0, 1.2, 0.0, 2.5, false)),
-                List.of(new CharacterActionData.SoundRef(6, "vesna_skill", 1.0f, 1.0f)),
+                List.of(new Hit(6, 2.0, 1.0, 1.2, 0.0, 2.5, false)),
+                List.of(new SoundRef(6, "vesna_skill", 1.0f, 1.0f)),
                 0, 0, 360, 0
         );
 
@@ -184,32 +193,32 @@ public final class VesnaResources {
         //
         // 索敌：大招锁得远一点（16 格），但**不要突进** ——
         // 接近这件事由下坠本身完成，再来一次贴脸突进就重复了。
-        CharacterActionData.ActionStep burstStep = new CharacterActionData.ActionStep(
+        ActionStep burstStep = new ActionStep(
                 "burst_dive", 40, 40, 4,
                 List.of(),
-                List.of(new CharacterActionData.Hit(18, 0.0, 0.0, 3.7, 0.0, 12.0, false)),
-                List.of(new CharacterActionData.SoundRef(18, "vesna_burst", 1.0f, 1.0f)),
+                List.of(new Hit(18, 0.0, 0.0, 3.7, 0.0, 12.0, false)),
+                List.of(new SoundRef(18, "vesna_burst", 1.0f, 1.0f)),
                 0, 0, 400, 0
         )
                 .withDiveBurst(8, 10, 2.5, 16.0)
-                .withEngagement(CharacterActionData.Engagement.melee().withDash(false)
+                .withEngagement(Engagement.melee().withDash(false)
                         .withAcquireRange(16).withKeepRange(20));
 
-        CharacterActionData.ActionStep dodgeStep = new CharacterActionData.ActionStep(
+        ActionStep dodgeStep = new ActionStep(
                 // 基准名；实际播放时按输入方向换成 dodge_front / dodge_back / dodge_left / dodge_right
                 "dodge_front", 12, 0, 3,
-                List.of(new CharacterActionData.Move(0, 2.0)),
+                List.of(new Move(0, 2.0)),
                 List.of(),
-                List.of(new CharacterActionData.SoundRef(0, "vesna_dodge", 1.0f, 1.0f)),
+                List.of(new SoundRef(0, "vesna_dodge", 1.0f, 1.0f)),
                 0, 0, 0, 0
         );
 
         return new CharacterActionData(
                 combo,
-                new CharacterActionData.SkillData(skillStep, null),
+                new SkillData(skillStep, null),
                 // 大招 60 能量（原来 80）
-                new CharacterActionData.BurstData(burstStep, 60f),
-                new CharacterActionData.DodgeData(dodgeStep)
+                new BurstData(burstStep, 60f),
+                new DodgeData(dodgeStep)
         );
     }
 }

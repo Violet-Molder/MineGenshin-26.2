@@ -152,8 +152,8 @@ public class ScreenCharacterSelect extends Screen {
                         .setId("Pose-Stand-" + partyChar.getName().getString())
                         .addClass("character-pose")
                         .style(style -> style.background(
-                                SpriteTexture.of("minegenshin:textures/character_party_pose/"
-                                        + partyChar.getTextureId() + "_prepare.png")));
+                                SpriteTexture.of("minegenshin:character/"
+                                        + partyChar.getTextureId() + "/textures/pose_prepare.png")));
 
             }
         }
@@ -198,14 +198,14 @@ public class ScreenCharacterSelect extends Screen {
                 var characterButton = new UIElement()
                         .addClass("character-avatar")
                         .style(style -> style.background(
-                                SpriteTexture.of("minegenshin:textures/character_avatar/"
-                                        + textureId + ".png")));
+                                SpriteTexture.of("minegenshin:character/"
+                                        + textureId + "/textures/avatar.png")));
 
                 characterButton
                         .addEventListener(UIEvents.MOUSE_ENTER, e -> {
                             if (selectedCharacterButton.get() != characterButton) {
                                 characterButton.style(style -> style.overlay(
-                                        SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+                                        SpriteTexture.of("minegenshin:gui/selected_border.png")));
                                 characterButton.transform(transform -> transform.scale(1.08f));
                             }
                         })
@@ -220,8 +220,8 @@ public class ScreenCharacterSelect extends Screen {
                                     .setId("Pose-Stand-" + ownedChar.getName().getString())
                                     .addClass("character-pose")
                                     .style(style -> style.background(
-                                            SpriteTexture.of("minegenshin:textures/character_party_pose/"
-                                                    + textureId + "_prepare.png")));
+                                            SpriteTexture.of("minegenshin:character/"
+                                                    + textureId + "/textures/pose_prepare.png")));
 
                             if (selectedCharacterButton.get() != null
                                     && selectedCharacterButton.get() != characterButton) {
@@ -233,7 +233,7 @@ public class ScreenCharacterSelect extends Screen {
                             characterButton.addClass("character-selected");
                             characterButton.transform(transform -> transform.scale(1.08f));
                             characterButton.style(style -> style.overlay(
-                                    SpriteTexture.of("minegenshin:textures/character_avatar/selected_border.png")));
+                                    SpriteTexture.of("minegenshin:gui/selected_border.png")));
 
                             selectedCharacter.set(ownedChar);
                             selectedUUID.set(uuid);

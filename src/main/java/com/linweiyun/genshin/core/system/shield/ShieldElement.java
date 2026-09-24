@@ -13,37 +13,25 @@ public enum ShieldElement {
 
     /** 物理（无元素）。 */
     PHYSICAL(0),
-    //TEMP
     PYRO(1),
-    //TEMP
     HYDRO(2),
-    //TEMP
     ELECTRO(3),
-    //TEMP
     CYRO(4),
-    //TEMP
     ANEMO(5),
-    //TEMP
     GEO(6),
-    //TEMP
     DENDRO(7),
     /** 冻结（水+冰的复合状态）。 */
-    //TEMP
     FROZEN(8);
 
     /** 表里的槽位数。 */
-    //TEMP
     public static final int COUNT = 9;
 
-    //TEMP
     private final int slot;
 
-    //TEMP
     ShieldElement(int slot) {
         this.slot = slot;
     }
 
-    //TEMP
     public int slot() {
         return this.slot;
     }
@@ -55,7 +43,6 @@ public enum ShieldElement {
      *
      * @return 认不出来时返回 {@link #PHYSICAL}（当作物理处理，不会误吃元素加成）
      */
-    //TEMP
     public static ShieldElement of(@Nullable GenshinElement element) {
         if (element == null) {
             return PHYSICAL;

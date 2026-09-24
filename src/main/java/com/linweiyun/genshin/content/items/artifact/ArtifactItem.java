@@ -85,7 +85,7 @@ public class ArtifactItem extends TeyvatItem {
         builder.accept(Component.literal("+" + stats.level).withStyle(ChatFormatting.GRAY));
 
         // 主词条（大字 + 星级颜色）
-        //TEMP mainStat.getAttribute() 为 null 说明未初始化（创造栏默认组件），跳过不显示
+        // mainStat.getAttribute() 为 null 说明未初始化（创造栏默认组件），跳过不显示
         if (stats.mainStat != null && stats.mainStat.isInitialized()) {
             ChatFormatting starColor = getStarColor();
             builder.accept(Component.literal(buildStatText(stats.mainStat)).withStyle(starColor, ChatFormatting.BOLD));
@@ -95,7 +95,7 @@ public class ArtifactItem extends TeyvatItem {
         if (stats.subStats != null && !stats.subStats.isEmpty()) {
             boolean hasUnlocked = false;
             for (var stat : stats.subStats) {
-                //TEMP attribute 为 null 跳过这个空壳子属性
+                // attribute 为 null 跳过这个空壳子属性
                 if (!stat.isInitialized()) continue;
                 if (!hasUnlocked) {
                     builder.accept(Component.empty());

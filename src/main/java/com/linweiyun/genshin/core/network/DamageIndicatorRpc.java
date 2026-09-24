@@ -1,8 +1,7 @@
 package com.linweiyun.genshin.core.network;
 
-import com.linweiyun.genshin.client.damage.DamageIndicator;
-import com.linweiyun.genshin.client.damage.DamageIndicatorManager;
-import com.linweiyun.genshin.client.damage.DamageIndicatorRenderer;
+import com.linweiyun.genshin.api.damage.DamageIndicatorData;
+import com.linweiyun.genshin.api.damage.DamageIndicatorSink;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacket;
 import com.lowdragmc.lowdraglib2.networking.rpc.RPCPacketDistributor;
 import com.lowdragmc.lowdraglib2.syncdata.rpc.RPCSender;
@@ -31,9 +30,9 @@ public final class DamageIndicatorRpc {
             int durationMs
     ) {
         if (sender.isServer()) {
-            DamageIndicator indicator = new DamageIndicator(
-                    new Vec3(originX, originY, originZ),
-                    new Vec3(targetX, targetY, targetZ),
+            DamageIndicatorSink.show(new DamageIndicatorData(
+                    originX, originY, originZ,
+                    targetX, targetY, targetZ,
                     text,
                     topColor,
                     bottomColor,
@@ -42,9 +41,7 @@ public final class DamageIndicatorRpc {
                     baseScale,
                     startScale,
                     durationMs
-            );
-            DamageIndicatorManager.add(indicator);
-            DamageIndicatorRenderer.onIndicatorAdded(indicator);
+            ));
         }
     }
 

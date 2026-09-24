@@ -29,35 +29,27 @@ import net.minecraft.world.entity.ai.control.MoveControl;
 public class WriggleMoveControl<T extends Mob> extends MoveControl<T> {
 
     /** 每 tick 最大转向角度 —— 蠕动时身体转不快，这也是「蠕动感」的一部分。 */
-    //TEMP
     private final float turnSpeed;
 
     /** 蠕动周期（刻）：一次「冲 - 顿」的完整时长。 */
-    //TEMP
     private final int creepPeriod;
 
     /** 蠕动速度的谷底倍率：0 表示完全停住，1 表示不停。 */
-    //TEMP
     private final float creepFloor;
 
     /** 横向摆动幅度（相对于前进速度）。 */
-    //TEMP
     private final float swayAmount;
 
     /** 有目标时的小跳间隔（刻）。 */
-    //TEMP
     private final int hopInterval;
 
     /** 相位计数器，蠕动 / 小跳的节拍都靠它。 */
-    //TEMP
     private int phase;
 
-    //TEMP
     public WriggleMoveControl(T mob) {
         this(mob, 25.0F, 16, 0.25F, 0.35F, 14);
     }
 
-    //TEMP
     public WriggleMoveControl(T mob, float turnSpeed, int creepPeriod, float creepFloor,
                               float swayAmount, int hopInterval) {
         super(mob);
@@ -68,7 +60,6 @@ public class WriggleMoveControl<T extends Mob> extends MoveControl<T> {
         this.hopInterval = Math.max(1, hopInterval);
     }
 
-    //TEMP
     @Override
     public void tick() {
         this.phase++;
@@ -105,7 +96,6 @@ public class WriggleMoveControl<T extends Mob> extends MoveControl<T> {
     }
 
     /** 有目标：全速前进 + 定时小跳。 */
-    //TEMP
     private void hopForward(float baseSpeed) {
         this.mob.setSpeed(baseSpeed);
         this.mob.setZza(1.0F);
@@ -117,7 +107,6 @@ public class WriggleMoveControl<T extends Mob> extends MoveControl<T> {
     }
 
     /** 无目标：一顿一冲 + 左右摆。 */
-    //TEMP
     private void creepForward(float baseSpeed) {
         double angle = this.phase * (Math.PI * 2.0D / this.creepPeriod);
         float pulse = this.creepFloor + (1.0F - this.creepFloor) * (float) Math.max(0.0D, Math.sin(angle));
@@ -127,7 +116,6 @@ public class WriggleMoveControl<T extends Mob> extends MoveControl<T> {
         this.mob.setXxa(this.swayAmount * (float) Math.cos(angle));
     }
 
-    //TEMP
     private void stopMoving() {
         this.mob.setZza(0.0F);
         this.mob.setXxa(0.0F);

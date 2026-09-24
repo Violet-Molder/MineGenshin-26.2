@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.client.keybindings;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.core.system.combat.animation.state.ActionStateMachine;
+import com.linweiyun.genshin.client.combat.state.ActionStateMachine;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.network.NetworkManager;
 import com.linweiyun.genshin.core.world.TeyvatWorldInvasion;

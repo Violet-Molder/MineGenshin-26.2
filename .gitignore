@@ -38,3 +38,9 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+
+### 不公开发布的私有美术资产（只在本机参与构建，勿提交） ###
+# 共用角色模型 + 薇斯娜动画：被抄走代价高，仓库与历史里都不留
+/src/main/resources/assets/minegenshin/character/default/default.geo.json
+/src/main/resources/assets/minegenshin/character/vesna/vesna.animation.json
+/src/main/resources/assets/minegenshin/character/vesna/vesna_fp.animation.json

@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.render.gui.screens;
 
 import com.linweiyun.genshin.core.network.NetworkManager;
-import com.linweiyun.genshin.render.gui.screens.atrifact.ScreenArtifactEquip;
+import com.linweiyun.genshin.render.gui.screens.artifact.ScreenArtifactEquip;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 

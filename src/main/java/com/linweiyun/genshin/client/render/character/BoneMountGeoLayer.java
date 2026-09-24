@@ -1,5 +1,7 @@
 package com.linweiyun.genshin.client.render.character;
 
+import com.linweiyun.genshin.core.character.CharacterHelper;
+
 import com.geckolib.animatable.GeoAnimatable;
 import com.geckolib.animation.state.BoneSnapshot;
 import com.geckolib.cache.model.BakedGeoModel;
@@ -117,7 +119,7 @@ public final class BoneMountGeoLayer<T extends GeoAnimatable, O, R extends GeoRe
             return;
         }
 
-        String characterId = AttachmentHelper.getActiveCharacterId(player);
+        String characterId = CharacterHelper.getActiveCharacterId(player);
         if (characterId == null) {
             return;
         }
@@ -431,7 +433,7 @@ public final class BoneMountGeoLayer<T extends GeoAnimatable, O, R extends GeoRe
 
     /** 当前出战角色声明的骨骼挂点。 */
     public static List<CharacterBoneMount> boneMountsFor(Player player) {
-        return boneMountsFor(AttachmentHelper.getActiveCharacterId(player));
+        return boneMountsFor(CharacterHelper.getActiveCharacterId(player));
     }
 
     /** 当前出战角色；没戴饰品 / 数据还没同步时为 null。 */

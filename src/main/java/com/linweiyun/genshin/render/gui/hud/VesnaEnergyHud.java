@@ -40,7 +40,7 @@ public class VesnaEnergyHud {
     // ============================================================
 
     private static final Identifier WHITE_TEXTURE =
-            Identifier.fromNamespaceAndPath("minegenshin", "textures/gui/short_character_hp_bar_white.png");
+            Identifier.fromNamespaceAndPath("minegenshin", "gui/short_character_hp_bar_white.png");
 
     /** 每格尺寸（方块） */
     private static final float SEG_WIDTH  = 0.35f;

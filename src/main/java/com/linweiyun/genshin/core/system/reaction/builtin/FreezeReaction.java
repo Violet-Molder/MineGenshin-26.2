@@ -12,7 +12,7 @@ import com.linweiyun.genshin.core.system.about.ElementalAttachmentInstance;
 import com.linweiyun.genshin.core.system.reaction.ElementalReaction;
 import com.linweiyun.genshin.core.system.reaction.ReactionContext;
 import com.linweiyun.genshin.core.system.reaction.ReactionResult;
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import org.slf4j.Logger;
@@ -176,22 +176,20 @@ public class FreezeReaction extends ElementalReaction {
         if (totalConsumed > 0f) {
             float frozenQty = totalConsumed * FROZEN_MULTIPLIER;
 
-            if (ctx.targetEntity() != null) {
-                // 实体端：走 ElementalAttachmentHelper.attach（需要 LivingEntity 做 ElementalAttachable 检查）
-                ElementalAttachmentHelper.attach(
-                        ctx.targetEntity(),
-                        ctx.targetContainer(),
-                        ModElements.FROZEN.get(),
-                        AttachmentSource.SPECIAL,
-                        new AttachmentProfile(frozenQty, 1.0f, 0.0f, 999.0f)
-                );
+            // 生成物 FROZEN 也是「附着」，所以同样走统一入口：宿主筛查照问、覆盖规则照走。
+            // 用 attachInternal —— 反应内部产生的附着不再回头触发反应（否则会递归）。
+            AttachmentProfile frozenProfile = new AttachmentProfile(frozenQty, 1.0f, 0.0f, 999.0f);
+            com.linweiyun.genshin.core.system.about.host.ElementalHost frozenHost = ctx.targetHost();
+            if (frozenHost == null && ctx.targetEntity() != null) {
+                frozenHost = com.linweiyun.genshin.core.system.about.host.EntityHost.of(ctx.targetEntity());
+            }
+            if (frozenHost != null) {
+                ElementalAttachmentHelper.attachInternal(
+                        frozenHost, ModElements.FROZEN.get(), AttachmentSource.SPECIAL, frozenProfile);
             } else {
-                // 方块端：直接向容器添加 FROZEN
+                // 没有宿主信息（理论上不该发生）：退回直接写容器，至少不让冻结丢效果
                 ElementalAttachmentInstance frozenInst = new ElementalAttachmentInstance(
-                        ModElements.FROZEN.get(),
-                        AttachmentSource.SPECIAL,
-                        new AttachmentProfile(frozenQty, 1.0f, 0.0f, 999.0f),
-                        frozenQty);
+                        ModElements.FROZEN.get(), AttachmentSource.SPECIAL, frozenProfile, frozenQty);
                 ctx.targetContainer().add(frozenInst);
             }
 
@@ -227,4 +225,9 @@ public class FreezeReaction extends ElementalReaction {
                 .build();
     }
 
+    /** 方块上的形态变化（水结冰 / 冰化水）不显示文字；生物身上照常。 */
+    @Override
+    public boolean showsIndicator(ReactionContext context) {
+        return !(context.targetHost() instanceof com.linweiyun.genshin.core.system.about.host.BlockHost);
+    }
 }

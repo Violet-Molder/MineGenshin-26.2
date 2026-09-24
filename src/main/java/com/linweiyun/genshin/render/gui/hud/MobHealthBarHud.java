@@ -50,9 +50,9 @@ public class MobHealthBarHud {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     private static final Identifier HP_BAR_BG_TEXTURE =
-            Identifier.fromNamespaceAndPath("minegenshin", "textures/gui/short_character_hp_green.png");
+            Identifier.fromNamespaceAndPath("minegenshin", "gui/short_character_hp_green.png");
     private static final Identifier HP_BAR_FILL_TEXTURE =
-            Identifier.fromNamespaceAndPath("minegenshin", "textures/gui/short_character_hp_bar_white.png");
+            Identifier.fromNamespaceAndPath("minegenshin", "gui/short_character_hp_bar_white.png");
 
     private static final float BAR_WIDTH = 1.0f;
     private static final float BAR_HEIGHT = 0.08f;
@@ -323,6 +323,8 @@ public class MobHealthBarHud {
             if (!(inst instanceof ElementalAttachmentInstance ea)) continue;
             GenshinElement e = ea.getElement();
             if (e == null || e == ModElements.FYSIKOS.get()) continue;
+            // 效果载体（寒）不占图标：它伴随冰/冻存在，显示的应该是冰/冻本身
+            if (e.isEffectCarrier()) continue;
 
             GenshinElement main = e.getMainElement();
 
@@ -359,7 +361,7 @@ public class MobHealthBarHud {
             }
 
             Identifier texture = Identifier.fromNamespaceAndPath(
-                    "minegenshin", "textures/elemental/" + element.getId() + ".png");
+                    "minegenshin", "icon/elemental/" + element.getId() + ".png");
             float x1 = startX + i * (ICON_SIZE + ICON_SPACING);
             float x2 = x1 + ICON_SIZE;
             float yTop = yOffset + ICON_SIZE / 2.0f;

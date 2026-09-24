@@ -1,7 +1,7 @@
 package com.linweiyun.genshin.core.system.registry;
 
 import com.linweiyun.genshin.Minegenshin;
-import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;

@@ -30,4 +30,6 @@ public class AreaEntityCollector {
         return level.getEntitiesOfClass(LivingEntity.class, aabb,
                 entity -> entity.isAlive() && !entity.isSpectator());
     }
+
+
 }

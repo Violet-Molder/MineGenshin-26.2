@@ -58,7 +58,7 @@ public class ArtifactStatsComponent implements IPersistedSerializable {
     public ArtifactStatsComponent(int level, int exp, TeyvatItemStat mainStat, List<TeyvatItemStat> subStats, boolean activated) {
         this.level = level;
         this.exp = exp;
-        //TEMP 防御：也确保非 null，避免调用方误传 null
+        // 防御：也确保非 null，避免调用方误传 null
         this.mainStat = mainStat != null ? mainStat : new TeyvatItemStat();
         this.subStats = subStats != null ? subStats : new ArrayList<>();
         this.activated = activated;

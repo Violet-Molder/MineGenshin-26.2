@@ -3,7 +3,6 @@ package com.linweiyun.genshin.content.items.weapon;
 import com.linweiyun.genshin.config.weapon.WeaponXpConfig;
 import com.linweiyun.genshin.config.weapon.WeaponConfig;
 import com.linweiyun.genshin.config.weapon.WeaponSubStatConfig;
-import com.linweiyun.genshin.config.util.StringDoubleValue;
 
 public class WeaponLevelData {
 

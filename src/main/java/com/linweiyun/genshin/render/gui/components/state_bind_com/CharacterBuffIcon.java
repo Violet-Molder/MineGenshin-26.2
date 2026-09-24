@@ -16,16 +16,13 @@ import org.jetbrains.annotations.Nullable;
 public class CharacterBuffIcon extends BindableUIElement<String> {
 
     /** 空串 = 这一格没有图标。 */
-    //TEMP
     private String value = "";
 
-    //TEMP
     @Override
     public String getValue() {
         return this.value;
     }
 
-    //TEMP
     @Override
     public BindableUIElement<String> setValue(@Nullable String next, boolean notify) {
         String texture = next == null ? "" : next;

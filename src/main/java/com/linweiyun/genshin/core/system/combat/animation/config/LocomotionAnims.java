@@ -5,7 +5,7 @@ import com.geckolib.animation.RawAnimation;
 /**
  * 一个角色的常态动画集合（站 / 走 / 跑 / 蹲 / 睡 / 爬 / 游泳 / 跳跃）。
  *
- * <p>把「动画名」抽成数据，让 {@link com.linweiyun.genshin.core.system.combat.animation.state.PlayerAnimationController}
+ * <p>把「动画名」抽成数据，让 {@code PlayerAnimationController}
  * 的运动状态机只写一份、所有角色共用。
  *
  * <p>移植自参考2 的同名类，仅把 GeckoLib 4 的 API 换成 GeckoLib 5（包名 software.bernie → com.geckolib）。

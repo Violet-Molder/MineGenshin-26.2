@@ -38,15 +38,12 @@ public enum AssetCategory {
     /** 角色。 */
     CHARACTER("character");
 
-    //TEMP
     private final String folder;
 
-    //TEMP
     AssetCategory(String folder) {
         this.folder = folder;
     }
 
-    //TEMP
     public String folder() {
         return this.folder;
     }
@@ -56,13 +53,11 @@ public enum AssetCategory {
      *
      * <p>必须带斜杠比较，否则 {@code items/xxx.json} 会被当成 {@link #ITEM}。
      */
-    //TEMP
     public boolean matchesPath(String path) {
         return path != null && path.startsWith(this.folder + "/");
     }
 
     /** 按文件夹名反查类别；不是四种之一时返回 null。 */
-    //TEMP
     @Nullable
     public static AssetCategory byFolder(@Nullable String folder) {
         if (folder == null) {

@@ -1,135 +1,195 @@
 package com.linweiyun.genshin.data.generators;
 
+import com.google.common.hash.Hashing;
 import com.linweiyun.genshin.Minegenshin;
 import com.linweiyun.genshin.content.items.ModItems;
-import net.minecraft.client.data.models.BlockModelGenerators;
-import net.minecraft.client.data.models.ItemModelGenerators;
-import net.minecraft.client.data.models.ModelProvider;
-import net.minecraft.client.data.models.model.ItemModelUtils;
-import net.minecraft.client.data.models.model.ModelTemplates;
-import net.minecraft.client.renderer.item.ClientItem;
-import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.data.CachedOutput;
+import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
+import org.jspecify.annotations.Nullable;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * 物品模型 / 物品定义（{@code assets/minegenshin/items/*.json} + {@code models/item/*.json}）的数据生成。
+ * 物品定义 / 平面模型的数据生成 —— <b>落在本项目自己的布局里</b>。
  *
- * <h2>为什么必须有这个 Provider</h2>
- * 原版 {@code ModelProvider} 在写完文件后会<b>校验</b>：
- * 本命名空间里注册过的每个物品都必须有一条「物品定义」，缺一个就
- * {@code IllegalStateException: Missing item model definitions for: [...]}，
- * 整个数据生成直接失败 —— 也就是说<b>不能有物品被漏掉</b>，
- * 哪怕它根本不打算用自己的贴图。
+ * <h2>产出什么</h2>
+ * <pre>
+ * assets/minegenshin/item/&lt;物品id&gt;/definition.json   物品定义（原版入口是 items/&lt;id&gt;.json）
+ * assets/minegenshin/item/&lt;物品id&gt;/model.json        平面模型（原版入口是 models/item/&lt;id&gt;.json）
+ * </pre>
+ * 贴图是<b>资源</b>不是生成物，放在 {@code item/&lt;物品id&gt;/texture.png}，模型里的
+ * {@code layer0} 直接引用它（sprite id {@code minegenshin:item/&lt;id&gt;/texture}）。
  *
- * <h2>三种物品，三种写法</h2>
+ * <p>这三条路径都由 {@code core.asset.AssetRedirects} 在运行期映射回原版入口，
+ * 所以数据生成也必须产出到这个布局 —— 否则下一次 {@code runData} 会在原版根目录下
+ * 重建一份「旧的」文件，布局又变回两套。
+ *
+ * <h2>三种物品</h2>
  * <table border="1">
- *   <caption>按“模型从哪来”分类</caption>
- *   <tr><th>情况</th><th>怎么写</th><th>产出</th></tr>
- *   <tr>
- *     <td>有自己的贴图（普通平面物品）</td>
- *     <td>{@code itemModels.generateFlatItem(item, ModelTemplates.FLAT_ITEM)}</td>
- *     <td>{@code models/item/<名字>.json} + {@code items/<名字>.json}</td>
- *   </tr>
- *   <tr>
- *     <td><b>借原版模型</b>（漆黑碎片 = 下界之星）</td>
- *     <td>{@link #borrowModel}：只写物品定义，指向 {@code minecraft:item/nether_star}</td>
- *     <td>只有 {@code items/<名字>.json}，里面指向别人的模型</td>
- *   </tr>
- *   <tr>
- *     <td>模型是手写的（geo 物品 / 特殊渲染器）</td>
- *     <td>加进 {@link #HAND_WRITTEN_MODELS}，让校验跳过它</td>
- *     <td>数据生成不碰它，手写的 {@code items/*.json} 原样生效</td>
- *   </tr>
+ *   <caption>按「模型从哪来」分类</caption>
+ *   <tr><th>情况</th><th>产出</th></tr>
+ *   <tr><td>有自己的贴图（普通平面物品）</td><td>definition.json + model.json</td></tr>
+ *   <tr><td>借原版模型（漆黑碎片 = 下界之星）</td><td>只有 definition.json，指向 {@code minecraft:item/nether_star}</td></tr>
+ *   <tr><td>模型是手写的（geo 物品 / 特殊渲染器）</td><td>{@link #HAND_WRITTEN_MODELS} 里的跳过，手写文件原样生效</td></tr>
  * </table>
  *
- * <h2>为什么手写的要“跳过”而不是“生成一份”</h2>
- * geo 物品的物品定义长这样（{@code test_sword}）：
- * <pre>
- * { "model": { "type": "minecraft:special", "base": "...", "model": { "type": "geckolib:geckolib" } } }
- * </pre>
- * 数据生成只会写平面模型的定义，生成出来就是把这份特殊定义<b>盖掉</b>，
- * 物品立刻变成一个透明方块。所以这类物品只能排除在校验之外。
+ * <h2>为什么不用原版 ModelProvider</h2>
+ * 原版 {@code ModelProvider} 的产出路径是写死的 {@code items/} 与 {@code models/}
+ * （{@code createPathProvider(RESOURCE_PACK, "items"/"models")}），够不到我们的布局；
+ * 它那条「每个已注册物品都必须有定义」的校验这里等价实现：漏掉的物品当场抛异常。
  */
-public class ModModeProvider extends ModelProvider {
+public class ModModeProvider implements DataProvider {
 
     /**
-     * 模型是手写的物品 —— 数据生成既不生成、也不校验它们。
+     * 定义 / 模型是<b>手写</b>的物品 —— 数据生成既不产出、也不校验它们。
      *
-     * <p>目前只有 geo 物品（{@code TestSword}）：
-     * {@code assets/minegenshin/items/test_sword.json} 用的是 {@code geckolib:geckolib} 特殊模型。
-     * <b>以后每加一个 geo 物品 / 自定义特殊渲染器的物品，都要往这里加一行</b>，
-     * 否则数据生成会报 “Missing item model definitions”。
+     * <p>判断依据：{@code src/main/resources/.../item/&lt;id&gt;/definition.json} 存在。
+     * 这些物品的定义形状原版生成器写不出来（用 {@code minecraft:select} 按展示场景切模型），
+     * 所以只能手写；生成器一旦也产出同名文件，两条源集会撞成
+     * {@code duplicate but no duplicate handling strategy has been set}。
+     *
+     * <p><b>以后每加一个 geo 物品 / 自定义特殊渲染器 / 需要 select 形状定义的物品，
+     * 都要往这里加一行。</b>
      */
     private static final Set<Item> HAND_WRITTEN_MODELS = Set.of(
             ModItems.BEYOND_THE_CHRYSALIS.get(),
-            ModItems.HYMN_OF_THE_MAELSTROM.get());
+            ModItems.HYMN_OF_THE_MAELSTROM.get(),
+            ModItems.ADVENTURERS_EXPERIENCE.get(),
+            ModItems.HEROS_WIT.get(),
+            ModItems.WANDERERS_ADVICE.get());
+
+    /** 借原版模型的物品：只写定义，不写自己的模型。 */
+    private static final Set<Item> BORROWED_MODELS = Set.of(
+            ModItems.DARK_FRAGMENT.get());
+
+    /** 借用的原版模型 id。 */
+    private static final String BORROWED_MODEL = "minecraft:item/nether_star";
+
+    private final PackOutput.PathProvider definitionPathProvider;
+    private final PackOutput.PathProvider modelPathProvider;
+    private final String modId;
 
     public ModModeProvider(PackOutput output) {
-        super(output, Minegenshin.MOD_ID);
+        // 两个 PathProvider 的根目录都是 item/：file(id.withSuffix("/definition")) → item/<id>/definition.json
+        this.definitionPathProvider = output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "item");
+        this.modelPathProvider = output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "item");
+        this.modId = Minegenshin.MOD_ID;
     }
 
     @Override
-    protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
-        // ---- 有自己的贴图：普通平面物品 ----
-        itemModels.generateFlatItem(ModItems.PRIMOGEM.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.CRIMSON_FLOWER.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.CRIMSON_PLUME.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.CRIMSON_SANDS.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.CRIMSON_GOBLET.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.CRIMSON_CIRCLET.get(), ModelTemplates.FLAT_ITEM);
-        // 血红之证：贴图是从魔女套复制的一套，模型同样是普通平面物品
-        itemModels.generateFlatItem(ModItems.SCARLET_FLOWER.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.SCARLET_PLUME.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.SCARLET_SANDS.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.SCARLET_GOBLET.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.SCARLET_CIRCLET.get(), ModelTemplates.FLAT_ITEM);
-        // 千岩牢固：同样是普通平面物品（贴图后补，先借用物品 id 自己的图）
-        itemModels.generateFlatItem(ModItems.TENACITY_FLOWER.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.TENACITY_PLUME.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.TENACITY_SANDS.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.TENACITY_GOBLET.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.TENACITY_CIRCLET.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.SWEET_MADAME.get(), ModelTemplates.FLAT_ITEM);
-        itemModels.generateFlatItem(ModItems.EVERLASTING_MOONGLOW.get(), ModelTemplates.FLAT_ITEM);
+    public CompletableFuture<?> run(CachedOutput cache) {
+        List<CompletableFuture<?>> writes = new ArrayList<>();
+        Set<Item> handled = new HashSet<>();
+        List<Identifier> missing = new ArrayList<>();
 
-        // ---- 借原版模型：漆黑碎片照下界之星的样子显示，不单独出图 ----
-        borrowModel(itemModels, ModItems.DARK_FRAGMENT.get(),
-                Identifier.withDefaultNamespace("item/nether_star"),
-                // 和手写时保持一致：换手不播交换动画
-                new ClientItem.Properties(false, false, 1.0F));
+        for (Identifier id : BuiltInRegistries.ITEM.keySet()) {
+            if (!modId.equals(id.getNamespace())) {
+                continue;
+            }
+            Item item = itemOf(id);
+            if (item == null || HAND_WRITTEN_MODELS.contains(item)) {
+                continue;
+            }
 
+            handled.add(item);
+            if (BORROWED_MODELS.contains(item)) {
+                writes.add(write(cache, this.definitionPathProvider.file(id.withSuffix("/definition"), "json"),
+                        borrowedDefinition()));
+            } else {
+                writes.add(write(cache, this.definitionPathProvider.file(id.withSuffix("/definition"), "json"),
+                        flatDefinition(id)));
+                writes.add(write(cache, this.modelPathProvider.file(id.withSuffix("/model"), "json"),
+                        flatModel(id)));
+            }
+        }
+
+        // 等价于原版 ModelProvider 的 finalizeAndValidate：本命名空间的物品一个都不能漏
+        for (Identifier id : BuiltInRegistries.ITEM.keySet()) {
+            if (!modId.equals(id.getNamespace())) {
+                continue;
+            }
+            Item item = itemOf(id);
+            if (item != null && !HAND_WRITTEN_MODELS.contains(item) && !handled.contains(item)) {
+                missing.add(id);
+            }
+        }
+        if (!missing.isEmpty()) {
+            throw new IllegalStateException("Missing item model definitions for: " + missing);
+        }
+
+        return CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new));
     }
 
-    /**
-     * 物品没有自己的模型，直接引用别人的模型（如原版 {@code minecraft:item/nether_star}）。
-     *
-     * <p>只写物品定义 {@code assets/<命名空间>/items/<物品名>.json}：
-     * <pre>
-     * { "model": { "type": "minecraft:model", "model": "minecraft:item/nether_star" } }
-     * </pre>
-     * <b>不会</b>生成 {@code models/item/<物品名>.json} —— 那是被借的那个模型的事。
-     *
-     * @param model      要借的模型（可以是任何命名空间的）
-     * @param properties 物品的客户端属性（换手动画 / GUI 里的放大等）
-     */
-    private static void borrowModel(ItemModelGenerators itemModels, Item item,
-                                    Identifier model, ClientItem.Properties properties) {
-        itemModels.itemModelOutput.accept(item, ItemModelUtils.plainModel(model), properties);
-    }
-
-    /**
-     * 校验时跳过手写模型的物品。
-     *
-     * <p>{@code getKnownItems()} 就是「这个 Provider 负责哪些物品」——
-     * 校验、以及方块物品的自动兜底都用它。这里把它缩小到<b>真的由数据生成管</b>的那些。
-     */
     @Override
-    protected Stream<? extends Holder<Item>> getKnownItems() {
-        return super.getKnownItems().filter(holder -> !HAND_WRITTEN_MODELS.contains(holder.value()));
+    public String getName() {
+        return "MineGenshin Item Definitions (item/<id>/…)";
+    }
+
+    // ==================== 输出 ====================
+
+    /** 按 id 取物品；取不到返回 null。 */
+    private static Item itemOf(Identifier id) {
+        return BuiltInRegistries.ITEM.get(id).map(reference -> reference.value()).orElse(null);
+    }
+
+    private static CompletableFuture<?> write(CachedOutput cache, @Nullable Path path, String json) {
+        if (path == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+        return CompletableFuture.runAsync(() -> {
+            try {
+                cache.writeIfNeeded(path, bytes, Hashing.sha1().hashBytes(bytes));
+            } catch (Exception e) {
+                throw new RuntimeException("写入 " + path + " 失败", e);
+            }
+        });
+    }
+
+    /** 平面物品的定义：指向同目录的 model.json（经 AssetRedirects 变成 models/item/&lt;id&gt;/model.json）。 */
+    private static String flatDefinition(Identifier id) {
+        return """
+                {
+                  "model": {
+                    "type": "minecraft:model",
+                    "model": "%s"
+                  }
+                }
+                """.formatted(Minegenshin.MOD_ID + ":item/" + id.getPath() + "/model");
+    }
+
+    /** 平面物品的模型：layer0 指向同目录的 texture.png。 */
+    private static String flatModel(Identifier id) {
+        return """
+                {
+                  "parent": "minecraft:item/generated",
+                  "textures": {
+                    "layer0": "%s"
+                  }
+                }
+                """.formatted(Minegenshin.MOD_ID + ":item/" + id.getPath() + "/texture");
+    }
+
+    /** 借原版模型的物品：只写定义（与原版生成器的 ClientItem.Properties(false,false,1.0F) 产出一致）。 */
+    private static String borrowedDefinition() {
+        return """
+                {
+                  "hand_animation_on_swap": false,
+                  "model": {
+                    "type": "minecraft:model",
+                    "model": "%s"
+                  }
+                }
+                """.formatted(BORROWED_MODEL);
     }
 }

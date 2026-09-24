@@ -1,7 +1,6 @@
 package com.linweiyun.genshin.content.items;
 
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
-import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import net.minecraft.world.item.Item;
 
 public class TeyvatItem extends Item implements IPersistedSerializable {

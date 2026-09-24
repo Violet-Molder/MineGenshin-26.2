@@ -3,7 +3,6 @@ package com.linweiyun.genshin;
 import com.linweiyun.genshin.config.GenshinConfig;
 import com.linweiyun.genshin.content.attribute.AttributeCapHandler;
 import com.linweiyun.genshin.content.entities.ModEntities;
-import com.linweiyun.genshin.content.entities.test.TestEntities;
 import com.linweiyun.genshin.content.items.ModItems;
 import com.linweiyun.genshin.core.attachment.AttachmentRegistration;
 import com.linweiyun.genshin.core.attachment.Backpack;
@@ -15,7 +14,6 @@ import com.linweiyun.genshin.core.system.registry.register.ModAttributes;
 import com.linweiyun.genshin.core.system.combat.action.ServerTickScheduler;
 import com.linweiyun.genshin.core.system.combat.decay.DecayCounterService;
 import com.linweiyun.genshin.core.system.registry.register.*;
-import com.linweiyun.genshin.data.loot.modifier.LTModifiers;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -50,11 +48,10 @@ public class Minegenshin {
 
 
         ModElements.register(modEventBus);
+        ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
         ModItemGroups.register(modEventBus);
         ModEntities.register(modEventBus);
-        //TEMP 测试实体（entity/test*/ 资源 + content/entities/test/）的注册入口
-        TestEntities.register(modEventBus);
         ModDamageTypes.register(modEventBus);
         ModMobEffects.register(modEventBus);
         ModStatusDataComponents.register(modEventBus);
@@ -70,8 +67,6 @@ public class Minegenshin {
         ModMenus.register(modEventBus);
 
         ModStatusInstanceTypes.register(modEventBus);
-
-        LTModifiers.register(modEventBus);
 
         PlayerUIMenuType.register(
                 Identifier.fromNamespaceAndPath("minegenshin", "backpack"),

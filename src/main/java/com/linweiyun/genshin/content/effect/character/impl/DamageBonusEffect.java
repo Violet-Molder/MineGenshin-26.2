@@ -2,7 +2,7 @@ package com.linweiyun.genshin.content.effect.character.impl;
 
 import com.linweiyun.genshin.content.effect.character.ICharacterEffect;
 import com.linweiyun.genshin.core.element.GenshinElement;
-import com.linweiyun.genshin.enums.AttackType;
+import com.linweiyun.genshin.core.system.combat.attack.AttackType;
 
 import java.util.Collections;
 import java.util.EnumSet;

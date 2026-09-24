@@ -1,5 +1,6 @@
 package com.linweiyun.genshin.core.system.combat.action.data;
 
+
 import com.linweiyun.genshin.core.character.PGCharacter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;

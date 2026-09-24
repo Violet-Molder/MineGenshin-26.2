@@ -1,6 +1,6 @@
 package com.linweiyun.genshin.core.system.reaction;
 
-import com.linweiyun.genshin.enums.ElementalReactionType;
+import com.linweiyun.genshin.core.system.reaction.ElementalReactionType;
 
 /**
  * 元素反应执行结果

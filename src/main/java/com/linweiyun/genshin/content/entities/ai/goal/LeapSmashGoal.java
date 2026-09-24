@@ -54,80 +54,59 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
         DONE
     }
 
-    //TEMP
     protected final T mob;
 
     /** 触发距离：与目标的水平距离 ≤ 它就起跳。 */
-    //TEMP
     private final double triggerDistance;
 
     /** 起跳前允许的朝向偏差（度）。 */
-    //TEMP
     private static final float FACING_TOLERANCE_DEGREES = 45.0F;
 
     /** 撞击判定的放宽量：玩家碰撞箱外再放宽这么多格算撞上。 */
-    //TEMP
     private final double smashPadding;
 
     /** 一次弧线的滞空刻数估计值，用来反推水平速度。 */
-    //TEMP
     private final int airborneTicks;
 
     /** 起跳竖直初速。 */
-    //TEMP
     private final double launchY;
 
     /** 回程竖直初速相对起跳的比例。 */
-    //TEMP
     private final double backLaunchRatio;
 
     /** 水平速度上下限，防止极近距离/极远距离时速度失控。 */
-    //TEMP
     private final double minAirSpeed;
-    //TEMP
     private final double maxAirSpeed;
 
     /** 单阶段最长刻数，兜底防止卡在空中。 */
-    //TEMP
     private final int maxPhaseTicks;
 
     /** 落地后离起跳点多近算「回到原位」。 */
-    //TEMP
     private final double arriveDistance;
 
     /** 两次扑击之间的间隔（刻）。 */
-    //TEMP
     private final int cooldownTicks;
 
-    //TEMP
     private Phase phase = Phase.DONE;
 
-    //TEMP
     private Vec3 origin = Vec3.ZERO;
 
-    //TEMP
     private Vec3 heading = Vec3.ZERO;
 
-    //TEMP
     private double airSpeed;
 
-    //TEMP
     private int elapsed;
 
-    //TEMP
     private long nextAllowedTick;
 
-    //TEMP
     public LeapSmashGoal(T mob) {
         this(mob, 2.0D);
     }
 
-    //TEMP
     public LeapSmashGoal(T mob, double triggerDistance) {
         this(mob, triggerDistance, 0.35D, 10, 0.42D, 0.85D, 0.12D, 0.85D, 40, 0.75D, 25);
     }
 
-    //TEMP
     public LeapSmashGoal(T mob, double triggerDistance, double smashPadding, int airborneTicks,
                          double launchY, double backLaunchRatio, double minAirSpeed, double maxAirSpeed,
                          int maxPhaseTicks, double arriveDistance, int cooldownTicks) {
@@ -147,7 +126,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
 
     // ==================== 触发 ====================
 
-    //TEMP
     @Override
     public boolean canUse() {
         if (this.mob.level().getGameTime() < this.nextAllowedTick) {
@@ -169,7 +147,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
     }
 
     /** 身体朝向和目标方向的夹角在容差内。 */
-    //TEMP
     private boolean isFacing(LivingEntity target) {
         double dx = target.getX() - this.mob.getX();
         double dz = target.getZ() - this.mob.getZ();
@@ -180,20 +157,17 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
         return Math.abs(Mth.wrapDegrees(wantedYaw - this.mob.getYRot())) <= FACING_TOLERANCE_DEGREES;
     }
 
-    //TEMP
     @Override
     public boolean canContinueToUse() {
         return this.phase != Phase.DONE;
     }
 
     /** 扑击途中不许被抢走控制权：半空中换人接手会僵住。 */
-    //TEMP
     @Override
     public boolean isInterruptable() {
         return false;
     }
 
-    //TEMP
     @Override
     public boolean requiresUpdateEveryTick() {
         return true;
@@ -201,7 +175,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
 
     // ==================== 生命周期 ====================
 
-    //TEMP
     @Override
     public void start() {
         LivingEntity target = this.mob.getTarget();
@@ -223,7 +196,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
         this.onLeapStarted();
     }
 
-    //TEMP
     @Override
     public void stop() {
         this.phase = Phase.DONE;
@@ -234,7 +206,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
         this.onLeapFinished();
     }
 
-    //TEMP
     @Override
     public void tick() {
         this.elapsed++;
@@ -253,7 +224,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
 
     // ==================== 阶段 ====================
 
-    //TEMP
     private void tickOut() {
         LivingEntity target = this.mob.getTarget();
 
@@ -280,7 +250,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
         }
     }
 
-    //TEMP
     private void tickBack() {
         if (this.mob.onGround()) {
             double remaining = this.horizontalDistanceTo(this.origin);
@@ -297,7 +266,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
     }
 
     /** 撞击后掉头：方向指向起跳点，速度按剩余距离反推。子类可覆写切「回位」动画。 */
-    //TEMP
     protected void beginReturn() {
         this.phase = Phase.BACK;
         this.elapsed = 0;
@@ -309,19 +277,16 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
     // ==================== 速度 ====================
 
     /** 水平速度 = 距离 / 滞空刻数，并夹在上下限之间。 */
-    //TEMP
     private double airSpeedFor(double distance) {
         return Mth.clamp(distance / this.airborneTicks, this.minAirSpeed, this.maxAirSpeed);
     }
 
-    //TEMP
     private void launch(double horizontalSpeed, double verticalSpeed) {
         this.airSpeed = horizontalSpeed;
         this.mob.setDeltaMovement(this.heading.x * horizontalSpeed, verticalSpeed, this.heading.z * horizontalSpeed);
     }
 
     /** 每 tick 重设水平分量，只保留当前竖直分量（重力照常作用）。 */
-    //TEMP
     private void keepAirSpeed() {
         Vec3 current = this.mob.getDeltaMovement();
         this.mob.setDeltaMovement(this.heading.x * this.airSpeed, current.y, this.heading.z * this.airSpeed);
@@ -337,7 +302,6 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
      * {@link #smash(LivingEntity)}，调用 {@code super} 之后再补自己的东西，
      * 或者完全自己造 {@code ModDamageSource}。
      */
-    //TEMP
     protected void smash(LivingEntity target) {
         this.mob.swing(InteractionHand.MAIN_HAND);
         this.mob.doHurtTarget(this.serverLevel(), target);
@@ -345,35 +309,29 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
     }
 
     /** 子类钩子：起跳那一刻（放音效 / 切动画）。 */
-    //TEMP
     protected void onLeapStarted() {
     }
 
     /** 子类钩子：撞上那一刻。 */
-    //TEMP
     protected void onSmashed(LivingEntity target) {
     }
 
     /** 子类钩子：落地收尾（切回常态动画）。 */
-    //TEMP
     protected void onLeapFinished() {
     }
 
     // ==================== 工具 ====================
 
-    //TEMP
     protected ServerLevel serverLevel() {
         return getServerLevel(this.mob);
     }
 
     /** 当前阶段，给动画状态用。 */
-    //TEMP
     public Phase phase() {
         return this.phase;
     }
 
     /** 水平方向（已归一化）；距离过近时返回零向量。 */
-    //TEMP
     private Vec3 horizontalDirectionTo(Vec3 destination) {
         double dx = destination.x - this.mob.getX();
         double dz = destination.z - this.mob.getZ();
@@ -381,19 +339,16 @@ public class LeapSmashGoal<T extends PathfinderMob> extends Goal {
         return length < 1.0E-4D ? Vec3.ZERO : new Vec3(dx / length, 0.0D, dz / length);
     }
 
-    //TEMP
     private double horizontalDistanceTo(Vec3 destination) {
         double dx = destination.x - this.mob.getX();
         double dz = destination.z - this.mob.getZ();
         return Math.sqrt(dx * dx + dz * dz);
     }
 
-    //TEMP
     private Vec3 horizontalDirectionTo(LivingEntity entity) {
         return horizontalDirectionTo(entity.position());
     }
 
-    //TEMP
     private double horizontalDistanceTo(LivingEntity entity) {
         return horizontalDistanceTo(entity.position());
     }

@@ -32,25 +32,19 @@ import java.util.function.Consumer;
 public final class GroundMarker {
 
     /** 外圈颜色（正红）。 */
-    //TEMP
     private static final DustParticleOptions OUTER = new DustParticleOptions(0xFF2020, 1.3f);
 
     /** 内圈颜色（亮一点，好和固定外圈区分开）。 */
-    //TEMP
     private static final DustParticleOptions INNER = new DustParticleOptions(0xFFB0B0, 0.9f);
 
     /** 圆环采样点数：越大越圆，也越费包。 */
-    //TEMP
     private static final int RING_POINTS = 24;
 
     /** 内圈不只是个环，而是「填满到当前进度」的盘，这样一眼能看出进度条。 */
-    //TEMP
     private static final int INNER_RINGS = 3;
 
-    //TEMP
     private static final List<Pending> ACTIVE = new ArrayList<>();
 
-    //TEMP
     private GroundMarker() {
     }
 
@@ -62,7 +56,6 @@ public final class GroundMarker {
      * @param durationTicks 内圈扩散满所需刻数（也是落地倒计时）
      * @param onImpact      到点回调，参数是圆心
      */
-    //TEMP
     public static void spawn(ServerLevel level, Vec3 center, double radius, int durationTicks,
                              Consumer<Vec3> onImpact) {
         if (level == null || onImpact == null) {
@@ -72,12 +65,10 @@ public final class GroundMarker {
     }
 
     /** 有没有正在倒计时的落点提示（调试用）。 */
-    //TEMP
     public static int activeCount() {
         return ACTIVE.size();
     }
 
-    //TEMP
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         if (ACTIVE.isEmpty()) {
@@ -95,7 +86,6 @@ public final class GroundMarker {
         }
     }
 
-    //TEMP
     private static void draw(Pending pending) {
         float progress = (float) pending.age / pending.totalTicks;
         double innerRadius = pending.radius * Math.min(1.0, progress);
@@ -126,22 +116,14 @@ public final class GroundMarker {
     }
 
     /** 一个正在倒计时的落点。 */
-    //TEMP
     private static final class Pending {
-        //TEMP
         private final ServerLevel level;
-        //TEMP
         private final Vec3 center;
-        //TEMP
         private final double radius;
-        //TEMP
         private final int totalTicks;
-        //TEMP
         private final Consumer<Vec3> onImpact;
-        //TEMP
         private int age;
 
-        //TEMP
         private Pending(ServerLevel level, Vec3 center, double radius, int totalTicks,
                         Consumer<Vec3> onImpact) {
             this.level = level;

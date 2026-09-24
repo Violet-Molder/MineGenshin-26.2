@@ -54,7 +54,7 @@ label {
   transform-pivot: 0.5 0.5; /* 缩放锚点居中（避免偏移） */
 }
 .select-character{
-  overlay: sprite(minegenshin:textures/character_avatar/selected_border.png)
+  overlay: sprite(minegenshin:gui/selected_border.png)
 }
 .character-pose {
   aspect-rate: 0.75f;
