@@ -25,6 +25,7 @@ assets/minegenshin/
 │      textures/pose_already.png   编队立绘（已在队伍）
 │      textures/skill.png / burst.png   元素战技 / 元素爆发图标
 │      sounds.json / sounds/*.ogg  音效定义与音频（ogg 丢进 sounds/ 就生效）
+│      local/<名字>.geo.json       自己的模型 / 动画放这里：明文直读，同名时优先
 ├── entity/<实体id>/     <id>.geo.json | <id>.animation.json | textures/<id>.png
 ├── item/<物品id>/       definition.json | model.json                     （原版入口文件）
 │                        textures/texture.png | icon.png | <id>.png       （平面贴图 / 图标 / geo 贴图）
@@ -36,6 +37,28 @@ assets/minegenshin/
 ├── lss/                           界面样式表
 └── lang/                          原版语言文件（唯一剩下的原版入口层，见下）
 ```
+
+### 模型与动画：资源包 + `local/` 明文目录
+
+自带角色的模型与动画**不再以一份份可读 JSON 出现在仓库和发行包里**，而是收进一个资源包
+（整包一个文件；它放在哪个目录属实现细节，不在本文展开）。对外只承诺三件事：
+
+- **逻辑路径没有变**：代码里照旧写 `character/vesna/vesna.geo.json` 这样的路径，
+  后缀判断、缓存键、目录索引全部沿用本文档后面描述的规则，读取侧只换了「字节从哪来」；
+- **自己的模型 / 动画放 `local/`**：`character/<id>/local/vesna.geo.json`、
+  `entity/<id>/local/<id>.animation.json` 这一类路径**明文直读**，放进对象目录重启即生效，
+  不需要任何额外步骤；同名时**`local/` 里那份优先于资源包**；
+- **磁盘优先于资源包**：同一个逻辑路径在仓库里也有文件时以文件为准（方便临时对照调试）。
+
+`local/` 只影响「资源从哪读」和「同名谁优先」，**不改变资源身份**：
+`character/vesna/local/vesna.geo.json` 与 `character/vesna/vesna.geo.json` 是同一个缓存键，
+所以 `CharacterRenderData` 之类的配置一个字都不用改。
+
+**明文放在哪、谁进仓库。** 自己手上的明文模型 / 动画放在它们正常的资源路径下就行
+（`character/<角色id>/vesna.geo.json` 这一类），改完构建一次即可生效；
+这些路径在仓库里由 `.gitignore` 排除，所以提交进仓库的**只有资源包那一个文件**，
+唯一的明文口子是 `local/`。发行形态同样是单文件：模型与动画跟着 jar 一起发，
+玩家把 jar 与依赖 Mod 放进 `mods/` 即可 —— 没有附加文件，也不需要单独下载资源。
 
 ### 原版入口层由重定向层供料
 

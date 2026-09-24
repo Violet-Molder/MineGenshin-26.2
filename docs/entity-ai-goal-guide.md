@@ -1855,6 +1855,8 @@ ElementalAttachmentHelper.attach(this, container, ModElements.CYRO.get(),
 assets/minegenshin/
 ├── entity/<id>/    <id>.geo.json | <id>.animation.json   ← 实体三件套（入口按对象）
 │                   textures/<id>.png
+│                   local/<名字>.geo.json | <名字>.animation.json
+│                              自己的模型 / 动画放这里：明文直读，同名时优先
 ├── item/<id>/      definition.json | model.json          ← 原版入口文件
 │                   textures/texture.png | icon.png | <id>.png（geo 物品）
 ├── block/<id>/     blockstate.json | model.json
@@ -1958,7 +1960,11 @@ LDLib2 的 `SpriteTexture` 走的也是完整路径语义（Identifier 直接交
 2. 新建 `Test2Entity extends TestMonster`，覆写 `assetId()` 与 `registerGoals()`、
    按需覆写 `defaultAction()`；
 3. `TestEntityRenderers#registerEntityRenderers` 加一行 `CategoryGeoModel`；
-4. 放 `assets/minegenshin/entity/<实体id>/`：`<id>.geo.json`、`<id>.animation.json`、`textures/<id>.png`。
+4. 放 `assets/minegenshin/entity/<实体id>/`：模型与动画进 `local/`
+   （`local/<id>.geo.json`、`local/<id>.animation.json`，明文直读、同名优先），
+   贴图放 `textures/<id>.png`。自带资源的模型与动画收在资源包（整包一个文件）里，
+   不再以逐文件 JSON 出现，
+   逻辑路径与后缀判断都不变。
 
 已经预留好的扩展位：
 

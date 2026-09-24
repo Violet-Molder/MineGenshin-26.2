@@ -60,7 +60,12 @@ public static final DeferredHolder<Item, Item> PRIMOGEM =
 1. 在 `content/items/<类别>/` 下写物品类（继承 `TeyvatItem` 或原版 `Item`）。
 2. 在 `ModItems` 里 `register(...)`，命名遵循现有风格。
 3. 需要出现在创造物品栏 → 在 `ModItemGroups` 的对应页签里加一项。
-4. 资源：`assets/minegenshin/items/<name>.json`（物品定义）、模型与贴图；语言文件补 `item.minegenshin.<name>`（`zh_cn.json` 与 `en_us.json` 都要）。
+4. 资源：按统一布局放 `assets/minegenshin/item/<物品id>/` —— `definition.json`（物品定义，原版
+   `items/<id>.json` 由重定向层供料）、`model.json`（平面模型）、`textures/texture.png`；
+   geo 物品另加 `<id>.geo.json`、`<id>.animation.json`、`textures/<id>.png`。
+   自己新加的模型 / 动画放对象目录下的 `local/`（明文直读、同名优先）；
+   布局与解析规则见 `docs/systems/render-asset.md`。
+   语言文件补 `item.minegenshin.<name>`（`zh_cn.json` 与 `en_us.json` 都要）。
 5. 掉落/配方需要的话，走数据生成或数据包。
 
 实体、属性、伤害类型、菜单的加法和物品同构：**类写在内容包，注册写在对应注册类，资源与语言补齐**。
